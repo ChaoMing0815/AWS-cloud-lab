@@ -1,18 +1,18 @@
-# AWS Cloud Engineer Final Project - Project Brief
+# AWS 雲端工程師期末專題 Project Brief
 
-## 1. Project Background
+## 1. 專案背景
 
-This project is the final capstone of an AWS Cloud Engineer training program.
+本專題是 AWS 雲端工程師培訓課程的期末 Capstone。
 
-The goal is not simply to deploy an application to AWS. The project should evolve gradually from cloud infrastructure into DevOps, AIOps, agentic AI, and enterprise AI.
+專題目標不是單純把一個應用程式部署到 AWS，而是讓架構從雲端基礎建設逐步演進到 DevOps、AIOps、Agentic AI 與 Enterprise AI。
 
-The instructor expects each stage to extend the previous one instead of becoming a separate isolated project. The architecture should grow step by step.
+講師期待每個階段都能延伸前一階段的成果，而不是做成彼此孤立的小專案。整體架構應該一步一步演進。
 
-## 2. Core Objective
+## 2. 核心目標
 
-The final goal is to build an AWS-hosted AI-powered cloud operation platform.
+最終目標是建立一個部署在 AWS 上的 AI-powered cloud operation platform。
 
-Instead of manually maintaining cloud resources, the system should gradually evolve through the following loop:
+系統應逐步從手動維護雲端資源，演進成以下閉環：
 
 ```text
 Cloud Infrastructure
@@ -23,11 +23,11 @@ Cloud Infrastructure
   -> Continuous Monitoring
 ```
 
-The long-term target is a closed-loop AIOps platform.
+長期目標是形成一個閉環式 AIOps 平台。
 
-## 3. Overall Evolution Path
+## 3. 整體演進路徑
 
-The instructor repeatedly emphasized this evolution path:
+講師反覆強調的演進路徑如下：
 
 ```text
 Traditional Infrastructure
@@ -40,25 +40,25 @@ Traditional Infrastructure
   -> Enterprise AI
 ```
 
-Each phase must build on the previous phase.
+每個 phase 都必須建立在前一個 phase 的成果上。
 
-## 4. Project Phases
+## 4. 專案階段
 
-### Phase 0: Project Governance
+### Phase 0：專案治理
 
-Deliverables:
+交付物：
 
 - GitHub repository
 - README
 - Architecture diagram
 - Milestones
 - Gantt chart
-- AWS budget alarm
+- AWS Budget Alarm
 - Documentation structure
 
-### Phase 1: Cloud Infrastructure
+### Phase 1：雲端基礎建設
 
-Topics:
+主題：
 
 - AWS VPC
 - CIDR
@@ -71,25 +71,25 @@ Topics:
 - RDS
 - Security Group
 
-Deliverables:
+交付物：
 
-- Running website
+- 可運作網站
 - Database isolation
 - Architecture diagram
 - AWS screenshots
 
-### Phase 2: High Availability
+### Phase 2：高可用性
 
-Add:
+新增：
 
 - Elastic Load Balancer
 - Auto Scaling
 
-Goal:
+目標：
 
-- Support increasing traffic.
+- 支援逐漸增加的流量。
 
-Architecture target:
+目標架構：
 
 ```text
 Internet
@@ -99,9 +99,9 @@ Internet
   -> RDS
 ```
 
-### Phase 3: Observability
+### Phase 3：可觀測性
 
-Introduce:
+導入：
 
 - CloudWatch Agent
 - CloudWatch Logs
@@ -109,43 +109,43 @@ Introduce:
 - CloudWatch Dashboard
 - CloudWatch Alarm
 
-Collect:
+蒐集：
 
 - System logs
 - Application logs
 - Metrics
 
-Visualize:
+視覺化：
 
 - CPU
 - Memory
 - Disk
 - Errors
 
-### Phase 4: AIOps
+### Phase 4：AIOps
 
-Use AI to analyze CloudWatch Logs.
+使用 AI 分析 CloudWatch Logs。
 
-Possible implementations:
+可能實作方式：
 
 - Amazon Bedrock
 - LangChain
 - Dify
 
-AI capabilities:
+AI 應具備以下能力：
 
-- Summarize logs
-- Detect anomalies
-- Perform root cause analysis
-- Suggest recovery actions
+- 摘要 logs
+- 偵測異常
+- 進行 root cause analysis
+- 建議 recovery actions
 
-### Phase 5: AI Operations
+### Phase 5：AI Operations
 
-Introduce AWS Systems Manager (SSM).
+導入 AWS Systems Manager，也就是 SSM。
 
-The system must not rely on SSH. AI-driven operations should use SSM to operate EC2 instances.
+系統不應依賴 SSH。AI-driven operations 應透過 SSM 操作 EC2。
 
-Example operations:
+範例操作：
 
 - Restart services
 - Install packages
@@ -153,13 +153,13 @@ Example operations:
 - Reboot
 - Execute Run Command operations
 
-Instructor emphasis:
+講師強調：
 
-- Never rely on SSH.
+- 不要依賴 SSH。
 
-### Phase 6: Knowledge Base
+### Phase 6：Knowledge Base
 
-Build enterprise knowledge by converting the following into AI-readable knowledge:
+建立企業知識，將以下資料轉成 AI-readable knowledge：
 
 - Documentation
 - SOP
@@ -167,15 +167,15 @@ Build enterprise knowledge by converting the following into AI-readable knowledg
 - Wiki
 - Notes
 
-Goal:
+目標：
 
-- Instead of humans reading documentation, AI reads documentation.
+- 不再只由人閱讀文件，而是讓 AI 讀懂文件。
 
-### Phase 7: MCP Integration
+### Phase 7：MCP 整合
 
-Use the AWS official MCP Server.
+使用 AWS official MCP Server。
 
-Target flow:
+目標流程：
 
 ```text
 AI
@@ -184,15 +184,15 @@ AI
   -> AWS Services
 ```
 
-Advanced option:
+進階選項：
 
-- Implement a custom MCP Server.
+- 實作 custom MCP Server。
 
-### Phase 8: DevOps
+### Phase 8：DevOps
 
-Implement CI/CD.
+實作 CI/CD。
 
-Pipeline:
+Pipeline：
 
 ```text
 GitHub
@@ -203,15 +203,15 @@ GitHub
   -> Deployment
 ```
 
-Goal:
+目標：
 
-- One code push triggers automatic build and deployment.
+- 一次 code push 可以觸發自動 build 與 deployment。
 
-### Phase 9: Microservices
+### Phase 9：Microservices
 
-Split monolithic applications.
+拆分 monolithic applications。
 
-Architecture evolves from one application into:
+架構從單一應用演進為：
 
 ```text
 Gateway
@@ -220,17 +220,17 @@ Gateway
   -> Service C
 ```
 
-Each service should support:
+每個 service 應支援：
 
 - Independent container
 - Independent deployment
 - Independent scaling
 
-### Phase 10: Enterprise AI
+### Phase 10：Enterprise AI
 
-Build an enterprise agent.
+建立 enterprise agent。
 
-Features:
+功能：
 
 - Prompt management
 - Knowledge Base
@@ -239,9 +239,9 @@ Features:
 - Tool calling
 - Multi-agent workflow
 
-### Phase 11: AI Monitoring
+### Phase 11：AI Monitoring
 
-Monitor:
+監控：
 
 - Prompt usage
 - Conversations
@@ -250,26 +250,26 @@ Monitor:
 - Latency
 - Model invocation
 
-Dashboard options:
+Dashboard 選項：
 
 - CloudWatch
 - Grafana
 
-### Phase 12: Serverless
+### Phase 12：Serverless
 
-Gain experience using:
+練習使用：
 
 - Lambda
 - API Gateway
 - EventBridge
 
-Learning goal:
+學習目標：
 
-- Understand how serverless monitoring differs from traditional server monitoring.
+- 理解 serverless monitoring 與傳統 server monitoring 的差異。
 
-### Phase 13: Final Documentation
+### Phase 13：最終文件
 
-Required deliverables:
+必要交付物：
 
 - GitHub repository
 - README
@@ -280,15 +280,15 @@ Required deliverables:
 - Deployment instructions
 - Network topology
 
-## 5. Documentation Requirements
+## 5. 文件需求
 
-Minimum required documentation:
+最低要求：
 
-- Successful deployment screenshots
-- AWS VPC screenshots
+- 成功部署截圖
+- AWS VPC 截圖
 - Architecture diagram
 
-Recommended documentation:
+建議補充：
 
 - Security design
 - Monitoring dashboard
@@ -297,20 +297,20 @@ Recommended documentation:
 - Automation flow
 - Cost monitoring
 
-## 6. AI Project Requirements
+## 6. AI 專題需求
 
-At minimum, students should be able to build an AI application that:
+最低要求是能建立一個 AI application，並具備以下能力：
 
-- Uses AWS compute
-- Invokes LLMs
-- Monitors model usage
-- Tracks token consumption
-- Monitors cost
-- Monitors conversations
+- 使用 AWS compute
+- 呼叫 LLMs
+- 監控 model usage
+- 追蹤 token consumption
+- 監控 cost
+- 監控 conversations
 
-## 7. Future Extensions
+## 7. 未來延伸
 
-Possible extensions:
+可能延伸方向：
 
 - AI + SSM
 - AI + MCP
@@ -321,9 +321,9 @@ Possible extensions:
 - AI + CI/CD
 - AI + Microservices
 
-## 8. Final Vision
+## 8. 最終願景
 
-Target architecture:
+目標架構：
 
 ```text
 Users
@@ -340,23 +340,23 @@ Users
   -> Continuous Feedback
 ```
 
-The system should evolve into an autonomous AIOps platform capable of monitoring, analyzing, deciding, operating, and continuously improving cloud infrastructure.
+系統應逐步演進成一個自主式 AIOps 平台，能夠監控、分析、決策、操作，並持續改善雲端基礎架構。
 
-## 9. Development Principles for AI Agents
+## 9. AI Agent 開發原則
 
-AI agents such as Codex, Claude Code, Cursor, or similar tools should follow these principles when implementing this project:
+使用 Codex、Claude Code、Cursor 或其他 AI Agent 實作本專案時，應遵守以下原則：
 
-1. Build incrementally: every phase extends the previous one; do not discard earlier work.
-2. Prioritize working systems: a deployable, demonstrable implementation is more important than theoretical completeness.
-3. AWS-first: all production artifacts must run on AWS. Local environments are for development only.
-4. Infrastructure as documentation: keep architecture diagrams, screenshots, and README synchronized with implementation.
-5. Automation by default: prefer Infrastructure as Code, CI/CD, and automated operations over manual procedures.
-6. Security first: apply least privilege IAM, avoid exposing databases, avoid SSH where SSM is appropriate, and never hard-code secrets.
-7. Observability before AI: ensure logs, metrics, and monitoring are in place before introducing AI-driven analysis.
-8. Composable architecture: design services so they can evolve from monolith to microservices and eventually to AI-driven autonomous operations.
+1. Incremental build：每個 phase 都延伸前一個 phase，不要推倒重做。
+2. Working system first：可部署、可展示的系統比理論完整更重要。
+3. AWS-first：production artifacts 必須跑在 AWS，本機環境只作為開發用途。
+4. Infrastructure as documentation：架構圖、截圖與 README 要與實作同步。
+5. Automation by default：優先採用 Infrastructure as Code、CI/CD 與自動化操作。
+6. Security first：套用 least privilege IAM，避免資料庫暴露，不硬編 secrets，能用 SSM 時不要依賴 SSH。
+7. Observability before AI：先建立 logs、metrics 與 monitoring，再導入 AI 分析。
+8. Composable architecture：設計時保留從 monolith 演進到 microservices 與 autonomous operations 的可能性。
 
-## 10. Role of This Document
+## 10. 本文件定位
 
-This document is the project SSOT, or Single Source of Truth.
+本文件是專題的 SSOT，也就是 Single Source of Truth。
 
-It is intended to live in the GitHub repository or project root so AI agents and human collaborators can understand the final project goal, required phases, deliverables, and development direction.
+它應放在 GitHub repository 或專案根目錄，讓 AI Agent 與人類協作者都能理解期末專題目標、必做階段、交付物與開發方向。
