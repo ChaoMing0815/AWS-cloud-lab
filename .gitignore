@@ -10,6 +10,9 @@ tmp/
 work/
 outputs/
 
+# Local-only AWS evidence containing account-identifying UI
+docs/screenshots/phase0-zero-spend-budget.png
+
 # Python
 __pycache__/
 *.py[cod]
@@ -21,4 +24,3 @@ node_modules/
 npm-debug.log*
 pnpm-debug.log*
 yarn-debug.log*
-

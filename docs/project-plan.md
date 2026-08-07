@@ -1,125 +1,121 @@
-# 專題規劃
+# 共演計劃：Tier 0–5 專題規劃
+
+期末專題繳交日：2026-09-07。
 
 ## 1. 題目
 
-建立一個部署在 AWS 上的 WordPress 維運平台，從 Web/DB 分離開始，逐步演進成 AI 輔助的雲端維運系統。
+> 共演計劃：部署於 AWS、由 3–5 位玩家共同遊玩的 AI 故事平台，從傳統 Web／DB 架構逐步演進至可觀測、可自動部署、微服務化與 Agentic AI 系統。
 
-建議題目名稱：
+本專題只維護一個產品主題。Tier 0–5 是累積演進，不是互斥選題。
 
-> AWS WordPress AIOps Platform：Web/DB 分離、CloudWatch 監控、LangChain 分析與 SSM 維運操作
+## 2. 解決的問題
 
-對應講師題目：
+- 多位玩家缺少能自由輸入行動、共同推進故事的輕量工具。
+- LLM 容易忘記規則或任意修改狀態，因此需要 deterministic game engine 與 canonical state。
+- AI 應用上 AWS 後，還需要成本、安全、logs、部署、故障隔離與工具治理。
 
-- 基礎題：P0-2 WordPress Web/DB 分離，Tier 0
-- 延伸一：P1-2 WordPress + LangChain 維運 Agent，Tier 1
-- 延伸二：P1-3 AWS SSM 遠端控制，Tier 1
-- 延伸三：P3 CI/CD 演化闖關，Tier 3
-- 選配 Capstone：P5 企業客服 Agentic AI，Tier 5
+## 3. 產品 MVP
 
-## 2. 為什麼選這條路線
+- 3–5 位玩家以 room code 加入。
+- 自由建立角色並分配勇氣、洞察、羈絆。
+- 每回合提交隱藏 action；後端以 `2d6 + attribute + spark` 判定。
+- LLM 依固定判定生成共同故事，不得修改規則狀態。
+- 進度、危機與 4／6／8 回合結局。
+- Refresh 後資料仍存在；LLM 失敗時能 retry 或 fallback。
 
-這條路線符合講師的評分邏輯：
+產品細節以 [`docs/specs/text-rpg-mvp-spec.md`](specs/text-rpg-mvp-spec.md) 為準。
 
-- 可以先透過 Tier 0 完成及格門檻。
-- 能展示正確的 AWS 架構設計，包含 public/private subnet 分離。
-- 容易產出 VPC、EC2、RDS、Security Group、CloudWatch、SSM 等 AWS 截圖證據。
-- 可以自然延伸到 AIOps，用 CloudWatch logs 搭配 AI 做維運分析。
-- 最終 Demo 很完整：發生異常、收集 logs、AI 說明問題、再透過 SSM 執行受控修復。
+## 4. Tier 0–5 演進
 
-## 3. 系統架構
+| Tier | 目標 | 完成定義 |
+| --- | --- | --- |
+| 0 | 可玩的 AWS monolith 與正確 Web／DB 分層 | 公開 Web、private DB、Bedrock 一回合、資料持久化、架構與成本證據 |
+| 1 | 可觀測與免 SSH 維運 | CloudWatch logs／metrics／alarm、SSM、一次 AIOps incident Demo |
+| 2 | 多組件與網段隔離 | Web/API、Story Worker、Data 三組件；E2E 成功且資料層外網不可達 |
+| 3 | 自動交付 | Docker、ECR、GitHub Actions OIDC，自動測試與部署成功 |
+| 4 | 微服務故障隔離 | 五個服務可獨立執行；停止一支不影響其餘服務 |
+| 5 | Enterprise Agentic AI | Prompt 版本、RAG、MCP／工具、多 Agent、人工批准、AI 監控 |
 
-Tier 0 初始架構：
+## 5. 架構演進
+
+### Tier 0
 
 ```mermaid
 flowchart LR
-    User["使用者瀏覽器"] --> Internet["Internet"]
-    Internet --> IGW["Internet Gateway"]
-    IGW --> Web["EC2：WordPress Web Server<br/>Public Subnet"]
-    Web --> RDS["RDS MySQL<br/>Private Subnet"]
+    User["玩家瀏覽器"] --> Web["Public EC2<br/>Nginx + FastAPI monolith"]
+    Web --> DB["Private PostgreSQL／RDS"]
+    Web --> Bedrock["Amazon Bedrock"]
+    Web --> CW["CloudWatch"]
+    SSM["Systems Manager"] --> Web
 ```
 
-AIOps 延伸架構：
+### Tier 2
 
 ```mermaid
-flowchart TD
-    User["使用者"] --> ALB["選配 ALB"]
-    ALB --> Web["EC2 WordPress"]
-    Web --> RDS["RDS MySQL"]
-    Web --> CW["CloudWatch Logs 與 Metrics"]
-    RDS --> CW
-    CW --> Agent["LangChain 維運 Agent<br/>EC2 或 Lambda"]
-    Agent --> Bedrock["LLM / Bedrock"]
-    Agent --> SSM["AWS Systems Manager"]
-    SSM --> Web
+flowchart LR
+    User["玩家"] --> API["Public<br/>Web／API"]
+    API --> Q["SQS"]
+    Q --> Worker["Private<br/>Story Worker"]
+    API --> DB["Private<br/>PostgreSQL"]
+    Worker --> DB
+    Worker --> Bedrock["Bedrock"]
 ```
 
-## 4. 預期成效
+### Tier 4–5
 
-專題完成後，系統應能展示：
+```mermaid
+flowchart LR
+    Gateway["Gateway"] --> Lobby["Lobby Service"]
+    Gateway --> Character["Character Service"]
+    Gateway --> Turn["Turn Service"]
+    Gateway --> Rules["Rules Service"]
+    Gateway --> Story["Story Service"]
+    Story --> RAG["RAG／pgvector"]
+    Story --> Agents["Narrator／Rules／Safety Agents"]
+    Agents --> MCP["MCP／允許工具"]
+    Agents --> Obs["Token／Cost／Success Monitoring"]
+```
 
-- WordPress 網站成功部署在 AWS 並可公開瀏覽
-- 資料庫位於 private subnet，外網無法直接連線
-- Security Group 只開放必要流量
-- CloudWatch 能蒐集 logs 與 metrics
-- Dashboard 或截圖能呈現 CPU、記憶體或應用健康狀態
-- AI 維運 Agent 能說明 WordPress 或資料庫異常
-- 透過 SSM 執行維運操作，不需要對外開 SSH
-- README、架構圖、截圖與 Demo 證據完整
+## 6. 安全與成本底線
 
-## 5. 範圍
+- 不建立或加入 AWS Organizations。
+- 不建立長期 Access Key；GitHub 使用 OIDC。
+- Root 只做帳號層級必要操作並啟用 MFA。
+- 不授予應用程式 `AdministratorAccess` 或服務 Full Access。
+- 不開 public SSH；使用 SSM。
+- Database、worker 與內部服務不直接對外。
+- 每個計費資源先估價並記錄 owner、用途、停止與刪除方式。
+- 高 Tier 資源只在驗證／Demo 時啟動，保存證據後立即縮減。
 
-### 必做
+## 7. 預期成效
 
-- 建置 AWS Budget Alarm
-- 建立 VPC、public subnet、private subnet
-- 在 public subnet 部署 EC2 WordPress
-- 在 private subnet 部署 RDS MySQL
-- Security Group 只允許 Web server 連線到 DB:3306
-- 完成 WordPress 發文並驗證資料可持久保存
-- 製作架構圖
-- 保存 AWS 截圖
-- 撰寫 README 與部署紀錄
+- 展示同一產品如何由 monolith 演進為可維運、多組件、CI/CD、微服務與 Agentic AI。
+- 證明網段、SG、IAM、SSM、CloudWatch 與資料隔離。
+- 證明 AI 不只會生成文字，也能被評估、監控、限制工具與追蹤成本。
+- 建立可向講師與面試官逐層說明的架構演進史。
 
-### 建議完成
+## 8. Demo 主線
 
-- CloudWatch Agent
-- CloudWatch Logs 與 Metrics
-- CloudWatch Dashboard
-- CloudWatch Alarm
-- SSM Session Manager，且不依賴 public SSH
-- SSM Run Command Demo
-- 基本異常模擬
-- AI log 摘要與修復建議
+1. 展示 Tier 0 三位玩家完成一回合與資料持久化。
+2. 展示 public Web／private DB、SG 與 DB 外網連線失敗。
+3. 模擬服務錯誤，由 CloudWatch 偵測、AI 摘要，再以 SSM 受控處理。
+4. 展示三組件架構與非同步 Story Worker。
+5. 改一行版本文字，觸發 GitHub Actions 自動部署。
+6. 停止 Story Service，證明 Lobby／Character 等服務仍可用。
+7. 展示 RAG 引用、MCP／tool approval 與 token／cost dashboard。
 
-### 加分項
+## 9. 必備交付
 
-- GitHub Actions CI/CD
-- Docker 化支援工具
-- ALB 與 Auto Scaling
-- Bedrock 整合
-- MCP 整合
-- SOP 與故障排除文件的 RAG 知識庫
+- 題目與預期成效。
+- 每個 Tier 的 current／target architecture diagram。
+- 甘特圖與逐層 checkpoints。
+- GitHub README、部署步驟與清理方式。
+- AWS 成功截圖、VPC／subnet／SG／IAM／CloudWatch／SSM／CI/CD／AI 監控證據。
+- 5–8 分鐘主 Demo；完整 Tier 證據可放附錄或錄影。
 
-## 6. Demo 流程
+## 10. 待確認
 
-期末 Demo 建議按照以下順序：
-
-1. 開啟公開的 WordPress 網站。
-2. 展示 VPC public/private subnet 分離。
-3. 展示 RDS 無法被外網直接存取。
-4. 發布一篇 WordPress 文章並重新整理，證明資料有寫入 DB。
-5. 觸發或模擬 WordPress 500 或 DB 連線異常。
-6. 展示 CloudWatch logs 與 metrics。
-7. 請 AI 維運 Agent 摘要問題。
-8. 使用 SSM Run Command 或 Session Manager 執行受控修復。
-9. 展示網站恢復正常。
-10. 說明架構、費用控管、安全設計與學習成果。
-
-## 7. 來源依據
-
-本規劃依據講師提供的 `專題.pptx`，重點包含：
-
-- 三條鐵則：一律部署到 AWS、先求有再求好、控制費用
-- 五大評分維度：能跑起來、架構正確性、安全性、可維護與自動化、文件與展示
-- 必備繳交格式：題目、系統架構、預期成效、甘特圖時程、檢核點
-- P0-2、P1-2、P1-3、P3、P5 題目卡
+- 講師是否接受 FastAPI＋private PostgreSQL 作為 Tier 0 Web／DB 分離的等效題卡。
+- PostgreSQL／RDS 與 DynamoDB 的最終資料 adapter ADR。
+- 各 Tier 可接受的最低資源數量與 Demo 深度。
+- 最終 AWS 帳號、Budget、Region、模型與逐項估價。

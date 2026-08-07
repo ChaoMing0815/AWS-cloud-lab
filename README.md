@@ -1,59 +1,52 @@
-# AWS Cloud Lab
+# 共演計劃：多人 AI 故事遊戲
 
-AWS 雲端工程師培訓期末專題。
+AWS 雲端工程師培訓期末專題。3–5 位玩家在同一房間提交角色行動，由 AI 故事主持人整合所有行動並產生下一回合的原創劇情。故事可以是職場、校園、日常喜劇、懸疑、科幻或奇幻，不預設單一題材。
 
-本專案用來記錄與實作一個部署在 AWS 上的雲端維運平台。專題會先從可運作的雲端基礎架構開始，再逐步演進到具備 AI 輔助分析與操作能力的 AIOps 平台。
+目前優先完成不產生 AWS 費用的本機展示版本；實際 AWS 部署已獨立成延後工作流，待帳號與預算方案確認後才開始。課程要求的 Tier 0–5 是同一產品的累積演進，不是六選一。
 
-## 專題方向
+## 本機展示
 
-建議主線：
+展示網頁不需要安裝套件：
 
-```text
-P0-2 WordPress Web/DB 分離
-  -> P1-2 WordPress + LangChain 維運 Agent
-  -> P1-3 AWS SSM 免 SSH 遠端操作
-  -> P3 CI/CD 演化闖關
-  -> 選配 P5 企業級 Agentic AI Capstone
+```bash
+python3 -m http.server 8080 --directory web
 ```
 
-這條路線可以先完成講師要求的保底題，再自然延伸到可觀測性、AIOps、安全維運、自動化與企業 AI。
+開啟 `http://localhost:8080`。目前版本使用瀏覽器 `localStorage` 保存房間、玩家、行動與劇情；重新整理後資料仍會保留。下一步會建立 FastAPI、repository interface 與伺服器端規則；AWS 資料層目前建議 private PostgreSQL，但要先完成 ADR 與講師等價性確認。
 
-## 核心目標
+## MVP 範圍
 
-建立一個可以展示的 AWS 雲端維運平台，具備以下能力：
+- 3–5 人回合制純文字遊戲
+- 房主直接輸入世界，或以 3–5 個關鍵字產生可編輯草稿
+- 玩家自由建立角色，將 3 點分配至勇氣、洞察與羈絆
+- 每回合提交一個隱藏行動並指定使用屬性
+- 後端以 `2d6 + 屬性 + 星火` 判定成功、部分成功或失敗
+- LLM 故事主持人依固定判定整合敘事，不得修改 canonical state
+- 以進度、危機與 4／6／8 回合上限產生結局
+- 保存房間、角色、回合、判定與故事，並支援同瀏覽器重連
+- 不做圖片生成、語音、戰鬥地圖與完整帳號系統
 
-- 在 AWS 上部署可公開存取的應用程式
-- 將資料庫隔離在私有網段
-- 透過 CloudWatch 蒐集 logs 與 metrics
-- 使用 AI 分析異常並提出修復建議
-- 透過 SSM 操作 EC2，不依賴 SSH
-- 完整記錄架構圖、截圖、Demo 與驗收結果
+## Tier 0–5 累積主線
 
-## 必備繳交格式
+- Tier 0：EC2 上的可玩 Web App／API、private PostgreSQL、Bedrock，以及 public Web／private data 隔離
+- Tier 1：CloudWatch logs、metrics、dashboard、alarm、incident 與 Systems Manager 免 SSH 維運
+- Tier 2：Web/API、SQS、Story Worker、private data 的三層／非同步架構
+- Tier 3：Docker、Amazon ECR、GitHub Actions OIDC 與自動部署
+- Tier 4：Lobby、Character、Turn、Rules、Story 服務拆分與故障隔離
+- Tier 5：Prompt 版本、RAG、MCP、多 Agent、人工批准與 AI 可觀測性
 
-依照講師簡報，每個專題都必須包含：
+WordPress 是簡報中的 Tier 0 範例與架構參考，不是目前選定的第二套產品；正式 AWS 實作前會先請講師確認自製 FastAPI＋private PostgreSQL 的等價驗收方式。
 
-1. 題目
-2. 系統架構
-3. 預期成效
-4. 甘特圖時程
-5. 檢核點
+詳細內容：
 
-## 專案結構
+- [正式 MVP Spec](docs/specs/text-rpg-mvp-spec.md)
+- [LLM 文字 RPG Research](docs/research/llm-text-rpg.md)
+- [WordPress 與自製 Web App 評估](docs/research/wordpress-web-platform-evaluation.md)
+- [課程簡報要求與對照方案](docs/course-requirements-alignment.md)
+- [任務拆分](docs/task-list.md)
+- [AWS 服務清單](docs/aws-services.md)
+- [AWS 架構圖](docs/architecture/README.md)
+- [專題決策 ADR-0001](docs/decisions/0001-select-multiplayer-ai-text-rpg.md)
+- [部署紀錄](docs/deployment-log.md)
 
-```text
-.
-├── README.md
-├── AWS_Cloud_Engineer_Final_Project_Project_Brief.md
-└── docs/
-    ├── project-plan.md
-    ├── gantt.md
-    └── checkpoints.md
-```
-
-## 目前規劃文件
-
-- [專案 Brief](AWS_Cloud_Engineer_Final_Project_Project_Brief.md)
-- [專題規劃](docs/project-plan.md)
-- [甘特圖時程](docs/gantt.md)
-- [檢核清單](docs/checkpoints.md)
+期末專題繳交日：2026-09-07。

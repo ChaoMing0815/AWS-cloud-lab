@@ -4,17 +4,22 @@
 
 ## 專案定位
 
-本專案是 AWS 雲端工程師培訓期末專題，目標是建立一個部署在 AWS 上的雲端維運平台，並逐步演進成 AIOps / Agentic AI 系統。
+本專案是 AWS 雲端工程師培訓期末專題，目標是以同一個「共演計劃」多人 AI 故事應用為主題，先建立可運作的 AWS 傳統架構，再逐步演進成可觀測、可自動部署、微服務化與 Agentic AI 系統。
+
+> 重要：Tier 0–5 是同一專題的累積演進階段，不是六選一，也不是做完 Tier 0 後任選一張題卡。每一層都要留下可運作成果、架構理由與驗證證據。
 
 主要路線：
 
 ```text
-P0-2 WordPress Web/DB 分離
-  -> P1-2 WordPress + LangChain 維運 Agent
-  -> P1-3 AWS SSM 免 SSH 遠端操作
-  -> P3 CI/CD 演化闖關
-  -> 選配 P5 企業級 Agentic AI Capstone
+Tier 0  共演計劃可玩 Web App + 公私網段 + 私有資料層
+  -> Tier 1  CloudWatch 可觀測性 + AIOps + SSM 免 SSH
+  -> Tier 2  Web／Story Worker／Data 組件切割與網段隔離
+  -> Tier 3  Docker + ECR + GitHub Actions OIDC CI/CD
+  -> Tier 4  Lobby／Character／Turn／Rules／Story 微服務
+  -> Tier 5  Prompt 管理 + RAG + MCP／工具 + 多 Agent + AI 監控
 ```
+
+`WordPress Web/DB 分離` 是簡報中的 Tier 0 題目範例與架構基準，不是本專題既定產品。若講師要求逐字完成該題卡，再另建 ADR，不得自行把 WordPress 插入共演計劃核心。
 
 ## Agent 開工前必讀文件
 
@@ -25,6 +30,8 @@ P0-2 WordPress Web/DB 分離
 3. `docs/project-plan.md`
 4. `docs/gantt.md`
 5. `docs/checkpoints.md`
+6. `docs/inbox/專題.pptx`
+7. `docs/course-requirements-alignment.md`
 
 如果任務涉及 AWS 實作，必須同時確認目前 AWS 成本、安全與資源狀態，不可假設雲端環境已準備完成。
 
@@ -195,20 +202,20 @@ Agent 需要能協助：
 - 建立 `docs/screenshots/` 與 `docs/architecture/`
 - 建立部署紀錄模板
 
-### Step 2：準備 AWS 基礎架構設計
+### Step 2：準備 Tier 0 AWS 基礎架構設計
 
 - 決定 VPC CIDR
 - 設計 public/private subnet
-- 決定 EC2 與 RDS 規格
+- 決定 EC2 與 private PostgreSQL／資料層規格
 - 規劃 Security Group 規則
 - 畫第一版 VPC 架構圖
 
-### Step 3：開始 P0-2 實作
+### Step 3：開始共演計劃 Tier 0 實作
 
 - 建立 VPC 與 subnet
-- 建立 EC2 WordPress
-- 建立 RDS MySQL
-- 串接 WordPress 與 RDS
+- 建立 EC2 Web／API monolith
+- 建立 private PostgreSQL 資料層
+- 串接共演計劃與資料層、Amazon Bedrock
 - 保存截圖並更新檢核清單
 
 ## 完成定義
@@ -220,4 +227,3 @@ Agent 需要能協助：
 - 對應截圖或 Demo 證據
 - 已更新的檢核清單
 - 可向講師說明的架構理由
-

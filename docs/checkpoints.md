@@ -1,81 +1,90 @@
-# 專題檢核清單
+# 共演計劃 Tier 0–5 檢核清單
 
-Demo 當天可用這份清單逐條驗收。
+Demo 與每日進度依本清單逐項驗收。檔案存在不代表完成；必須有實際狀態、正面／負面測試及證據。
 
-## 講師最低要求
+## 專案治理與帳號安全
 
-- [ ] 已保存成功部署截圖。
-- [ ] 已保存 AWS VPC 截圖。
-- [ ] 已包含架構圖。
-- [ ] README 說明專題內容與 Demo 方式。
-- [ ] GitHub repository 內有完整專題文件。
+- [x] 已建立並驗證專題 Agent Skill。
+- [x] 已設定並驗證每月 `US$1.00` Budget；2026-08-07 當時支出 `US$0.00`。
+- [x] Root MFA 已啟用，且沒有作用中的 Root Access Key。
+- [x] 已記錄誤建 AWS Organization 導致 Free plan／credits 失效的事件與矯正措施。
+- [x] 本專題禁止再建立／加入 AWS Organizations。
+- [x] 未建立長期 Access Key，未授予應用程式 `AdministratorAccess`。
+- [ ] 最終部署帳號、account plan、credits、Budget、Region 與 principal 已確認。
+- [ ] 所有資源已有估價、owner、最大預算、停止與刪除方式。
 
-## 費用控管
+## 產品與課程對齊
 
-- [ ] 建置基礎架構前已設定 AWS Budgets 告警。
-- [ ] 盡量使用 Free Tier 或最小合理規格。
-- [ ] 除非有明確目的，否則避開高費用服務。
-- [ ] 已記錄 Demo 後資源清理或 terminate 計畫。
+- [x] 已逐頁檢查 `docs/inbox/專題.pptx` 共 53 張。
+- [x] 已確認 Tier 0–5 是同一主題的累積演進，不是互斥選題。
+- [x] 已完成 Research、15 項訪談與正式 MVP Spec。
+- [x] 已建立題材中立的「共演計劃」展示原型。
+- [ ] 講師已確認自製 FastAPI Web／private DB 的 Tier 0 等效檢核與 Tier 0–5 對映。
+- [ ] 已確認 FastAPI＋PostgreSQL 與正式 AWS adapter ADR。
+- [ ] 本機 MVP 已通過 Spec Definition of Done。
 
-## P0-2 WordPress Web/DB 分離
+## Tier 0：AWS 可玩 MVP
 
-- [ ] VPC 具有 public subnet 與 private subnet。
-- [ ] WordPress Web server 位於 public subnet。
-- [ ] Database 位於 private subnet。
-- [ ] Database 無法被外網直接連線。
-- [ ] Security Group 只允許 Web server 的 Security Group 連 DB:3306。
-- [ ] WordPress 網站可從 public internet 瀏覽。
-- [ ] 可以建立 WordPress 文章，重新整理後文章仍存在。
-- [ ] 架構圖標示 VPC、subnet、EC2、RDS 與 Security Groups。
+- [ ] VPC、public subnet、private DB subnets 與 routing 正確。
+- [ ] Web／API 位於 public；外部可開啟並使用。
+- [ ] Database 位於 private，`Public access = No` 或等效隔離。
+- [ ] DB SG 只允許 App SG 的必要 port。
+- [ ] 外部 DB 連線負面測試失敗。
+- [ ] 3 位玩家可建立角色、提交 action 並完成至少一回合。
+- [ ] Bedrock 依固定骰子結果生成故事。
+- [ ] Refresh／重連後房間、角色、回合與故事仍存在。
+- [ ] 架構圖、AWS 截圖、README 與部署紀錄完整。
 
-## 安全性
+## Tier 1：CloudWatch、AIOps、SSM
 
-- [ ] 資料庫連接埠沒有對 public internet 開放。
-- [ ] SSH 沒有大範圍對外開放。
-- [ ] 沒有 secrets 被 commit 到 GitHub。
-- [ ] 憑證存放於 Parameter Store、Secrets Manager、環境變數或 AWS 管理設定。
-- [ ] IAM 權限盡量符合最小權限原則。
+- [ ] CloudWatch 可看到 application／system logs 與基本 metrics。
+- [ ] Dashboard 顯示 error、latency、LLM token／retry／fallback。
+- [ ] 至少一個 alarm 可觸發並留下證據。
+- [ ] EC2 不開 public SSH；Session Manager 可連線。
+- [ ] Run Command 可執行受控檢查或 restart。
+- [ ] AIOps Agent 可讀 logs，摘要 root cause 並提出 recovery action。
+- [ ] 已完成一次偵測→判讀→人工批准→修復 incident Demo。
 
-## 可觀測性
+## Tier 2：三組件與網段隔離
 
-- [ ] 已設定 CloudWatch Agent 或等效 logging 路徑。
-- [ ] Application logs 或 system logs 可在 CloudWatch 查看。
-- [ ] 可以看到基本 metrics。
-- [ ] Dashboard 或截圖能呈現健康狀態。
-- [ ] 至少設定一個 alarm 或告警規則。
+- [ ] Web/API、Story Worker、Data 組件與依賴圖完成。
+- [ ] 至少三個課程要求可辨識的 AWS 組件／compute 已部署。
+- [ ] Web 在 public；Worker／Data 在 private。
+- [ ] SG 串接正確，Worker／Data 外網連不到。
+- [ ] Queue job 有 version／idempotency，不重複扣資源或推進回合。
+- [ ] E2E action→worker→Bedrock→DB→result 成功。
 
-## P1-2 WordPress + AI 維運 Agent
+## Tier 3：CI/CD
 
-- [ ] Agent 可以讀取 logs 或健康狀態。
-- [ ] Agent 可以說明模擬的 WordPress 500 或 DB 連線異常。
-- [ ] Agent 能回覆清楚的修復建議。
-- [ ] Demo 展示偵測、分析、建議動作。
-- [ ] Agent 部署在 AWS，例如 EC2 或 Lambda。
+- [ ] Services 具有 Dockerfile 與自動測試。
+- [ ] GitHub Actions 使用 OIDC，不使用長期 AWS key。
+- [ ] Pipeline 自動 test、build、push ECR。
+- [ ] Deployment 有 environment gate／最小權限 role。
+- [ ] 改一行 code 可自動部署並由公開頁面驗證。
 
-## P1-3 AWS SSM 遠端操作
+## Tier 4：微服務
 
-- [ ] EC2 已掛載必要的 SSM IAM role。
-- [ ] Session Manager 可以在不開 public SSH 的情況下連線。
-- [ ] Run Command 可以對一台或多台 EC2 執行指令。
-- [ ] 正常維運流程不需要 public SSH key。
-- [ ] 可透過 SSM 展示修復操作。
+- [ ] 已保存 monolith 故障會影響整體的 baseline。
+- [ ] Lobby、Character、Turn、Rules、Story 五服務獨立部署。
+- [ ] 每個服務有 health check、logs 與獨立 image。
+- [ ] 停止一個服務，其餘不相關功能仍可使用。
+- [ ] 服務依賴、同步／非同步邊界與故障證據完整。
 
-## 選配 P3 CI/CD
+## Tier 5：Agentic AI
 
-- [ ] 應用或支援服務具有 Dockerfile。
-- [ ] GitHub Actions 可以 build image。
-- [ ] Image 可以推送到 ECR。
-- [ ] 可從 GitHub 觸發部署。
-- [ ] Demo 展示 code change 上線到 AWS。
+- [ ] Prompt 有版本管理與 A/B 比較。
+- [ ] RAG 可引用正確世界／規則／runbook 來源。
+- [ ] MCP／tool allowlist、參數驗證與拒絕測試通過。
+- [ ] Multi-Agent／多步 workflow 的責任與狀態邊界清楚。
+- [ ] 高風險操作具有人工批准與 audit log。
+- [ ] Dashboard 顯示 task success、token、latency、cost 與 intervention。
+- [ ] 5–10 個固定案例的評估報告完成。
 
-## 最終 Demo 檢核
+## 最終文件與清理
 
-- [ ] 展示公開的 WordPress 網站。
-- [ ] 展示 AWS 架構與 VPC 截圖。
-- [ ] 展示 RDS private isolation。
-- [ ] 展示 WordPress 文章資料持久保存。
-- [ ] 展示 CloudWatch logs 或 metrics。
-- [ ] 展示 AI 對異常的分析。
-- [ ] 展示 SSM 操作。
-- [ ] 展示最終 README 與架構圖。
-- [ ] 說明費用控管與資源清理方式。
+- [ ] 題目、系統架構、預期成效、甘特圖、檢核點齊全。
+- [ ] 每個 Tier 有架構圖、一段 Demo 與 README 證據。
+- [ ] 成功截圖、VPC／subnet／SG／IAM／CloudWatch／SSM／CI/CD／AI 監控證據齊全。
+- [ ] 沒有 secrets、token、Email 或 account ID 洩漏到 repo／截圖。
+- [ ] 5–8 分鐘主 Demo 可重現，完整 Tier 證據有附錄。
+- [ ] Demo 後已停止／刪除資源並重新確認費用。

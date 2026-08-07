@@ -1,75 +1,59 @@
-# 甘特圖時程
+# 共演計劃 Tier 0–5 甘特圖
 
-本時程依照講師要求的繳交格式整理，重點是每週都要有可驗收的進度。
+期末專題繳交日：2026-09-07。
+
+> 排程原則：同一產品逐層演進。每個 Tier 先完成一個能 Demo 的最小切片並保存證據，再增加深度。AWS 帳號與預算關卡未通過前，先完成對應的本機程式、IaC／指令草稿與測試。
 
 ## 6 週計畫
 
-| 任務 | W1 | W2 | W3 | W4 | W5 | W6 |
+| 任務 | W1<br/>7/27–8/2 | W2<br/>8/3–8/9 | W3<br/>8/10–8/16 | W4<br/>8/17–8/23 | W5<br/>8/24–8/30 | W6<br/>8/31–9/6 |
 | --- | --- | --- | --- | --- | --- | --- |
-| 確認題目與架構設計 | X |  |  |  |  |  |
-| AWS 帳號安全、Budget Alarm、IAM 檢查 | X |  |  |  |  |  |
-| VPC、public subnet、private subnet、routing | X | X |  |  |  |  |
-| EC2 WordPress 部署 |  | X | X |  |  |  |
-| RDS MySQL 建置與 Web/DB 串接 |  |  | X |  |  |  |
-| Security Group 收斂與連線測試 |  |  | X | X |  |  |
-| CloudWatch logs、metrics、dashboard、alarms |  |  |  | X | X |  |
-| SSM Session Manager 與 Run Command |  |  |  | X | X |  |
-| LangChain 或 AI 維運 Agent 原型 |  |  |  |  | X | X |
-| 異常模擬與修復 Demo |  |  |  |  | X | X |
-| README、截圖、架構圖 | X | X | X | X | X | X |
-| 最終 Demo 演練與資源清理計畫 |  |  |  |  |  | X |
+| 專題治理、Budget、IAM 與帳號關卡 | X | X | X |  |  |  |
+| 需求 Research、MVP Spec、原型 |  | X | X |  |  |  |
+| FastAPI、game engine、repository、tests |  | X | X |  |  |  |
+| Tier 0：VPC、EC2、private DB、Bedrock |  | 設計 | X | X |  |  |
+| Tier 1：CloudWatch、SSM、AIOps incident |  |  | 設計 | X | X |  |
+| Tier 2：Web/API、Worker、Data 三組件 |  |  |  | X | X |  |
+| Tier 3：Docker、ECR、GitHub Actions |  |  |  | X | X |  |
+| Tier 4：五服務拆分與故障隔離 |  |  |  |  | X | X |
+| Tier 5：Prompt、RAG、MCP／Tools、監控 |  |  |  |  | X | X |
+| 架構圖、證據、README、部署紀錄 | X | X | X | X | X | X |
+| Demo 演練、成本檢查與清理 |  |  |  |  |  | X |
 
 ## 里程碑
 
-| 里程碑 | 目標時間 | 驗收標準 |
+| 里程碑 | 期限 | 可驗收結果 |
 | --- | --- | --- |
-| M1：專案治理完成 | W1 結束 | GitHub repo、專題規劃、Budget Alarm、初版架構 |
-| M2：網路基礎完成 | W2 結束 | VPC 具備 public/private subnet 與 routing 設計 |
-| M3：Tier 0 系統可運作 | W3 結束 | WordPress 可公開瀏覽，且資料寫入 private RDS |
-| M4：安全與可觀測性完成 | W4 結束 | DB 位於 private、SG 收斂、CloudWatch 可看到資料 |
-| M5：維運延伸完成 | W5 結束 | SSM 與 AI 分析原型可支援異常處理 |
-| M6：期末 Demo 完成 | W6 結束 | Demo、截圖、README、架構圖、檢核清單完整 |
+| M1：產品定義完成 | 8/9 | Research、核准 Spec、題材中立原型、Tier 0–5 對照 |
+| M2：本機 MVP 完成 | 8/16 | FastAPI、memory repository、mock storyteller、核心 tests |
+| M3：Tier 0 AWS 可玩 | 8/20 | 公開 Web、private DB、Bedrock 一回合、資料持久化與安全證據 |
+| M4：Tier 1–2 完成 | 8/25 | CloudWatch／SSM incident Demo、三組件 E2E 與網段證據 |
+| M5：Tier 3–4 完成 | 8/31 | 自動部署成功、五服務故障隔離 Demo |
+| M6：Tier 5 與最終交付 | 9/6 | RAG／tool／monitoring Demo、文件、截圖、清理計畫完整 |
 
-## 每週重點
+## 關鍵路徑
 
-### Week 1
+```text
+核准 Spec
+  → FastAPI monolith + tests
+  → Tier 0 AWS vertical slice
+  → logs／SSM 與 incident data
+  → 組件切割
+  → container／pipeline
+  → 微服務故障隔離
+  → RAG／MCP／多 Agent 與監控
+  → 最終 Demo
+```
 
-- 確認題目與範圍
-- 建立 GitHub 文件
-- 設定 AWS Budgets 告警
-- 草擬 VPC 與應用架構
+## 延誤時的縮減原則
 
-### Week 2
+- 不刪除整個 Tier；縮成一個可驗證案例。
+- Tier 2 只保留 Web/API、Story Worker、Data 三組件與一條 E2E 流程。
+- Tier 3 只保留一條主分支自動部署 pipeline。
+- Tier 4 的五服務只實作必要 API 與健康檢查，不追求完整業務功能複製。
+- Tier 5 只保留一個 RAG corpus、一個 allowlisted tool、一次人工批准與一張監控圖。
+- 不以取消安全、費用或證據關卡換取速度。
 
-- 建立 VPC、subnet、route table、IGW，並評估是否需要 NAT
-- 建立 EC2 基礎環境
-- 保存 AWS 截圖
+## 繳交日
 
-### Week 3
-
-- 安裝與設定 WordPress
-- 建立 RDS MySQL
-- 串接 WordPress 與 RDS
-- 驗證文章資料可持久保存
-
-### Week 4
-
-- 收斂 Security Group
-- 確認 RDS 不對外公開
-- 加入 CloudWatch logs、metrics、dashboard、alarms
-- 啟用 SSM，降低對 SSH 的依賴
-
-### Week 5
-
-- 建立 AI 維運 Agent 原型
-- 讀取 CloudWatch logs 或健康檢查輸出
-- 模擬網站或 DB 異常
-- 使用 SSM 執行維運操作
-
-### Week 6
-
-- 整理最終 README
-- 補齊架構圖與網路拓樸
-- 整理截圖
-- 依照檢核清單演練 Demo
-- Demo 後終止不必要資源
+2026-09-07：提交 GitHub、AWS 實作、架構演進圖、成功／負面驗證截圖、README、甘特圖、checkpoints、Demo 與清理紀錄。
