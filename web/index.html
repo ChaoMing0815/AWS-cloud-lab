@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="共演計劃，3–5 人回合制 AI 共創故事遊戲展示版" />
+    <title>共演計劃｜多人 AI 故事遊戲</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="ambient ambient-one"></div>
+    <div class="ambient ambient-two"></div>
+
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="共演計劃首頁">
+        <span class="brand-mark">共</span>
+        <span>
+          <strong>共演計劃</strong>
+          <small>CO-STORY PROJECT</small>
+        </span>
+      </a>
+      <div class="connection"><span></span> 本機展示模式</div>
+    </header>
+
+    <main class="game-shell">
+      <aside class="panel room-panel">
+        <div class="eyebrow">故事房間</div>
+        <div class="room-code-row">
+          <div>
+            <span class="muted">房間代碼</span>
+            <strong id="roomCode">BONUS7</strong>
+          </div>
+          <button id="newRoomButton" class="icon-button" title="建立新房間" aria-label="建立新房間">↻</button>
+        </div>
+
+        <div class="world-card">
+          <span class="world-icon">✦</span>
+          <div>
+            <small>世界設定</small>
+            <h2 id="worldName">年終尾牙作戰</h2>
+            <p>公司臨時宣布加碼大獎，但抽獎資格取決於各部門能否完成最後一項共同任務。</p>
+          </div>
+        </div>
+
+        <div class="section-heading">
+          <span>參與者</span>
+          <span id="playerCount" class="count-pill">3 / 5</span>
+        </div>
+        <ul id="playerList" class="player-list"></ul>
+
+        <form id="joinForm" class="join-form">
+          <label for="nickname">加入新角色</label>
+          <div class="join-row">
+            <input id="nickname" maxlength="12" placeholder="輸入暱稱" autocomplete="off" />
+            <input id="role" maxlength="20" placeholder="角色描述" aria-label="角色一句描述" />
+          </div>
+          <button class="secondary-button" type="submit">加入隊伍</button>
+        </form>
+      </aside>
+
+      <section class="story-column">
+        <div class="story-header">
+          <div>
+            <div class="eyebrow">故事主持人紀錄</div>
+            <h1>尾牙前的最後一份提案</h1>
+          </div>
+          <div class="round-badge"><span>ROUND</span><strong id="roundNumber">04</strong></div>
+        </div>
+
+        <div id="storyFeed" class="story-feed" aria-live="polite"></div>
+
+        <form id="actionForm" class="action-composer">
+          <div class="composer-meta">
+            <label for="activePlayer">以角色身分行動</label>
+            <select id="activePlayer"></select>
+          </div>
+          <textarea id="actionInput" maxlength="240" rows="3" placeholder="描述你的行動，例如：我提議把三個部門的資料整合成一頁，直接向總經理爭取加碼……" required></textarea>
+          <div class="composer-footer">
+            <span><strong id="actionCount">0</strong> 位玩家已提交本回合行動</span>
+            <button class="primary-button" type="submit">提交行動 <span>→</span></button>
+          </div>
+        </form>
+      </section>
+
+      <aside class="panel status-panel">
+        <div class="eyebrow">本回合狀態</div>
+        <div class="objective">
+          <span class="objective-label">共同目標</span>
+          <h3>在尾牙抽獎前完成跨部門提案，爭取加碼年終獎金。</h3>
+        </div>
+
+        <div class="progress-copy">
+          <span>行動同步</span>
+          <strong id="progressText">0 / 3</strong>
+        </div>
+        <div class="progress-track"><div id="progressBar"></div></div>
+
+        <div id="turnList" class="turn-list"></div>
+
+        <div class="ai-card">
+          <div class="ai-orb">✧</div>
+          <div>
+            <strong>AI 故事主持人</strong>
+            <p id="aiStatus">等待所有玩家提交行動後，將整合結果並推進劇情。</p>
+          </div>
+        </div>
+
+        <button id="resetButton" class="text-button">重設本機展示資料</button>
+      </aside>
+    </main>
+
+    <footer>
+      <span>本機原型 · 資料保存在此瀏覽器</span>
+      <span>AWS 部署尚未執行</span>
+    </footer>
+
+    <script src="app.js"></script>
+  </body>
+</html>
