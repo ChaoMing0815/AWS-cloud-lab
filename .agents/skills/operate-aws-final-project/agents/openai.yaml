@@ -1,0 +1,4 @@
+interface:
+  display_name: "AWS 期末專題維運 Agent"
+  short_description: "安全建置多人 AI 文字 RPG 的 AWS 專題"
+  default_prompt: "Use $operate-aws-final-project to safely plan, deploy, verify, and document the AWS final project."
