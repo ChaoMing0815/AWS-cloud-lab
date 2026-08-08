@@ -18,12 +18,23 @@
 - [x] 完成 15 項需求訪談並核准正式 MVP Spec。
 - [x] 暫定產品名稱為「共演計劃」，支援職場、日常、校園、科幻與奇幻等題材。
 - [x] 建立 Vanilla HTML／CSS／JavaScript 展示原型。
+- [x] 接受前端 Clean Architecture、`GameApi` port 與後端 API 安全邊界。
 - [ ] 確認 Vanilla JS＋FastAPI＋PostgreSQL 技術路線。
-- [ ] 建立 FastAPI skeleton、health endpoint 與靜態檔案服務。
+- [x] 建立 ES modules、composition root 與 Domain／Application／Adapter／UI 目錄。
+- [x] 建立 `GameApi` contract、`MockGameApi` 與 create／join／submit use case tests。
+- [x] 將既有原型 canonical state 從 `localStorage` 移到記憶體 Mock adapter。
+- [ ] 將現有 DOM 邏輯拆成 pages、components 與 presenters。
+- [x] 建立 FastAPI skeleton、health endpoint 與同源靜態檔案服務。
 - [ ] 建立 domain models、state machine 與 deterministic game engine。
-- [ ] 建立 repository 與 storyteller interfaces。
-- [ ] 建立 memory repository、mock storyteller 與核心自動測試。
-- [ ] 將前端 mutation 從 `localStorage` 改為 API；`localStorage` 只保留 UI preferences。
+- [x] 建立 repository 與 storyteller interfaces。
+- [x] 建立 memory repository、mock storyteller 與 API 自動測試。
+- [x] 建立 `FetchGameApi`，將目前 create／join／submit mutation 與 canonical state 改由 API 管理。
+- [x] 建立 host／player opaque session；後端只保存 token hash。
+- [x] Action 使用 player session＋CSRF，前端不可指定任意 `player_id`。
+- [x] 目前 create／join／action mutation 實作 scoped `Idempotency-Key`。
+- [x] 未結算 action 只揭露提交狀態，不揭露其他玩家文字。
+- [ ] 完成 polling、取消、room version、idempotency 與前端錯誤狀態。
+- [ ] 完成 Mock／HTTP adapter contract tests 與三玩家 browser E2E。
 
 ## C. Tier 0：AWS 可玩傳統架構
 
@@ -99,8 +110,8 @@
 | 優先 | 任務 | AWS 寫入 |
 | --- | --- | --- |
 | 1 | 將 Tier 0–5 對映送講師確認 | 否 |
-| 2 | 確認 FastAPI＋PostgreSQL 技術路線 | 否 |
-| 3 | 完成本機 backend、game engine、repository 與 tests | 否 |
+| 2 | 依 ADR-0002 建立前端 `GameApi`、Mock adapter 與完整頁面流程 | 否 |
+| 3 | 確認 FastAPI＋PostgreSQL 路線並完成本機 backend、game engine、repository 與 tests | 否 |
 | 4 | 確認最終 AWS 帳號、Budget 與估價 | 唯讀 |
 | 5 | 部署並驗證 Tier 0 vertical slice | 是，需關卡 |
 | 6 | 依序完成 Tier 1→5 的最小可驗證演進 | 是，需逐層關卡 |

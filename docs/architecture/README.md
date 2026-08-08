@@ -2,6 +2,8 @@
 
 本文件是規劃圖，不代表資源已部署。專題以同一個多人 AI 故事產品逐層完成 Tier 0–5；每一階段都必須保留 AWS 實作、驗證截圖、Demo 與部署紀錄。
 
+瀏覽器端的分層、API port、狀態與 AWS 安全邊界另見[前端 Clean Architecture](frontend-clean-architecture.md)。不論下方 AWS 拓撲如何演進，前端都只透過同源 API／BFF 存取後端，不直接持有 AWS credential 或呼叫 RDS、Bedrock、SQS 等服務。
+
 ## Tier 0：可玩的 Web／DB 分離版本
 
 ```mermaid

@@ -19,6 +19,11 @@ Demo 與每日進度依本清單逐項驗收。檔案存在不代表完成；必
 - [x] 已確認 Tier 0–5 是同一主題的累積演進，不是互斥選題。
 - [x] 已完成 Research、15 項訪談與正式 MVP Spec。
 - [x] 已建立題材中立的「共演計劃」展示原型。
+- [x] 已接受前端 Clean Architecture、`GameApi` port 與後端 API 安全邊界。
+- [x] 現有原型的第一個 vertical slice 已依 ADR-0002 遷移，遊戲 state 不再存於 `localStorage`。
+- [x] 已以 `FetchGameApi` 串接 FastAPI memory repository，重新整理可恢復目前房間。
+- [x] Player action 已驗證 opaque session、CSRF、room version 與 idempotency，且不接受前端指定其他 player。
+- [ ] Host-only mutation、session expiry／revoke／reassign 與 production Secure cookie 已完成。
 - [ ] 講師已確認自製 FastAPI Web／private DB 的 Tier 0 等效檢核與 Tier 0–5 對映。
 - [ ] 已確認 FastAPI＋PostgreSQL 與正式 AWS adapter ADR。
 - [ ] 本機 MVP 已通過 Spec Definition of Done。

@@ -35,6 +35,10 @@
 | 2026-08-07 | Web 架構評估（已更正） | 專題暫定更名為「共演計劃」；比較 WordPress 與自製 Web App。當時把 WordPress 列為選配入口的建議已由課程要求更正取代 | 官方文件、現有原型與 MVP Spec 差距分析；未執行 AWS 寫入 | [Web 平台評估](research/wordpress-web-platform-evaluation.md) |
 | 2026-08-07 | 課程要求對齊（已更正） | 逐頁檢查 53 張期末專題投影片後，最初曾誤建議「P0-2 WordPress 保底＋共演計劃加值」；此解讀已由下一筆紀錄取代 | 原始 PPT、逐頁 render 與文字／版面檢查；未執行 AWS 寫入 | [課程要求對照](course-requirements-alignment.md) |
 | 2026-08-07 | 課程要求解讀更正 | 依講師補充、`AGENTS.md` 與 Project Brief，確認 Tier 0–5 不是選擇題；改為「共演計劃」同一產品逐層演進，每一 Tier 均保留 AWS 實作、Demo 與證據 | 交叉檢查專題簡報、Agent 指引、Project Brief 與全案文件；未執行 AWS 寫入 | [課程要求對照](course-requirements-alignment.md)／[專題規劃](project-plan.md) |
+| 2026-08-08 | 前端架構設計 | 接受 Clean Architecture：UI／Application／Domain 向內相依，`GameApi` 隔離 Mock 與 FastAPI，瀏覽器不直接存取 AWS 服務或 credential | ADR、分層、狀態、AWS 演進、測試與遷移條件文件檢查；未執行 AWS 寫入 | [前端架構](architecture/frontend-clean-architecture.md)／[ADR-0002](decisions/0002-adopt-clean-frontend-architecture.md) |
+| 2026-08-08 | 前端 vertical slice | 將單一 `app.js` 拆為 ES modules、Domain／Application／Adapters／UI／Composition；建立 `GameApi`、記憶體 `MockGameApi`、建立／加入／提交 use cases，移除遊戲 state 的 `localStorage` 持久化 | 9 項 Node tests 通過；瀏覽器建立房間與加入玩家 smoke test 通過；Console 0 errors；未執行 AWS 寫入 | [驗證證據](evidence/2026-08-08-frontend-vertical-slice/validation.md)／[今日進度](daily/2026-08-08.md) |
+| 2026-08-08 | FastAPI vertical slice | 建立 health、memory repository、`Storyteller` port、`MockStoryteller`、同源靜態服務與 `FetchGameApi`；以 `HttpOnly` local room cookie 恢復目前房間 | 後端 5 tests、前端 12 tests、FastAPI 瀏覽器建房／加入／refresh smoke test 通過；初次測試發現並修正 browser fetch binding；未執行 AWS 寫入 | [驗證證據](evidence/2026-08-08-fastapi-vertical-slice/validation.md)／[LLM 串接設計](architecture/llm-integration.md) |
+| 2026-08-08 | Session 安全 vertical slice | 建立 host／player opaque session hash、player CSRF、scoped idempotency 與 action owner server authorization；未結算 action 不向其他玩家揭露 | 後端 10 tests、前端 15 tests、Browser 匿名拒絕／加入／提交／refresh 正面驗證；Console 0 errors；未執行 AWS 寫入 | [驗證證據](evidence/2026-08-08-session-security/validation.md)／[安全設計](architecture/session-and-idempotency.md) |
 
 ## AWS Budget Alarm
 

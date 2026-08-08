@@ -6,13 +6,34 @@ AWS 雲端工程師培訓期末專題。3–5 位玩家在同一房間提交角�
 
 ## 本機展示
 
-展示網頁不需要安裝套件：
+第一次建立本機環境：
 
 ```bash
-python3 -m http.server 8080 --directory web
+python3 -m venv .venv
+.venv/bin/python -m pip install -r backend/requirements-dev.txt
 ```
 
-開啟 `http://localhost:8080`。目前版本使用瀏覽器 `localStorage` 保存房間、玩家、行動與劇情；重新整理後資料仍會保留。下一步會建立 FastAPI、repository interface 與伺服器端規則；AWS 資料層目前建議 private PostgreSQL，但要先完成 ADR 與講師等價性確認。
+啟動 FastAPI 與同源前端：
+
+```bash
+.venv/bin/python -m uvicorn app.main:app --app-dir backend --reload
+```
+
+開啟 `http://127.0.0.1:8000`。目前前端透過 `FetchGameApi` 呼叫 FastAPI；房間 canonical state 由伺服器端 memory repository 管理。Host／player 使用獨立 `HttpOnly` opaque session，玩家 action 由後端 session 決定身分，並檢查 CSRF、room version 與 `Idempotency-Key`。同一瀏覽器重新整理可恢復目前房間與玩家。故事生成目前使用無費用的 `MockStoryteller`，尚未呼叫 Bedrock。AWS 資料層目前建議 private PostgreSQL，但仍要完成後端 ADR 與講師等價性確認。
+
+Node.js 20 以上可執行目前零第三方相依的測試：
+
+```bash
+cd web
+npm test
+```
+
+後端測試：
+
+```bash
+cd backend
+../.venv/bin/python -m pytest
+```
 
 ## MVP 範圍
 
@@ -46,7 +67,12 @@ WordPress 是簡報中的 Tier 0 範例與架構參考，不是目前選定的�
 - [任務拆分](docs/task-list.md)
 - [AWS 服務清單](docs/aws-services.md)
 - [AWS 架構圖](docs/architecture/README.md)
+- [前端 Clean Architecture](docs/architecture/frontend-clean-architecture.md)
+- [LLM／Amazon Bedrock 串接設計](docs/architecture/llm-integration.md)
+- [Session／CSRF／Idempotency 設計](docs/architecture/session-and-idempotency.md)
 - [專題決策 ADR-0001](docs/decisions/0001-select-multiplayer-ai-text-rpg.md)
+- [前端架構決策 ADR-0002](docs/decisions/0002-adopt-clean-frontend-architecture.md)
 - [部署紀錄](docs/deployment-log.md)
+- [2026-08-08 今日任務與進度](docs/daily/2026-08-08.md)
 
 期末專題繳交日：2026-09-07。
