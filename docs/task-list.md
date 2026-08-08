@@ -33,6 +33,12 @@
 - [x] Action 使用 player session＋CSRF，前端不可指定任意 `player_id`。
 - [x] 目前 create／join／action mutation 實作 scoped `Idempotency-Key`。
 - [x] 未結算 action 只揭露提交狀態，不揭露其他玩家文字。
+- [x] 建立 `DRAFT → LOBBY → COLLECTING_ACTIONS` 狀態轉移。
+- [x] 世界確認與開始遊戲使用 host session＋CSRF＋version＋idempotency。
+- [x] Lobby 僅允許 3–5 位玩家由房主開始，非房主與人數不足請求會被拒絕。
+- [x] 建立 player-only 角色 mutation 與角色名稱、背景、特質、弱點欄位。
+- [x] 勇氣／洞察／羈絆各限制 0–2 且總和為 3，星火由後端固定為 1。
+- [x] Lobby start 要求 3–5 位玩家全數完成角色。
 - [ ] 完成 polling、取消、room version、idempotency 與前端錯誤狀態。
 - [ ] 完成 Mock／HTTP adapter contract tests 與三玩家 browser E2E。
 
