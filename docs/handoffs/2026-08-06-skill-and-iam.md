@@ -1,5 +1,7 @@
 # 下一對話任務交接：專題 Agent Skill 與 IAM
 
+> 本文件是 2026-08-06 的歷史交接，不代表目前執行入口。2026-08-08 之後請優先讀取 [`2026-08-08-local-mvp.md`](2026-08-08-local-mvp.md)；不得依本文件重新啟用 Organizations 或重做已完成的 Identity Center 步驟。
+
 > 2026-08-07 更正：本交接原本要求「確認或啟用 IAM Identity Center」，但漏列新版 AWS Free plan 建立／加入 Organization 會自動升級 Paid plan、使 Free Tier credits 立即失效且不能降級。此項成本後果優先於下方 Identity Center 建議；任何後續工作不得再依原文直接建立 Organization。
 
 - 交接日期：2026-08-06

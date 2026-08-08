@@ -23,22 +23,26 @@
 - [x] 建立 ES modules、composition root 與 Domain／Application／Adapter／UI 目錄。
 - [x] 建立 `GameApi` contract、`MockGameApi` 與 create／join／submit use case tests。
 - [x] 將既有原型 canonical state 從 `localStorage` 移到記憶體 Mock adapter。
-- [ ] 將現有 DOM 邏輯拆成 pages、components 與 presenters。
+- [x] 將現有 DOM 邏輯拆成 UI page 與 presenter；components 可在 UI 複雜度增加時再抽取。
 - [x] 建立 FastAPI skeleton、health endpoint 與同源靜態檔案服務。
-- [ ] 建立 domain models、state machine 與 deterministic game engine。
+- [x] 建立 World／Room／Player／Character／DiceResult domain models。
+- [x] 建立至 `AWAITING_SPARK` 的 state machine 與 `2d6 + 屬性` deterministic engine。
+- [ ] 完成星火、正式進度／危機套用、回合推進與結局狀態。
 - [x] 建立 repository 與 storyteller interfaces。
 - [x] 建立 memory repository、mock storyteller 與 API 自動測試。
 - [x] 建立 `FetchGameApi`，將目前 create／join／submit mutation 與 canonical state 改由 API 管理。
 - [x] 建立 host／player opaque session；後端只保存 token hash。
 - [x] Action 使用 player session＋CSRF，前端不可指定任意 `player_id`。
-- [x] 目前 create／join／action mutation 實作 scoped `Idempotency-Key`。
+- [x] Create／world／join／character／start／action／roll mutation 實作 scoped `Idempotency-Key`。
 - [x] 未結算 action 只揭露提交狀態，不揭露其他玩家文字。
-- [x] 建立 `DRAFT → LOBBY → COLLECTING_ACTIONS` 狀態轉移。
+- [x] 建立 `DRAFT → LOBBY → COLLECTING_ACTIONS → AWAITING_HOST → AWAITING_SPARK` 狀態轉移。
 - [x] 世界確認與開始遊戲使用 host session＋CSRF＋version＋idempotency。
 - [x] Lobby 僅允許 3–5 位玩家由房主開始，非房主與人數不足請求會被拒絕。
 - [x] 建立 player-only 角色 mutation 與角色名稱、背景、特質、弱點欄位。
 - [x] 勇氣／洞察／羈絆各限制 0–2 且總和為 3，星火由後端固定為 1。
 - [x] Lobby start 要求 3–5 位玩家全數完成角色。
+- [x] Action 支援勇氣／洞察／羈絆，擲骰前隱藏、擲骰後一次揭露。
+- [x] Host-only roll 使用 CSPRNG，並保存原始骰點、結果與待結算進度／危機。
 - [ ] 完成 polling、取消、room version、idempotency 與前端錯誤狀態。
 - [ ] 完成 Mock／HTTP adapter contract tests 與三玩家 browser E2E。
 

@@ -32,6 +32,7 @@ Tier 0  共演計劃可玩 Web App + 公私網段 + 私有資料層
 5. `docs/checkpoints.md`
 6. `docs/inbox/專題.pptx`
 7. `docs/course-requirements-alignment.md`
+8. `docs/handoffs/` 中日期最新的交接文件
 
 如果任務涉及 AWS 實作，必須同時確認目前 AWS 成本、安全與資源狀態，不可假設雲端環境已準備完成。
 
@@ -195,20 +196,19 @@ Agent 需要能協助：
 
 ## 建議下一步
 
-### Step 1：完成 Phase 0 專案治理
+### Step 1：完成本機 MVP 核心回合
 
-- Commit 並 push 目前文件
-- 建立 AWS Budget Alarm
-- 建立 `docs/screenshots/` 與 `docs/architecture/`
-- 建立部署紀錄模板
+- 完成星火決策、正式進度／危機套用與下一回合
+- 完成結局條件、Mock storyteller fallback 與三玩家 E2E
+- 建立 PostgreSQL repository ADR、schema 與 migrations
+- 補齊 session expiry／revoke／reassign
 
-### Step 2：準備 Tier 0 AWS 基礎架構設計
+### Step 2：通過 AWS 部署前關卡
 
-- 決定 VPC CIDR
-- 設計 public/private subnet
-- 決定 EC2 與 private PostgreSQL／資料層規格
-- 規劃 Security Group 規則
-- 畫第一版 VPC 架構圖
+- 確認最終 AWS 帳號、account plan、credits、Budget、principal 與 Region
+- 取得 FastAPI＋private PostgreSQL 的講師等價性確認
+- 完成 VPC、EC2、RDS、Bedrock 逐項估價與清理計畫
+- 定義最小權限 app role、Security Group 與 SSM 邊界
 
 ### Step 3：開始共演計劃 Tier 0 實作
 
