@@ -19,7 +19,7 @@ python3 -m venv .venv
 .venv/bin/python -m uvicorn app.main:app --app-dir backend --reload
 ```
 
-開啟 `http://127.0.0.1:8000`。目前前端透過 `FetchGameApi` 呼叫 FastAPI；房間 canonical state 由伺服器端 memory repository 管理。新房間依 `DRAFT → LOBBY → COLLECTING_ACTIONS` 推進，世界確認與開始遊戲只接受有效房主 session；3–5 位玩家必須全數完成角色與三點配點才能開始。Host／player 使用獨立 `HttpOnly` opaque session，mutation 檢查 CSRF、room version 與 `Idempotency-Key`；角色與 action owner 均由後端 session 決定。同一瀏覽器重新整理可恢復目前房間與玩家。故事生成目前使用無費用的 `MockStoryteller`，尚未呼叫 Bedrock。AWS 資料層目前建議 private PostgreSQL，但仍要完成後端 ADR 與講師等價性確認。
+開啟 `http://127.0.0.1:8000`。目前前端透過 `FetchGameApi` 呼叫 FastAPI；房間 canonical state 由伺服器端 memory repository 管理。新房間依 `DRAFT → LOBBY → COLLECTING_ACTIONS → AWAITING_HOST → AWAITING_SPARK` 推進，世界確認、開始遊戲與擲骰只接受有效房主 session；3–5 位玩家必須全數完成角色與三點配點才能開始。玩家提交隱藏行動與使用屬性，房主收齊後以 `2d6 + 屬性` 產生三段結果與待結算進度／危機。Host／player 使用獨立 `HttpOnly` opaque session，mutation 檢查 CSRF、room version 與 `Idempotency-Key`；角色與 action owner 均由後端 session 決定。同一瀏覽器重新整理可恢復目前房間與玩家。星火、正式回合結算與故事生成仍待完成；故事 adapter 目前是無費用的 `MockStoryteller`，尚未呼叫 Bedrock。AWS 資料層目前建議 private PostgreSQL，但仍要完成後端 ADR 與講師等價性確認。
 
 Node.js 20 以上可執行目前零第三方相依的測試：
 

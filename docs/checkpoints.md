@@ -25,6 +25,8 @@ Demo 與每日進度依本清單逐項驗收。檔案存在不代表完成；必
 - [x] Player action 已驗證 opaque session、CSRF、room version 與 idempotency，且不接受前端指定其他 player。
 - [x] Host-only 世界確認與 Lobby start 已驗證 session、CSRF、version 與 idempotency。
 - [x] Player-only 角色建立、三點配點與全員角色完成 start gate 已驗證。
+- [x] Action approach、`2d6 + 屬性`、三段結果與 host-only 擲骰已驗證。
+- [x] 擲骰結果先保存待結算進度／危機，未繞過星火決策直接修改 canonical points。
 - [ ] Session expiry／revoke／reassign 與 production Secure cookie 已完成。
 - [ ] 講師已確認自製 FastAPI Web／private DB 的 Tier 0 等效檢核與 Tier 0–5 對映。
 - [ ] 已確認 FastAPI＋PostgreSQL 與正式 AWS adapter ADR。

@@ -41,6 +41,7 @@
 | 2026-08-08 | Session 安全 vertical slice | 建立 host／player opaque session hash、player CSRF、scoped idempotency 與 action owner server authorization；未結算 action 不向其他玩家揭露 | 後端 10 tests、前端 15 tests、Browser 匿名拒絕／加入／提交／refresh 正面驗證；Console 0 errors；未執行 AWS 寫入 | [驗證證據](evidence/2026-08-08-session-security/validation.md)／[安全設計](architecture/session-and-idempotency.md) |
 | 2026-08-08 | Host 世界與 Lobby vertical slice | 實作 `DRAFT → LOBBY → COLLECTING_ACTIONS`、直接輸入世界、4／6／8 回合與 host-only start；host mutation 使用獨立 CSRF、version 與 idempotency | 後端 13 tests、前端 19 tests；Browser 建房、確認世界、房主兼玩家、0／1 人 start disabled、Console 0 errors；初次 Browser 驗證發現並修正 busy cleanup 重新啟用按鈕；未執行 AWS 寫入 | [驗證證據](evidence/2026-08-08-host-lobby-flow/validation.md) |
 | 2026-08-08 | 角色建立與配點 vertical slice | 建立 player-only 角色 mutation、名稱／背景／特質／弱點、勇氣／洞察／羈絆三點配點與固定 1 星火；Lobby start 要求全員角色完成 | 後端 14 tests、前端 22 tests；Browser 建房→確認世界→加入→`2/1/0` 配點→角色 ready，Console 0 errors；8000 Demo 與 8765 驗證伺服器皆已停止；未執行 AWS 寫入 | [驗證證據](evidence/2026-08-08-character-creation/validation.md) |
+| 2026-08-08 | Deterministic 回合裁定 vertical slice | 建立 action approach、`DiceRoller` port、`2d6 + 屬性` 三段判定、待結算進度／危機，以及 `AWAITING_HOST → AWAITING_SPARK`；擲骰限房主且具 CSRF、version、idempotency | 後端 16 tests、前端 24 tests；固定骰驗證三種結果、重送不重擲；Browser 顯示屬性與骰點區、Console 0 errors；8765 已停止；未執行 AWS 寫入 | [驗證證據](evidence/2026-08-08-deterministic-rules/validation.md) |
 
 ## AWS Budget Alarm
 
