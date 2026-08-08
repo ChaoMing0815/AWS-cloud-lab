@@ -27,6 +27,7 @@ def room_response(room: Room, session: dict) -> dict:
                 "name": player.name,
                 "role": player.role,
                 "action": player.action if player.id == current_player_id else "",
+                "actionApproach": player.action_approach if player.id == current_player_id else "",
                 "hasSubmitted": bool(player.action),
                 "characterReady": player.character is not None,
                 "character": (
@@ -55,7 +56,40 @@ def room_response(room: Room, session: dict) -> dict:
                 "text": entry.text,
             }
             for entry in room.entries
-            if entry.type != "action" or entry.round_number < room.round_number
+            if (
+                entry.type != "action"
+                or entry.round_number < room.round_number
+                or room.status == "AWAITING_SPARK"
+            )
+        ],
+        "progressPoints": room.progress_points,
+        "dangerPoints": room.danger_points,
+        "pendingProgress": sum(
+            result.progress_delta
+            for result in room.dice_results
+            if result.round_number == room.round_number
+        ),
+        "pendingDanger": sum(
+            result.danger_delta
+            for result in room.dice_results
+            if result.round_number == room.round_number
+        ),
+        "diceResults": [
+            {
+                "playerId": result.player_id,
+                "round": result.round_number,
+                "dice": [result.d6_1, result.d6_2],
+                "approach": result.approach,
+                "attributeValue": result.attribute_value,
+                "baseTotal": result.base_total,
+                "finalTotal": result.final_total,
+                "result": result.result,
+                "progressDelta": result.progress_delta,
+                "dangerDelta": result.danger_delta,
+                "sparkUsed": result.spark_used,
+            }
+            for result in room.dice_results
+            if result.round_number == room.round_number
         ],
         "session": session,
     }

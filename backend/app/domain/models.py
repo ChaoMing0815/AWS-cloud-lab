@@ -33,6 +33,7 @@ class Player:
     name: str
     role: str
     action: str = ""
+    action_approach: str = ""
     session_hash: str = ""
     csrf_token: str = ""
     character: Character | None = None
@@ -45,6 +46,23 @@ class StoryEntry:
     title: str
     round_number: int
     text: str
+    player_id: str | None = None
+
+
+@dataclass(slots=True)
+class DiceResult:
+    player_id: str
+    round_number: int
+    d6_1: int
+    d6_2: int
+    approach: str
+    attribute_value: int
+    base_total: int
+    final_total: int
+    result: str
+    progress_delta: int
+    danger_delta: int
+    spark_used: int = 0
 
 
 @dataclass(slots=True)
@@ -59,5 +77,8 @@ class Room:
     host_csrf_token: str = ""
     max_rounds: int = 6
     initial_player_count: int = 0
+    progress_points: int = 0
+    danger_points: int = 0
     players: list[Player] = field(default_factory=list)
     entries: list[StoryEntry] = field(default_factory=list)
+    dice_results: list[DiceResult] = field(default_factory=list)

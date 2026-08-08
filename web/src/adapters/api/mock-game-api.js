@@ -56,6 +56,11 @@ function baseRoom({ withDemoPlayers = false } = {}) {
       },
     maxRounds: 6,
     initialPlayerCount: withDemoPlayers ? players.length : 0,
+    progressPoints: 0,
+    dangerPoints: 0,
+    pendingProgress: 0,
+    pendingDanger: 0,
+    diceResults: [],
     players,
     session: currentPlayer
       ? {
@@ -217,8 +222,8 @@ export class MockGameApi extends GameApi {
     return clone(this.room);
   }
 
-  async submitAction({ text }) {
-    if (this.room.status !== "COLLECTING_ACTIONS") {
+  async submitAction({ text, approach }) {
+    if (!["COLLECTING_ACTIONS", "AWAITING_HOST"].includes(this.room.status)) {
       throw new ApiError("ACTION_NOT_ALLOWED", "目前不能提交行動。", 409);
     }
     const playerId = this.room.session?.playerId;
@@ -228,28 +233,66 @@ export class MockGameApi extends GameApi {
     }
 
     player.action = text;
+    player.actionApproach = approach;
+    this.room.entries = this.room.entries.filter(
+      (entry) => !(entry.type === "action" && entry.round === this.room.round && entry.playerId === player.id),
+    );
     this.room.entries.push({
       id: randomId(),
       type: "action",
       title: `${player.name} · ${player.role}`,
       round: this.room.round,
       text,
+      playerId: player.id,
     });
     this.room.version += 1;
 
     if (this.room.players.length >= 3 && this.room.players.every(({ action }) => action)) {
-      const names = this.room.players.map(({ name }) => name).join("、");
-      this.room.entries.push({
-        id: randomId(),
-        type: "narrator",
-        title: "故事主持人",
-        round: this.room.round,
-        text: `${names} 的選擇串成一套完整方案。Mock 故事主持人已收到所有行動；正式骰子、星火與 LLM 結算將由後端 vertical slice 實作。`,
-      });
-      this.room.round += 1;
-      this.room.players.forEach((item) => { item.action = ""; });
+      this.room.status = "AWAITING_HOST";
+    } else {
+      this.room.status = "COLLECTING_ACTIONS";
     }
 
+    return clone(this.room);
+  }
+
+  async rollRound() {
+    if (!this.room.session?.isHost) {
+      throw new ApiError("HOST_SESSION_REQUIRED", "需要有效的房主工作階段。", 401);
+    }
+    if (this.room.status !== "AWAITING_HOST") {
+      throw new ApiError("ROLL_NOT_ALLOWED", "尚未收齊行動，或本回合已擲骰。", 409);
+    }
+    const approachValues = { courage: 2, insight: 1, bond: 0 };
+    this.room.diceResults = this.room.players.map((player, index) => {
+      const dice = [[6, 6], [3, 3], [1, 1]][index] ?? [3, 4];
+      const attributeValue = player.character?.[player.actionApproach]
+        ?? approachValues[player.actionApproach]
+        ?? 0;
+      const finalTotal = dice[0] + dice[1] + attributeValue;
+      const result = finalTotal >= 10 ? "SUCCESS" : finalTotal >= 7 ? "PARTIAL_SUCCESS" : "FAILURE";
+      return {
+        playerId: player.id,
+        round: this.room.round,
+        dice,
+        approach: player.actionApproach,
+        attributeValue,
+        baseTotal: finalTotal,
+        finalTotal,
+        result,
+        progressDelta: result === "SUCCESS" ? 2 : result === "PARTIAL_SUCCESS" ? 1 : 0,
+        dangerDelta: result === "FAILURE" ? 2 : result === "PARTIAL_SUCCESS" ? 1 : 0,
+        sparkUsed: 0,
+      };
+    });
+    this.room.pendingProgress = this.room.diceResults.reduce(
+      (sum, result) => sum + result.progressDelta, 0,
+    );
+    this.room.pendingDanger = this.room.diceResults.reduce(
+      (sum, result) => sum + result.dangerDelta, 0,
+    );
+    this.room.status = "AWAITING_SPARK";
+    this.room.version += 1;
     return clone(this.room);
   }
 }

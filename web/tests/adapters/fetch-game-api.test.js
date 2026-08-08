@@ -75,7 +75,7 @@ test("FetchGameApi mutation 送出 Idempotency-Key", async () => {
   assert.equal(request.options.headers["Idempotency-Key"], "fixed-idempotency-key");
 });
 
-test("Submit action 只傳文字並帶 player session 的 CSRF token", async () => {
+test("Submit action 傳送文字與行動方式並帶 player session 的 CSRF token", async () => {
   const requests = [];
   const room = {
     id: "room-1",
@@ -93,15 +93,42 @@ test("Submit action 只傳文字並帶 player session 的 CSRF token", async () 
   });
   await api.loadRoom();
 
-  await api.submitAction({ text: "我先確認出口。" });
+  await api.submitAction({ text: "我先確認出口。", approach: "insight" });
   const request = requests[1];
   const body = JSON.parse(request.options.body);
 
   assert.equal(request.url, "/api/v1/rooms/room-1/rounds/1/action");
   assert.equal(request.options.headers["X-CSRF-Token"], "csrf-123");
   assert.equal(request.options.headers["Idempotency-Key"], "action-idempotency-key");
-  assert.deepEqual(body, { text: "我先確認出口。", room_version: 3 });
+  assert.deepEqual(body, { text: "我先確認出口。", approach: "insight", room_version: 3 });
   assert.equal("player_id" in body, false);
+});
+
+test("房主擲骰使用 host CSRF token 與目前回合版本", async () => {
+  const requests = [];
+  const room = {
+    id: "room-1",
+    version: 9,
+    round: 2,
+    status: "AWAITING_HOST",
+    players: [],
+    session: { isHost: true, hostCsrfToken: "host-roll-csrf" },
+  };
+  const api = new FetchGameApi({
+    idempotencyKeyFactory: () => "roll-key",
+    fetchImpl: async (url, options) => {
+      requests.push({ url, options });
+      return jsonResponse(room);
+    },
+  });
+  await api.loadRoom();
+  await api.rollRound();
+
+  const request = requests[1];
+  assert.equal(request.url, "/api/v1/rooms/room-1/rounds/2:roll");
+  assert.equal(request.options.headers["X-CSRF-Token"], "host-roll-csrf");
+  assert.equal(request.options.headers["Idempotency-Key"], "roll-key");
+  assert.deepEqual(JSON.parse(request.options.body), { room_version: 9 });
 });
 
 test("房主確認世界與開始遊戲使用 host CSRF token", async () => {

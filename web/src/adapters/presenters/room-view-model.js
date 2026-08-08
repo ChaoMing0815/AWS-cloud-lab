@@ -15,8 +15,10 @@ export function toRoomViewModel(room) {
         ? playerTotal < 3
           ? `至少還需要 ${3 - playerTotal} 位玩家才能開始。`
           : "人數已足夠，等待房主開始遊戲。"
-        : completed === playerTotal
-          ? "所有玩家已提交，等待故事結算。"
+        : room.status === "AWAITING_HOST"
+          ? "所有玩家已提交，等待房主擲骰。"
+          : room.status === "AWAITING_SPARK"
+            ? "骰點已揭曉，等待玩家決定是否使用星火。"
           : `還有 ${playerTotal - completed} 位玩家尚未提交。`,
     world: room.world,
     currentPlayerId: room.session?.playerId ?? null,
@@ -39,6 +41,14 @@ export function toRoomViewModel(room) {
       && room.status === "LOBBY"
       && playerTotal >= 3
       && readyTotal === playerTotal,
-    canSubmitAction: room.session?.principalType === "player" && room.status === "COLLECTING_ACTIONS",
+    canSubmitAction: room.session?.principalType === "player"
+      && ["COLLECTING_ACTIONS", "AWAITING_HOST"].includes(room.status),
+    canRoll: Boolean(room.session?.isHost) && room.status === "AWAITING_HOST",
+    pendingProgress: room.pendingProgress ?? 0,
+    pendingDanger: room.pendingDanger ?? 0,
+    diceResults: (room.diceResults ?? []).map((result) => ({
+      ...result,
+      playerName: room.players.find((player) => player.id === result.playerId)?.name ?? "未知玩家",
+    })),
   };
 }

@@ -5,6 +5,7 @@ import { LoadRoom } from "../application/use-cases/load-room.js";
 import { SubmitAction } from "../application/use-cases/submit-action.js";
 import { StartGame } from "../application/use-cases/start-game.js";
 import { UpdateCharacter } from "../application/use-cases/update-character.js";
+import { RollRound } from "../application/use-cases/roll-round.js";
 import { FetchGameApi } from "../adapters/api/fetch-game-api.js";
 import { MockGameApi } from "../adapters/api/mock-game-api.js";
 import { GamePage } from "../ui/pages/game-page.js";
@@ -21,6 +22,7 @@ const page = new GamePage({
   startGame: new StartGame(gameApi),
   updateCharacter: new UpdateCharacter(gameApi),
   submitAction: new SubmitAction(gameApi),
+  rollRound: new RollRound(gameApi),
   connectionLabel: config.apiMode === "http" ? "本機 FastAPI 模式" : "本機 Mock API 模式",
   persistenceLabel: config.apiMode === "http"
     ? "本機原型 · 遊戲資料由 FastAPI memory repository 管理"

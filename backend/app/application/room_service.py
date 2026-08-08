@@ -5,10 +5,11 @@ import secrets
 import string
 from uuid import uuid4
 
-from app.application.ports import IdempotencyStore, RoomRepository, SessionTokenFactory, Storyteller
+from app.application.ports import DiceRoller, IdempotencyStore, RoomRepository, SessionTokenFactory, Storyteller
+from app.application.rules import classify_result
 from app.application.security import hash_session_token
 from app.domain.errors import DomainError
-from app.domain.models import Character, Player, Room, StoryEntry, World
+from app.domain.models import Character, DiceResult, Player, Room, StoryEntry, World
 
 ROOM_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 
@@ -44,11 +45,13 @@ class RoomService:
         storyteller: Storyteller,
         idempotency: IdempotencyStore,
         token_factory: SessionTokenFactory,
+        dice_roller: DiceRoller,
     ) -> None:
         self.repository = repository
         self.storyteller = storyteller
         self.idempotency = idempotency
         self.token_factory = token_factory
+        self.dice_roller = dice_roller
         self.demo_room_id = self._create_demo_room()
 
     def _create_demo_room(self) -> str:
@@ -316,6 +319,7 @@ class RoomService:
         room_id: str,
         round_number: int,
         text: str,
+        approach: str,
         expected_version: int,
         player_token: str,
         csrf_token: str,
@@ -327,7 +331,7 @@ class RoomService:
         def operation() -> Room:
             current = self._required_room(room_id)
             self._check_version(current, expected_version)
-            if current.status != "COLLECTING_ACTIONS":
+            if current.status not in {"COLLECTING_ACTIONS", "AWAITING_HOST"}:
                 raise DomainError("ACTION_NOT_ALLOWED", "目前不能提交行動。", 409)
             if round_number != current.round_number:
                 raise DomainError("ROUND_MISMATCH", "回合已更新，請重新載入。", 409)
@@ -336,7 +340,22 @@ class RoomService:
             if not 1 <= len(action) <= 240:
                 raise DomainError("INVALID_ACTION", "行動必須是 1–240 個字元。", 422)
 
+            if current_player.character is None:
+                raise DomainError("CHARACTER_REQUIRED", "請先完成角色才能提交行動。", 409)
+            if approach not in {"courage", "insight", "bond"}:
+                raise DomainError("INVALID_APPROACH", "行動方式必須是勇氣、洞察或羈絆。", 422)
+
             current_player.action = action
+            current_player.action_approach = approach
+            current.entries = [
+                entry
+                for entry in current.entries
+                if not (
+                    entry.type == "action"
+                    and entry.round_number == current.round_number
+                    and entry.player_id == current_player.id
+                )
+            ]
             current.entries.append(
                 StoryEntry(
                     id=_new_id(),
@@ -344,29 +363,23 @@ class RoomService:
                     title=f"{current_player.name} · {current_player.role}",
                     round_number=current.round_number,
                     text=action,
+                    player_id=current_player.id,
                 )
             )
             current.version += 1
 
-            if len(current.players) >= 3 and all(item.action for item in current.players):
-                current.entries.append(
-                    StoryEntry(
-                        id=_new_id(),
-                        type="narrator",
-                        title="故事主持人",
-                        round_number=current.round_number,
-                        text=self.storyteller.resolve_round(current),
-                    )
-                )
-                current.round_number += 1
-                for item in current.players:
-                    item.action = ""
+            current.status = (
+                "AWAITING_HOST"
+                if len(current.players) >= 3 and all(item.action for item in current.players)
+                else "COLLECTING_ACTIONS"
+            )
             self.repository.save(current)
             return current
 
         payload = {
             "round_number": round_number,
             "text": text,
+            "approach": approach,
             "room_version": expected_version,
             "player_id": player.id,
         }
@@ -374,6 +387,64 @@ class RoomService:
             f"submit-action:{room_id}:{round_number}:{player.id}",
             idempotency_key,
             payload,
+            operation,
+        )
+
+    def roll_round(
+        self,
+        room_id: str,
+        round_number: int,
+        expected_version: int,
+        host_token: str,
+        csrf_token: str,
+        idempotency_key: str,
+    ) -> Room:
+        room = self._required_room(room_id)
+        self._authorize_host(room, host_token, csrf_token)
+
+        def operation() -> Room:
+            current = self._required_room(room_id)
+            self._check_version(current, expected_version)
+            if current.status != "AWAITING_HOST":
+                raise DomainError("ROLL_NOT_ALLOWED", "尚未收齊行動，或本回合已擲骰。", 409)
+            if round_number != current.round_number:
+                raise DomainError("ROUND_MISMATCH", "回合已更新，請重新載入。", 409)
+
+            current.dice_results = [
+                result for result in current.dice_results if result.round_number != round_number
+            ]
+            for player in current.players:
+                if not player.action or not player.action_approach or player.character is None:
+                    raise DomainError("ACTIONS_INCOMPLETE", "必須收齊所有玩家行動才能擲骰。", 409)
+                d6_1 = self.dice_roller.roll_d6()
+                d6_2 = self.dice_roller.roll_d6()
+                attribute_value = getattr(player.character, player.action_approach)
+                total = d6_1 + d6_2 + attribute_value
+                outcome = classify_result(total)
+                current.dice_results.append(
+                    DiceResult(
+                        player_id=player.id,
+                        round_number=round_number,
+                        d6_1=d6_1,
+                        d6_2=d6_2,
+                        approach=player.action_approach,
+                        attribute_value=attribute_value,
+                        base_total=total,
+                        final_total=total,
+                        result=outcome.result,
+                        progress_delta=outcome.progress_delta,
+                        danger_delta=outcome.danger_delta,
+                    )
+                )
+            current.status = "AWAITING_SPARK"
+            current.version += 1
+            self.repository.save(current)
+            return current
+
+        return self.idempotency.execute(
+            f"roll-round:{room_id}:{round_number}",
+            idempotency_key,
+            {"round_number": round_number, "room_version": expected_version},
             operation,
         )
 

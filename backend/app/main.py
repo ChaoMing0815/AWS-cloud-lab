@@ -8,6 +8,7 @@ from app.adapters.memory_room_repository import MemoryRoomRepository
 from app.adapters.memory_idempotency_store import MemoryIdempotencyStore
 from app.adapters.mock_storyteller import MockStoryteller
 from app.adapters.session_security import HmacSessionTokenFactory
+from app.adapters.secure_dice_roller import SecureDiceRoller
 from app.api.routes import create_api_router
 from app.application.room_service import RoomService
 from app.domain.errors import DomainError
@@ -16,13 +17,14 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 WEB_ROOT = PROJECT_ROOT / "web"
 
 
-def create_app() -> FastAPI:
+def create_app(dice_roller=None) -> FastAPI:
     application = FastAPI(title="共演計劃 API", version="0.1.0")
     service = RoomService(
         MemoryRoomRepository(),
         MockStoryteller(),
         MemoryIdempotencyStore(),
         HmacSessionTokenFactory(),
+        dice_roller or SecureDiceRoller(),
     )
 
     @application.middleware("http")

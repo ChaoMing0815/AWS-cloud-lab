@@ -26,4 +26,8 @@ export class GameApi {
   async submitAction(_command) {
     throw new Error("GameApi.submitAction 尚未實作");
   }
+
+  async rollRound() {
+    throw new Error("GameApi.rollRound 尚未實作");
+  }
 }

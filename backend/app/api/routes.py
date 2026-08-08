@@ -3,6 +3,7 @@ from fastapi import APIRouter, Cookie, Header, Response, status
 from app.api.schemas import (
     ConfirmWorldRequest,
     JoinRoomRequest,
+    RollRoundRequest,
     StartGameRequest,
     SubmitActionRequest,
     UpdateCharacterRequest,
@@ -143,8 +144,29 @@ def create_api_router(service: RoomService) -> APIRouter:
             room_id,
             round_number,
             request.text,
+            request.approach,
             request.room_version,
             player_token or "",
+            csrf_token or "",
+            _required_idempotency_key(idempotency_key),
+        )
+        return room_response(room, service.session_context(room, host_token, player_token))
+
+    @router.post("/rooms/{room_id}/rounds/{round_number}:roll")
+    def roll_round(
+        room_id: str,
+        round_number: int,
+        request: RollRoundRequest,
+        idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+        csrf_token: str | None = Header(default=None, alias="X-CSRF-Token"),
+        host_token: str | None = Cookie(default=None, alias=HOST_SESSION_COOKIE),
+        player_token: str | None = Cookie(default=None, alias=PLAYER_SESSION_COOKIE),
+    ) -> dict:
+        room = service.roll_round(
+            room_id,
+            round_number,
+            request.room_version,
+            host_token or "",
             csrf_token or "",
             _required_idempotency_key(idempotency_key),
         )

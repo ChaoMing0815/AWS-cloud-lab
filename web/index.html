@@ -152,6 +152,12 @@
           <div class="composer-meta">
             <label for="activePlayer">以角色身分行動</label>
             <select id="activePlayer"></select>
+            <label for="actionApproach">行動方式</label>
+            <select id="actionApproach">
+              <option value="courage">勇氣</option>
+              <option value="insight">洞察</option>
+              <option value="bond">羈絆</option>
+            </select>
           </div>
           <textarea id="actionInput" maxlength="240" rows="3" placeholder="描述你的行動，例如：我提議把三個部門的資料整合成一頁，直接向總經理爭取加碼……" required></textarea>
           <div class="composer-footer">
@@ -175,6 +181,20 @@
         <div class="progress-track"><div id="progressBar"></div></div>
 
         <div id="turnList" class="turn-list"></div>
+
+        <div id="roundHostControls" class="host-form" hidden>
+          <strong>房主裁定</strong>
+          <p class="muted">行動已收齊。擲出 2d6 並加上每位玩家選擇的屬性。</p>
+          <button id="rollRoundButton" class="primary-button" type="button">鎖定行動並擲骰</button>
+        </div>
+
+        <div class="dice-panel">
+          <div class="section-heading">
+            <span>骰點結果</span>
+            <span id="diceSummary" class="count-pill">尚未擲骰</span>
+          </div>
+          <div id="diceResults"></div>
+        </div>
 
         <div class="ai-card">
           <div class="ai-orb">✧</div>

@@ -58,4 +58,9 @@ class JoinRoomRequest(BaseModel):
 
 class SubmitActionRequest(BaseModel):
     text: str = Field(min_length=1, max_length=240)
+    approach: Literal["courage", "insight", "bond"]
+    room_version: int = Field(ge=1)
+
+
+class RollRoundRequest(BaseModel):
     room_version: int = Field(ge=1)

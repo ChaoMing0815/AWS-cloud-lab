@@ -34,3 +34,8 @@ class IdempotencyStore(ABC):
 class SessionTokenFactory(ABC):
     @abstractmethod
     def derive(self, purpose: str, idempotency_key: str) -> str: ...
+
+
+class DiceRoller(ABC):
+    @abstractmethod
+    def roll_d6(self) -> int: ...

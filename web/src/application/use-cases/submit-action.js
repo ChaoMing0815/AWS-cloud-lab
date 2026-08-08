@@ -5,11 +5,14 @@ export class SubmitAction {
     this.gameApi = gameApi;
   }
 
-  execute({ text }) {
+  execute({ text, approach }) {
     const action = String(text ?? "").trim();
     if (action.length < 1 || action.length > 240) {
       throw new DomainError("INVALID_ACTION", "行動必須是 1–240 個字元。");
     }
-    return this.gameApi.submitAction({ text: action });
+    if (!["courage", "insight", "bond"].includes(approach)) {
+      throw new DomainError("INVALID_APPROACH", "請選擇勇氣、洞察或羈絆作為行動方式。");
+    }
+    return this.gameApi.submitAction({ text: action, approach });
   }
 }

@@ -80,7 +80,7 @@ export class FetchGameApi extends GameApi {
     return this.room;
   }
 
-  async submitAction({ text }) {
+  async submitAction({ text, approach }) {
     this.requireRoom();
     this.room = await this.request(
       `/rooms/${this.room.id}/rounds/${this.room.round}/action`,
@@ -90,8 +90,23 @@ export class FetchGameApi extends GameApi {
         csrfProtected: true,
         body: {
           text,
+          approach,
           room_version: this.room.version,
         },
+      },
+    );
+    return this.room;
+  }
+
+  async rollRound() {
+    this.requireRoom();
+    this.room = await this.request(
+      `/rooms/${this.room.id}/rounds/${this.room.round}:roll`,
+      {
+        method: "POST",
+        idempotent: true,
+        hostCsrfProtected: true,
+        body: { room_version: this.room.version },
       },
     );
     return this.room;

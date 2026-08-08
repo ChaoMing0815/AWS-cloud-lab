@@ -19,6 +19,7 @@ export class GamePage {
     startGame,
     updateCharacter,
     submitAction,
+    rollRound,
     connectionLabel,
     persistenceLabel,
   }) {
@@ -30,6 +31,7 @@ export class GamePage {
       startGame,
       updateCharacter,
       submitAction,
+      rollRound,
     };
     this.connectionLabel = connectionLabel;
     this.persistenceLabel = persistenceLabel;
@@ -52,6 +54,7 @@ export class GamePage {
     });
     byId("toneInput").addEventListener("change", () => this.renderCustomTone());
     byId("actionForm").addEventListener("submit", (event) => this.handleAction(event));
+    byId("rollRoundButton").addEventListener("click", () => this.handleRollRound());
     await this.run(() => this.useCases.loadRoom.execute());
   }
 
@@ -116,10 +119,15 @@ export class GamePage {
     const completed = await this.run(
       () => this.useCases.submitAction.execute({
         text: input.value,
+        approach: byId("actionApproach").value,
       }),
       "行動已提交。",
     );
     if (completed) input.value = "";
+  }
+
+  async handleRollRound() {
+    await this.run(() => this.useCases.rollRound.execute(), "骰點已揭曉，等待星火結算。");
   }
 
   async run(operation, successMessage = "") {
@@ -140,7 +148,7 @@ export class GamePage {
   }
 
   setBusy(busy) {
-    document.querySelectorAll("button[type='submit'], #newRoomButton, #startGameButton").forEach((button) => {
+    document.querySelectorAll("button[type='submit'], #newRoomButton, #startGameButton, #rollRoundButton").forEach((button) => {
       button.disabled = busy;
     });
   }
@@ -168,6 +176,7 @@ export class GamePage {
     this.renderHostControls(view);
     this.renderPlayers(view.players, view.currentPlayerId, view.canSubmitAction, view.status);
     this.renderEntries(view.entries);
+    this.renderDiceResults(view);
   }
 
   renderHostControls(view) {
@@ -177,6 +186,7 @@ export class GamePage {
     byId("lobbyControls").hidden = !(view.isHost && view.status === "LOBBY");
     byId("startGameButton").disabled = !view.canStart;
     byId("characterForm").hidden = !view.canEditCharacter;
+    byId("roundHostControls").hidden = !view.canRoll;
     byId("lobbyReadyText").textContent = view.players.length < 3
       ? `還需要 ${3 - view.players.length} 位玩家；目前 ${view.readyTotal}/${view.players.length} 位完成角色。`
       : `目前 ${view.readyTotal}/${view.players.length} 位完成角色。全員完成後即可開始。`;
@@ -242,6 +252,7 @@ export class GamePage {
     if (currentPlayerId) byId("activePlayer").value = currentPlayerId;
     byId("activePlayer").disabled = !canSubmitAction;
     byId("actionInput").disabled = !canSubmitAction;
+    byId("actionApproach").disabled = !canSubmitAction;
 
     const turns = players.map((player) => {
       const ready = status === "LOBBY" ? player.characterReady : player.hasSubmitted;
@@ -254,6 +265,28 @@ export class GamePage {
       return row;
     });
     byId("turnList").replaceChildren(...turns);
+  }
+
+  renderDiceResults(view) {
+    const labels = {
+      SUCCESS: "成功",
+      PARTIAL_SUCCESS: "部分成功",
+      FAILURE: "失敗",
+    };
+    const approaches = { courage: "勇氣", insight: "洞察", bond: "羈絆" };
+    const rows = view.diceResults.map((result) => {
+      const row = element("div", { className: `dice-result ${result.result.toLowerCase()}` });
+      row.append(
+        element("strong", { text: result.playerName }),
+        element("span", { text: `${result.dice.join(" + ")} + ${approaches[result.approach]} ${result.attributeValue} = ${result.finalTotal}` }),
+        element("span", { text: `${labels[result.result]}｜進度 +${result.progressDelta}・危機 +${result.dangerDelta}` }),
+      );
+      return row;
+    });
+    byId("diceResults").replaceChildren(...rows);
+    byId("diceSummary").textContent = rows.length
+      ? `待結算：進度 +${view.pendingProgress}／危機 +${view.pendingDanger}`
+      : "尚未擲骰";
   }
 
   renderEntries(entries) {

@@ -2,6 +2,14 @@ from fastapi.testclient import TestClient
 
 from app.main import create_app
 
+
+class FixedDiceRoller:
+    def __init__(self, values: list[int]) -> None:
+        self.values = iter(values)
+
+    def roll_d6(self) -> int:
+        return next(self.values)
+
 WORLD_PAYLOAD = {
     "story_title": "午夜便利商店大作戰",
     "premise": "三位夜班夥伴發現年度盤點資料離奇消失，店長將在天亮前抵達並檢查所有紀錄；若無法及時找回，全體都得留下重新盤點整間門市。",
@@ -399,7 +407,11 @@ def test_action_requires_player_session_and_csrf() -> None:
             },
         ).json()
         action_url = f"/api/v1/rooms/{room['id']}/rounds/{room['round']}/action"
-        payload = {"text": "我先確認門口狀況。", "room_version": started["version"]}
+        payload = {
+            "text": "我先確認門口狀況。",
+            "approach": "courage",
+            "room_version": started["version"],
+        }
 
         no_session = attacker.put(
             action_url,
@@ -473,7 +485,11 @@ def test_unrevealed_action_text_is_hidden_from_other_player() -> None:
         ).json()
         submitted = first_player.put(
             f"/api/v1/rooms/{room['id']}/rounds/{room['round']}/action",
-            json={"text": "這是尚未揭露的行動。", "room_version": started["version"]},
+            json={
+                "text": "這是尚未揭露的行動。",
+                "approach": "insight",
+                "room_version": started["version"],
+            },
             headers={**headers("hidden-action-1"), "X-CSRF-Token": first["session"]["csrfToken"]},
         )
         observed = second_player.get("/api/v1/rooms/current")
@@ -483,3 +499,117 @@ def test_unrevealed_action_text_is_hidden_from_other_player() -> None:
     assert first_in_other_view["hasSubmitted"] is True
     assert first_in_other_view["action"] == ""
     assert "這是尚未揭露的行動。" not in observed.text
+
+
+def test_host_rolls_fixed_dice_and_reveals_results() -> None:
+    app = create_app(FixedDiceRoller([6, 6, 3, 3, 1, 1]))
+    with (
+        TestClient(app) as host,
+        TestClient(app) as first_player,
+        TestClient(app) as second_player,
+        TestClient(app) as third_player,
+    ):
+        room = new_lobby(host, "roll-room")
+        clients = [first_player, second_player, third_player]
+        names = ["甲", "乙", "丙"]
+        joins = []
+        current = room
+        for index, (client, name) in enumerate(zip(clients, names, strict=True), start=1):
+            current = client.post(
+                f"/api/v1/rooms/{room['id']}/players",
+                json={
+                    "nickname": name,
+                    "role": "調查員",
+                    "room_version": current["version"],
+                },
+                headers=headers(f"roll-join-{index}"),
+            ).json()
+            joins.append(current)
+
+        for index, (client, joined) in enumerate(zip(clients, joins, strict=True), start=1):
+            current = update_character(
+                client,
+                current,
+                joined["session"]["csrfToken"],
+                f"roll-character-{index}",
+                f"角色{names[index - 1]}",
+            )
+
+        started = host.post(
+            f"/api/v1/rooms/{room['id']}:start",
+            json={"room_version": current["version"]},
+            headers={
+                **headers("roll-start"),
+                "X-CSRF-Token": room["session"]["hostCsrfToken"],
+            },
+        ).json()
+
+        actions = [
+            ("我正面要求查看紀錄。", "courage"),
+            ("我檢查備份留下的線索。", "insight"),
+            ("我請熟識的同事幫忙。", "bond"),
+        ]
+        current = started
+        for index, (client, joined, action) in enumerate(
+            zip(clients, joins, actions, strict=True), start=1
+        ):
+            response = client.put(
+                f"/api/v1/rooms/{room['id']}/rounds/1/action",
+                json={
+                    "text": action[0],
+                    "approach": action[1],
+                    "room_version": current["version"],
+                },
+                headers={
+                    **headers(f"roll-action-{index}"),
+                    "X-CSRF-Token": joined["session"]["csrfToken"],
+                },
+            )
+            assert response.status_code == 200
+            current = response.json()
+
+        assert current["status"] == "AWAITING_HOST"
+        before_roll = current["version"]
+        roll_url = f"/api/v1/rooms/{room['id']}/rounds/1:roll"
+        unauthorized = first_player.post(
+            roll_url,
+            json={"room_version": before_roll},
+            headers={
+                **headers("roll-not-host"),
+                "X-CSRF-Token": joins[0]["session"]["csrfToken"],
+            },
+        )
+        rolled = host.post(
+            roll_url,
+            json={"room_version": before_roll},
+            headers={
+                **headers("roll-valid"),
+                "X-CSRF-Token": room["session"]["hostCsrfToken"],
+            },
+        )
+        replay = host.post(
+            roll_url,
+            json={"room_version": before_roll},
+            headers={
+                **headers("roll-valid"),
+                "X-CSRF-Token": room["session"]["hostCsrfToken"],
+            },
+        )
+
+    assert unauthorized.status_code == 401
+    result = rolled.json()
+    assert rolled.status_code == 200
+    assert result["status"] == "AWAITING_SPARK"
+    assert [item["result"] for item in result["diceResults"]] == [
+        "SUCCESS",
+        "PARTIAL_SUCCESS",
+        "FAILURE",
+    ]
+    assert [item["finalTotal"] for item in result["diceResults"]] == [14, 7, 2]
+    assert result["pendingProgress"] == 3
+    assert result["pendingDanger"] == 3
+    assert result["progressPoints"] == 0
+    assert result["dangerPoints"] == 0
+    assert "我正面要求查看紀錄。" in rolled.text
+    assert replay.json()["diceResults"] == result["diceResults"]
+    assert replay.json()["version"] == result["version"]
