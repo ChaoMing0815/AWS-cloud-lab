@@ -42,6 +42,47 @@
           </div>
         </div>
 
+        <form id="worldForm" class="host-form" hidden>
+          <div class="section-heading">
+            <span>房主設定世界</span>
+            <span class="count-pill">DRAFT</span>
+          </div>
+          <label for="worldTitle">故事名稱</label>
+          <input id="worldTitle" maxlength="40" required />
+          <label for="worldPremiseInput">故事背景</label>
+          <textarea id="worldPremiseInput" minlength="50" maxlength="500" rows="4" required></textarea>
+          <label for="worldObjectiveInput">共同目標</label>
+          <textarea id="worldObjectiveInput" minlength="10" maxlength="200" rows="2" required></textarea>
+          <label for="openingSceneInput">初始場景</label>
+          <textarea id="openingSceneInput" minlength="20" maxlength="400" rows="3" required></textarea>
+          <label for="coreObstacleInput">核心阻礙</label>
+          <textarea id="coreObstacleInput" minlength="10" maxlength="200" rows="2" required></textarea>
+          <div class="join-row">
+            <label>故事調性
+              <select id="toneInput">
+                <option value="light_comedy">輕鬆喜劇</option>
+                <option value="workplace_satire">職場諷刺</option>
+                <option value="slice_of_life">日常群像</option>
+                <option value="mystery">神祕探索</option>
+                <option value="adventure">冒險故事</option>
+                <option value="sci_fi">科幻故事</option>
+                <option value="dark_fairy_tale">黑暗童話（13+）</option>
+                <option value="custom">自訂</option>
+              </select>
+            </label>
+            <label>回合上限
+              <select id="maxRoundsInput">
+                <option value="4">4 回合</option>
+                <option value="6" selected>6 回合</option>
+                <option value="8">8 回合</option>
+              </select>
+            </label>
+          </div>
+          <label id="customToneLabel" for="customToneInput" hidden>自訂調性</label>
+          <input id="customToneInput" maxlength="40" hidden />
+          <button class="primary-button" type="submit">確認世界並開放加入</button>
+        </form>
+
         <div class="section-heading">
           <span>參與者</span>
           <span id="playerCount" class="count-pill">3 / 5</span>
@@ -56,6 +97,44 @@
           </div>
           <button class="secondary-button" type="submit">加入隊伍</button>
         </form>
+
+        <form id="characterForm" class="host-form" hidden>
+          <div class="section-heading">
+            <span>建立角色</span>
+            <span id="attributePoints" class="count-pill">剩餘 0 點</span>
+          </div>
+          <label for="characterName">角色名稱</label>
+          <input id="characterName" maxlength="20" required />
+          <label for="characterBackground">一句背景</label>
+          <textarea id="characterBackground" minlength="10" maxlength="160" rows="3" required></textarea>
+          <div class="join-row">
+            <label>性格特質
+              <input id="characterTrait" maxlength="40" required />
+            </label>
+            <label>弱點
+              <input id="characterWeakness" maxlength="40" required />
+            </label>
+          </div>
+          <div class="attribute-grid">
+            <label>勇氣
+              <input id="courageInput" type="number" min="0" max="2" value="1" required />
+            </label>
+            <label>洞察
+              <input id="insightInput" type="number" min="0" max="2" value="1" required />
+            </label>
+            <label>羈絆
+              <input id="bondInput" type="number" min="0" max="2" value="1" required />
+            </label>
+          </div>
+          <p class="muted">三項各為 0–2，總和必須等於 3；星火固定從 1 開始。</p>
+          <button id="saveCharacterButton" class="primary-button" type="submit">儲存角色</button>
+        </form>
+
+        <div id="lobbyControls" class="host-form" hidden>
+          <strong>房主控制</strong>
+          <p id="lobbyReadyText" class="muted">滿 3 位且所有玩家完成角色後即可開始。</p>
+          <button id="startGameButton" class="primary-button" type="button">開始遊戲</button>
+        </div>
       </aside>
 
       <section class="story-column">

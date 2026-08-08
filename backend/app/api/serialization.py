@@ -14,7 +14,13 @@ def room_response(room: Room, session: dict) -> dict:
             "storyTitle": room.world.story_title,
             "premise": room.world.premise,
             "objective": room.world.objective,
+            "openingScene": room.world.opening_scene,
+            "coreObstacle": room.world.core_obstacle,
+            "tone": room.world.tone,
+            "customTone": room.world.custom_tone,
         },
+        "maxRounds": room.max_rounds,
+        "initialPlayerCount": room.initial_player_count,
         "players": [
             {
                 "id": player.id,
@@ -22,6 +28,21 @@ def room_response(room: Room, session: dict) -> dict:
                 "role": player.role,
                 "action": player.action if player.id == current_player_id else "",
                 "hasSubmitted": bool(player.action),
+                "characterReady": player.character is not None,
+                "character": (
+                    {
+                        "name": player.character.name,
+                        "background": player.character.background,
+                        "trait": player.character.trait,
+                        "weakness": player.character.weakness,
+                        "courage": player.character.courage,
+                        "insight": player.character.insight,
+                        "bond": player.character.bond,
+                        "spark": player.character.spark,
+                    }
+                    if player.character
+                    else None
+                ),
             }
             for player in room.players
         ],

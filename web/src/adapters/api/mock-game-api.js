@@ -20,9 +20,9 @@ function clone(value) {
 function baseRoom({ withDemoPlayers = false } = {}) {
   const players = withDemoPlayers
     ? [
-      { id: randomId(), name: "昭銘", role: "總務部的新鮮人", action: "" },
-      { id: randomId(), name: "凜", role: "冷靜的工程師", action: "" },
-      { id: randomId(), name: "洛河", role: "人脈廣的企劃", action: "" },
+      { id: randomId(), name: "昭銘", role: "總務部的新鮮人", action: "", characterReady: true },
+      { id: randomId(), name: "凜", role: "冷靜的工程師", action: "", characterReady: true },
+      { id: randomId(), name: "洛河", role: "人脈廣的企劃", action: "", characterReady: true },
     ]
     : [];
 
@@ -30,19 +30,48 @@ function baseRoom({ withDemoPlayers = false } = {}) {
   return {
     id: randomId(),
     roomCode: withDemoPlayers ? "BONUS7" : randomRoomCode(),
-    status: "COLLECTING_ACTIONS",
+    status: withDemoPlayers ? "COLLECTING_ACTIONS" : "DRAFT",
     version: 1,
     round: withDemoPlayers ? 4 : 1,
-    world: {
-      name: "年終尾牙作戰",
-      storyTitle: "尾牙前的最後一份提案",
-      premise: "公司臨時宣布加碼大獎，但抽獎資格取決於各部門能否完成最後一項共同任務。",
-      objective: "在尾牙抽獎前完成跨部門提案，爭取加碼年終獎金。",
-    },
+    world: withDemoPlayers
+      ? {
+        name: "年終尾牙作戰",
+        storyTitle: "尾牙前的最後一份提案",
+        premise: "公司臨時宣布加碼大獎，但抽獎資格取決於各部門能否完成最後一項共同任務。",
+        objective: "在尾牙抽獎前完成跨部門提案，爭取加碼年終獎金。",
+        openingScene: "尾牙開始前一小時，關鍵數據仍散落在三個部門手中。",
+        coreObstacle: "預算表被印成抽獎箱封條，活動組拒絕重做。",
+        tone: "workplace_satire",
+        customTone: null,
+      }
+      : {
+        name: "尚未命名",
+        storyTitle: "尚未命名",
+        premise: "",
+        objective: "",
+        openingScene: "",
+        coreObstacle: "",
+        tone: "light_comedy",
+        customTone: null,
+      },
+    maxRounds: 6,
+    initialPlayerCount: withDemoPlayers ? players.length : 0,
     players,
     session: currentPlayer
-      ? { principalType: "player", playerId: currentPlayer.id, csrfToken: "mock-csrf", isHost: false }
-      : { principalType: "anonymous", playerId: null, csrfToken: null, isHost: false },
+      ? {
+        principalType: "player",
+        playerId: currentPlayer.id,
+        csrfToken: "mock-csrf",
+        isHost: false,
+        hostCsrfToken: null,
+      }
+      : {
+        principalType: "anonymous",
+        playerId: null,
+        csrfToken: null,
+        isHost: false,
+        hostCsrfToken: null,
+      },
     entries: withDemoPlayers
       ? [
         {
@@ -82,11 +111,66 @@ export class MockGameApi extends GameApi {
 
   async createRoom() {
     this.room = baseRoom();
-    this.room.session = { principalType: "host", playerId: null, csrfToken: "mock-host-csrf", isHost: true };
+    this.room.session = {
+      principalType: "host",
+      playerId: null,
+      csrfToken: "mock-host-csrf",
+      isHost: true,
+      hostCsrfToken: "mock-host-csrf",
+    };
+    return clone(this.room);
+  }
+
+  async confirmWorld(world) {
+    if (!this.room.session?.isHost) {
+      throw new ApiError("HOST_SESSION_REQUIRED", "需要有效的房主工作階段。", 401);
+    }
+    if (this.room.status !== "DRAFT") {
+      throw new ApiError("WORLD_ALREADY_CONFIRMED", "世界設定已確認。", 409);
+    }
+    this.room.world = {
+      name: world.storyTitle,
+      storyTitle: world.storyTitle,
+      premise: world.premise,
+      objective: world.objective,
+      openingScene: world.openingScene,
+      coreObstacle: world.coreObstacle,
+      tone: world.tone,
+      customTone: world.customTone || null,
+    };
+    this.room.maxRounds = world.maxRounds;
+    this.room.status = "LOBBY";
+    this.room.version += 1;
+    return clone(this.room);
+  }
+
+  async startGame() {
+    if (!this.room.session?.isHost) {
+      throw new ApiError("HOST_SESSION_REQUIRED", "需要有效的房主工作階段。", 401);
+    }
+    if (this.room.status !== "LOBBY" || this.room.players.length < 3) {
+      throw new ApiError("ROOM_NOT_STARTABLE", "需要 3–5 位玩家才能開始。", 409);
+    }
+    if (this.room.players.some((player) => !player.characterReady)) {
+      throw new ApiError("CHARACTERS_INCOMPLETE", "所有玩家都必須先完成角色。", 409);
+    }
+    this.room.status = "COLLECTING_ACTIONS";
+    this.room.initialPlayerCount = this.room.players.length;
+    this.room.version += 1;
+    this.room.entries.push({
+      id: randomId(),
+      type: "narrator",
+      title: "故事主持人",
+      round: 1,
+      text: this.room.world.openingScene,
+    });
     return clone(this.room);
   }
 
   async joinRoom({ nickname, role }) {
+    if (this.room.status !== "LOBBY") {
+      throw new ApiError("ROOM_NOT_JOINABLE", "只有等待中的房間可以加入玩家。", 409);
+    }
     if (this.room.players.length >= 5) {
       throw new ApiError("ROOM_FULL", "房間已達 5 人上限。", 409);
     }
@@ -97,19 +181,46 @@ export class MockGameApi extends GameApi {
       throw new ApiError("NICKNAME_TAKEN", "這個暱稱已有人使用。", 409);
     }
 
-    this.room.players.push({ id: randomId(), name: nickname, role, action: "" });
+    this.room.players.push({
+      id: randomId(),
+      name: nickname,
+      role,
+      action: "",
+      characterReady: false,
+      character: null,
+    });
     const player = this.room.players[this.room.players.length - 1];
     this.room.session = {
       principalType: "player",
       playerId: player.id,
       csrfToken: "mock-player-csrf",
       isHost: this.room.session?.isHost ?? false,
+      hostCsrfToken: this.room.session?.hostCsrfToken ?? null,
     };
     this.room.version += 1;
     return clone(this.room);
   }
 
+  async updateCharacter(character) {
+    if (this.room.status !== "LOBBY") {
+      throw new ApiError("CHARACTER_NOT_EDITABLE", "只有等待中的房間可以編輯角色。", 409);
+    }
+    const playerId = this.room.session?.playerId;
+    const player = this.room.players.find(({ id }) => id === playerId);
+    if (!player) {
+      throw new ApiError("PLAYER_SESSION_REQUIRED", "需要有效的玩家工作階段。", 401);
+    }
+    player.character = { ...character, spark: 1 };
+    player.characterReady = true;
+    player.role = character.name;
+    this.room.version += 1;
+    return clone(this.room);
+  }
+
   async submitAction({ text }) {
+    if (this.room.status !== "COLLECTING_ACTIONS") {
+      throw new ApiError("ACTION_NOT_ALLOWED", "目前不能提交行動。", 409);
+    }
     const playerId = this.room.session?.playerId;
     const player = this.room.players.find(({ id }) => id === playerId);
     if (!player) {

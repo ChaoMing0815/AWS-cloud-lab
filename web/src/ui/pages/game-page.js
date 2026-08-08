@@ -11,8 +11,26 @@ function element(tagName, { className, text, title } = {}) {
 }
 
 export class GamePage {
-  constructor({ loadRoom, createRoom, joinRoom, submitAction, connectionLabel, persistenceLabel }) {
-    this.useCases = { loadRoom, createRoom, joinRoom, submitAction };
+  constructor({
+    loadRoom,
+    createRoom,
+    joinRoom,
+    confirmWorld,
+    startGame,
+    updateCharacter,
+    submitAction,
+    connectionLabel,
+    persistenceLabel,
+  }) {
+    this.useCases = {
+      loadRoom,
+      createRoom,
+      joinRoom,
+      confirmWorld,
+      startGame,
+      updateCharacter,
+      submitAction,
+    };
     this.connectionLabel = connectionLabel;
     this.persistenceLabel = persistenceLabel;
     this.room = null;
@@ -26,6 +44,13 @@ export class GamePage {
       if (window.confirm("要清除目前 Mock 房間並建立新房間嗎？")) this.handleCreateRoom();
     });
     byId("joinForm").addEventListener("submit", (event) => this.handleJoin(event));
+    byId("worldForm").addEventListener("submit", (event) => this.handleConfirmWorld(event));
+    byId("startGameButton").addEventListener("click", () => this.handleStartGame());
+    byId("characterForm").addEventListener("submit", (event) => this.handleCharacter(event));
+    ["courageInput", "insightInput", "bondInput"].forEach((id) => {
+      byId(id).addEventListener("input", () => this.renderAttributePoints());
+    });
+    byId("toneInput").addEventListener("change", () => this.renderCustomTone());
     byId("actionForm").addEventListener("submit", (event) => this.handleAction(event));
     await this.run(() => this.useCases.loadRoom.execute());
   }
@@ -46,6 +71,43 @@ export class GamePage {
       nickname.value = "";
       role.value = "";
     }
+  }
+
+  async handleConfirmWorld(event) {
+    event.preventDefault();
+    await this.run(
+      () => this.useCases.confirmWorld.execute({
+        storyTitle: byId("worldTitle").value,
+        premise: byId("worldPremiseInput").value,
+        objective: byId("worldObjectiveInput").value,
+        openingScene: byId("openingSceneInput").value,
+        coreObstacle: byId("coreObstacleInput").value,
+        tone: byId("toneInput").value,
+        customTone: byId("customToneInput").value,
+        maxRounds: Number(byId("maxRoundsInput").value),
+      }),
+      "世界設定已確認，現在可以邀請玩家加入。",
+    );
+  }
+
+  async handleStartGame() {
+    await this.run(() => this.useCases.startGame.execute(), "遊戲已開始。所有玩家可以提交行動。");
+  }
+
+  async handleCharacter(event) {
+    event.preventDefault();
+    await this.run(
+      () => this.useCases.updateCharacter.execute({
+        name: byId("characterName").value,
+        background: byId("characterBackground").value,
+        trait: byId("characterTrait").value,
+        weakness: byId("characterWeakness").value,
+        courage: byId("courageInput").value,
+        insight: byId("insightInput").value,
+        bond: byId("bondInput").value,
+      }),
+      "角色已儲存。",
+    );
   }
 
   async handleAction(event) {
@@ -73,11 +135,12 @@ export class GamePage {
       return false;
     } finally {
       this.setBusy(false);
+      if (this.room) this.render();
     }
   }
 
   setBusy(busy) {
-    document.querySelectorAll("button[type='submit'], #newRoomButton").forEach((button) => {
+    document.querySelectorAll("button[type='submit'], #newRoomButton, #startGameButton").forEach((button) => {
       button.disabled = busy;
     });
   }
@@ -102,12 +165,59 @@ export class GamePage {
     byId("worldPremise").textContent = view.world.premise;
     byId("storyTitle").textContent = view.world.storyTitle;
     byId("objectiveText").textContent = view.world.objective;
-    this.renderPlayers(view.players, view.currentPlayerId, view.canSubmitAction);
+    this.renderHostControls(view);
+    this.renderPlayers(view.players, view.currentPlayerId, view.canSubmitAction, view.status);
     this.renderEntries(view.entries);
   }
 
-  renderPlayers(players, currentPlayerId, canSubmitAction) {
+  renderHostControls(view) {
+    const worldForm = byId("worldForm");
+    worldForm.hidden = !view.canEditWorld;
+    byId("joinForm").hidden = !view.canJoin;
+    byId("lobbyControls").hidden = !(view.isHost && view.status === "LOBBY");
+    byId("startGameButton").disabled = !view.canStart;
+    byId("characterForm").hidden = !view.canEditCharacter;
+    byId("lobbyReadyText").textContent = view.players.length < 3
+      ? `還需要 ${3 - view.players.length} 位玩家；目前 ${view.readyTotal}/${view.players.length} 位完成角色。`
+      : `目前 ${view.readyTotal}/${view.players.length} 位完成角色。全員完成後即可開始。`;
+    if (view.canEditCharacter) {
+      const current = view.players.find((player) => player.id === view.currentPlayerId);
+      if (current?.character) {
+        byId("characterName").value = current.character.name;
+        byId("characterBackground").value = current.character.background;
+        byId("characterTrait").value = current.character.trait;
+        byId("characterWeakness").value = current.character.weakness;
+        byId("courageInput").value = String(current.character.courage);
+        byId("insightInput").value = String(current.character.insight);
+        byId("bondInput").value = String(current.character.bond);
+      }
+      this.renderAttributePoints();
+    }
+    if (view.canEditWorld) {
+      byId("maxRoundsInput").value = String(view.maxRounds ?? 6);
+      this.renderCustomTone();
+    }
+  }
+
+  renderCustomTone() {
+    const custom = byId("toneInput").value === "custom";
+    byId("customToneLabel").hidden = !custom;
+    byId("customToneInput").hidden = !custom;
+    byId("customToneInput").required = custom;
+  }
+
+  renderAttributePoints() {
+    const spent = ["courageInput", "insightInput", "bondInput"]
+      .map((id) => Number(byId(id).value) || 0)
+      .reduce((total, value) => total + value, 0);
+    const remaining = 3 - spent;
+    byId("attributePoints").textContent = remaining === 0 ? "配點完成" : `剩餘 ${remaining} 點`;
+    byId("attributePoints").dataset.invalid = remaining !== 0;
+  }
+
+  renderPlayers(players, currentPlayerId, canSubmitAction, status) {
     const listItems = players.map((player) => {
+      const ready = status === "LOBBY" ? player.characterReady : player.hasSubmitted;
       const item = element("li", { className: `player-item${player.isActive ? " active" : ""}` });
       item.append(element("span", { className: "avatar", text: player.name.slice(0, 1) }));
       const identity = element("span");
@@ -116,8 +226,8 @@ export class GamePage {
         element("span", { className: "player-role", text: player.role }),
       );
       item.append(identity, element("span", {
-        className: `ready-dot${player.hasSubmitted ? " done" : ""}`,
-        title: player.hasSubmitted ? "已提交" : "等待中",
+        className: `ready-dot${ready ? " done" : ""}`,
+        title: status === "LOBBY" ? (ready ? "角色已完成" : "角色未完成") : (ready ? "已提交" : "等待中"),
       }));
       return item;
     });
@@ -134,10 +244,12 @@ export class GamePage {
     byId("actionInput").disabled = !canSubmitAction;
 
     const turns = players.map((player) => {
-      const row = element("div", { className: `turn-row${player.hasSubmitted ? " done" : ""}` });
+      const ready = status === "LOBBY" ? player.characterReady : player.hasSubmitted;
+      const label = status === "LOBBY" ? (ready ? "角色完成 ✓" : "角色未完成") : (ready ? "已提交 ✓" : "等待行動");
+      const row = element("div", { className: `turn-row${ready ? " done" : ""}` });
       row.append(
         element("span", { text: player.name }),
-        element("span", { text: player.hasSubmitted ? "已提交 ✓" : "等待行動" }),
+        element("span", { text: label }),
       );
       return row;
     });

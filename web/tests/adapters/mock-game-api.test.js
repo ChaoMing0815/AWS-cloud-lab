@@ -3,6 +3,32 @@ import assert from "node:assert/strict";
 
 import { MockGameApi } from "../../src/adapters/api/mock-game-api.js";
 
+const world = {
+  storyTitle: "午夜便利商店大作戰",
+  premise: "三位夜班夥伴發現年度盤點資料離奇消失，店長將在天亮前抵達並檢查紀錄。",
+  objective: "在店長抵達前找回盤點資料。",
+  openingScene: "凌晨兩點，收銀機突然重新開機，盤點檔案也消失了。",
+  coreObstacle: "備份硬碟被鎖在倉庫裡。",
+  tone: "slice_of_life",
+  customTone: "",
+  maxRounds: 6,
+};
+
+const character = {
+  name: "夜班調查員",
+  background: "熟悉門市每一個角落與所有交班紀錄。",
+  trait: "遇事冷靜",
+  weakness: "太容易懷疑自己",
+  courage: 2,
+  insight: 1,
+  bond: 0,
+};
+
+async function createLobby(api) {
+  await api.createRoom();
+  return api.confirmWorld(world);
+}
+
 test("建立房間會回傳六碼代碼與空白 roster", async () => {
   const api = new MockGameApi();
   const room = await api.createRoom();
@@ -10,11 +36,12 @@ test("建立房間會回傳六碼代碼與空白 roster", async () => {
   assert.match(room.roomCode, /^[A-HJ-NP-Z2-9]{6}$/);
   assert.equal(room.round, 1);
   assert.equal(room.players.length, 0);
+  assert.equal(room.status, "DRAFT");
 });
 
 test("加入房間會保存玩家並增加 version", async () => {
   const api = new MockGameApi();
-  const original = await api.createRoom();
+  const original = await createLobby(api);
   const room = await api.joinRoom({ nickname: "小明", role: "細心的企劃" });
 
   assert.equal(room.players.length, 1);
@@ -24,7 +51,7 @@ test("加入房間會保存玩家並增加 version", async () => {
 
 test("忽略大小寫的重複暱稱會被拒絕", async () => {
   const api = new MockGameApi();
-  await api.createRoom();
+  await createLobby(api);
   await api.joinRoom({ nickname: "Ming", role: "企劃" });
 
   await assert.rejects(
@@ -35,7 +62,7 @@ test("忽略大小寫的重複暱稱會被拒絕", async () => {
 
 test("房間最多允許五位玩家", async () => {
   const api = new MockGameApi();
-  await api.createRoom();
+  await createLobby(api);
   for (let index = 1; index <= 5; index += 1) {
     await api.joinRoom({ nickname: `玩家${index}`, role: "測試角色" });
   }
@@ -53,4 +80,34 @@ test("回傳 snapshot 不允許 UI 直接修改 adapter state", async () => {
 
   const reloaded = await api.loadRoom();
   assert.notEqual(reloaded.roomCode, "BROKEN");
+});
+
+test("只有確認世界後才能加入，三位玩家後房主可開始", async () => {
+  const api = new MockGameApi();
+  await api.createRoom();
+  await assert.rejects(
+    api.joinRoom({ nickname: "甲", role: "企劃" }),
+    { code: "ROOM_NOT_JOINABLE" },
+  );
+  const lobby = await api.confirmWorld(world);
+  assert.equal(lobby.status, "LOBBY");
+  for (const [nickname, role] of [["甲", "企劃"], ["乙", "工程師"], ["丙", "總務"]]) {
+    await api.joinRoom({ nickname, role });
+    await api.updateCharacter({ ...character, name: `角色${nickname}` });
+  }
+  const started = await api.startGame();
+  assert.equal(started.status, "COLLECTING_ACTIONS");
+  assert.equal(started.initialPlayerCount, 3);
+});
+
+test("角色配點完成前不能開始遊戲", async () => {
+  const api = new MockGameApi();
+  await createLobby(api);
+  for (const [nickname, role] of [["甲", "企劃"], ["乙", "工程師"], ["丙", "總務"]]) {
+    await api.joinRoom({ nickname, role });
+  }
+  await assert.rejects(api.startGame(), { code: "CHARACTERS_INCOMPLETE" });
+  const ready = await api.updateCharacter(character);
+  assert.equal(ready.players[2].characterReady, true);
+  assert.equal(ready.players[2].character.spark, 1);
 });

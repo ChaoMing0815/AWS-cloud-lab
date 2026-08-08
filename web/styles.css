@@ -42,7 +42,7 @@ body::before {
 
 button, input, textarea, select { font: inherit; }
 button { cursor: pointer; }
-button:disabled, textarea:disabled { cursor: not-allowed; opacity: .5; }
+button:disabled, textarea:disabled, input:disabled, select:disabled { cursor: not-allowed; opacity: .5; }
 
 .topbar {
   height: 76px;
@@ -113,6 +113,16 @@ input, select, textarea { color: var(--ink); border: 1px solid var(--line); bord
 input, select { min-width: 0; padding: 9px; font-size: .75rem; }
 textarea:focus, input:focus, select:focus { border-color: rgba(99,203,183,.55); box-shadow: 0 0 0 3px rgba(99,203,183,.06); }
 .secondary-button { width: 100%; padding: 9px; color: var(--teal); border: 1px solid rgba(99,203,183,.25); background: rgba(99,203,183,.06); }
+.host-form { display: grid; gap: 7px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line); }
+.host-form[hidden] { display: none; }
+.host-form label { color: var(--muted); font-size: .68rem; }
+.host-form textarea { width: 100%; resize: vertical; padding: 9px; font-size: .74rem; line-height: 1.55; }
+.host-form .join-row { grid-template-columns: 1fr 1fr; }
+.host-form .join-row label { display: grid; gap: 5px; }
+.host-form .primary-button { width: 100%; margin-top: 5px; }
+.attribute-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
+.attribute-grid label { display: grid; gap: 5px; text-align: center; }
+.attribute-grid input { text-align: center; }
 
 .story-column { display: flex; min-height: calc(100vh - 125px); flex-direction: column; }
 .story-header { display: flex; justify-content: space-between; align-items: start; padding: 28px 32px 20px; border-bottom: 1px solid var(--line); }

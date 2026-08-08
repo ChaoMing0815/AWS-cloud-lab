@@ -1,4 +1,53 @@
-from pydantic import BaseModel, Field
+from typing import Literal
+
+from pydantic import BaseModel, Field, model_validator
+
+
+Tone = Literal[
+    "light_comedy",
+    "workplace_satire",
+    "slice_of_life",
+    "mystery",
+    "adventure",
+    "sci_fi",
+    "dark_fairy_tale",
+    "custom",
+]
+
+
+class ConfirmWorldRequest(BaseModel):
+    story_title: str = Field(min_length=1, max_length=40)
+    premise: str = Field(min_length=50, max_length=500)
+    objective: str = Field(min_length=10, max_length=200)
+    opening_scene: str = Field(min_length=20, max_length=400)
+    core_obstacle: str = Field(min_length=10, max_length=200)
+    tone: Tone
+    custom_tone: str | None = Field(default=None, min_length=1, max_length=40)
+    max_rounds: Literal[4, 6, 8]
+    room_version: int = Field(ge=1)
+
+    @model_validator(mode="after")
+    def validate_custom_tone(self) -> "ConfirmWorldRequest":
+        if self.tone == "custom" and not self.custom_tone:
+            raise ValueError("自訂調性不可空白。")
+        if self.tone != "custom":
+            self.custom_tone = None
+        return self
+
+
+class StartGameRequest(BaseModel):
+    room_version: int = Field(ge=1)
+
+
+class UpdateCharacterRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=20)
+    background: str = Field(min_length=10, max_length=160)
+    trait: str = Field(min_length=1, max_length=40)
+    weakness: str = Field(min_length=1, max_length=40)
+    courage: int = Field(ge=0, le=2)
+    insight: int = Field(ge=0, le=2)
+    bond: int = Field(ge=0, le=2)
+    room_version: int = Field(ge=1)
 
 
 class JoinRoomRequest(BaseModel):

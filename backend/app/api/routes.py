@@ -1,6 +1,12 @@
 from fastapi import APIRouter, Cookie, Header, Response, status
 
-from app.api.schemas import JoinRoomRequest, SubmitActionRequest
+from app.api.schemas import (
+    ConfirmWorldRequest,
+    JoinRoomRequest,
+    StartGameRequest,
+    SubmitActionRequest,
+    UpdateCharacterRequest,
+)
 from app.api.serialization import room_response
 from app.application.room_service import RoomService
 
@@ -54,6 +60,73 @@ def create_api_router(service: RoomService) -> APIRouter:
         )
         _set_local_room_cookie(response, room.id)
         _set_session_cookie(response, PLAYER_SESSION_COOKIE, player_token)
+        return room_response(room, service.session_context(room, host_token, player_token))
+
+    @router.put("/rooms/{room_id}/world")
+    def confirm_world(
+        room_id: str,
+        request: ConfirmWorldRequest,
+        idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+        csrf_token: str | None = Header(default=None, alias="X-CSRF-Token"),
+        host_token: str | None = Cookie(default=None, alias=HOST_SESSION_COOKIE),
+        player_token: str | None = Cookie(default=None, alias=PLAYER_SESSION_COOKIE),
+    ) -> dict:
+        room = service.confirm_world(
+            room_id,
+            request.model_dump(
+                include={
+                    "story_title",
+                    "premise",
+                    "objective",
+                    "opening_scene",
+                    "core_obstacle",
+                    "tone",
+                    "custom_tone",
+                }
+            ),
+            request.max_rounds,
+            request.room_version,
+            host_token or "",
+            csrf_token or "",
+            _required_idempotency_key(idempotency_key),
+        )
+        return room_response(room, service.session_context(room, host_token, player_token))
+
+    @router.post("/rooms/{room_id}:start")
+    def start_game(
+        room_id: str,
+        request: StartGameRequest,
+        idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+        csrf_token: str | None = Header(default=None, alias="X-CSRF-Token"),
+        host_token: str | None = Cookie(default=None, alias=HOST_SESSION_COOKIE),
+        player_token: str | None = Cookie(default=None, alias=PLAYER_SESSION_COOKIE),
+    ) -> dict:
+        room = service.start_game(
+            room_id,
+            request.room_version,
+            host_token or "",
+            csrf_token or "",
+            _required_idempotency_key(idempotency_key),
+        )
+        return room_response(room, service.session_context(room, host_token, player_token))
+
+    @router.put("/rooms/{room_id}/character")
+    def update_character(
+        room_id: str,
+        request: UpdateCharacterRequest,
+        idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+        csrf_token: str | None = Header(default=None, alias="X-CSRF-Token"),
+        player_token: str | None = Cookie(default=None, alias=PLAYER_SESSION_COOKIE),
+        host_token: str | None = Cookie(default=None, alias=HOST_SESSION_COOKIE),
+    ) -> dict:
+        room = service.update_character(
+            room_id,
+            request.model_dump(exclude={"room_version"}),
+            request.room_version,
+            player_token or "",
+            csrf_token or "",
+            _required_idempotency_key(idempotency_key),
+        )
         return room_response(room, service.session_context(room, host_token, player_token))
 
     @router.put("/rooms/{room_id}/rounds/{round_number}/action")

@@ -34,6 +34,52 @@ export class FetchGameApi extends GameApi {
     return this.room;
   }
 
+  async confirmWorld(world) {
+    this.requireRoom();
+    this.room = await this.request(`/rooms/${this.room.id}/world`, {
+      method: "PUT",
+      idempotent: true,
+      hostCsrfProtected: true,
+      body: {
+        story_title: world.storyTitle,
+        premise: world.premise,
+        objective: world.objective,
+        opening_scene: world.openingScene,
+        core_obstacle: world.coreObstacle,
+        tone: world.tone,
+        custom_tone: world.customTone || null,
+        max_rounds: world.maxRounds,
+        room_version: this.room.version,
+      },
+    });
+    return this.room;
+  }
+
+  async startGame() {
+    this.requireRoom();
+    this.room = await this.request(`/rooms/${this.room.id}:start`, {
+      method: "POST",
+      idempotent: true,
+      hostCsrfProtected: true,
+      body: { room_version: this.room.version },
+    });
+    return this.room;
+  }
+
+  async updateCharacter(character) {
+    this.requireRoom();
+    this.room = await this.request(`/rooms/${this.room.id}/character`, {
+      method: "PUT",
+      idempotent: true,
+      csrfProtected: true,
+      body: {
+        ...character,
+        room_version: this.room.version,
+      },
+    });
+    return this.room;
+  }
+
   async submitAction({ text }) {
     this.requireRoom();
     this.room = await this.request(
@@ -57,13 +103,29 @@ export class FetchGameApi extends GameApi {
     }
   }
 
-  async request(path, { method = "GET", body, idempotent = false, csrfProtected = false } = {}) {
+  async request(
+    path,
+    {
+      method = "GET",
+      body,
+      idempotent = false,
+      csrfProtected = false,
+      hostCsrfProtected = false,
+    } = {},
+  ) {
     const headers = body ? { "Content-Type": "application/json" } : {};
     if (idempotent) headers["Idempotency-Key"] = this.idempotencyKeyFactory();
     if (csrfProtected) {
       const csrfToken = this.room?.session?.csrfToken;
       if (!csrfToken) {
         throw new ApiError("CSRF_TOKEN_MISSING", "缺少 CSRF token，請重新載入。", 403);
+      }
+      headers["X-CSRF-Token"] = csrfToken;
+    }
+    if (hostCsrfProtected) {
+      const csrfToken = this.room?.session?.hostCsrfToken;
+      if (!csrfToken) {
+        throw new ApiError("HOST_CSRF_TOKEN_MISSING", "缺少房主 CSRF token，請重新載入。", 403);
       }
       headers["X-CSRF-Token"] = csrfToken;
     }

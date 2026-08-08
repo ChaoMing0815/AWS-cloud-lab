@@ -103,3 +103,75 @@ test("Submit action 只傳文字並帶 player session 的 CSRF token", async () 
   assert.deepEqual(body, { text: "我先確認出口。", room_version: 3 });
   assert.equal("player_id" in body, false);
 });
+
+test("房主確認世界與開始遊戲使用 host CSRF token", async () => {
+  const requests = [];
+  const room = {
+    id: "room-1",
+    version: 1,
+    round: 1,
+    status: "DRAFT",
+    players: [],
+    session: { isHost: true, hostCsrfToken: "host-csrf-123" },
+  };
+  const api = new FetchGameApi({
+    idempotencyKeyFactory: () => "host-mutation-key",
+    fetchImpl: async (url, options) => {
+      requests.push({ url, options });
+      return jsonResponse({ ...room, version: room.version + requests.length - 1 });
+    },
+  });
+  await api.loadRoom();
+  await api.confirmWorld({
+    storyTitle: "測試故事",
+    premise: "這是一段符合長度規範的測試世界背景，用來驗證房主請求資料能正確送到後端處理。",
+    objective: "完成共同測試目標。",
+    openingScene: "所有玩家在測試場景集合並準備開始。",
+    coreObstacle: "必須通過所有驗證關卡。",
+    tone: "light_comedy",
+    customTone: "",
+    maxRounds: 4,
+  });
+  await api.startGame();
+
+  assert.equal(requests[1].url, "/api/v1/rooms/room-1/world");
+  assert.equal(requests[2].url, "/api/v1/rooms/room-1:start");
+  assert.equal(requests[1].options.headers["X-CSRF-Token"], "host-csrf-123");
+  assert.equal(requests[2].options.headers["X-CSRF-Token"], "host-csrf-123");
+  assert.equal(requests[1].options.headers["Idempotency-Key"], "host-mutation-key");
+});
+
+test("角色更新使用 player CSRF 且不接受 player ID", async () => {
+  const requests = [];
+  const room = {
+    id: "room-1",
+    version: 7,
+    round: 1,
+    players: [],
+    session: { principalType: "player", playerId: "player-1", csrfToken: "player-csrf" },
+  };
+  const api = new FetchGameApi({
+    idempotencyKeyFactory: () => "character-key",
+    fetchImpl: async (url, options) => {
+      requests.push({ url, options });
+      return jsonResponse(room);
+    },
+  });
+  await api.loadRoom();
+  await api.updateCharacter({
+    name: "調查員",
+    background: "熟悉所有交班紀錄。",
+    trait: "冷靜",
+    weakness: "多疑",
+    courage: 2,
+    insight: 1,
+    bond: 0,
+  });
+  const request = requests[1];
+  const body = JSON.parse(request.options.body);
+  assert.equal(request.url, "/api/v1/rooms/room-1/character");
+  assert.equal(request.options.headers["X-CSRF-Token"], "player-csrf");
+  assert.equal(request.options.headers["Idempotency-Key"], "character-key");
+  assert.equal(body.room_version, 7);
+  assert.equal("player_id" in body, false);
+});
