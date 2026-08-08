@@ -42,6 +42,7 @@ body::before {
 
 button, input, textarea, select { font: inherit; }
 button { cursor: pointer; }
+button:disabled, textarea:disabled { cursor: not-allowed; opacity: .5; }
 
 .topbar {
   height: 76px;
@@ -156,6 +157,9 @@ textarea:focus, input:focus, select:focus { border-color: rgba(99,203,183,.55); 
 .ai-card p { margin: 4px 0 0; color: var(--muted); font-size: .69rem; line-height: 1.55; }
 .text-button { width: 100%; margin-top: 25px; padding: 8px; color: #788487; border: 0; background: transparent; font-size: .68rem; }
 .text-button:hover { color: var(--danger); }
+.feedback { margin: 18px 0 0; padding: 10px; color: var(--muted); border: 1px solid var(--line); font-size: .7rem; line-height: 1.5; }
+.feedback[data-kind="success"] { color: var(--teal); border-color: rgba(99,203,183,.24); }
+.feedback[data-kind="error"] { color: var(--danger); border-color: rgba(226,123,108,.3); }
 
 footer { display: flex; justify-content: space-between; width: min(1500px, 94vw); margin: 0 auto 24px; color: #657174; font-size: .65rem; }
 

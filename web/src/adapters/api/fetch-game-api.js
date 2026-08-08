@@ -1,0 +1,93 @@
+import { GameApi } from "../../application/ports/game-api.js";
+import { ApiError } from "./api-error.js";
+
+export class FetchGameApi extends GameApi {
+  constructor({ basePath = "/api/v1", fetchImpl, idempotencyKeyFactory } = {}) {
+    super();
+    this.basePath = basePath.replace(/\/$/, "");
+    this.fetchImpl = fetchImpl ?? ((...args) => globalThis.fetch(...args));
+    this.idempotencyKeyFactory = idempotencyKeyFactory ?? (() => globalThis.crypto.randomUUID());
+    this.room = null;
+  }
+
+  async loadRoom() {
+    this.room = await this.request("/rooms/current");
+    return this.room;
+  }
+
+  async createRoom() {
+    this.room = await this.request("/rooms", { method: "POST", idempotent: true });
+    return this.room;
+  }
+
+  async joinRoom({ nickname, role }) {
+    this.requireRoom();
+    this.room = await this.request(`/rooms/${this.room.id}/players`, {
+      method: "POST",
+      idempotent: true,
+      body: {
+        nickname,
+        role,
+        room_version: this.room.version,
+      },
+    });
+    return this.room;
+  }
+
+  async submitAction({ text }) {
+    this.requireRoom();
+    this.room = await this.request(
+      `/rooms/${this.room.id}/rounds/${this.room.round}/action`,
+      {
+        method: "PUT",
+        idempotent: true,
+        csrfProtected: true,
+        body: {
+          text,
+          room_version: this.room.version,
+        },
+      },
+    );
+    return this.room;
+  }
+
+  requireRoom() {
+    if (!this.room) {
+      throw new ApiError("ROOM_NOT_LOADED", "房間尚未載入。", 409);
+    }
+  }
+
+  async request(path, { method = "GET", body, idempotent = false, csrfProtected = false } = {}) {
+    const headers = body ? { "Content-Type": "application/json" } : {};
+    if (idempotent) headers["Idempotency-Key"] = this.idempotencyKeyFactory();
+    if (csrfProtected) {
+      const csrfToken = this.room?.session?.csrfToken;
+      if (!csrfToken) {
+        throw new ApiError("CSRF_TOKEN_MISSING", "缺少 CSRF token，請重新載入。", 403);
+      }
+      headers["X-CSRF-Token"] = csrfToken;
+    }
+    const response = await this.fetchImpl(`${this.basePath}${path}`, {
+      method,
+      credentials: "include",
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+
+    let payload;
+    try {
+      payload = await response.json();
+    } catch {
+      throw new ApiError("INVALID_RESPONSE", "伺服器回傳無效資料。", response.status || 500);
+    }
+
+    if (!response.ok) {
+      throw new ApiError(
+        payload?.error?.code ?? "REQUEST_FAILED",
+        payload?.error?.message ?? "API 操作失敗。",
+        response.status,
+      );
+    }
+    return payload;
+  }
+}

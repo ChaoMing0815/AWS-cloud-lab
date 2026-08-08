@@ -19,7 +19,7 @@
           <small>CO-STORY PROJECT</small>
         </span>
       </a>
-      <div class="connection"><span></span> 本機展示模式</div>
+      <div id="connectionStatus" class="connection"><span></span> 本機 Mock API 模式</div>
     </header>
 
     <main class="game-shell">
@@ -38,7 +38,7 @@
           <div>
             <small>世界設定</small>
             <h2 id="worldName">年終尾牙作戰</h2>
-            <p>公司臨時宣布加碼大獎，但抽獎資格取決於各部門能否完成最後一項共同任務。</p>
+            <p id="worldPremise">公司臨時宣布加碼大獎，但抽獎資格取決於各部門能否完成最後一項共同任務。</p>
           </div>
         </div>
 
@@ -62,7 +62,7 @@
         <div class="story-header">
           <div>
             <div class="eyebrow">故事主持人紀錄</div>
-            <h1>尾牙前的最後一份提案</h1>
+            <h1 id="storyTitle">尾牙前的最後一份提案</h1>
           </div>
           <div class="round-badge"><span>ROUND</span><strong id="roundNumber">04</strong></div>
         </div>
@@ -86,7 +86,7 @@
         <div class="eyebrow">本回合狀態</div>
         <div class="objective">
           <span class="objective-label">共同目標</span>
-          <h3>在尾牙抽獎前完成跨部門提案，爭取加碼年終獎金。</h3>
+          <h3 id="objectiveText">在尾牙抽獎前完成跨部門提案，爭取加碼年終獎金。</h3>
         </div>
 
         <div class="progress-copy">
@@ -105,15 +105,17 @@
           </div>
         </div>
 
-        <button id="resetButton" class="text-button">重設本機展示資料</button>
+        <p id="feedback" class="feedback" aria-live="assertive" hidden></p>
+        <button id="resetButton" class="text-button">清除並建立新房間</button>
       </aside>
     </main>
 
     <footer>
-      <span>本機原型 · 資料保存在此瀏覽器</span>
+      <span id="persistenceStatus">本機原型 · 正在確認資料來源</span>
       <span>AWS 部署尚未執行</span>
     </footer>
 
-    <script src="app.js"></script>
+    <script src="runtime-config.js"></script>
+    <script type="module" src="src/composition/bootstrap.js"></script>
   </body>
 </html>
