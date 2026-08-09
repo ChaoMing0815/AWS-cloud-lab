@@ -17,6 +17,40 @@ function clone(value) {
   return structuredClone(value);
 }
 
+function targetPoints(room) {
+  const calculated = room.initialPlayerCount * 2 * Math.max(0, room.maxRounds - 1);
+  return calculated || room.targetPoints || 0;
+}
+
+function pointsPercent(points, target) {
+  if (target <= 0) return 0;
+  return Math.min(100, Math.round(points / target * 100));
+}
+
+function updateProgressMetrics(room) {
+  room.targetPoints = targetPoints(room);
+  room.progressPercent = pointsPercent(room.progressPoints, room.targetPoints);
+  room.dangerPercent = pointsPercent(room.dangerPoints, room.targetPoints);
+}
+
+function completeGame(room) {
+  updateProgressMetrics(room);
+  room.status = "COMPLETED";
+  room.endingResult = room.progressPercent >= 100
+    ? "FULL_SUCCESS"
+    : room.progressPercent >= 60 ? "PARTIAL_SUCCESS" : "FAILURE";
+  room.endingCost = room.dangerPercent >= 70
+    ? "MAJOR"
+    : room.dangerPercent >= 40 ? "SIGNIFICANT" : "LOW";
+  room.entries.push({
+    id: randomId(),
+    type: "ending",
+    title: "故事結局",
+    round: room.round,
+    text: `故事以 ${room.endingResult} 收束，並付出 ${room.endingCost} 代價；Mock 故事主持人沒有修改規則狀態。`,
+  });
+}
+
 function baseRoom({ withDemoPlayers = false } = {}) {
   const players = withDemoPlayers
     ? [
@@ -167,6 +201,7 @@ export class MockGameApi extends GameApi {
     }
     this.room.status = "COLLECTING_ACTIONS";
     this.room.initialPlayerCount = this.room.players.length;
+    updateProgressMetrics(this.room);
     this.room.version += 1;
     this.room.entries.push({
       id: randomId(),
@@ -384,8 +419,15 @@ export class MockGameApi extends GameApi {
     });
     this.room.pendingProgress = 0;
     this.room.pendingDanger = 0;
-    this.room.round += 1;
-    this.room.status = "COLLECTING_ACTIONS";
+    updateProgressMetrics(this.room);
+    if (this.room.round >= this.room.maxRounds) {
+      completeGame(this.room);
+    } else {
+      this.room.round += 1;
+      this.room.status = this.room.progressPercent >= 100
+        ? "COMPLETION_AVAILABLE"
+        : "COLLECTING_ACTIONS";
+    }
     this.room.version += 1;
     return clone(this.room);
   }
@@ -401,20 +443,7 @@ export class MockGameApi extends GameApi {
     if (decision === "CONTINUE") {
       this.room.status = "COLLECTING_ACTIONS";
     } else {
-      const target = this.room.targetPoints || 1;
-      const dangerPercent = Math.min(100, Math.round(this.room.dangerPoints / target * 100));
-      this.room.status = "COMPLETED";
-      this.room.endingResult = "FULL_SUCCESS";
-      this.room.endingCost = dangerPercent >= 70
-        ? "MAJOR"
-        : dangerPercent >= 40 ? "SIGNIFICANT" : "LOW";
-      this.room.entries.push({
-        id: randomId(),
-        type: "ending",
-        title: "故事結局",
-        round: this.room.round,
-        text: "故事以完整成功收束；Mock 故事主持人沒有修改規則狀態。",
-      });
+      completeGame(this.room);
     }
     this.room.version += 1;
     return clone(this.room);
