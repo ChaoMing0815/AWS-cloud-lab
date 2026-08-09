@@ -84,6 +84,8 @@ button:disabled, textarea:disabled, input:disabled, select:disabled { cursor: no
 .entry-form p { margin: 0 0 8px; color: var(--muted); font-size: .73rem; line-height: 1.6; }
 .entry-form label { color: var(--muted); font-size: .7rem; }
 .entry-form button { width: 100%; margin-top: 4px; }
+.entry-error { margin: 0; color: var(--danger); font-size: .72rem; }
+.entry-error[hidden] { display: none; }
 .entry-divider { display: flex; align-items: center; gap: 12px; margin: 20px 0; color: var(--muted); font-size: .65rem; }
 .entry-divider::before, .entry-divider::after { content: ""; flex: 1; height: 1px; background: var(--line); }
 .demo-link { display: block; margin-top: 22px; color: var(--teal); font-size: .72rem; text-align: center; text-decoration: none; }

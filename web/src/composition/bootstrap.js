@@ -12,6 +12,7 @@ import { FinishGame } from "../application/use-cases/finish-game.js";
 import { FetchGameApi } from "../adapters/api/fetch-game-api.js";
 import { MockGameApi } from "../adapters/api/mock-game-api.js";
 import { GamePage } from "../ui/pages/game-page.js";
+import { LandingPage } from "../ui/pages/landing-page.js";
 
 function mountGamePage({ forceMock = false } = {}) {
   const config = globalThis.CO_STORY_CONFIG ?? { apiMode: "mock", apiBasePath: "/api/v1" };
@@ -44,3 +45,16 @@ function mountGamePage({ forceMock = false } = {}) {
 
 const path = globalThis.location?.pathname ?? "/";
 if (path === "/demo") mountGamePage({ forceMock: true });
+else if (path === "/host/setup") mountGamePage();
+else if (path === "/") {
+  const config = globalThis.CO_STORY_CONFIG ?? { apiBasePath: "/api/v1" };
+  const gameApi = new FetchGameApi({ basePath: config.apiBasePath });
+  const landing = new LandingPage({
+    createRoom: new CreateRoom(gameApi),
+    navigate(route) {
+      globalThis.history.pushState({}, "", route);
+      mountGamePage();
+    },
+  });
+  landing.mount();
+}

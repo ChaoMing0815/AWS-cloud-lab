@@ -15,8 +15,12 @@ export class FetchGameApi extends GameApi {
     return this.room;
   }
 
-  async createRoom() {
-    this.room = await this.request("/rooms", { method: "POST", idempotent: true });
+  async createRoom({ nickname }) {
+    this.room = await this.request("/rooms", {
+      method: "POST",
+      idempotent: true,
+      body: { nickname },
+    });
     return this.room;
   }
 
