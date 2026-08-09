@@ -46,9 +46,13 @@ function mountGamePage({ forceMock = false } = {}) {
 }
 
 const path = globalThis.location?.pathname ?? "/";
+const formalRoomPath = /^\/room\/[A-HJ-NP-Z2-9]{6}/;
+const formalGameSuffixes = ["/lobby", "/play", "/ending"];
 if (path === "/demo") mountGamePage({ forceMock: true });
 else if (path === "/host/setup") mountGamePage();
-else if (/^\/room\/[A-HJ-NP-Z2-9]{6}\/lobby$/.test(path)) mountGamePage();
+else if (formalRoomPath.test(path) && formalGameSuffixes.some((suffix) => path.endsWith(suffix))) {
+  mountGamePage();
+}
 else if (path === "/") {
   const config = globalThis.CO_STORY_CONFIG ?? { apiBasePath: "/api/v1" };
   const gameApi = new FetchGameApi({ basePath: config.apiBasePath });

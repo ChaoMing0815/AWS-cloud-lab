@@ -3,6 +3,7 @@ from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.adapters.memory_room_repository import MemoryRoomRepository
 from app.adapters.memory_idempotency_store import MemoryIdempotencyStore
@@ -44,6 +45,16 @@ def create_app(dice_roller=None) -> FastAPI:
             content={"error": {"code": error.code, "message": error.message}},
         )
 
+    @application.exception_handler(StarletteHTTPException)
+    async def http_error_handler(request: Request, error: StarletteHTTPException):
+        if error.status_code == 404 and not request.url.path.startswith("/api/"):
+            return FileResponse(WEB_ROOT / "404.html", status_code=404)
+        return JSONResponse(
+            status_code=error.status_code,
+            content={"detail": error.detail},
+            headers=error.headers,
+        )
+
     application.include_router(create_api_router(service))
 
     @application.get("/demo", include_in_schema=False)
@@ -56,6 +67,14 @@ def create_app(dice_roller=None) -> FastAPI:
 
     @application.get("/room/{room_code}/lobby", include_in_schema=False)
     async def lobby_app_shell(room_code: str) -> FileResponse:
+        return FileResponse(WEB_ROOT / "index.html")
+
+    @application.get("/room/{room_code}/play", include_in_schema=False)
+    async def play_app_shell(room_code: str) -> FileResponse:
+        return FileResponse(WEB_ROOT / "index.html")
+
+    @application.get("/room/{room_code}/ending", include_in_schema=False)
+    async def ending_app_shell(room_code: str) -> FileResponse:
         return FileResponse(WEB_ROOT / "index.html")
 
     application.mount("/", StaticFiles(directory=WEB_ROOT, html=True), name="web")
