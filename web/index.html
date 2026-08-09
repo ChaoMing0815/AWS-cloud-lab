@@ -59,7 +59,8 @@
           <input id="joinRoomCode" name="roomCode" maxlength="6" autocomplete="off" required />
           <label for="joinNickname">你的暱稱</label>
           <input id="joinNickname" name="nickname" maxlength="12" autocomplete="nickname" required />
-          <button class="secondary-button" type="submit">加入故事房間</button>
+          <p id="joinGameError" class="entry-error" role="alert" hidden></p>
+          <button id="joinGameButton" class="secondary-button" type="submit">加入故事房間</button>
         </form>
 
         <a class="demo-link" href="/demo">第一次遊玩？先體驗不保存進度的教學 Demo →</a>

@@ -38,6 +38,18 @@ export class FetchGameApi extends GameApi {
     return this.room;
   }
 
+  async joinRoomByCode({ roomCode, nickname }) {
+    this.room = await this.request("/rooms:join", {
+      method: "POST",
+      idempotent: true,
+      body: {
+        room_code: roomCode,
+        nickname,
+      },
+    });
+    return this.room;
+  }
+
   async confirmWorld(world) {
     this.requireRoom();
     this.room = await this.request(`/rooms/${this.room.id}/world`, {

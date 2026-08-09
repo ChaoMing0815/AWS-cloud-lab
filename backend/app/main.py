@@ -54,6 +54,10 @@ def create_app(dice_roller=None) -> FastAPI:
     async def host_setup_app_shell() -> FileResponse:
         return FileResponse(WEB_ROOT / "index.html")
 
+    @application.get("/room/{room_code}/lobby", include_in_schema=False)
+    async def lobby_app_shell(room_code: str) -> FileResponse:
+        return FileResponse(WEB_ROOT / "index.html")
+
     application.mount("/", StaticFiles(directory=WEB_ROOT, html=True), name="web")
     return application
 

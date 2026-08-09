@@ -43,3 +43,12 @@ def test_fastapi_serves_app_shell_for_host_setup_route() -> None:
     assert 'id="worldForm"' in response.text
     assert 'src="/runtime-config.js"' in response.text
     assert 'src="/src/composition/bootstrap.js"' in response.text
+
+
+def test_fastapi_serves_app_shell_for_lobby_deep_link() -> None:
+    with TestClient(create_app()) as client:
+        response = client.get("/room/ABCD23/lobby")
+
+    assert response.status_code == 200
+    assert 'id="landingPage"' in response.text
+    assert 'id="gamePage"' in response.text

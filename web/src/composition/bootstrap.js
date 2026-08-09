@@ -1,6 +1,7 @@
 import { CreateRoom } from "../application/use-cases/create-room.js";
 import { ConfirmWorld } from "../application/use-cases/confirm-world.js";
 import { JoinRoom } from "../application/use-cases/join-room.js";
+import { JoinRoomByCode } from "../application/use-cases/join-room-by-code.js";
 import { LoadRoom } from "../application/use-cases/load-room.js";
 import { SubmitAction } from "../application/use-cases/submit-action.js";
 import { StartGame } from "../application/use-cases/start-game.js";
@@ -46,11 +47,13 @@ function mountGamePage({ forceMock = false } = {}) {
 const path = globalThis.location?.pathname ?? "/";
 if (path === "/demo") mountGamePage({ forceMock: true });
 else if (path === "/host/setup") mountGamePage();
+else if (/^\/room\/[A-HJ-NP-Z2-9]{6}\/lobby$/.test(path)) mountGamePage();
 else if (path === "/") {
   const config = globalThis.CO_STORY_CONFIG ?? { apiBasePath: "/api/v1" };
   const gameApi = new FetchGameApi({ basePath: config.apiBasePath });
   const landing = new LandingPage({
     createRoom: new CreateRoom(gameApi),
+    joinRoomByCode: new JoinRoomByCode(gameApi),
     navigate(route) {
       globalThis.history.pushState({}, "", route);
       mountGamePage();

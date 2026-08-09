@@ -11,6 +11,10 @@ export class GameApi {
     throw new Error("GameApi.joinRoom 尚未實作");
   }
 
+  async joinRoomByCode(_command) {
+    throw new Error("GameApi.joinRoomByCode 尚未實作");
+  }
+
   async confirmWorld(_command) {
     throw new Error("GameApi.confirmWorld 尚未實作");
   }
