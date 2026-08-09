@@ -60,7 +60,7 @@ test("FetchGameApi 將 structured API error 轉為 ApiError", async () => {
   });
 });
 
-test("FetchGameApi mutation 送出 Idempotency-Key", async () => {
+test("FetchGameApi 建立房間時送出房主暱稱與 Idempotency-Key", async () => {
   let request;
   const api = new FetchGameApi({
     idempotencyKeyFactory: () => "fixed-idempotency-key",
@@ -70,9 +70,10 @@ test("FetchGameApi mutation 送出 Idempotency-Key", async () => {
     },
   });
 
-  await api.createRoom();
+  await api.createRoom({ nickname: "昭銘" });
 
   assert.equal(request.options.headers["Idempotency-Key"], "fixed-idempotency-key");
+  assert.equal(request.options.body, JSON.stringify({ nickname: "昭銘" }));
 });
 
 test("Submit action 傳送文字與行動方式並帶 player session 的 CSRF token", async () => {
