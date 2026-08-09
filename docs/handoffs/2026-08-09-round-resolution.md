@@ -2,7 +2,7 @@
 
 - 交接日期：2026-08-09
 - 期末專題繳交日：2026-09-07
-- 目前分支：`main`
+- 目前分支：`codex/ending-policy`
 - AWS 寫入／新增資源／費用：無
 - 本機伺服器：均已停止
 
@@ -15,10 +15,12 @@
 - 三玩家完整單回合、授權、CSRF、pending、無星火與 idempotent replay 已驗證。
 - 後端 `18 passed`、前端 `28 passed`、Browser Console `0 errors`。
 - 詳細證據：[星火與完整單回合驗證](../evidence/2026-08-09-spark-round-resolution/validation.md)。
+- 已以嚴格 TDD 完成 4／6／8 回合上限、百分比、提前完成、房主結局選擇、自動結局敘事及前端控制。
+- 結局策略最終測試為後端 `28 passed`、前端 `35 passed`，並通過三項 mutation 敏感度測試。
+- 詳細證據：[結局策略嚴格 TDD 驗證](../evidence/2026-08-09-ending-policy/tdd-validation.md)。
 
 ## 尚未完成
 
-- 4／6／8 回合上限、100% 提前完成、進度百分比與結局頁。
 - 房主略過未提交 action、polling、取消與離線錯誤狀態。
 - 三個獨立 Browser session 的人工 E2E。
 - Session expiry／revoke／reassign 與 production Secure cookie。
@@ -27,11 +29,10 @@
 
 ## 下一步建議順序
 
-1. 以純 domain function 定義進度百分比、最大回合與提前結束條件。
-2. 實作 `COMPLETED`／結局 canonical state 與 Mock 結局敘事。
-3. 補前端進度 meter、結局畫面與相應正負向測試。
-4. 使用三個獨立 Browser session 完成全流程 E2E 並保存證據。
-5. 再處理 PostgreSQL ADR；AWS 關卡通過前不部署。
+1. 讓 Mock adapter 的自動最大回合行為與 HTTP adapter 完全一致，補 contract tests。
+2. 使用三個獨立 Browser session 完成全流程 E2E 並保存證據。
+3. 實作 polling、取消與離線錯誤狀態。
+4. 再處理 PostgreSQL ADR；AWS 關卡通過前不部署。
 
 ## 不可違反的邊界
 
