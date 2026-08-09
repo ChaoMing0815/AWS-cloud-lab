@@ -28,3 +28,14 @@ test("進入教學 Demo 時 hidden Landing 不會繼續顯示", async () => {
     "Landing 的 layout rule 不可覆蓋 hidden 狀態",
   );
 });
+
+
+test("正式 Play 與 Ending deep link 會組裝遊戲頁", async () => {
+  const bootstrap = await readFile(
+    new URL("../../src/composition/bootstrap.js", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(bootstrap, /\/play/);
+  assert.match(bootstrap, /\/ending/);
+});
