@@ -21,3 +21,22 @@ test("GamePage 將房主結局選擇交給 FinishGame use case", async () => {
 
   assert.deepEqual(command, { decision: "FINISH_NOW" });
 });
+
+test("GamePage 取得正式遊戲狀態後同步 canonical deep route", async () => {
+  const routes = [];
+  const page = new GamePage({
+    navigate(route) {
+      routes.push(route);
+    },
+  });
+  page.setBusy = () => {};
+  page.showFeedback = () => {};
+  page.render = () => {};
+
+  await page.run(async () => ({
+    roomCode: "ABCD23",
+    status: "COLLECTING_ACTIONS",
+  }));
+
+  assert.deepEqual(routes, ["/room/ABCD23/play"]);
+});
