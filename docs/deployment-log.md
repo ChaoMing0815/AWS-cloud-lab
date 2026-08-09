@@ -45,6 +45,7 @@
 | 2026-08-09 | 星火與完整單回合 vertical slice | 建立 player-only 星火決策、host-only 結算／略過等待者、正式點數與星火套用、Mock 敘事及下一回合；前端加入決策與結算控制 | 後端 18 tests、前端 28 tests；三玩家固定骰整合、授權／CSRF／無星火／pending／replay 負面驗證；Browser Console 0 errors；8765 已停止；未執行 AWS 寫入 | [驗證證據](evidence/2026-08-09-spark-round-resolution/validation.md) |
 | 2026-08-09 | 開發流程治理 | 稽核既有測試歷史，確認過去屬測試規劃先行但非可稽核嚴格 TDD；後續程式行為改採 Red／Green／Refactor、test-first 證據與 mutation 敏感度驗證 | 文件交叉檢查、Git 歷史稽核與規範連結檢查；未修改 production code、未執行 AWS 寫入 | [TDD 採用紀錄](evidence/2026-08-09-tdd-governance/adoption.md) |
 | 2026-08-09 | 回合上限與結局策略 | 以四組嚴格 Red／Green 循環完成 4／6／8 回合上限、正式百分比、提前完成、host-only `FINISH_NOW／CONTINUE`、自動結局敘事與前端結局控制 | 後端 `28 passed`、前端 `35 passed`；三項 mutation 敏感度測試；Browser Console 0 errors、無水平溢出；8765 已停止；未執行 AWS 寫入 | [嚴格 TDD 驗證](evidence/2026-08-09-ending-policy/tdd-validation.md) |
+| 2026-08-09 | Mock／HTTP 結局合約一致性 | Mock adapter 對齊目標點數、百分比、提前完成與最大回合自動結局；立即結局共用完成流程 | Red `3 failed`；Green 後端 `28 passed`、前端 `38 passed`；最大回合 operator mutation 正確失敗；未啟動伺服器或執行 AWS 寫入 | [TDD 驗證](evidence/2026-08-09-mock-ending-parity/tdd-validation.md) |
 
 ## AWS Budget Alarm
 

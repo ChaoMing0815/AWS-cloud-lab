@@ -46,7 +46,8 @@
 - [x] Action 支援勇氣／洞察／羈絆，擲骰前隱藏、擲骰後一次揭露。
 - [x] Host-only roll 使用 CSPRNG，並保存原始骰點、結果與待結算進度／危機。
 - [ ] 完成 polling、取消、room version、idempotency 與前端錯誤狀態。
-- [ ] 完成 Mock／HTTP adapter contract tests 與三玩家 browser E2E。
+- [x] 完成 Mock／HTTP adapter 的目標點數、提前完成與最大回合結局 contract tests。
+- [ ] 完成三個獨立 Browser session 的三玩家 E2E。
 
 ## C. Tier 0：AWS 可玩傳統架構
 
