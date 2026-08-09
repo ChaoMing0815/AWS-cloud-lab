@@ -40,3 +40,21 @@ test("GamePage 取得正式遊戲狀態後同步 canonical deep route", async ()
 
   assert.deepEqual(routes, ["/room/ABCD23/play"]);
 });
+
+test("GamePage 依房間階段同步 setup、lobby 與 ending route", async () => {
+  const routes = [];
+  const page = new GamePage({ navigate: (route) => routes.push(route) });
+  page.setBusy = () => {};
+  page.showFeedback = () => {};
+  page.render = () => {};
+
+  await page.run(async () => ({ roomCode: "ABCD23", status: "DRAFT" }));
+  await page.run(async () => ({ roomCode: "ABCD23", status: "LOBBY" }));
+  await page.run(async () => ({ roomCode: "ABCD23", status: "COMPLETED" }));
+
+  assert.deepEqual(routes, [
+    "/host/setup",
+    "/room/ABCD23/lobby",
+    "/room/ABCD23/ending",
+  ]);
+});
