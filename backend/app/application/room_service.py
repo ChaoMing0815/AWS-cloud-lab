@@ -6,7 +6,14 @@ import string
 from uuid import uuid4
 
 from app.application.ports import DiceRoller, IdempotencyStore, RoomRepository, SessionTokenFactory, Storyteller
-from app.application.rules import apply_spark, classify_result
+from app.application.rules import (
+    apply_spark,
+    classify_result,
+    ending_cost,
+    ending_result,
+    points_percent,
+    target_points,
+)
 from app.application.security import hash_session_token
 from app.domain.errors import DomainError
 from app.domain.models import Character, DiceResult, Player, Room, StoryEntry, World
@@ -578,8 +585,21 @@ class RoomService:
             for player in current.players:
                 player.action = ""
                 player.action_approach = ""
-            current.round_number += 1
-            current.status = "COLLECTING_ACTIONS"
+            completed_round = current.round_number
+            target = target_points(current.initial_player_count, current.max_rounds)
+            progress_percent = points_percent(current.progress_points, target)
+            danger_percent = points_percent(current.danger_points, target)
+            if completed_round >= current.max_rounds:
+                current.status = "COMPLETED"
+                current.ending_result = ending_result(progress_percent)
+                current.ending_cost = ending_cost(danger_percent)
+            else:
+                current.round_number += 1
+                current.status = (
+                    "COMPLETION_AVAILABLE"
+                    if progress_percent >= 100
+                    else "COLLECTING_ACTIONS"
+                )
             current.version += 1
             self.repository.save(current)
             return current
