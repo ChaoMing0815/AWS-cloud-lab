@@ -27,6 +27,9 @@ Demo 與每日進度依本清單逐項驗收。檔案存在不代表完成；必
 - [x] Player-only 角色建立、三點配點與全員角色完成 start gate 已驗證。
 - [x] Action approach、`2d6 + 屬性`、三段結果與 host-only 擲骰已驗證。
 - [x] 擲骰結果先保存待結算進度／危機，未繞過星火決策直接修改 canonical points。
+- [x] Player-only 星火 USE／DECLINE、無星火拒絕與房主明確略過等待者已驗證。
+- [x] 正式進度／危機、星火扣除／失敗補充、Mock 敘事與下一回合已由 deterministic rules 套用。
+- [x] 完整單回合 replay 不重複加點、扣星火、建立故事或推進回合。
 - [ ] Session expiry／revoke／reassign 與 production Secure cookie 已完成。
 - [ ] 講師已確認自製 FastAPI Web／private DB 的 Tier 0 等效檢核與 Tier 0–5 對映。
 - [ ] 已確認 FastAPI＋PostgreSQL 與正式 AWS adapter ADR。

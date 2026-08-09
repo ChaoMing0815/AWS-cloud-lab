@@ -27,7 +27,9 @@
 - [x] 建立 FastAPI skeleton、health endpoint 與同源靜態檔案服務。
 - [x] 建立 World／Room／Player／Character／DiceResult domain models。
 - [x] 建立至 `AWAITING_SPARK` 的 state machine 與 `2d6 + 屬性` deterministic engine。
-- [ ] 完成星火、正式進度／危機套用、回合推進與結局狀態。
+- [x] 完成星火 USE／DECLINE、房主略過等待者與 deterministic 結果重算。
+- [x] 完成正式進度／危機套用、星火增減、Mock 敘事與下一回合推進。
+- [ ] 完成 4／6／8 回合上限、提前完成與結局狀態。
 - [x] 建立 repository 與 storyteller interfaces。
 - [x] 建立 memory repository、mock storyteller 與 API 自動測試。
 - [x] 建立 `FetchGameApi`，將目前 create／join／submit mutation 與 canonical state 改由 API 管理。
@@ -35,7 +37,7 @@
 - [x] Action 使用 player session＋CSRF，前端不可指定任意 `player_id`。
 - [x] Create／world／join／character／start／action／roll mutation 實作 scoped `Idempotency-Key`。
 - [x] 未結算 action 只揭露提交狀態，不揭露其他玩家文字。
-- [x] 建立 `DRAFT → LOBBY → COLLECTING_ACTIONS → AWAITING_HOST → AWAITING_SPARK` 狀態轉移。
+- [x] 建立 `DRAFT → LOBBY → COLLECTING_ACTIONS → AWAITING_HOST → AWAITING_SPARK → RESOLVING → COLLECTING_ACTIONS` 狀態轉移。
 - [x] 世界確認與開始遊戲使用 host session＋CSRF＋version＋idempotency。
 - [x] Lobby 僅允許 3–5 位玩家由房主開始，非房主與人數不足請求會被拒絕。
 - [x] 建立 player-only 角色 mutation 與角色名稱、背景、特質、弱點欄位。
