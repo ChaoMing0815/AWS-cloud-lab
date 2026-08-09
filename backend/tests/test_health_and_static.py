@@ -52,3 +52,23 @@ def test_fastapi_serves_app_shell_for_lobby_deep_link() -> None:
     assert response.status_code == 200
     assert 'id="landingPage"' in response.text
     assert 'id="gamePage"' in response.text
+
+
+def test_fastapi_serves_app_shell_for_play_and_ending_deep_links() -> None:
+    with TestClient(create_app()) as client:
+        play = client.get("/room/ABCD23/play")
+        ending = client.get("/room/ABCD23/ending")
+
+    assert play.status_code == 200
+    assert ending.status_code == 200
+    assert 'id="gamePage"' in play.text
+    assert 'id="endingPanel"' in ending.text
+
+
+def test_unknown_frontend_route_returns_helpful_html_404() -> None:
+    with TestClient(create_app()) as client:
+        response = client.get("/this-route-does-not-exist")
+
+    assert response.status_code == 404
+    assert "找不到此頁面" in response.text
+    assert 'href="/"' in response.text
