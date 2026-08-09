@@ -60,7 +60,7 @@
 
 ## 已知目前缺口
 
-- 正式 Landing／router 與 room-code join 尚未實作。
+- 正式 Landing、room-code join、session continue 與基本 deep routes 已完成。
 - 三個獨立 browser contexts E2E 尚未完成。
 - Polling 離線狀態、session lifecycle、PostgreSQL 與 LLM recovery 尚未完成。
 

@@ -31,7 +31,7 @@
 - [x] 將開發用 `BONUS7` Demo 隔離至 `/demo`；正式 `/` 不自動載入 Demo。
 - [x] 建房時原子性建立 Host session、房主 Player 與 Player session，房主計入 3–5 位玩家。
 - [x] 建立依 room code＋暱稱原子性加入的 API／adapter／UI 與拒絕案例。
-- [ ] 建立有效 session 的「繼續目前遊戲」與 deep-link refresh。
+- [x] 建立有效 session 的「繼續目前遊戲」與 deep-link refresh。
 - [x] 建立 FastAPI skeleton、health endpoint 與同源靜態檔案服務。
 - [x] 建立 World／Room／Player／Character／DiceResult domain models。
 - [x] 建立至 `AWAITING_SPARK` 的 state machine 與 `2d6 + 屬性` deterministic engine。

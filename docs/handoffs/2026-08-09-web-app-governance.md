@@ -30,14 +30,14 @@
 - 進行中房間最後活動後 7 天到期；結局後保留 7 天；房主可提前永久刪除。
 - 世界生成與回合 retry／fallback 沿用正式 Spec 及 approval log，不再重新 grill。
 
-## 下一步：WP-1D session continue
+## WP-1D 已於 2026-08-10 完成
 
 依[入口 Feature Spec](../features/entry-and-room-join.md)執行：
 
-1. 以新 Red 定義 `GET /api/v1/session/current` 的匿名與有效 session summary。
-2. 由 canonical room state 回傳 setup／lobby／play／ending route，不洩漏 token、hash 或其他玩家隱藏 action。
-3. 正式首頁只有在 session 有效時顯示「繼續目前遊戲」；失效 pointer 回首頁並顯示原因。
-4. 保留 `/demo` 隔離並執行完整 regression。
+- `GET /api/v1/session/current`、首頁繼續入口、canonical route mapping 與失效 session 通知已完成。
+- Play／Ending deep link 與 HTML 404 已完成。
+- 最終 regression：Backend `45 passed`、Frontend `56 passed`。
+- 下一步：三個獨立玩家 session 的正式一回合 Browser E2E。
 
 ## 邊界
 

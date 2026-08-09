@@ -21,7 +21,7 @@ python3 -m venv .venv
 
 開啟 `http://127.0.0.1:8000`。目前前端透過 `FetchGameApi` 呼叫 FastAPI；房間 canonical state 由伺服器端 memory repository 管理。新房間依 `DRAFT → LOBBY → COLLECTING_ACTIONS → AWAITING_HOST → AWAITING_SPARK → RESOLVING` 推進，並依規則回到下一回合、進入 `COMPLETION_AVAILABLE` 或完成為 `COMPLETED`。世界確認、開始遊戲、擲骰、回合結算與結局選擇只接受有效房主 session；3–5 位玩家必須全數完成角色與三點配點才能開始。玩家提交隱藏行動與使用屬性，房主收齊後以 `2d6 + 屬性` 產生三段結果；各玩家再選擇使用或保留星火，房主可在全員完成後結算，或明確略過等待者。正式進度、危機、星火增減、4／6／8 回合上限、提前完成與結局均由 deterministic rules 套用；`MockStoryteller` 只依已決定結果產生無費用敘事，不會修改 canonical state。Host／player 使用獨立 `HttpOnly` opaque session，mutation 檢查 CSRF、room version 與 `Idempotency-Key`；角色與 action owner 均由後端 session 決定。同一瀏覽器重新整理可恢復目前房間與玩家。3 秒無重疊 polling 已完成；離線重試與 connection UX 尚未完成。正式 Landing 已支援建房與依 room code 加入；session continue、PostgreSQL 持久化與三個獨立瀏覽器 E2E 仍待完成；目前尚未呼叫 Bedrock。AWS 資料層目前建議 private PostgreSQL，但仍要完成後端 ADR 與講師等價性確認。
 
-根路徑現在顯示正式 Landing，提供建立、加入與次要教學 Demo 入口；`/demo` 使用隔離的 `MockGameApi` 且不保存進度。建立表單已串接正式 API：建房時原子性建立 Host／Player session 與第一位玩家，導向 `/host/setup`。玩家可用六碼 room code＋暱稱加入 Lobby；格式錯誤、不存在、非 Lobby、滿員與重複暱稱均由後端原子性拒絕，`/room/:code/lobby` 可重新整理恢復。session continue 仍待後續切片，見 [Web App User Flow](docs/product/user-flow.md) 與[正式入口 Feature Spec](docs/features/entry-and-room-join.md)。
+根路徑現在顯示正式 Landing，提供建立、加入、有效 session 的「繼續目前遊戲」與次要教學 Demo；`/demo` 使用隔離的 `MockGameApi` 且不保存進度。建立表單會原子性建立 Host／Player session 與第一位玩家；玩家可用六碼 room code＋暱稱加入。後端依 canonical state 將繼續入口導向 setup、lobby、play 或 ending；各 deep link 可重新整理，未知路由提供可回首頁的 404。詳見 [Web App User Flow](docs/product/user-flow.md) 與[正式入口 Feature Spec](docs/features/entry-and-room-join.md)。
 
 Node.js 20 以上可執行目前零第三方相依的測試：
 
