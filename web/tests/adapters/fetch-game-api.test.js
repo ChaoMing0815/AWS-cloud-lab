@@ -76,6 +76,27 @@ test("FetchGameApi 建立房間時送出房主暱稱與 Idempotency-Key", async 
   assert.equal(request.options.body, JSON.stringify({ nickname: "昭銘" }));
 });
 
+test("FetchGameApi 不需目前房間即可用房號加入", async () => {
+  let request;
+  const api = new FetchGameApi({
+    idempotencyKeyFactory: () => "join-by-code-key",
+    fetchImpl: async (url, options) => {
+      request = { url, options };
+      return jsonResponse({ roomCode: "ABCD23", version: 4, players: [] }, 201);
+    },
+  });
+
+  const room = await api.joinRoomByCode({ roomCode: "ABCD23", nickname: "小明" });
+
+  assert.equal(request.url, "/api/v1/rooms:join");
+  assert.equal(request.options.headers["Idempotency-Key"], "join-by-code-key");
+  assert.deepEqual(JSON.parse(request.options.body), {
+    room_code: "ABCD23",
+    nickname: "小明",
+  });
+  assert.equal(room.roomCode, "ABCD23");
+});
+
 test("Submit action 傳送文字與行動方式並帶 player session 的 CSRF token", async () => {
   const requests = [];
   const room = {

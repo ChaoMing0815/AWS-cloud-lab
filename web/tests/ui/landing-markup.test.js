@@ -9,6 +9,8 @@ test("無 session 的根頁提供正式建立、加入與次要 Demo 入口，�
   assert.match(html, /id=["']landingPage["']/, "缺少正式 Landing page");
   assert.match(html, /id=["']createGameForm["']/, "缺少建立遊戲入口");
   assert.match(html, /id=["']joinGameForm["']/, "缺少加入遊戲入口");
+  assert.match(html, /id=["']joinGameButton["']/, "缺少加入送出按鈕");
+  assert.match(html, /id=["']joinGameError["']/, "缺少加入錯誤訊息區");
   assert.match(html, /href=["']\/demo["']/, "缺少次要教學 Demo 入口");
   assert.doesNotMatch(html, /BONUS7/, "正式根頁不可硬編碼 Demo 房間");
 });
