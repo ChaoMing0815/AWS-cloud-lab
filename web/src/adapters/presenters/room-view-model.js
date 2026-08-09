@@ -19,6 +19,8 @@ export function toRoomViewModel(room) {
           ? "所有玩家已提交，等待房主擲骰。"
           : room.status === "AWAITING_SPARK"
             ? "骰點已揭曉，等待玩家決定是否使用星火。"
+            : room.status === "RESOLVING"
+              ? "星火決策已完成，等待房主結算回合。"
           : `還有 ${playerTotal - completed} 位玩家尚未提交。`,
     world: room.world,
     currentPlayerId: room.session?.playerId ?? null,
@@ -44,6 +46,18 @@ export function toRoomViewModel(room) {
     canSubmitAction: room.session?.principalType === "player"
       && ["COLLECTING_ACTIONS", "AWAITING_HOST"].includes(room.status),
     canRoll: Boolean(room.session?.isHost) && room.status === "AWAITING_HOST",
+    canResolve: Boolean(room.session?.isHost)
+      && ["AWAITING_SPARK", "RESOLVING"].includes(room.status),
+    currentDiceResult: (room.diceResults ?? []).find(
+      (result) => result.playerId === room.session?.playerId,
+    ) ?? null,
+    canDecideSpark: room.session?.principalType === "player"
+      && room.status === "AWAITING_SPARK"
+      && (room.diceResults ?? []).some(
+        (result) => result.playerId === room.session?.playerId && result.sparkDecision === "PENDING",
+      ),
+    progressPoints: room.progressPoints ?? 0,
+    dangerPoints: room.dangerPoints ?? 0,
     pendingProgress: room.pendingProgress ?? 0,
     pendingDanger: room.pendingDanger ?? 0,
     diceResults: (room.diceResults ?? []).map((result) => ({

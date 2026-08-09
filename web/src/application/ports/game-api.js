@@ -30,4 +30,12 @@ export class GameApi {
   async rollRound() {
     throw new Error("GameApi.rollRound 尚未實作");
   }
+
+  async decideSpark(_command) {
+    throw new Error("GameApi.decideSpark 尚未實作");
+  }
+
+  async resolveRound(_command) {
+    throw new Error("GameApi.resolveRound 尚未實作");
+  }
 }

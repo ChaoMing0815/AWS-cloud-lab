@@ -63,6 +63,7 @@ class DiceResult:
     progress_delta: int
     danger_delta: int
     spark_used: int = 0
+    spark_decision: str = "PENDING"
 
 
 @dataclass(slots=True)

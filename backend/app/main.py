@@ -26,6 +26,7 @@ def create_app(dice_roller=None) -> FastAPI:
         HmacSessionTokenFactory(),
         dice_roller or SecureDiceRoller(),
     )
+    application.state.room_service = service
 
     @application.middleware("http")
     async def security_headers(request: Request, call_next):

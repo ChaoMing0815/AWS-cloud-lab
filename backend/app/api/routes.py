@@ -3,7 +3,9 @@ from fastapi import APIRouter, Cookie, Header, Response, status
 from app.api.schemas import (
     ConfirmWorldRequest,
     JoinRoomRequest,
+    ResolveRoundRequest,
     RollRoundRequest,
+    SparkDecisionRequest,
     StartGameRequest,
     SubmitActionRequest,
     UpdateCharacterRequest,
@@ -32,6 +34,48 @@ def create_api_router(service: RoomService) -> APIRouter:
     ) -> dict:
         room = service.load_current(room_id)
         _set_local_room_cookie(response, room.id)
+        return room_response(room, service.session_context(room, host_token, player_token))
+
+    @router.put("/rooms/{room_id}/rounds/{round_number}/spark")
+    def decide_spark(
+        room_id: str,
+        round_number: int,
+        request: SparkDecisionRequest,
+        idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+        csrf_token: str | None = Header(default=None, alias="X-CSRF-Token"),
+        player_token: str | None = Cookie(default=None, alias=PLAYER_SESSION_COOKIE),
+        host_token: str | None = Cookie(default=None, alias=HOST_SESSION_COOKIE),
+    ) -> dict:
+        room = service.decide_spark(
+            room_id,
+            round_number,
+            request.decision,
+            request.room_version,
+            player_token or "",
+            csrf_token or "",
+            _required_idempotency_key(idempotency_key),
+        )
+        return room_response(room, service.session_context(room, host_token, player_token))
+
+    @router.post("/rooms/{room_id}/rounds/{round_number}:resolve")
+    def resolve_round(
+        room_id: str,
+        round_number: int,
+        request: ResolveRoundRequest,
+        idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+        csrf_token: str | None = Header(default=None, alias="X-CSRF-Token"),
+        host_token: str | None = Cookie(default=None, alias=HOST_SESSION_COOKIE),
+        player_token: str | None = Cookie(default=None, alias=PLAYER_SESSION_COOKIE),
+    ) -> dict:
+        room = service.resolve_round(
+            room_id,
+            round_number,
+            request.skip_pending_spark,
+            request.room_version,
+            host_token or "",
+            csrf_token or "",
+            _required_idempotency_key(idempotency_key),
+        )
         return room_response(room, service.session_context(room, host_token, player_token))
 
     @router.post("/rooms", status_code=status.HTTP_201_CREATED)

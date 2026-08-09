@@ -112,6 +112,37 @@ export class FetchGameApi extends GameApi {
     return this.room;
   }
 
+  async decideSpark({ decision }) {
+    this.requireRoom();
+    this.room = await this.request(
+      `/rooms/${this.room.id}/rounds/${this.room.round}/spark`,
+      {
+        method: "PUT",
+        idempotent: true,
+        csrfProtected: true,
+        body: { decision, room_version: this.room.version },
+      },
+    );
+    return this.room;
+  }
+
+  async resolveRound({ skipPendingSpark = false } = {}) {
+    this.requireRoom();
+    this.room = await this.request(
+      `/rooms/${this.room.id}/rounds/${this.room.round}:resolve`,
+      {
+        method: "POST",
+        idempotent: true,
+        hostCsrfProtected: true,
+        body: {
+          skip_pending_spark: Boolean(skipPendingSpark),
+          room_version: this.room.version,
+        },
+      },
+    );
+    return this.room;
+  }
+
   requireRoom() {
     if (!this.room) {
       throw new ApiError("ROOM_NOT_LOADED", "房間尚未載入。", 409);

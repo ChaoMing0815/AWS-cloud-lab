@@ -6,7 +6,7 @@ import string
 from uuid import uuid4
 
 from app.application.ports import DiceRoller, IdempotencyStore, RoomRepository, SessionTokenFactory, Storyteller
-from app.application.rules import classify_result
+from app.application.rules import apply_spark, classify_result
 from app.application.security import hash_session_token
 from app.domain.errors import DomainError
 from app.domain.models import Character, DiceResult, Player, Room, StoryEntry, World
@@ -434,9 +434,14 @@ class RoomService:
                         result=outcome.result,
                         progress_delta=outcome.progress_delta,
                         danger_delta=outcome.danger_delta,
+                        spark_decision=("DECLINE" if player.character.spark == 0 else "PENDING"),
                     )
                 )
-            current.status = "AWAITING_SPARK"
+            current.status = (
+                "RESOLVING"
+                if all(result.spark_decision != "PENDING" for result in current.dice_results)
+                else "AWAITING_SPARK"
+            )
             current.version += 1
             self.repository.save(current)
             return current
@@ -445,6 +450,148 @@ class RoomService:
             f"roll-round:{room_id}:{round_number}",
             idempotency_key,
             {"round_number": round_number, "room_version": expected_version},
+            operation,
+        )
+
+    def decide_spark(
+        self,
+        room_id: str,
+        round_number: int,
+        decision: str,
+        expected_version: int,
+        player_token: str,
+        csrf_token: str,
+        idempotency_key: str,
+    ) -> Room:
+        room = self._required_room(room_id)
+        player = self._authorize_player(room, player_token, csrf_token)
+
+        def operation() -> Room:
+            current = self._required_room(room_id)
+            self._check_version(current, expected_version)
+            if current.status != "AWAITING_SPARK":
+                raise DomainError("SPARK_NOT_ALLOWED", "目前不能提交星火決策。", 409)
+            if round_number != current.round_number:
+                raise DomainError("ROUND_MISMATCH", "回合已更新，請重新載入。", 409)
+            result = next(
+                (
+                    item
+                    for item in current.dice_results
+                    if item.round_number == round_number and item.player_id == player.id
+                ),
+                None,
+            )
+            if result is None:
+                raise DomainError("DICE_RESULT_NOT_FOUND", "找不到本回合的骰點結果。", 404)
+            if result.spark_decision != "PENDING":
+                raise DomainError("SPARK_ALREADY_DECIDED", "本回合已完成星火決策。", 409)
+            current_player = next(item for item in current.players if item.id == player.id)
+            if current_player.character is None:
+                raise DomainError("CHARACTER_REQUIRED", "找不到可使用星火的角色。", 409)
+            if decision == "USE" and current_player.character.spark < 1:
+                raise DomainError("SPARK_UNAVAILABLE", "角色目前沒有可用星火。", 409)
+
+            result.spark_decision = decision
+            result.spark_used = 1 if decision == "USE" else 0
+            final_total, outcome = apply_spark(result.base_total, decision == "USE")
+            result.final_total = final_total
+            result.result = outcome.result
+            result.progress_delta = outcome.progress_delta
+            result.danger_delta = outcome.danger_delta
+            current.version += 1
+            if all(
+                item.spark_decision != "PENDING"
+                for item in current.dice_results
+                if item.round_number == round_number
+            ):
+                current.status = "RESOLVING"
+            self.repository.save(current)
+            return current
+
+        return self.idempotency.execute(
+            f"decide-spark:{room_id}:{round_number}:{player.id}",
+            idempotency_key,
+            {
+                "round_number": round_number,
+                "decision": decision,
+                "room_version": expected_version,
+                "player_id": player.id,
+            },
+            operation,
+        )
+
+    def resolve_round(
+        self,
+        room_id: str,
+        round_number: int,
+        skip_pending_spark: bool,
+        expected_version: int,
+        host_token: str,
+        csrf_token: str,
+        idempotency_key: str,
+    ) -> Room:
+        room = self._required_room(room_id)
+        self._authorize_host(room, host_token, csrf_token)
+
+        def operation() -> Room:
+            current = self._required_room(room_id)
+            self._check_version(current, expected_version)
+            if current.status not in {"AWAITING_SPARK", "RESOLVING"}:
+                raise DomainError("RESOLVE_NOT_ALLOWED", "目前不能結算回合。", 409)
+            if round_number != current.round_number:
+                raise DomainError("ROUND_MISMATCH", "回合已更新，請重新載入。", 409)
+            results = [
+                result
+                for result in current.dice_results
+                if result.round_number == round_number
+            ]
+            pending = [result for result in results if result.spark_decision == "PENDING"]
+            if pending and not skip_pending_spark:
+                raise DomainError(
+                    "SPARK_DECISIONS_PENDING",
+                    "仍有玩家尚未完成星火決策。",
+                    409,
+                )
+            for result in pending:
+                result.spark_decision = "DECLINE"
+
+            current.status = "RESOLVING"
+            current.progress_points += sum(result.progress_delta for result in results)
+            current.danger_points += sum(result.danger_delta for result in results)
+            for result in results:
+                player = next(item for item in current.players if item.id == result.player_id)
+                if player.character is None:
+                    raise DomainError("CHARACTER_REQUIRED", "找不到結算所需角色。", 409)
+                player.character.spark -= result.spark_used
+                if result.result == "FAILURE":
+                    player.character.spark = min(3, player.character.spark + 1)
+
+            current.entries.append(
+                StoryEntry(
+                    id=_new_id(),
+                    type="narrator",
+                    title="故事主持人",
+                    round_number=round_number,
+                    text=self.storyteller.resolve_round(current),
+                )
+            )
+            for player in current.players:
+                player.action = ""
+                player.action_approach = ""
+            current.round_number += 1
+            current.status = "COLLECTING_ACTIONS"
+            current.version += 1
+            self.repository.save(current)
+            return current
+
+        return self.idempotency.execute(
+            f"resolve-round:{room_id}:{round_number}",
+            idempotency_key,
+            {
+                "round_number": round_number,
+                "skip_pending_spark": skip_pending_spark,
+                "room_version": expected_version,
+            },
             operation,
         )
 

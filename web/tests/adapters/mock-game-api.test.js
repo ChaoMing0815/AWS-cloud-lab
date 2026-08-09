@@ -111,3 +111,30 @@ test("角色配點完成前不能開始遊戲", async () => {
   assert.equal(ready.players[2].characterReady, true);
   assert.equal(ready.players[2].character.spark, 1);
 });
+
+test("Mock adapter 可完成星火與一回合結算", async () => {
+  const api = new MockGameApi();
+  await createLobby(api);
+  for (const [nickname, role] of [["甲", "企劃"], ["乙", "工程師"], ["丙", "總務"]]) {
+    await api.joinRoom({ nickname, role });
+    await api.updateCharacter({ ...character, name: `角色${nickname}` });
+  }
+  await api.startGame();
+  api.room.players.forEach((player, index) => {
+    player.action = `行動 ${index + 1}`;
+    player.actionApproach = ["courage", "insight", "bond"][index];
+  });
+  api.room.status = "AWAITING_HOST";
+
+  const rolled = await api.rollRound();
+  assert.equal(rolled.status, "AWAITING_SPARK");
+  const decided = await api.decideSpark({ decision: "USE" });
+  assert.equal(decided.diceResults[2].sparkDecision, "USE");
+  const resolved = await api.resolveRound({ skipPendingSpark: true });
+
+  assert.equal(resolved.round, 2);
+  assert.equal(resolved.status, "COLLECTING_ACTIONS");
+  assert.equal(resolved.progressPoints > 0, true);
+  assert.equal(resolved.entries.at(-1).type, "narrator");
+  assert.equal(resolved.players.every((player) => player.action === ""), true);
+});

@@ -283,6 +283,7 @@ export class MockGameApi extends GameApi {
         progressDelta: result === "SUCCESS" ? 2 : result === "PARTIAL_SUCCESS" ? 1 : 0,
         dangerDelta: result === "FAILURE" ? 2 : result === "PARTIAL_SUCCESS" ? 1 : 0,
         sparkUsed: 0,
+        sparkDecision: (player.character?.spark ?? 1) > 0 ? "PENDING" : "DECLINE",
       };
     });
     this.room.pendingProgress = this.room.diceResults.reduce(
@@ -291,7 +292,94 @@ export class MockGameApi extends GameApi {
     this.room.pendingDanger = this.room.diceResults.reduce(
       (sum, result) => sum + result.dangerDelta, 0,
     );
-    this.room.status = "AWAITING_SPARK";
+    this.room.status = this.room.diceResults.every(({ sparkDecision }) => sparkDecision !== "PENDING")
+      ? "RESOLVING"
+      : "AWAITING_SPARK";
+    this.room.version += 1;
+    return clone(this.room);
+  }
+
+  async decideSpark({ decision }) {
+    if (this.room.status !== "AWAITING_SPARK") {
+      throw new ApiError("SPARK_NOT_ALLOWED", "目前不能提交星火決策。", 409);
+    }
+    const player = this.room.players.find(({ id }) => id === this.room.session?.playerId);
+    const result = this.room.diceResults.find(({ playerId }) => playerId === player?.id);
+    if (!player || !result) {
+      throw new ApiError("PLAYER_SESSION_REQUIRED", "需要有效的玩家工作階段。", 401);
+    }
+    if (result.sparkDecision !== "PENDING") {
+      throw new ApiError("SPARK_ALREADY_DECIDED", "本回合已完成星火決策。", 409);
+    }
+    const spark = player.character?.spark ?? 1;
+    if (decision === "USE" && spark < 1) {
+      throw new ApiError("SPARK_UNAVAILABLE", "角色目前沒有可用星火。", 409);
+    }
+    result.sparkDecision = decision;
+    result.sparkUsed = decision === "USE" ? 1 : 0;
+    result.finalTotal = result.baseTotal + result.sparkUsed;
+    result.result = result.finalTotal >= 10
+      ? "SUCCESS"
+      : result.finalTotal >= 7 ? "PARTIAL_SUCCESS" : "FAILURE";
+    result.progressDelta = result.result === "SUCCESS" ? 2 : result.result === "PARTIAL_SUCCESS" ? 1 : 0;
+    result.dangerDelta = result.result === "FAILURE" ? 2 : result.result === "PARTIAL_SUCCESS" ? 1 : 0;
+    this.room.pendingProgress = this.room.diceResults.reduce(
+      (sum, item) => sum + item.progressDelta, 0,
+    );
+    this.room.pendingDanger = this.room.diceResults.reduce(
+      (sum, item) => sum + item.dangerDelta, 0,
+    );
+    if (this.room.diceResults.every(({ sparkDecision }) => sparkDecision !== "PENDING")) {
+      this.room.status = "RESOLVING";
+    }
+    this.room.version += 1;
+    return clone(this.room);
+  }
+
+  async resolveRound({ skipPendingSpark = false } = {}) {
+    if (!this.room.session?.isHost) {
+      throw new ApiError("HOST_SESSION_REQUIRED", "需要有效的房主工作階段。", 401);
+    }
+    if (!["AWAITING_SPARK", "RESOLVING"].includes(this.room.status)) {
+      throw new ApiError("RESOLVE_NOT_ALLOWED", "目前不能結算回合。", 409);
+    }
+    const pending = this.room.diceResults.filter(({ sparkDecision }) => sparkDecision === "PENDING");
+    if (pending.length && !skipPendingSpark) {
+      throw new ApiError("SPARK_DECISIONS_PENDING", "仍有玩家尚未完成星火決策。", 409);
+    }
+    pending.forEach((result) => { result.sparkDecision = "DECLINE"; });
+    this.room.progressPoints += this.room.diceResults.reduce(
+      (sum, result) => sum + result.progressDelta, 0,
+    );
+    this.room.dangerPoints += this.room.diceResults.reduce(
+      (sum, result) => sum + result.dangerDelta, 0,
+    );
+    this.room.players.forEach((player) => {
+      const result = this.room.diceResults.find(({ playerId }) => playerId === player.id);
+      if (player.character && result) {
+        player.character.spark -= result.sparkUsed;
+        if (result.result === "FAILURE") {
+          player.character.spark = Math.min(3, player.character.spark + 1);
+        }
+      }
+      player.action = "";
+      player.actionApproach = "";
+    });
+    const counts = this.room.diceResults.reduce(
+      (summary, result) => ({ ...summary, [result.result]: summary[result.result] + 1 }),
+      { SUCCESS: 0, PARTIAL_SUCCESS: 0, FAILURE: 0 },
+    );
+    this.room.entries.push({
+      id: randomId(),
+      type: "narrator",
+      title: "故事主持人",
+      round: this.room.round,
+      text: `Mock 結算：${counts.SUCCESS} 次成功、${counts.PARTIAL_SUCCESS} 次部分成功、${counts.FAILURE} 次失敗。`,
+    });
+    this.room.pendingProgress = 0;
+    this.room.pendingDanger = 0;
+    this.room.round += 1;
+    this.room.status = "COLLECTING_ACTIONS";
     this.room.version += 1;
     return clone(this.room);
   }

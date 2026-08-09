@@ -131,6 +131,49 @@ test("房主擲骰使用 host CSRF token 與目前回合版本", async () => {
   assert.deepEqual(JSON.parse(request.options.body), { room_version: 9 });
 });
 
+test("星火決策與房主結算使用各自 CSRF 邊界", async () => {
+  const requests = [];
+  const room = {
+    id: "room-1",
+    version: 12,
+    round: 3,
+    status: "AWAITING_SPARK",
+    players: [],
+    session: {
+      principalType: "player",
+      playerId: "player-1",
+      csrfToken: "player-spark-csrf",
+      isHost: true,
+      hostCsrfToken: "host-resolve-csrf",
+    },
+  };
+  const api = new FetchGameApi({
+    idempotencyKeyFactory: () => "round-mutation-key",
+    fetchImpl: async (url, options) => {
+      requests.push({ url, options });
+      return jsonResponse(room);
+    },
+  });
+  await api.loadRoom();
+  await api.decideSpark({ decision: "USE" });
+  await api.resolveRound({ skipPendingSpark: true });
+
+  const sparkRequest = requests[1];
+  const resolveRequest = requests[2];
+  assert.equal(sparkRequest.url, "/api/v1/rooms/room-1/rounds/3/spark");
+  assert.equal(sparkRequest.options.headers["X-CSRF-Token"], "player-spark-csrf");
+  assert.deepEqual(JSON.parse(sparkRequest.options.body), {
+    decision: "USE",
+    room_version: 12,
+  });
+  assert.equal(resolveRequest.url, "/api/v1/rooms/room-1/rounds/3:resolve");
+  assert.equal(resolveRequest.options.headers["X-CSRF-Token"], "host-resolve-csrf");
+  assert.deepEqual(JSON.parse(resolveRequest.options.body), {
+    skip_pending_spark: true,
+    room_version: 12,
+  });
+});
+
 test("房主確認世界與開始遊戲使用 host CSRF token", async () => {
   const requests = [];
   const room = {

@@ -64,3 +64,13 @@ class SubmitActionRequest(BaseModel):
 
 class RollRoundRequest(BaseModel):
     room_version: int = Field(ge=1)
+
+
+class SparkDecisionRequest(BaseModel):
+    decision: Literal["USE", "DECLINE"]
+    room_version: int = Field(ge=1)
+
+
+class ResolveRoundRequest(BaseModel):
+    skip_pending_spark: bool = False
+    room_version: int = Field(ge=1)

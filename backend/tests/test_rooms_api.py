@@ -1,5 +1,7 @@
 from fastapi.testclient import TestClient
 
+from app.application.security import hash_session_token
+from app.domain.models import Character, DiceResult, Player, Room, World
 from app.main import create_app
 
 
@@ -596,6 +598,137 @@ def test_host_rolls_fixed_dice_and_reveals_results() -> None:
             },
         )
 
+        rolled_room = rolled.json()
+        resolve_url = f"/api/v1/rooms/{room['id']}/rounds/1:resolve"
+        pending_resolve = host.post(
+            resolve_url,
+            json={
+                "skip_pending_spark": False,
+                "room_version": rolled_room["version"],
+            },
+            headers={
+                **headers("resolve-pending"),
+                "X-CSRF-Token": room["session"]["hostCsrfToken"],
+            },
+        )
+        spark_url = f"/api/v1/rooms/{room['id']}/rounds/1/spark"
+        bad_csrf = first_player.put(
+            spark_url,
+            json={"decision": "USE", "room_version": rolled_room["version"]},
+            headers={**headers("spark-bad-csrf"), "X-CSRF-Token": "wrong-token"},
+        )
+        stale_version = first_player.put(
+            spark_url,
+            json={"decision": "USE", "room_version": rolled_room["version"] + 99},
+            headers={
+                **headers("spark-stale-version"),
+                "X-CSRF-Token": joins[0]["session"]["csrfToken"],
+            },
+        )
+        first_decision = first_player.put(
+            spark_url,
+            json={"decision": "USE", "room_version": rolled_room["version"]},
+            headers={
+                **headers("spark-first-use"),
+                "X-CSRF-Token": joins[0]["session"]["csrfToken"],
+            },
+        )
+        first_replay = first_player.put(
+            spark_url,
+            json={"decision": "USE", "room_version": rolled_room["version"]},
+            headers={
+                **headers("spark-first-use"),
+                "X-CSRF-Token": joins[0]["session"]["csrfToken"],
+            },
+        )
+        repeated_decision = first_player.put(
+            spark_url,
+            json={"decision": "DECLINE", "room_version": first_decision.json()["version"]},
+            headers={
+                **headers("spark-first-again"),
+                "X-CSRF-Token": joins[0]["session"]["csrfToken"],
+            },
+        )
+        second_decision = second_player.put(
+            spark_url,
+            json={
+                "decision": "DECLINE",
+                "room_version": first_decision.json()["version"],
+            },
+            headers={
+                **headers("spark-second-decline"),
+                "X-CSRF-Token": joins[1]["session"]["csrfToken"],
+            },
+        )
+
+        internal_room = app.state.room_service.repository.get(room["id"])
+        assert internal_room is not None
+        internal_third = next(player for player in internal_room.players if player.name == "丙")
+        assert internal_third.character is not None
+        internal_third.character.spark = 0
+        app.state.room_service.repository.save(internal_room)
+        no_spark = third_player.put(
+            spark_url,
+            json={
+                "decision": "USE",
+                "room_version": second_decision.json()["version"],
+            },
+            headers={
+                **headers("spark-third-unavailable"),
+                "X-CSRF-Token": joins[2]["session"]["csrfToken"],
+            },
+        )
+        restored_room = app.state.room_service.repository.get(room["id"])
+        assert restored_room is not None
+        restored_third = next(player for player in restored_room.players if player.name == "丙")
+        assert restored_third.character is not None
+        restored_third.character.spark = 1
+        app.state.room_service.repository.save(restored_room)
+        third_decision = third_player.put(
+            spark_url,
+            json={
+                "decision": "USE",
+                "room_version": second_decision.json()["version"],
+            },
+            headers={
+                **headers("spark-third-use"),
+                "X-CSRF-Token": joins[2]["session"]["csrfToken"],
+            },
+        )
+        non_host_resolve = first_player.post(
+            resolve_url,
+            json={
+                "skip_pending_spark": False,
+                "room_version": third_decision.json()["version"],
+            },
+            headers={
+                **headers("resolve-not-host"),
+                "X-CSRF-Token": joins[0]["session"]["csrfToken"],
+            },
+        )
+        resolved = host.post(
+            resolve_url,
+            json={
+                "skip_pending_spark": False,
+                "room_version": third_decision.json()["version"],
+            },
+            headers={
+                **headers("resolve-valid"),
+                "X-CSRF-Token": room["session"]["hostCsrfToken"],
+            },
+        )
+        resolve_replay = host.post(
+            resolve_url,
+            json={
+                "skip_pending_spark": False,
+                "room_version": third_decision.json()["version"],
+            },
+            headers={
+                **headers("resolve-valid"),
+                "X-CSRF-Token": room["session"]["hostCsrfToken"],
+            },
+        )
+
     assert unauthorized.status_code == 401
     result = rolled.json()
     assert rolled.status_code == 200
@@ -613,3 +746,105 @@ def test_host_rolls_fixed_dice_and_reveals_results() -> None:
     assert "我正面要求查看紀錄。" in rolled.text
     assert replay.json()["diceResults"] == result["diceResults"]
     assert replay.json()["version"] == result["version"]
+    assert pending_resolve.status_code == 409
+    assert pending_resolve.json()["error"]["code"] == "SPARK_DECISIONS_PENDING"
+    assert bad_csrf.status_code == 403
+    assert stale_version.status_code == 409
+    assert stale_version.json()["error"]["code"] == "VERSION_CONFLICT"
+    assert first_decision.status_code == 200
+    assert first_decision.json()["diceResults"][0]["sparkDecision"] == "USE"
+    assert first_decision.json()["diceResults"][0]["finalTotal"] == 15
+    assert first_replay.json()["version"] == first_decision.json()["version"]
+    assert repeated_decision.status_code == 409
+    assert repeated_decision.json()["error"]["code"] == "SPARK_ALREADY_DECIDED"
+    assert no_spark.status_code == 409
+    assert no_spark.json()["error"]["code"] == "SPARK_UNAVAILABLE"
+    assert third_decision.json()["status"] == "RESOLVING"
+    assert non_host_resolve.status_code == 401
+    resolved_room = resolved.json()
+    assert resolved.status_code == 200
+    assert resolved_room["round"] == 2
+    assert resolved_room["status"] == "COLLECTING_ACTIONS"
+    assert resolved_room["progressPoints"] == 3
+    assert resolved_room["dangerPoints"] == 3
+    assert resolved_room["pendingProgress"] == 0
+    assert resolved_room["pendingDanger"] == 0
+    assert all(not player["hasSubmitted"] for player in resolved_room["players"])
+    assert [player["character"]["spark"] for player in resolved_room["players"]] == [0, 1, 1]
+    assert resolved_room["diceResults"][0]["sparkUsed"] == 1
+    assert "1 次成功、1 次部分成功與 1 次失敗" in resolved_room["entries"][-1]["text"]
+    assert resolve_replay.json()["version"] == resolved_room["version"]
+    assert resolve_replay.json()["entries"] == resolved_room["entries"]
+
+
+def test_host_can_explicitly_skip_pending_spark_decisions() -> None:
+    app = create_app()
+    service = app.state.room_service
+    room = Room(
+        id="skip-pending-room",
+        room_code="SKIP01",
+        status="AWAITING_SPARK",
+        version=7,
+        round_number=1,
+        world=World(
+            name="測試世界",
+            story_title="測試世界",
+            premise="驗證房主略過未回應玩家。",
+            objective="完成回合結算。",
+        ),
+        host_session_hash=hash_session_token("host-token"),
+        host_csrf_token="host-csrf",
+        players=[
+            Player(
+                id="player-1",
+                name="甲",
+                role="測試者",
+                action="我先觀察現場。",
+                action_approach="insight",
+                character=Character(
+                    name="角色甲",
+                    background="測試背景",
+                    trait="謹慎",
+                    weakness="猶豫",
+                    courage=1,
+                    insight=2,
+                    bond=0,
+                    spark=1,
+                ),
+            )
+        ],
+        dice_results=[
+            DiceResult(
+                player_id="player-1",
+                round_number=1,
+                d6_1=2,
+                d6_2=2,
+                approach="insight",
+                attribute_value=2,
+                base_total=6,
+                final_total=6,
+                result="FAILURE",
+                progress_delta=0,
+                danger_delta=2,
+            )
+        ],
+    )
+    service.repository.save(room)
+
+    resolved = service.resolve_round(
+        room_id=room.id,
+        round_number=1,
+        skip_pending_spark=True,
+        expected_version=room.version,
+        host_token="host-token",
+        csrf_token="host-csrf",
+        idempotency_key="skip-pending-resolve",
+    )
+
+    assert resolved.dice_results[0].spark_decision == "DECLINE"
+    assert resolved.danger_points == 2
+    assert resolved.players[0].character is not None
+    assert resolved.players[0].character.spark == 2
+    assert resolved.players[0].action == ""
+    assert resolved.round_number == 2
+    assert resolved.status == "COLLECTING_ACTIONS"

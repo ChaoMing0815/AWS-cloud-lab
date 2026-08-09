@@ -3,6 +3,10 @@ from app.domain.models import Room
 
 def room_response(room: Room, session: dict) -> dict:
     current_player_id = session.get("playerId")
+    latest_dice_round = max(
+        (result.round_number for result in room.dice_results),
+        default=room.round_number,
+    )
     return {
         "id": room.id,
         "roomCode": room.room_code,
@@ -59,7 +63,7 @@ def room_response(room: Room, session: dict) -> dict:
             if (
                 entry.type != "action"
                 or entry.round_number < room.round_number
-                or room.status == "AWAITING_SPARK"
+                or room.status in {"AWAITING_SPARK", "RESOLVING"}
             )
         ],
         "progressPoints": room.progress_points,
@@ -87,9 +91,10 @@ def room_response(room: Room, session: dict) -> dict:
                 "progressDelta": result.progress_delta,
                 "dangerDelta": result.danger_delta,
                 "sparkUsed": result.spark_used,
+                "sparkDecision": result.spark_decision,
             }
             for result in room.dice_results
-            if result.round_number == room.round_number
+            if result.round_number == latest_dice_round
         ],
         "session": session,
     }

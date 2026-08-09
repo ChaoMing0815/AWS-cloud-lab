@@ -20,6 +20,8 @@ export class GamePage {
     updateCharacter,
     submitAction,
     rollRound,
+    decideSpark,
+    resolveRound,
     connectionLabel,
     persistenceLabel,
   }) {
@@ -32,6 +34,8 @@ export class GamePage {
       updateCharacter,
       submitAction,
       rollRound,
+      decideSpark,
+      resolveRound,
     };
     this.connectionLabel = connectionLabel;
     this.persistenceLabel = persistenceLabel;
@@ -55,6 +59,10 @@ export class GamePage {
     byId("toneInput").addEventListener("change", () => this.renderCustomTone());
     byId("actionForm").addEventListener("submit", (event) => this.handleAction(event));
     byId("rollRoundButton").addEventListener("click", () => this.handleRollRound());
+    byId("useSparkButton").addEventListener("click", () => this.handleSpark("USE"));
+    byId("declineSparkButton").addEventListener("click", () => this.handleSpark("DECLINE"));
+    byId("resolveRoundButton").addEventListener("click", () => this.handleResolve(false));
+    byId("skipAndResolveButton").addEventListener("click", () => this.handleResolve(true));
     await this.run(() => this.useCases.loadRoom.execute());
   }
 
@@ -130,6 +138,18 @@ export class GamePage {
     await this.run(() => this.useCases.rollRound.execute(), "骰點已揭曉，等待星火結算。");
   }
 
+  async handleSpark(decision) {
+    const message = decision === "USE" ? "已使用 1 點星火。" : "已保留星火。";
+    await this.run(() => this.useCases.decideSpark.execute({ decision }), message);
+  }
+
+  async handleResolve(skipPendingSpark) {
+    await this.run(
+      () => this.useCases.resolveRound.execute({ skipPendingSpark }),
+      "本回合已結算，進入下一回合。",
+    );
+  }
+
   async run(operation, successMessage = "") {
     this.setBusy(true);
     this.showFeedback("");
@@ -148,7 +168,7 @@ export class GamePage {
   }
 
   setBusy(busy) {
-    document.querySelectorAll("button[type='submit'], #newRoomButton, #startGameButton, #rollRoundButton").forEach((button) => {
+    document.querySelectorAll("button[type='submit'], #newRoomButton, #startGameButton, #rollRoundButton, #useSparkButton, #declineSparkButton, #resolveRoundButton, #skipAndResolveButton").forEach((button) => {
       button.disabled = busy;
     });
   }
@@ -173,6 +193,8 @@ export class GamePage {
     byId("worldPremise").textContent = view.world.premise;
     byId("storyTitle").textContent = view.world.storyTitle;
     byId("objectiveText").textContent = view.world.objective;
+    byId("officialProgress").textContent = String(view.progressPoints);
+    byId("officialDanger").textContent = String(view.dangerPoints);
     this.renderHostControls(view);
     this.renderPlayers(view.players, view.currentPlayerId, view.canSubmitAction, view.status);
     this.renderEntries(view.entries);
@@ -187,6 +209,14 @@ export class GamePage {
     byId("startGameButton").disabled = !view.canStart;
     byId("characterForm").hidden = !view.canEditCharacter;
     byId("roundHostControls").hidden = !view.canRoll;
+    byId("sparkControls").hidden = !view.canDecideSpark;
+    byId("resolveRoundControls").hidden = !view.canResolve;
+    if (view.currentDiceResult) {
+      const improves = view.currentDiceResult.baseTotal === 6 || view.currentDiceResult.baseTotal === 9;
+      byId("sparkHint").textContent = improves
+        ? "使用星火可讓本次結果提升一級。"
+        : "使用星火會讓總值 +1，但目前不會提升結果級別。";
+    }
     byId("lobbyReadyText").textContent = view.players.length < 3
       ? `還需要 ${3 - view.players.length} 位玩家；目前 ${view.readyTotal}/${view.players.length} 位完成角色。`
       : `目前 ${view.readyTotal}/${view.players.length} 位完成角色。全員完成後即可開始。`;
@@ -280,6 +310,7 @@ export class GamePage {
         element("strong", { text: result.playerName }),
         element("span", { text: `${result.dice.join(" + ")} + ${approaches[result.approach]} ${result.attributeValue} = ${result.finalTotal}` }),
         element("span", { text: `${labels[result.result]}｜進度 +${result.progressDelta}・危機 +${result.dangerDelta}` }),
+        element("span", { text: `星火：${result.sparkDecision === "PENDING" ? "等待決策" : result.sparkDecision === "USE" ? "已使用" : "已保留"}` }),
       );
       return row;
     });

@@ -6,6 +6,8 @@ import { ConfirmWorld } from "../../src/application/use-cases/confirm-world.js";
 import { JoinRoom } from "../../src/application/use-cases/join-room.js";
 import { StartGame } from "../../src/application/use-cases/start-game.js";
 import { UpdateCharacter } from "../../src/application/use-cases/update-character.js";
+import { DecideSpark } from "../../src/application/use-cases/decide-spark.js";
+import { ResolveRound } from "../../src/application/use-cases/resolve-round.js";
 
 test("CreateRoom 只透過 GameApi port 建立房間", async () => {
   let calls = 0;
@@ -111,4 +113,34 @@ test("UpdateCharacter 正規化欄位並只接受合法三點配點", async () =
     }),
     { code: "INVALID_ATTRIBUTE_TOTAL" },
   );
+});
+
+test("DecideSpark 只接受 USE 或 DECLINE", async () => {
+  let command;
+  const gameApi = {
+    async decideSpark(received) {
+      command = received;
+      return { status: "RESOLVING" };
+    },
+  };
+  const useCase = new DecideSpark(gameApi);
+  await useCase.execute({ decision: "USE" });
+  assert.deepEqual(command, { decision: "USE" });
+  assert.throws(
+    () => useCase.execute({ decision: "TRANSFER" }),
+    { code: "INVALID_SPARK_DECISION" },
+  );
+});
+
+test("ResolveRound 明確傳送是否略過等待者", async () => {
+  let command;
+  const gameApi = {
+    async resolveRound(received) {
+      command = received;
+      return { round: 2 };
+    },
+  };
+  const room = await new ResolveRound(gameApi).execute({ skipPendingSpark: true });
+  assert.deepEqual(command, { skipPendingSpark: true });
+  assert.equal(room.round, 2);
 });

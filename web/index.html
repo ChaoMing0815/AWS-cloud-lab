@@ -180,12 +180,33 @@
         </div>
         <div class="progress-track"><div id="progressBar"></div></div>
 
+        <div class="point-summary">
+          <span>正式進度 <strong id="officialProgress">0</strong></span>
+          <span>正式危機 <strong id="officialDanger">0</strong></span>
+        </div>
+
         <div id="turnList" class="turn-list"></div>
 
         <div id="roundHostControls" class="host-form" hidden>
           <strong>房主裁定</strong>
           <p class="muted">行動已收齊。擲出 2d6 並加上每位玩家選擇的屬性。</p>
           <button id="rollRoundButton" class="primary-button" type="button">鎖定行動並擲骰</button>
+        </div>
+
+        <div id="sparkControls" class="host-form" hidden>
+          <strong>你的星火決策</strong>
+          <p id="sparkHint" class="muted">使用星火會讓本次總值 +1。</p>
+          <div class="button-row">
+            <button id="useSparkButton" class="primary-button" type="button">使用 1 點星火</button>
+            <button id="declineSparkButton" class="secondary-button" type="button">保留星火</button>
+          </div>
+        </div>
+
+        <div id="resolveRoundControls" class="host-form" hidden>
+          <strong>房主回合結算</strong>
+          <p class="muted">全員完成星火決策後結算；若有人離線，房主可明確略過等待者。</p>
+          <button id="resolveRoundButton" class="primary-button" type="button">結算本回合</button>
+          <button id="skipAndResolveButton" class="secondary-button" type="button">略過等待者並結算</button>
         </div>
 
         <div class="dice-panel">

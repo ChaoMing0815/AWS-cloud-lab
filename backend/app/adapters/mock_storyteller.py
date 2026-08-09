@@ -5,7 +5,16 @@ from app.domain.models import Room
 class MockStoryteller(Storyteller):
     def resolve_round(self, room: Room) -> str:
         names = "、".join(player.name for player in room.players)
+        results = [
+            result
+            for result in room.dice_results
+            if result.round_number == room.round_number
+        ]
+        success_count = sum(result.result == "SUCCESS" for result in results)
+        partial_count = sum(result.result == "PARTIAL_SUCCESS" for result in results)
+        failure_count = sum(result.result == "FAILURE" for result in results)
         return (
             f"{names} 的選擇串成一套完整方案。"
-            "Mock 故事主持人已收到所有行動；正式骰子、星火與 Bedrock 敘事將由後續 adapter 實作。"
+            f"本回合共有 {success_count} 次成功、{partial_count} 次部分成功與 {failure_count} 次失敗。"
+            "Mock 故事主持人依固定判定推進場景，沒有修改任何規則狀態。"
         )
