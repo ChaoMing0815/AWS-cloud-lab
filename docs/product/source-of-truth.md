@@ -14,6 +14,7 @@
 | 範圍 | 權威文件 | 狀態 | 下游使用者 |
 | --- | --- | --- | --- |
 | Agent 工作、安全與 AWS 變更關卡 | [`AGENTS.md`](../../AGENTS.md) 與專題 Skill | Active | 所有工作階段 |
+| 目前 branch、驗證基準與下一步 | [`handoffs/CURRENT.md`](../handoffs/CURRENT.md) | Active | 每個新 task 的最小啟動集 |
 | 選題與產品邊界 | [ADR-0001](../decisions/0001-select-multiplayer-ai-text-rpg.md) | Accepted | 產品、架構、課程對照 |
 | 前端與 API 責任邊界 | [ADR-0002](../decisions/0002-adopt-clean-frontend-architecture.md) | Accepted | 前端、後端、測試 |
 | 遊戲規則與 MVP Definition of Done | [正式 MVP Spec](../specs/text-rpg-mvp-spec.md) | Approved | User Flow、Feature Spec、測試 |
@@ -43,3 +44,9 @@
 4. 尚未完成與已知風險。
 
 不要求為小型專案建立多份內容重複的 PRD／SRS／TRD；既有 MVP Spec 是產品規則主文件，Feature Spec 只描述本次差異與可驗收行為。
+
+## Context 規則
+
+- `handoffs/CURRENT.md` 是唯一目前狀態入口；日期 handoff 只作歷史與詳細證據。
+- Handoff 只保存增量狀態、驗證基準、未完成與下一個精確起點，不重述完整專題背景。
+- 若最小啟動集已足以執行任務，不再載入 README、Brief、Gantt 或完整 Checkpoints。

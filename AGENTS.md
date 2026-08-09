@@ -21,21 +21,32 @@ Tier 0  共演計劃可玩 Web App + 公私網段 + 私有資料層
 
 `WordPress Web/DB 分離` 是簡報中的 Tier 0 題目範例與架構基準，不是本專題既定產品。若講師要求逐字完成該題卡，再另建 ADR，不得自行把 WordPress 插入共演計劃核心。
 
-## Agent 開工前必讀文件
+## Agent 開工讀取策略
 
-每次開始工作前，Agent 應先閱讀：
+每個新 task 的最小啟動集只有：
 
-1. `README.md`
-2. `AWS_Cloud_Engineer_Final_Project_Project_Brief.md`
-3. `docs/project-plan.md`
-4. `docs/gantt.md`
-5. `docs/checkpoints.md`
-6. `docs/inbox/專題.pptx`
-7. `docs/course-requirements-alignment.md`
-8. `docs/handoffs/` 中日期最新的交接文件
-9. 涉及程式、API、規則、IaC 或可觀察行為變更時，必讀 `docs/testing-strategy.md`
+1. `AGENTS.md`
+2. `docs/product/source-of-truth.md`
+3. `docs/handoffs/CURRENT.md`
 
-如果任務涉及 AWS 實作，必須同時確認目前 AWS 成本、安全與資源狀態，不可假設雲端環境已準備完成。
+其餘文件依任務路由按需讀取：
+
+- 程式／API／UI：`docs/testing-strategy.md`、當前 Feature Spec、相關 ADR 與目標程式碼。
+- 遊戲規則：只讀正式 MVP Spec 的相關章節。
+- AWS 寫入：專題 Skill、Project Plan、Checkpoints、成本／安全證據與 Skill 指定 reference。
+- 時程／課程對照：Project Brief、Gantt、course requirements alignment。
+- 原始 `docs/inbox/專題.pptx`：只在課程要求有歧義或需要核對原頁時讀取。
+- 全域規劃／final review：才讀 README、Project Brief、project plan、gantt 與 checkpoints 全集。
+
+禁止為建立背景而遞迴讀取整個 `docs/`。同一 task 內已完整讀取且未變更的文件不得重讀；先用 `rg` 定位檔案與章節，再讀必要範圍。測試輸出只保留 pass／fail 摘要與失敗片段。若任務涉及 AWS 實作，仍必須確認目前 AWS 成本、安全與資源狀態，不可假設環境已準備完成。
+
+## 模型路由
+
+- 約 70% 使用 Terra：coding、tests、docs、一般 refactor、debugging、implementation。
+- 約 20% 使用 Luna 處理 search、extract、rename、format、inventory、classification、cleanup；若 Luna 不可用，改用 Terra low reasoning。
+- 約 10% 使用 Sol：architecture、SSOT、security、major bug、cross-layer conflict、final review。
+
+比例是長期路由原則，不為湊比例切換模型；混合任務只把高價值決策交給 Sol。
 
 ## 文件語言規範
 

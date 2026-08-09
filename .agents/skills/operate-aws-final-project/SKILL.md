@@ -7,7 +7,7 @@ description: Safely plan, build, inspect, verify, and document the AWS final pro
 
 ## 核心流程
 
-1. 先讀取專案根目錄的 `AGENTS.md`、`README.md`、Project Brief、`docs/project-plan.md`、`docs/gantt.md`、`docs/checkpoints.md`，再讀取與任務直接相關的 ADR 與 handoff。
+1. 先讀取 `AGENTS.md`、`docs/product/source-of-truth.md` 與 `docs/handoffs/CURRENT.md`，再依任務路由讀取直接相關文件。只有全域規劃、課程對照、final review 或文件衝突調查，才載入 README、Project Brief、project plan、gantt 與 checkpoints 全集。同一 task 內不得重讀未變更文件。
 2. 以已接受的 ADR 為最新決策。若舊文件仍描述 WordPress，標示為待遷移內容，不得用它覆蓋多人 AI 文字 RPG 的決策。
 3. 執行任何 AWS 寫入前，先完成成本、安全、目前 principal、Region、資源與 IAM 唯讀盤點。使用 `scripts/aws-readonly-inventory.sh` 保存不含 secrets 的原始證據。
    - 涉及 AWS Organizations、Control Tower 或 IAM Identity Center organization instance 時，必須先驗證 Account plan 與 Credits。若為 Free plan，立即停止：建立／加入 Organization 會自動升級 Paid plan、使 Free Tier credits 立即失效且不能降級。列出不建立 Organization 的替代方案並取得使用者對此特定後果的明確確認，普通的「確認啟用」不算充分同意。
