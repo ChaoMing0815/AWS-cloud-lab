@@ -28,6 +28,14 @@ def create_api_router(service: RoomService) -> APIRouter:
     def health() -> dict:
         return {"status": "ok", "service": "co-story-api", "storyteller": "mock"}
 
+    @router.get("/session/current")
+    def current_session(
+        room_id: str | None = Cookie(default=None, alias=LOCAL_ROOM_COOKIE),
+        host_token: str | None = Cookie(default=None, alias=HOST_SESSION_COOKIE),
+        player_token: str | None = Cookie(default=None, alias=PLAYER_SESSION_COOKIE),
+    ) -> dict:
+        return service.current_session_summary(room_id, host_token, player_token)
+
     @router.get("/rooms/current")
     def current_room(
         response: Response,

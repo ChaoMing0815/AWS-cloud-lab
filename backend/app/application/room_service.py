@@ -104,6 +104,51 @@ class RoomService:
             raise RuntimeError("Demo room was not initialized")
         return room
 
+    def current_session_summary(
+        self,
+        room_id: str | None,
+        host_token: str | None,
+        player_token: str | None,
+    ) -> dict:
+        if not room_id:
+            return {
+                "authenticated": False,
+                "principalType": "anonymous",
+                "isHost": False,
+                "room": None,
+                "continueRoute": None,
+            }
+
+        room = self.repository.get(room_id)
+        if room is None:
+            raise DomainError("SESSION_NOT_FOUND", "目前的遊戲工作階段已失效。", 401)
+        session = self.session_context(room, host_token, player_token)
+        if session["principalType"] == "anonymous":
+            raise DomainError("SESSION_NOT_FOUND", "目前的遊戲工作階段已失效。", 401)
+
+        if room.status == "DRAFT":
+            if not session["isHost"]:
+                raise DomainError("SESSION_NOT_FOUND", "目前的遊戲工作階段已失效。", 401)
+            continue_route = "/host/setup"
+        elif room.status == "LOBBY":
+            continue_route = f"/room/{room.room_code}/lobby"
+        elif room.status == "COMPLETED":
+            continue_route = f"/room/{room.room_code}/ending"
+        else:
+            continue_route = f"/room/{room.room_code}/play"
+
+        return {
+            "authenticated": True,
+            "principalType": session["principalType"],
+            "isHost": session["isHost"],
+            "room": {
+                "id": room.id,
+                "roomCode": room.room_code,
+                "status": room.status,
+            },
+            "continueRoute": continue_route,
+        }
+
     def create_room(self, nickname: str, idempotency_key: str) -> tuple[Room, str, str]:
         name = nickname.strip()
         if not 1 <= len(name) <= 12 or any(
