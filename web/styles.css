@@ -73,6 +73,7 @@ button:disabled, textarea:disabled, input:disabled, select:disabled { cursor: no
   min-height: calc(100vh - 150px);
   margin: 36px auto;
 }
+.landing-shell[hidden] { display: none; }
 .landing-copy h1 { margin: 14px 0 20px; font-family: "Noto Serif TC", serif; font-size: clamp(2.2rem, 5vw, 4.4rem); line-height: 1.28; }
 .landing-copy > p { max-width: 650px; color: var(--muted); line-height: 1.9; }
 .landing-features { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 28px 0 0; padding: 0; color: var(--muted); font-size: .78rem; list-style: none; }
