@@ -45,7 +45,9 @@
 - [x] Lobby start 要求 3–5 位玩家全數完成角色。
 - [x] Action 支援勇氣／洞察／羈絆，擲骰前隱藏、擲骰後一次揭露。
 - [x] Host-only roll 使用 CSPRNG，並保存原始骰點、結果與待結算進度／危機。
-- [ ] 完成 polling、取消、room version、idempotency 與前端錯誤狀態。
+- [x] 完成無重疊的 room polling、完成結局停止與 timer 取消。
+- [ ] 完成 polling 離線重試、connection 狀態與前端錯誤提示。
+- [x] 完成 room version 與 mutation idempotency 基礎邊界。
 - [x] 完成 Mock／HTTP adapter 的目標點數、提前完成與最大回合結局 contract tests。
 - [ ] 完成三個獨立 Browser session 的三玩家 E2E。
 
