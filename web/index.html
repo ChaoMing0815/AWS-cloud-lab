@@ -63,6 +63,17 @@
           <button id="joinGameButton" class="secondary-button" type="submit">加入故事房間</button>
         </form>
 
+        <section id="continueGamePanel" class="entry-form" hidden>
+          <div>
+            <div class="eyebrow">返回故事</div>
+            <h2>繼續目前遊戲</h2>
+            <p id="currentGameSummary"></p>
+          </div>
+          <button id="continueGameButton" class="primary-button" type="button">繼續遊戲</button>
+        </section>
+
+        <p id="sessionNotice" class="entry-error" role="status" hidden></p>
+
         <a class="demo-link" href="/demo">第一次遊玩？先體驗不保存進度的教學 Demo →</a>
       </section>
     </main>

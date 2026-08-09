@@ -3,6 +3,10 @@ export class GameApi {
     throw new Error("GameApi.loadRoom 尚未實作");
   }
 
+  async loadCurrentSession() {
+    throw new Error("GameApi.loadCurrentSession 尚未實作");
+  }
+
   async createRoom() {
     throw new Error("GameApi.createRoom 尚未實作");
   }

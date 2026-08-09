@@ -15,6 +15,10 @@ export class FetchGameApi extends GameApi {
     return this.room;
   }
 
+  async loadCurrentSession() {
+    return this.request("/session/current");
+  }
+
   async createRoom({ nickname }) {
     this.room = await this.request("/rooms", {
       method: "POST",

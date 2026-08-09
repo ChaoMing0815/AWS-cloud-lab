@@ -3,6 +3,7 @@ import { ConfirmWorld } from "../application/use-cases/confirm-world.js";
 import { JoinRoom } from "../application/use-cases/join-room.js";
 import { JoinRoomByCode } from "../application/use-cases/join-room-by-code.js";
 import { LoadRoom } from "../application/use-cases/load-room.js";
+import { LoadCurrentSession } from "../application/use-cases/load-current-session.js";
 import { SubmitAction } from "../application/use-cases/submit-action.js";
 import { StartGame } from "../application/use-cases/start-game.js";
 import { UpdateCharacter } from "../application/use-cases/update-character.js";
@@ -54,6 +55,7 @@ else if (path === "/") {
   const landing = new LandingPage({
     createRoom: new CreateRoom(gameApi),
     joinRoomByCode: new JoinRoomByCode(gameApi),
+    loadCurrentSession: new LoadCurrentSession(gameApi),
     navigate(route) {
       globalThis.history.pushState({}, "", route);
       mountGamePage();

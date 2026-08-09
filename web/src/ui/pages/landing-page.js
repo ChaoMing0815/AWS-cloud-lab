@@ -1,10 +1,12 @@
 export class LandingPage {
-  constructor({ createRoom, joinRoomByCode, documentRef = document, navigate }) {
+  constructor({ createRoom, joinRoomByCode, loadCurrentSession, documentRef = document, navigate }) {
     this.createRoom = createRoom;
     this.joinRoomByCode = joinRoomByCode;
+    this.loadCurrentSession = loadCurrentSession;
     this.document = documentRef;
     this.navigate = navigate;
     this.busy = false;
+    this.continueRoute = null;
   }
 
   mount() {
@@ -14,6 +16,10 @@ export class LandingPage {
     this.document
       .getElementById("joinGameForm")
       .addEventListener("submit", (event) => this.handleJoin(event));
+    this.document
+      .getElementById("continueGameButton")
+      .addEventListener("click", () => this.handleContinue());
+    this.restoreCurrentSession();
   }
 
   async handleCreate(event) {
@@ -61,5 +67,29 @@ export class LandingPage {
       this.busy = false;
       button.disabled = false;
     }
+  }
+
+  async restoreCurrentSession() {
+    const panel = this.document.getElementById("continueGamePanel");
+    const summary = this.document.getElementById("currentGameSummary");
+    const notice = this.document.getElementById("sessionNotice");
+    panel.hidden = true;
+    notice.hidden = true;
+    notice.textContent = "";
+    this.continueRoute = null;
+    try {
+      const session = await this.loadCurrentSession.execute();
+      if (!session.authenticated || !session.continueRoute) return;
+      this.continueRoute = session.continueRoute;
+      summary.textContent = `房間 ${session.room.roomCode} · ${session.room.status}`;
+      panel.hidden = false;
+    } catch (caught) {
+      notice.textContent = caught?.message ?? "無法確認目前遊戲，請稍後再試。";
+      notice.hidden = false;
+    }
+  }
+
+  handleContinue() {
+    if (this.continueRoute) this.navigate(this.continueRoute);
   }
 }
