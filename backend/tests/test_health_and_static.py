@@ -21,7 +21,8 @@ def test_fastapi_serves_same_origin_frontend() -> None:
 
     assert response.status_code == 200
     assert "共演計劃" in response.text
-    assert 'src="src/composition/bootstrap.js"' in response.text
+    assert 'href="/styles.css"' in response.text
+    assert 'src="/src/composition/bootstrap.js"' in response.text
 
 
 def test_fastapi_serves_app_shell_for_demo_route() -> None:
@@ -40,3 +41,5 @@ def test_fastapi_serves_app_shell_for_host_setup_route() -> None:
     assert response.status_code == 200
     assert 'id="landingPage"' in response.text
     assert 'id="worldForm"' in response.text
+    assert 'src="/runtime-config.js"' in response.text
+    assert 'src="/src/composition/bootstrap.js"' in response.text
