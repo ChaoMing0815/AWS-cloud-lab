@@ -588,20 +588,8 @@ class RoomService:
             completed_round = current.round_number
             target = target_points(current.initial_player_count, current.max_rounds)
             progress_percent = points_percent(current.progress_points, target)
-            danger_percent = points_percent(current.danger_points, target)
             if completed_round >= current.max_rounds:
-                current.status = "COMPLETED"
-                current.ending_result = ending_result(progress_percent)
-                current.ending_cost = ending_cost(danger_percent)
-                current.entries.append(
-                    StoryEntry(
-                        id=_new_id(),
-                        type="ending",
-                        title="故事結局",
-                        round_number=current.round_number,
-                        text=self.storyteller.resolve_ending(current),
-                    )
-                )
+                self._complete_game(current, target)
             else:
                 current.round_number += 1
                 current.status = (
@@ -646,20 +634,7 @@ class RoomService:
                 current.status = "COLLECTING_ACTIONS"
             else:
                 target = target_points(current.initial_player_count, current.max_rounds)
-                current.ending_result = "FULL_SUCCESS"
-                current.ending_cost = ending_cost(
-                    points_percent(current.danger_points, target)
-                )
-                current.status = "COMPLETED"
-                current.entries.append(
-                    StoryEntry(
-                        id=_new_id(),
-                        type="ending",
-                        title="故事結局",
-                        round_number=current.round_number,
-                        text=self.storyteller.resolve_ending(current),
-                    )
-                )
+                self._complete_game(current, target)
             current.version += 1
             self.repository.save(current)
             return current
@@ -669,6 +644,20 @@ class RoomService:
             idempotency_key,
             {"decision": decision, "room_version": expected_version},
             operation,
+        )
+
+    def _complete_game(self, room: Room, target: int) -> None:
+        room.ending_result = ending_result(points_percent(room.progress_points, target))
+        room.ending_cost = ending_cost(points_percent(room.danger_points, target))
+        room.status = "COMPLETED"
+        room.entries.append(
+            StoryEntry(
+                id=_new_id(),
+                type="ending",
+                title="故事結局",
+                round_number=room.round_number,
+                text=self.storyteller.resolve_ending(room),
+            )
         )
 
     def session_context(
