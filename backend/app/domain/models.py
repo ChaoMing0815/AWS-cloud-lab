@@ -82,6 +82,7 @@ class Room:
     danger_points: int = 0
     ending_result: str | None = None
     ending_cost: str | None = None
+    success_locked: bool = False
     players: list[Player] = field(default_factory=list)
     entries: list[StoryEntry] = field(default_factory=list)
     dice_results: list[DiceResult] = field(default_factory=list)

@@ -76,6 +76,7 @@ def room_response(room: Room, session: dict) -> dict:
         "dangerPercent": points_percent(room.danger_points, target),
         "endingResult": room.ending_result,
         "endingCost": room.ending_cost,
+        "successLocked": room.success_locked,
         "pendingProgress": sum(
             result.progress_delta
             for result in room.dice_results

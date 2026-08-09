@@ -615,6 +615,53 @@ class RoomService:
             operation,
         )
 
+    def finish_game(
+        self,
+        room_id: str,
+        decision: str,
+        expected_version: int,
+        host_token: str,
+        csrf_token: str,
+        idempotency_key: str,
+    ) -> Room:
+        room = self._required_room(room_id)
+        self._authorize_host(room, host_token, csrf_token)
+
+        def operation() -> Room:
+            current = self._required_room(room_id)
+            self._check_version(current, expected_version)
+            if current.status != "COMPLETION_AVAILABLE":
+                raise DomainError("FINISH_NOT_ALLOWED", "目前不能選擇結局。", 409)
+            current.success_locked = True
+            if decision == "CONTINUE":
+                current.status = "COLLECTING_ACTIONS"
+            else:
+                target = target_points(current.initial_player_count, current.max_rounds)
+                current.ending_result = "FULL_SUCCESS"
+                current.ending_cost = ending_cost(
+                    points_percent(current.danger_points, target)
+                )
+                current.status = "COMPLETED"
+                current.entries.append(
+                    StoryEntry(
+                        id=_new_id(),
+                        type="ending",
+                        title="故事結局",
+                        round_number=current.round_number,
+                        text=self.storyteller.resolve_ending(current),
+                    )
+                )
+            current.version += 1
+            self.repository.save(current)
+            return current
+
+        return self.idempotency.execute(
+            f"finish-game:{room_id}",
+            idempotency_key,
+            {"decision": decision, "room_version": expected_version},
+            operation,
+        )
+
     def session_context(
         self,
         room: Room,

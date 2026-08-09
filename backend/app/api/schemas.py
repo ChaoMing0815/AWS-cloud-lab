@@ -74,3 +74,8 @@ class SparkDecisionRequest(BaseModel):
 class ResolveRoundRequest(BaseModel):
     skip_pending_spark: bool = False
     room_version: int = Field(ge=1)
+
+
+class FinishRoomRequest(BaseModel):
+    decision: Literal["FINISH_NOW", "CONTINUE"]
+    room_version: int = Field(ge=1)
