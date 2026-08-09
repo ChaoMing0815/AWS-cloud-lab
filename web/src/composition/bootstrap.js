@@ -13,26 +13,34 @@ import { FetchGameApi } from "../adapters/api/fetch-game-api.js";
 import { MockGameApi } from "../adapters/api/mock-game-api.js";
 import { GamePage } from "../ui/pages/game-page.js";
 
-const config = globalThis.CO_STORY_CONFIG ?? { apiMode: "mock", apiBasePath: "/api/v1" };
-const gameApi = config.apiMode === "http"
-  ? new FetchGameApi({ basePath: config.apiBasePath })
-  : new MockGameApi();
-const page = new GamePage({
-  loadRoom: new LoadRoom(gameApi),
-  createRoom: new CreateRoom(gameApi),
-  joinRoom: new JoinRoom(gameApi),
-  confirmWorld: new ConfirmWorld(gameApi),
-  startGame: new StartGame(gameApi),
-  updateCharacter: new UpdateCharacter(gameApi),
-  submitAction: new SubmitAction(gameApi),
-  rollRound: new RollRound(gameApi),
-  decideSpark: new DecideSpark(gameApi),
-  resolveRound: new ResolveRound(gameApi),
-  finishGame: new FinishGame(gameApi),
-  connectionLabel: config.apiMode === "http" ? "本機 FastAPI 模式" : "本機 Mock API 模式",
-  persistenceLabel: config.apiMode === "http"
-    ? "本機原型 · 遊戲資料由 FastAPI memory repository 管理"
-    : "本機原型 · 遊戲資料由 Mock API 保存在記憶體",
-});
+function mountGamePage({ forceMock = false } = {}) {
+  const config = globalThis.CO_STORY_CONFIG ?? { apiMode: "mock", apiBasePath: "/api/v1" };
+  const apiMode = forceMock ? "mock" : config.apiMode;
+  const gameApi = apiMode === "http"
+    ? new FetchGameApi({ basePath: config.apiBasePath })
+    : new MockGameApi();
+  const page = new GamePage({
+    loadRoom: new LoadRoom(gameApi),
+    createRoom: new CreateRoom(gameApi),
+    joinRoom: new JoinRoom(gameApi),
+    confirmWorld: new ConfirmWorld(gameApi),
+    startGame: new StartGame(gameApi),
+    updateCharacter: new UpdateCharacter(gameApi),
+    submitAction: new SubmitAction(gameApi),
+    rollRound: new RollRound(gameApi),
+    decideSpark: new DecideSpark(gameApi),
+    resolveRound: new ResolveRound(gameApi),
+    finishGame: new FinishGame(gameApi),
+    connectionLabel: apiMode === "http" ? "本機 FastAPI 模式" : "教學 Demo · 不保存進度",
+    persistenceLabel: apiMode === "http"
+      ? "本機原型 · 遊戲資料由 FastAPI memory repository 管理"
+      : "教學 Demo · 資料只存在本頁記憶體，重新進入即重設",
+  });
 
-page.mount();
+  document.getElementById("landingPage").hidden = true;
+  document.getElementById("gamePage").hidden = false;
+  page.mount();
+}
+
+const path = globalThis.location?.pathname ?? "/";
+if (path === "/demo") mountGamePage({ forceMock: true });

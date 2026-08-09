@@ -12,23 +12,66 @@
     <div class="ambient ambient-two"></div>
 
     <header class="topbar">
-      <a class="brand" href="#" aria-label="共演計劃首頁">
+      <a class="brand" href="/" aria-label="共演計劃首頁">
         <span class="brand-mark">共</span>
         <span>
           <strong>共演計劃</strong>
           <small>CO-STORY PROJECT</small>
         </span>
       </a>
-      <div id="connectionStatus" class="connection"><span></span> 本機 Mock API 模式</div>
+      <div id="connectionStatus" class="connection"><span></span> 準備開始</div>
     </header>
 
-    <main class="game-shell">
+    <main id="landingPage" class="landing-shell">
+      <section class="landing-copy">
+        <div class="eyebrow">3–5 人 AI 共創故事</div>
+        <h1>每個選擇，都會成為<br />下一段共同故事。</h1>
+        <p>建立一個故事房間，邀請朋友自由創作角色與行動；規則負責判定後果，AI 故事主持人負責把眾人的選擇編成同一場冒險。</p>
+        <ul class="landing-features" aria-label="遊戲特色">
+          <li>3–5 位玩家共同遊玩</li>
+          <li>4／6／8 回合完成一局</li>
+          <li>不限定奇幻、職場或日常題材</li>
+        </ul>
+      </section>
+
+      <section class="entry-panel" aria-label="開始遊戲">
+        <form id="createGameForm" class="entry-form">
+          <div>
+            <div class="eyebrow">發起故事</div>
+            <h2>建立遊戲</h2>
+            <p>房主也是玩家之一，建立後先設定這次共同故事。</p>
+          </div>
+          <label for="hostNickname">你的暱稱</label>
+          <input id="hostNickname" name="nickname" maxlength="12" autocomplete="nickname" required />
+          <button class="primary-button" type="submit">建立故事房間</button>
+        </form>
+
+        <div class="entry-divider"><span>或</span></div>
+
+        <form id="joinGameForm" class="entry-form">
+          <div>
+            <div class="eyebrow">收到邀請</div>
+            <h2>加入遊戲</h2>
+            <p>輸入房主分享的六碼房間代碼。</p>
+          </div>
+          <label for="joinRoomCode">房間代碼</label>
+          <input id="joinRoomCode" name="roomCode" maxlength="6" autocomplete="off" required />
+          <label for="joinNickname">你的暱稱</label>
+          <input id="joinNickname" name="nickname" maxlength="12" autocomplete="nickname" required />
+          <button class="secondary-button" type="submit">加入故事房間</button>
+        </form>
+
+        <a class="demo-link" href="/demo">第一次遊玩？先體驗不保存進度的教學 Demo →</a>
+      </section>
+    </main>
+
+    <main id="gamePage" class="game-shell" hidden>
       <aside class="panel room-panel">
         <div class="eyebrow">故事房間</div>
         <div class="room-code-row">
           <div>
             <span class="muted">房間代碼</span>
-            <strong id="roomCode">BONUS7</strong>
+            <strong id="roomCode">------</strong>
           </div>
           <button id="newRoomButton" class="icon-button" title="建立新房間" aria-label="建立新房間">↻</button>
         </div>
