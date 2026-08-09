@@ -104,9 +104,16 @@ class RoomService:
             raise RuntimeError("Demo room was not initialized")
         return room
 
-    def create_room(self, idempotency_key: str) -> tuple[Room, str]:
+    def create_room(self, nickname: str, idempotency_key: str) -> tuple[Room, str, str]:
+        name = nickname.strip()
+        if not 1 <= len(name) <= 12 or any(
+            char in string.whitespace and char not in " " for char in name
+        ):
+            raise DomainError("INVALID_NICKNAME", "暱稱必須是 1–12 個可見字元。", 422)
         host_token = self.token_factory.derive("host-session", idempotency_key)
         host_csrf = self.token_factory.derive("host-csrf", idempotency_key)
+        player_token = self.token_factory.derive("host-player-session", idempotency_key)
+        player_csrf = self.token_factory.derive("host-player-csrf", idempotency_key)
 
         def operation() -> Room:
             room = Room(
@@ -118,6 +125,15 @@ class RoomService:
                 world=_empty_world(),
                 host_session_hash=hash_session_token(host_token),
                 host_csrf_token=host_csrf,
+                players=[
+                    Player(
+                        id=_new_id(),
+                        name=name,
+                        role="共同創作者",
+                        session_hash=hash_session_token(player_token),
+                        csrf_token=player_csrf,
+                    )
+                ],
                 entries=[
                     StoryEntry(
                         id=_new_id(),
@@ -131,8 +147,13 @@ class RoomService:
             self.repository.save(room)
             return room
 
-        room = self.idempotency.execute("create-room", idempotency_key, {}, operation)
-        return room, host_token
+        room = self.idempotency.execute(
+            "create-room",
+            idempotency_key,
+            {"nickname": name},
+            operation,
+        )
+        return room, host_token, player_token
 
     def confirm_world(
         self,

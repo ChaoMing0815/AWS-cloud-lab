@@ -39,7 +39,11 @@ def headers(key: str) -> dict[str, str]:
 
 
 def new_room(client: TestClient, key: str = "create-room-0001") -> dict:
-    response = client.post("/api/v1/rooms", headers=headers(key))
+    response = client.post(
+        "/api/v1/rooms",
+        json={"nickname": "房主"},
+        headers=headers(key),
+    )
     assert response.status_code == 201
     return response.json()
 
@@ -84,11 +88,13 @@ def test_create_room_and_restore_it_from_http_only_cookie() -> None:
 
     assert restored.status_code == 200
     assert restored.json()["id"] == room["id"]
-    assert restored.json()["players"] == []
+    assert [player["name"] for player in restored.json()["players"]] == ["房主"]
     assert restored.json()["status"] == "DRAFT"
     assert "co_story_local_room=" in restored.request.headers.get("cookie", "")
-    assert room["session"]["principalType"] == "host"
+    assert room["session"]["principalType"] == "player"
+    assert room["session"]["isHost"] is True
     assert client.cookies.get("co_story_host")
+    assert client.cookies.get("co_story_player")
 
 
 def test_create_room_atomically_creates_host_player_and_replays() -> None:
@@ -164,9 +170,9 @@ def test_join_room_and_reject_duplicate_nickname() -> None:
         )
 
     assert joined.status_code == 201
-    assert joined.json()["players"][0]["name"] == "小明"
+    joined_player = next(player for player in joined.json()["players"] if player["name"] == "小明")
     assert joined.json()["session"]["principalType"] == "player"
-    assert joined.json()["session"]["playerId"] == joined.json()["players"][0]["id"]
+    assert joined.json()["session"]["playerId"] == joined_player["id"]
     assert duplicate.status_code == 409
     assert duplicate.json()["error"]["code"] == "NICKNAME_TAKEN"
 
@@ -188,7 +194,7 @@ def test_version_conflict_returns_structured_error() -> None:
 
 def test_missing_idempotency_key_is_rejected() -> None:
     with TestClient(create_app()) as client:
-        response = client.post("/api/v1/rooms")
+        response = client.post("/api/v1/rooms", json={"nickname": "房主"})
 
     assert response.status_code == 400
     assert response.json()["error"]["code"] == "IDEMPOTENCY_KEY_REQUIRED"
@@ -270,7 +276,7 @@ def test_world_confirmation_requires_host_session_and_csrf() -> None:
     assert confirmed.json()["maxRounds"] == 6
 
 
-def test_only_host_can_start_lobby_with_three_players() -> None:
+def test_only_host_can_start_lobby_when_all_players_are_ready() -> None:
     app = create_app()
     with (
         TestClient(app) as host,
@@ -327,9 +333,12 @@ def test_only_host_can_start_lobby_with_three_players() -> None:
         third_ready = update_character(
             third_player, second_ready, third["session"]["csrfToken"], "character-three", "調查員丙"
         )
+        host_ready = update_character(
+            host, third_ready, room["session"]["csrfToken"], "character-host", "房主角色"
+        )
         started = host.post(
             f"/api/v1/rooms/{room['id']}:start",
-            json={"room_version": third_ready["version"]},
+            json={"room_version": host_ready["version"]},
             headers={
                 **headers("start-valid"),
                 "X-CSRF-Token": room["session"]["hostCsrfToken"],
@@ -344,7 +353,7 @@ def test_only_host_can_start_lobby_with_three_players() -> None:
     assert incomplete.json()["error"]["code"] == "CHARACTERS_INCOMPLETE"
     assert started.status_code == 200
     assert started.json()["status"] == "COLLECTING_ACTIONS"
-    assert started.json()["initialPlayerCount"] == 3
+    assert started.json()["initialPlayerCount"] == 4
     assert started.json()["entries"][-1]["text"] == WORLD_PAYLOAD["opening_scene"]
 
 
@@ -411,8 +420,9 @@ def test_character_requires_player_session_and_valid_three_point_allocation() ->
     assert invalid.status_code == 422
     assert invalid.json()["error"]["code"] == "INVALID_ATTRIBUTE_ALLOCATION"
     assert accepted.status_code == 200
-    assert accepted.json()["players"][0]["characterReady"] is True
-    assert accepted.json()["players"][0]["character"]["spark"] == 1
+    accepted_player = next(player for player in accepted.json()["players"] if player["name"] == "甲")
+    assert accepted_player["characterReady"] is True
+    assert accepted_player["character"]["spark"] == 1
     assert replay.json()["version"] == accepted.json()["version"]
 
 
@@ -458,9 +468,12 @@ def test_action_requires_player_session_and_csrf() -> None:
             "action-character-three",
             "調查員三",
         )
+        host_ready = update_character(
+            host, third_ready, room["session"]["csrfToken"], "action-character-host", "房主角色"
+        )
         started = host.post(
             f"/api/v1/rooms/{room['id']}:start",
-            json={"room_version": third_ready["version"]},
+            json={"room_version": host_ready["version"]},
             headers={
                 **headers("start-for-action"),
                 "X-CSRF-Token": room["session"]["hostCsrfToken"],
@@ -490,8 +503,9 @@ def test_action_requires_player_session_and_csrf() -> None:
     assert no_csrf.status_code == 403
     assert no_csrf.json()["error"]["code"] == "CSRF_FAILED"
     assert accepted.status_code == 200
-    assert accepted.json()["players"][0]["hasSubmitted"] is True
-    assert accepted.json()["players"][0]["action"] == "我先確認門口狀況。"
+    accepted_player = next(player for player in accepted.json()["players"] if player["name"] == "小明")
+    assert accepted_player["hasSubmitted"] is True
+    assert accepted_player["action"] == "我先確認門口狀況。"
 
 
 def test_unrevealed_action_text_is_hidden_from_other_player() -> None:
@@ -535,9 +549,12 @@ def test_unrevealed_action_text_is_hidden_from_other_player() -> None:
             "hidden-character-three",
             "角色丙",
         )
+        host_ready = update_character(
+            host, third_ready, room["session"]["csrfToken"], "hidden-character-host", "房主角色"
+        )
         started = host.post(
             f"/api/v1/rooms/{room['id']}:start",
-            json={"room_version": third_ready["version"]},
+            json={"room_version": host_ready["version"]},
             headers={
                 **headers("start-hidden-action"),
                 "X-CSRF-Token": room["session"]["hostCsrfToken"],
@@ -562,7 +579,7 @@ def test_unrevealed_action_text_is_hidden_from_other_player() -> None:
 
 
 def test_host_rolls_fixed_dice_and_reveals_results() -> None:
-    app = create_app(FixedDiceRoller([6, 6, 3, 3, 1, 1]))
+    app = create_app(FixedDiceRoller([6, 6, 3, 3, 1, 1, 2, 2]))
     with (
         TestClient(app) as host,
         TestClient(app) as first_player,
@@ -586,6 +603,13 @@ def test_host_rolls_fixed_dice_and_reveals_results() -> None:
             ).json()
             joins.append(current)
 
+        current = update_character(
+            host,
+            current,
+            room["session"]["csrfToken"],
+            "roll-character-host",
+            "房主角色",
+        )
         for index, (client, joined) in enumerate(zip(clients, joins, strict=True), start=1):
             current = update_character(
                 client,
@@ -606,12 +630,15 @@ def test_host_rolls_fixed_dice_and_reveals_results() -> None:
 
         actions = [
             ("我正面要求查看紀錄。", "courage"),
+            ("我先穩住現場秩序。", "courage"),
             ("我檢查備份留下的線索。", "insight"),
             ("我請熟識的同事幫忙。", "bond"),
         ]
         current = started
+        action_clients = [host, *clients]
+        action_sessions = [room, *joins]
         for index, (client, joined, action) in enumerate(
-            zip(clients, joins, actions, strict=True), start=1
+            zip(action_clients, action_sessions, actions, strict=True), start=1
         ):
             response = client.put(
                 f"/api/v1/rooms/{room['id']}/rounds/1/action",
@@ -683,9 +710,17 @@ def test_host_rolls_fixed_dice_and_reveals_results() -> None:
                 "X-CSRF-Token": joins[0]["session"]["csrfToken"],
             },
         )
-        first_decision = first_player.put(
+        host_decision = host.put(
             spark_url,
             json={"decision": "USE", "room_version": rolled_room["version"]},
+            headers={
+                **headers("spark-host-use"),
+                "X-CSRF-Token": room["session"]["csrfToken"],
+            },
+        )
+        first_decision = first_player.put(
+            spark_url,
+            json={"decision": "USE", "room_version": host_decision.json()["version"]},
             headers={
                 **headers("spark-first-use"),
                 "X-CSRF-Token": joins[0]["session"]["csrfToken"],
@@ -693,7 +728,7 @@ def test_host_rolls_fixed_dice_and_reveals_results() -> None:
         )
         first_replay = first_player.put(
             spark_url,
-            json={"decision": "USE", "room_version": rolled_room["version"]},
+            json={"decision": "USE", "room_version": host_decision.json()["version"]},
             headers={
                 **headers("spark-first-use"),
                 "X-CSRF-Token": joins[0]["session"]["csrfToken"],
@@ -795,10 +830,11 @@ def test_host_rolls_fixed_dice_and_reveals_results() -> None:
         "SUCCESS",
         "PARTIAL_SUCCESS",
         "FAILURE",
+        "FAILURE",
     ]
-    assert [item["finalTotal"] for item in result["diceResults"]] == [14, 7, 2]
+    assert [item["finalTotal"] for item in result["diceResults"]] == [14, 8, 3, 4]
     assert result["pendingProgress"] == 3
-    assert result["pendingDanger"] == 3
+    assert result["pendingDanger"] == 5
     assert result["progressPoints"] == 0
     assert result["dangerPoints"] == 0
     assert "我正面要求查看紀錄。" in rolled.text
@@ -810,8 +846,8 @@ def test_host_rolls_fixed_dice_and_reveals_results() -> None:
     assert stale_version.status_code == 409
     assert stale_version.json()["error"]["code"] == "VERSION_CONFLICT"
     assert first_decision.status_code == 200
-    assert first_decision.json()["diceResults"][0]["sparkDecision"] == "USE"
-    assert first_decision.json()["diceResults"][0]["finalTotal"] == 15
+    assert first_decision.json()["diceResults"][1]["sparkDecision"] == "USE"
+    assert first_decision.json()["diceResults"][1]["finalTotal"] == 9
     assert first_replay.json()["version"] == first_decision.json()["version"]
     assert repeated_decision.status_code == 409
     assert repeated_decision.json()["error"]["code"] == "SPARK_ALREADY_DECIDED"
@@ -824,13 +860,13 @@ def test_host_rolls_fixed_dice_and_reveals_results() -> None:
     assert resolved_room["round"] == 2
     assert resolved_room["status"] == "COLLECTING_ACTIONS"
     assert resolved_room["progressPoints"] == 3
-    assert resolved_room["dangerPoints"] == 3
+    assert resolved_room["dangerPoints"] == 5
     assert resolved_room["pendingProgress"] == 0
     assert resolved_room["pendingDanger"] == 0
     assert all(not player["hasSubmitted"] for player in resolved_room["players"])
-    assert [player["character"]["spark"] for player in resolved_room["players"]] == [0, 1, 1]
+    assert [player["character"]["spark"] for player in resolved_room["players"]] == [0, 0, 2, 1]
     assert resolved_room["diceResults"][0]["sparkUsed"] == 1
-    assert "1 次成功、1 次部分成功與 1 次失敗" in resolved_room["entries"][-1]["text"]
+    assert "1 次成功、1 次部分成功與 2 次失敗" in resolved_room["entries"][-1]["text"]
     assert resolve_replay.json()["version"] == resolved_room["version"]
     assert resolve_replay.json()["entries"] == resolved_room["entries"]
 

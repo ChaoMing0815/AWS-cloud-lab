@@ -2,6 +2,7 @@ from fastapi import APIRouter, Cookie, Header, Response, status
 
 from app.api.schemas import (
     ConfirmWorldRequest,
+    CreateRoomRequest,
     FinishRoomRequest,
     JoinRoomRequest,
     ResolveRoundRequest,
@@ -81,13 +82,18 @@ def create_api_router(service: RoomService) -> APIRouter:
 
     @router.post("/rooms", status_code=status.HTTP_201_CREATED)
     def create_room(
+        request: CreateRoomRequest,
         response: Response,
         idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
     ) -> dict:
-        room, host_token = service.create_room(_required_idempotency_key(idempotency_key))
+        room, host_token, player_token = service.create_room(
+            request.nickname,
+            _required_idempotency_key(idempotency_key),
+        )
         _set_local_room_cookie(response, room.id)
         _set_session_cookie(response, HOST_SESSION_COOKIE, host_token)
-        return room_response(room, service.session_context(room, host_token, None))
+        _set_session_cookie(response, PLAYER_SESSION_COOKIE, player_token)
+        return room_response(room, service.session_context(room, host_token, player_token))
 
     @router.post("/rooms/{room_id}/players", status_code=status.HTTP_201_CREATED)
     def join_room(
