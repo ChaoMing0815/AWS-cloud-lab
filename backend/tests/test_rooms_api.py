@@ -190,6 +190,128 @@ def test_join_room_and_reject_duplicate_nickname() -> None:
     assert duplicate.json()["error"]["code"] == "NICKNAME_TAKEN"
 
 
+def test_join_by_room_code_without_current_room_and_replay() -> None:
+    app = create_app()
+    with TestClient(app) as host, TestClient(app) as player:
+        room = new_lobby(host, "join-code-room")
+        payload = {"room_code": f" {room['roomCode'].lower()} ", "nickname": "  小明  "}
+        first = player.post(
+            "/api/v1/rooms:join",
+            json=payload,
+            headers=headers("join-by-code-0001"),
+        )
+        replay = player.post(
+            "/api/v1/rooms:join",
+            json=payload,
+            headers=headers("join-by-code-0001"),
+        )
+
+    assert first.status_code == 201
+    assert first.json()["id"] == room["id"]
+    assert [item["name"] for item in first.json()["players"]] == ["房主", "小明"]
+    assert first.json()["session"]["principalType"] == "player"
+    assert first.json()["session"]["isHost"] is False
+    assert player.cookies.get("co_story_local_room") == room["id"]
+    assert player.cookies.get("co_story_player")
+    assert replay.json()["version"] == first.json()["version"]
+    assert replay.json()["players"] == first.json()["players"]
+
+
+def test_join_by_room_code_rejects_invalid_missing_and_draft_rooms() -> None:
+    app = create_app()
+    with TestClient(app) as host, TestClient(app) as player:
+        draft = new_room(host, "join-draft-code")
+        invalid = player.post(
+            "/api/v1/rooms:join",
+            json={"room_code": "ABC", "nickname": "小明"},
+            headers=headers("join-invalid-code"),
+        )
+        missing = player.post(
+            "/api/v1/rooms:join",
+            json={"room_code": "ZZZZZZ", "nickname": "小明"},
+            headers=headers("join-missing-code"),
+        )
+        not_joinable = player.post(
+            "/api/v1/rooms:join",
+            json={"room_code": draft["roomCode"], "nickname": "小明"},
+            headers=headers("join-draft-by-code"),
+        )
+
+    assert invalid.status_code == 422
+    assert invalid.json()["error"]["code"] == "ROOM_CODE_INVALID"
+    assert missing.status_code == 404
+    assert missing.json()["error"]["code"] == "ROOM_NOT_FOUND"
+    assert not_joinable.status_code == 409
+    assert not_joinable.json()["error"]["code"] == "ROOM_NOT_JOINABLE"
+
+
+def test_join_by_room_code_rejects_duplicate_nickname_and_full_room_atomically() -> None:
+    app = create_app()
+    with TestClient(app) as host, TestClient(app) as player:
+        room = new_lobby(host, "join-guard-room")
+        duplicate = player.post(
+            "/api/v1/rooms:join",
+            json={"room_code": room["roomCode"], "nickname": " 房主 "},
+            headers=headers("join-code-duplicate"),
+        )
+        current = room
+        for index in range(4):
+            response = player.post(
+                f"/api/v1/rooms/{room['id']}/players",
+                json={
+                    "nickname": f"玩家{index + 1}",
+                    "role": "共同創作者",
+                    "room_version": current["version"],
+                },
+                headers=headers(f"fill-room-{index + 1}"),
+            )
+            assert response.status_code == 201
+            current = response.json()
+        full = player.post(
+            "/api/v1/rooms:join",
+            json={"room_code": room["roomCode"], "nickname": "第六人"},
+            headers=headers("join-code-full"),
+        )
+
+    assert duplicate.status_code == 409
+    assert duplicate.json()["error"]["code"] == "NICKNAME_DUPLICATE"
+    assert full.status_code == 409
+    assert full.json()["error"]["code"] == "ROOM_FULL"
+    stored = app.state.room_service.repository.get(room["id"])
+    assert stored is not None
+    assert len(stored.players) == 5
+
+
+def test_join_by_room_code_rejects_client_player_id_and_key_reuse() -> None:
+    app = create_app()
+    with TestClient(app) as host, TestClient(app) as player:
+        room = new_lobby(host, "join-contract-room")
+        forged = player.post(
+            "/api/v1/rooms:join",
+            json={
+                "room_code": room["roomCode"],
+                "nickname": "小明",
+                "player_id": "forged-player",
+            },
+            headers=headers("join-code-forged"),
+        )
+        accepted = player.post(
+            "/api/v1/rooms:join",
+            json={"room_code": room["roomCode"], "nickname": "小明"},
+            headers=headers("join-code-reused"),
+        )
+        reused = player.post(
+            "/api/v1/rooms:join",
+            json={"room_code": room["roomCode"], "nickname": "小華"},
+            headers=headers("join-code-reused"),
+        )
+
+    assert forged.status_code == 422
+    assert accepted.status_code == 201
+    assert reused.status_code == 422
+    assert reused.json()["error"]["code"] == "IDEMPOTENCY_KEY_REUSED"
+
+
 def test_version_conflict_returns_structured_error() -> None:
     with TestClient(create_app()) as client:
         room = new_lobby(client)
