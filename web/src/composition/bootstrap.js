@@ -8,6 +8,7 @@ import { UpdateCharacter } from "../application/use-cases/update-character.js";
 import { RollRound } from "../application/use-cases/roll-round.js";
 import { DecideSpark } from "../application/use-cases/decide-spark.js";
 import { ResolveRound } from "../application/use-cases/resolve-round.js";
+import { FinishGame } from "../application/use-cases/finish-game.js";
 import { FetchGameApi } from "../adapters/api/fetch-game-api.js";
 import { MockGameApi } from "../adapters/api/mock-game-api.js";
 import { GamePage } from "../ui/pages/game-page.js";
@@ -27,6 +28,7 @@ const page = new GamePage({
   rollRound: new RollRound(gameApi),
   decideSpark: new DecideSpark(gameApi),
   resolveRound: new ResolveRound(gameApi),
+  finishGame: new FinishGame(gameApi),
   connectionLabel: config.apiMode === "http" ? "本機 FastAPI 模式" : "本機 Mock API 模式",
   persistenceLabel: config.apiMode === "http"
     ? "本機原型 · 遊戲資料由 FastAPI memory repository 管理"
