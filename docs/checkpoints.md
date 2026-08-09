@@ -37,6 +37,7 @@ Demo 與每日進度依本清單逐項驗收。檔案存在不代表完成；必
 - [x] 結局規則已通過 59／60、39／40、69／70 邊界與三項 mutation 敏感度測試。
 - [x] Mock／HTTP adapter 的目標點數、提前完成與最大回合結局合約已一致，並通過 mutation 敏感度測試。
 - [x] 房間狀態已使用無重疊的 3 秒 polling 同步；完成結局或停止時不再排程，並通過 Browser 驗證。
+- [x] 正式 `/` 已與 `/demo` 分離；root 不載入 Demo room，Demo 不保存進度，Browser Console 0 errors。
 - [ ] 正式 `/` 已提供建立／加入／繼續與次要 Demo 入口，不會自動載入 `BONUS7`。
 - [ ] 房主建房時同時取得 Host／Player 身份並計入 3–5 位玩家。
 - [ ] 玩家可用 room code＋暱稱加入任意可加入房間，且錯誤／滿員／已開始案例均被拒絕。
