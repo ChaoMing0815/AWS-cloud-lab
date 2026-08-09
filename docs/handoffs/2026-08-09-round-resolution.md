@@ -2,7 +2,7 @@
 
 - 交接日期：2026-08-09
 - 期末專題繳交日：2026-09-07
-- 目前分支：`codex/mock-ending-parity`
+- 目前分支：`codex/room-polling`
 - AWS 寫入／新增資源／費用：無
 - 本機伺服器：均已停止
 
@@ -20,10 +20,12 @@
 - 詳細證據：[結局策略嚴格 TDD 驗證](../evidence/2026-08-09-ending-policy/tdd-validation.md)。
 - Mock／HTTP adapter 的目標點數、提前完成與最大回合自動結局合約已一致；前端 regression 為 `38 passed`。
 - 詳細證據：[Mock／HTTP 結局合約一致性](../evidence/2026-08-09-mock-ending-parity/tdd-validation.md)。
+- 已完成 3 秒串行 room polling、in-flight 防重疊、結局停止與 timer 取消；前端 regression 為 `42 passed`。
+- Browser 已確認重複 `/rooms/current` 200 且 Console `0 errors`；詳細證據見[房間狀態 Polling](../evidence/2026-08-09-room-polling/tdd-validation.md)。
 
 ## 尚未完成
 
-- 房主略過未提交 action、polling、取消與離線錯誤狀態。
+- 房主略過未提交 action、polling 離線重試與 connection 錯誤狀態。
 - 三個獨立 Browser session 的人工 E2E。
 - Session expiry／revoke／reassign 與 production Secure cookie。
 - PostgreSQL repository、migration 與 restart persistence。
@@ -31,8 +33,8 @@
 
 ## 下一步建議順序
 
-1. 使用三個獨立 Browser session 完成全流程 E2E 並保存證據。
-2. 實作 polling、取消與離線錯誤狀態。
+1. 實作 polling 離線重試、connection 狀態與前端錯誤提示。
+2. 使用不同 browser／profile 完成三個獨立玩家 session 的全流程 E2E。
 3. 再處理 PostgreSQL ADR；AWS 關卡通過前不部署。
 
 ## 不可違反的邊界

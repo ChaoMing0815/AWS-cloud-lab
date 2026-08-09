@@ -25,6 +25,9 @@ export class GamePage {
     finishGame,
     connectionLabel,
     persistenceLabel,
+    schedule = (callback, delay) => globalThis.setTimeout(callback, delay),
+    cancelSchedule = (id) => globalThis.clearTimeout(id),
+    pollingIntervalMs = 3000,
   }) {
     this.useCases = {
       loadRoom,
@@ -41,7 +44,14 @@ export class GamePage {
     };
     this.connectionLabel = connectionLabel;
     this.persistenceLabel = persistenceLabel;
+    this.schedule = schedule;
+    this.cancelSchedule = cancelSchedule;
+    this.pollingIntervalMs = pollingIntervalMs;
     this.room = null;
+    this.pollTimer = null;
+    this.pollInFlight = false;
+    this.pollingStopped = false;
+    this.busy = false;
   }
 
   async mount() {
@@ -68,6 +78,50 @@ export class GamePage {
     byId("finishNowButton").addEventListener("click", () => this.handleFinish("FINISH_NOW"));
     byId("continueButton").addEventListener("click", () => this.handleFinish("CONTINUE"));
     await this.run(() => this.useCases.loadRoom.execute());
+    this.startPolling();
+  }
+
+  startPolling() {
+    this.pollingStopped = false;
+    this.schedulePolling();
+  }
+
+  stopPolling() {
+    this.pollingStopped = true;
+    if (this.pollTimer !== null) {
+      this.cancelSchedule(this.pollTimer);
+      this.pollTimer = null;
+    }
+  }
+
+  schedulePolling() {
+    if (
+      this.pollingStopped
+      || this.pollTimer !== null
+      || this.room?.status === "COMPLETED"
+    ) return;
+    this.pollTimer = this.schedule(() => {
+      this.pollTimer = null;
+      return this.pollOnce();
+    }, this.pollingIntervalMs);
+  }
+
+  async pollOnce() {
+    if (
+      this.pollingStopped
+      || this.pollInFlight
+      || this.busy
+      || this.room?.status === "COMPLETED"
+    ) return false;
+    this.pollInFlight = true;
+    try {
+      this.room = await this.useCases.loadRoom.execute();
+      this.render();
+      return true;
+    } finally {
+      this.pollInFlight = false;
+      this.schedulePolling();
+    }
   }
 
   async handleCreateRoom() {
@@ -179,6 +233,7 @@ export class GamePage {
   }
 
   setBusy(busy) {
+    this.busy = busy;
     document.querySelectorAll("button[type='submit'], #newRoomButton, #startGameButton, #rollRoundButton, #useSparkButton, #declineSparkButton, #resolveRoundButton, #skipAndResolveButton, #finishNowButton, #continueButton").forEach((button) => {
       button.disabled = busy;
     });
