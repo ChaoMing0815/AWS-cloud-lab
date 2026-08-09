@@ -158,3 +158,91 @@ test("Mock adapter 可模擬房主立即結局與繼續尾聲", async () => {
   assert.equal(finished.endingResult, "FULL_SUCCESS");
   assert.equal(finished.entries.at(-1).type, "ending");
 });
+
+test("Mock adapter 開始遊戲後提供與 HTTP adapter 相同的目標點數", async () => {
+  const api = new MockGameApi();
+  await createLobby(api);
+  for (const [nickname, role] of [["甲", "企劃"], ["乙", "工程師"], ["丙", "總務"]]) {
+    await api.joinRoom({ nickname, role });
+    await api.updateCharacter({ ...character, name: `角色${nickname}` });
+  }
+
+  const started = await api.startGame();
+
+  assert.equal(started.initialPlayerCount, 3);
+  assert.equal(started.maxRounds, 6);
+  assert.equal(started.targetPoints, 30);
+  assert.equal(started.progressPercent, 0);
+  assert.equal(started.dangerPercent, 0);
+});
+
+test("Mock adapter 非最終回合達 100% 時進入房主結局選擇", async () => {
+  const api = new MockGameApi();
+  api.room.session = {
+    principalType: "host",
+    playerId: null,
+    csrfToken: "mock-host-csrf",
+    isHost: true,
+    hostCsrfToken: "mock-host-csrf",
+  };
+  api.room.status = "RESOLVING";
+  api.room.round = 2;
+  api.room.maxRounds = 6;
+  api.room.initialPlayerCount = 3;
+  api.room.progressPoints = 29;
+  api.room.dangerPoints = 0;
+  api.room.diceResults = api.room.players.map((player, index) => ({
+    playerId: player.id,
+    round: 2,
+    result: index === 0 ? "SUCCESS" : "FAILURE",
+    progressDelta: index === 0 ? 2 : 0,
+    dangerDelta: 0,
+    sparkUsed: 0,
+    sparkDecision: "DECLINE",
+  }));
+
+  const resolved = await api.resolveRound();
+
+  assert.equal(resolved.round, 3);
+  assert.equal(resolved.targetPoints, 30);
+  assert.equal(resolved.progressPercent, 100);
+  assert.equal(resolved.status, "COMPLETION_AVAILABLE");
+  assert.equal(resolved.endingResult, null);
+});
+
+test("Mock adapter 最終回合自動完成並輸出部分成功與顯著代價", async () => {
+  const api = new MockGameApi();
+  api.room.session = {
+    principalType: "host",
+    playerId: null,
+    csrfToken: "mock-host-csrf",
+    isHost: true,
+    hostCsrfToken: "mock-host-csrf",
+  };
+  api.room.status = "RESOLVING";
+  api.room.round = 6;
+  api.room.maxRounds = 6;
+  api.room.initialPlayerCount = 3;
+  api.room.progressPoints = 17;
+  api.room.dangerPoints = 11;
+  api.room.diceResults = api.room.players.map((player) => ({
+    playerId: player.id,
+    round: 6,
+    result: "PARTIAL_SUCCESS",
+    progressDelta: 1,
+    dangerDelta: 1,
+    sparkUsed: 0,
+    sparkDecision: "DECLINE",
+  }));
+
+  const resolved = await api.resolveRound();
+
+  assert.equal(resolved.status, "COMPLETED");
+  assert.equal(resolved.round, 6, "最終回合完成後不得增加回合數");
+  assert.equal(resolved.targetPoints, 30);
+  assert.equal(resolved.progressPercent, 67);
+  assert.equal(resolved.dangerPercent, 47);
+  assert.equal(resolved.endingResult, "PARTIAL_SUCCESS");
+  assert.equal(resolved.endingCost, "SIGNIFICANT");
+  assert.equal(resolved.entries.at(-1).type, "ending");
+});
