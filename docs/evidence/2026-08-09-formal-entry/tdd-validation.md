@@ -45,5 +45,16 @@
 
 ## 尚未完成
 
-- 建立／加入表單目前只有 UI，尚未呼叫正式 use case／API。
-- 房主建房同時成為 Player、room-code join、session continue 與完整 router 將使用新的 Red cycle 實作。
+- room-code join、session continue 與完整 router 將使用新的 Red cycle 實作。
+
+## WP-1B 房主建房（2026-08-09）
+
+- Red commits：`4b155f5`、`e2ef9ef`、`e84e8b4`、`c440dd1`。
+- Green commits：`591bdb4`、`611f0b8`、`095907c`、`44c172b`。
+- 完成 Room／Host session／第一位 Player／Player session 的單一冪等 operation；房主計入 3–5 人。
+- 拒絕空白暱稱、暱稱變更重用同一 idempotency key，並拒絕 client-supplied `player_id`。
+- Landing 建房成功導向 `/host/setup`；Browser 驗證顯示 `1 / 5`、房主暱稱與世界表單。
+- Browser 發現 deep-route 重新整理的相對資產路徑錯誤，已以 Red／Green 改為同源絕對路徑。
+- Sensitivity：暫時移除房主 Player 建立時，目標測試正確失敗；恢復後通過。
+- Regression：Backend `34 passed`；Frontend `46 passed`；Browser Console `0 errors`。
+- AWS：未登入、未呼叫、未建立資源，費用影響為零。

@@ -3,8 +3,8 @@
 - 交接日期：2026-08-09
 - 目前分支：`codex/formal-entry`
 - AWS 寫入／新增資源／費用：無
-- Production code 變更：無
-- 本機伺服器：未啟動
+- Production code 變更：已完成房主建房 WP-1B
+- 本機伺服器：驗證後已停止
 
 ## 本輪完成
 
@@ -18,6 +18,8 @@
 - WP-0 已 commit：`5b5a466 docs: define lightweight web app delivery gates`。
 - 正式 Landing 第一切片已完成三組 Red／Green：root 與 `/demo` 分離，Backend `29 passed`、Frontend `44 passed`、Browser Console 0 errors。
 - 詳細證據：[正式入口 TDD 驗證](../evidence/2026-08-09-formal-entry/tdd-validation.md)。
+- 房主建房已串接 Landing，同時建立 Host／Player session 與第一位玩家，並可在 `/host/setup` 重新整理恢復。
+- 最終回歸：Backend `34 passed`，Frontend `46 passed`，Browser Console `0 errors`。
 
 ## 已核准且不可重問的內容
 
@@ -27,14 +29,14 @@
 - 進行中房間最後活動後 7 天到期；結局後保留 7 天；房主可提前永久刪除。
 - 世界生成與回合 retry／fallback 沿用正式 Spec 及 approval log，不再重新 grill。
 
-## 下一步：WP-1 第一個嚴格 TDD 切片
+## 下一步：WP-1C room-code join
 
 依[入口 Feature Spec](../features/entry-and-room-join.md)執行：
 
-1. 以新的 Red 定義「房主輸入暱稱建房時，同時建立 Host＋Player 身份」。
-2. 先完成 backend service／API 正面、validation、idempotent replay 與 transaction-like memory behavior。
-3. 再以獨立 Red 串接 Landing 建立表單與 `/host/setup` 導航。
-4. 完成後才進入 room-code join；不得讓前端依賴已載入的 current room。
+1. 以新 Red 定義 room code＋暱稱的原子性加入。
+2. Repository 新增 room-code lookup；拒絕格式錯誤、不存在、非 Lobby、已滿與重複暱稱。
+3. API 不依賴瀏覽器已載入 current room，成功後設定 Player session 並導向 Lobby。
+4. 保留 `/demo` 隔離並執行完整 regression。
 
 ## 邊界
 

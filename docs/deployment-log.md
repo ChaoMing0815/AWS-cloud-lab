@@ -49,6 +49,7 @@
 | 2026-08-09 | 房間狀態 polling | 以串行 3 秒 polling 更新 canonical state；避免重疊 request，完成結局或停止時不再排程 | Red `4 failed`；Green 後端 `28 passed`、前端 `42 passed`；移除 in-flight guard 的 mutation 正確失敗；Browser 觀察多次 `/rooms/current` 200、Console 0 errors；8765 已停止；未執行 AWS 寫入 | [TDD 驗證](evidence/2026-08-09-room-polling/tdd-validation.md) |
 | 2026-08-09 | Web App 流程治理 | 依既有 MVP Spec 補足 Host／Player、Demo、角色轉移、期限與 LLM failure UX；建立輕量 source-of-truth、User Flow、Screen States、入口 Feature Spec 與本機 Test Plan | 文件權威與連結一致性檢查；本階段未修改 production code、未啟動服務、未執行 AWS 寫入 | [權威索引](product/source-of-truth.md)／[入口 Feature Spec](features/entry-and-room-join.md) |
 | 2026-08-09 | 正式 Landing 第一切片 | 以三組 Red／Green 建立正式根頁、隔離 `/demo`、補 FastAPI app shell route，並修正 Browser 發現的 hidden CSS 回歸 | Backend `29 passed`、Frontend `44 passed`；Browser 驗證 root／demo visibility、`/demo` 200、Console 0 errors；本機 server 已停止，未執行 AWS 寫入 | [TDD 驗證](evidence/2026-08-09-formal-entry/tdd-validation.md) |
+| 2026-08-09 | 房主建房 WP-1B | 建房時原子性建立 Host／Player 雙 session 與第一位玩家；Landing 串接 API 並導向 `/host/setup`；拒絕 client-supplied `player_id` | Backend `34 passed`、Frontend `46 passed`、sensitivity 通過；Browser 建房／deep refresh／`1 / 5`／Console 0 errors；未執行 AWS 寫入 | [TDD 驗證](evidence/2026-08-09-formal-entry/tdd-validation.md) |
 
 ## AWS Budget Alarm
 

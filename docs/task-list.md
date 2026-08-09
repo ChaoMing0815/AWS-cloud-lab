@@ -29,7 +29,7 @@
 - [x] 正式 `/` 已顯示建立／加入 Landing，且不建立 Demo state 或啟動 room polling。
 - [ ] 建立正式 Landing／router，將 Lobby／Play／Ending 從大型 `GamePage` 逐步拆分。
 - [x] 將開發用 `BONUS7` Demo 隔離至 `/demo`；正式 `/` 不自動載入 Demo。
-- [ ] 建房時原子性建立 Host session、房主 Player 與 Player session，房主計入 3–5 位玩家。
+- [x] 建房時原子性建立 Host session、房主 Player 與 Player session，房主計入 3–5 位玩家。
 - [ ] 建立依 room code＋暱稱原子性加入的 API／adapter／UI 與拒絕案例。
 - [ ] 建立有效 session 的「繼續目前遊戲」與 deep-link refresh。
 - [x] 建立 FastAPI skeleton、health endpoint 與同源靜態檔案服務。
