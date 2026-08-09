@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.adapters.memory_room_repository import MemoryRoomRepository
@@ -45,6 +45,11 @@ def create_app(dice_roller=None) -> FastAPI:
         )
 
     application.include_router(create_api_router(service))
+
+    @application.get("/demo", include_in_schema=False)
+    async def demo_app_shell() -> FileResponse:
+        return FileResponse(WEB_ROOT / "index.html")
+
     application.mount("/", StaticFiles(directory=WEB_ROOT, html=True), name="web")
     return application
 
