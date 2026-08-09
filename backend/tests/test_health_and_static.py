@@ -31,3 +31,12 @@ def test_fastapi_serves_app_shell_for_demo_route() -> None:
     assert response.status_code == 200
     assert 'id="landingPage"' in response.text
     assert 'id="gamePage"' in response.text
+
+
+def test_fastapi_serves_app_shell_for_host_setup_route() -> None:
+    with TestClient(create_app()) as client:
+        response = client.get("/host/setup")
+
+    assert response.status_code == 200
+    assert 'id="landingPage"' in response.text
+    assert 'id="worldForm"' in response.text

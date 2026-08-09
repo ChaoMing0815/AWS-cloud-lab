@@ -155,6 +155,19 @@ def test_create_room_idempotency_key_cannot_change_host_nickname() -> None:
     assert reused.json()["error"]["code"] == "IDEMPOTENCY_KEY_REUSED"
 
 
+def test_create_room_rejects_client_supplied_player_id() -> None:
+    app = create_app()
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/v1/rooms",
+            json={"nickname": "昭銘", "player_id": "forged-player"},
+            headers=headers("create-forged-player"),
+        )
+
+    assert response.status_code == 422
+    assert len(app.state.room_service.repository._rooms) == 1
+
+
 def test_join_room_and_reject_duplicate_nickname() -> None:
     with TestClient(create_app()) as client:
         room = new_lobby(client)
