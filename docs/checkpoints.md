@@ -33,6 +33,7 @@ Demo 與每日進度依本清單逐項驗收。檔案存在不代表完成；必
 - [x] 完整單回合 replay 不重複加點、扣星火、建立故事或推進回合。
 - [x] 4／6／8 回合上限、正式百分比、提前完成、host-only 結局選擇與自動結局已以嚴格 TDD 驗證。
 - [x] 結局規則已通過 59／60、39／40、69／70 邊界與三項 mutation 敏感度測試。
+- [x] Mock／HTTP adapter 的目標點數、提前完成與最大回合結局合約已一致，並通過 mutation 敏感度測試。
 - [ ] Session expiry／revoke／reassign 與 production Secure cookie 已完成。
 - [ ] 講師已確認自製 FastAPI Web／private DB 的 Tier 0 等效檢核與 Tier 0–5 對映。
 - [ ] 已確認 FastAPI＋PostgreSQL 與正式 AWS adapter ADR。

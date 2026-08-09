@@ -2,7 +2,7 @@
 
 - 交接日期：2026-08-09
 - 期末專題繳交日：2026-09-07
-- 目前分支：`codex/ending-policy`
+- 目前分支：`codex/mock-ending-parity`
 - AWS 寫入／新增資源／費用：無
 - 本機伺服器：均已停止
 
@@ -18,6 +18,8 @@
 - 已以嚴格 TDD 完成 4／6／8 回合上限、百分比、提前完成、房主結局選擇、自動結局敘事及前端控制。
 - 結局策略最終測試為後端 `28 passed`、前端 `35 passed`，並通過三項 mutation 敏感度測試。
 - 詳細證據：[結局策略嚴格 TDD 驗證](../evidence/2026-08-09-ending-policy/tdd-validation.md)。
+- Mock／HTTP adapter 的目標點數、提前完成與最大回合自動結局合約已一致；前端 regression 為 `38 passed`。
+- 詳細證據：[Mock／HTTP 結局合約一致性](../evidence/2026-08-09-mock-ending-parity/tdd-validation.md)。
 
 ## 尚未完成
 
@@ -29,10 +31,9 @@
 
 ## 下一步建議順序
 
-1. 讓 Mock adapter 的自動最大回合行為與 HTTP adapter 完全一致，補 contract tests。
-2. 使用三個獨立 Browser session 完成全流程 E2E 並保存證據。
-3. 實作 polling、取消與離線錯誤狀態。
-4. 再處理 PostgreSQL ADR；AWS 關卡通過前不部署。
+1. 使用三個獨立 Browser session 完成全流程 E2E 並保存證據。
+2. 實作 polling、取消與離線錯誤狀態。
+3. 再處理 PostgreSQL ADR；AWS 關卡通過前不部署。
 
 ## 不可違反的邊界
 
