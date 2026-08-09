@@ -73,6 +73,7 @@ WordPress 是簡報中的 Tier 0 範例與架構參考，不是目前選定的�
 - [專題決策 ADR-0001](docs/decisions/0001-select-multiplayer-ai-text-rpg.md)
 - [前端架構決策 ADR-0002](docs/decisions/0002-adopt-clean-frontend-architecture.md)
 - [部署紀錄](docs/deployment-log.md)
-- [2026-08-08 今日任務與進度](docs/daily/2026-08-08.md)
+- [2026-08-09 今日任務規劃](docs/daily/2026-08-09.md)
+- [2026-08-08 完成進度與達標分析](docs/daily/2026-08-08.md)
 
 期末專題繳交日：2026-09-07。
