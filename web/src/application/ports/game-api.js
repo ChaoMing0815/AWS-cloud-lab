@@ -38,4 +38,8 @@ export class GameApi {
   async resolveRound(_command) {
     throw new Error("GameApi.resolveRound 尚未實作");
   }
+
+  async finishGame(_command) {
+    throw new Error("GameApi.finishGame 尚未實作");
+  }
 }

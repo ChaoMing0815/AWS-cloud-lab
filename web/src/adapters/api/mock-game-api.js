@@ -60,6 +60,12 @@ function baseRoom({ withDemoPlayers = false } = {}) {
     dangerPoints: 0,
     pendingProgress: 0,
     pendingDanger: 0,
+    targetPoints: 0,
+    progressPercent: 0,
+    dangerPercent: 0,
+    endingResult: null,
+    endingCost: null,
+    successLocked: false,
     diceResults: [],
     players,
     session: currentPlayer
@@ -380,6 +386,36 @@ export class MockGameApi extends GameApi {
     this.room.pendingDanger = 0;
     this.room.round += 1;
     this.room.status = "COLLECTING_ACTIONS";
+    this.room.version += 1;
+    return clone(this.room);
+  }
+
+  async finishGame({ decision }) {
+    if (!this.room.session?.isHost) {
+      throw new ApiError("HOST_SESSION_REQUIRED", "需要有效的房主工作階段。", 401);
+    }
+    if (this.room.status !== "COMPLETION_AVAILABLE") {
+      throw new ApiError("FINISH_NOT_ALLOWED", "目前不能選擇結局。", 409);
+    }
+    this.room.successLocked = true;
+    if (decision === "CONTINUE") {
+      this.room.status = "COLLECTING_ACTIONS";
+    } else {
+      const target = this.room.targetPoints || 1;
+      const dangerPercent = Math.min(100, Math.round(this.room.dangerPoints / target * 100));
+      this.room.status = "COMPLETED";
+      this.room.endingResult = "FULL_SUCCESS";
+      this.room.endingCost = dangerPercent >= 70
+        ? "MAJOR"
+        : dangerPercent >= 40 ? "SIGNIFICANT" : "LOW";
+      this.room.entries.push({
+        id: randomId(),
+        type: "ending",
+        title: "故事結局",
+        round: this.room.round,
+        text: "故事以完整成功收束；Mock 故事主持人沒有修改規則狀態。",
+      });
+    }
     this.room.version += 1;
     return clone(this.room);
   }
