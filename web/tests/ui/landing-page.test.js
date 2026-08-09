@@ -18,6 +18,10 @@ function fakeDocument(nickname = "昭銘") {
     joinNickname: { value: " 小明 " },
     joinGameButton: { disabled: false },
     joinGameError: { hidden: true, textContent: "" },
+    continueGamePanel: { hidden: true },
+    continueGameButton: { disabled: false },
+    currentGameSummary: { textContent: "" },
+    sessionNotice: { hidden: true, textContent: "" },
   };
   return {
     elements,
@@ -49,6 +53,76 @@ test("LandingPage 建房成功後只導航一次至世界設定", async () => {
   assert.deepEqual(routes, ["/host/setup"]);
   assert.equal(documentRef.elements.createGameButton.disabled, false);
   assert.equal(documentRef.elements.createGameError.hidden, true);
+});
+
+test("LandingPage 有有效 session 時顯示繼續入口並依 canonical route 導航", async () => {
+  const documentRef = fakeDocument();
+  const routes = [];
+  const page = new LandingPage({
+    createRoom: { async execute() {} },
+    joinRoomByCode: { async execute() {} },
+    loadCurrentSession: {
+      async execute() {
+        return {
+          authenticated: true,
+          room: { roomCode: "ABCD23", status: "LOBBY" },
+          continueRoute: "/room/ABCD23/lobby",
+        };
+      },
+    },
+    documentRef,
+    navigate: (route) => routes.push(route),
+  });
+
+  await page.restoreCurrentSession();
+  await page.handleContinue();
+
+  assert.equal(documentRef.elements.continueGamePanel.hidden, false);
+  assert.match(documentRef.elements.currentGameSummary.textContent, /ABCD23/);
+  assert.deepEqual(routes, ["/room/ABCD23/lobby"]);
+});
+
+test("LandingPage 匿名時不顯示繼續入口", async () => {
+  const documentRef = fakeDocument();
+  const page = new LandingPage({
+    createRoom: { async execute() {} },
+    joinRoomByCode: { async execute() {} },
+    loadCurrentSession: {
+      async execute() {
+        return { authenticated: false, continueRoute: null };
+      },
+    },
+    documentRef,
+    navigate() {},
+  });
+
+  await page.restoreCurrentSession();
+
+  assert.equal(documentRef.elements.continueGamePanel.hidden, true);
+  assert.equal(documentRef.elements.sessionNotice.hidden, true);
+});
+
+test("LandingPage 過期 session 留在首頁並顯示原因", async () => {
+  const documentRef = fakeDocument();
+  const page = new LandingPage({
+    createRoom: { async execute() {} },
+    joinRoomByCode: { async execute() {} },
+    loadCurrentSession: {
+      async execute() {
+        const error = new Error("目前的遊戲工作階段已失效。");
+        error.code = "SESSION_NOT_FOUND";
+        throw error;
+      },
+    },
+    documentRef,
+    navigate() {},
+  });
+
+  await page.restoreCurrentSession();
+
+  assert.equal(documentRef.elements.continueGamePanel.hidden, true);
+  assert.equal(documentRef.elements.sessionNotice.hidden, false);
+  assert.equal(documentRef.elements.sessionNotice.textContent, "目前的遊戲工作階段已失效。");
 });
 
 test("LandingPage 加入成功後依回傳房號前往 Lobby", async () => {

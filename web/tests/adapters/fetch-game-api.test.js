@@ -24,6 +24,29 @@ test("FetchGameApi 以同源 cookie 載入目前房間", async () => {
   assert.equal(request.options.credentials, "include");
 });
 
+test("FetchGameApi 以同源 cookie 讀取安全 session 摘要", async () => {
+  let request;
+  const summary = {
+    authenticated: true,
+    principalType: "player",
+    isHost: false,
+    room: { id: "room-1", roomCode: "ABCD23", status: "LOBBY" },
+    continueRoute: "/room/ABCD23/lobby",
+  };
+  const api = new FetchGameApi({
+    fetchImpl: async (url, options) => {
+      request = { url, options };
+      return jsonResponse(summary);
+    },
+  });
+
+  const observed = await api.loadCurrentSession();
+
+  assert.equal(request.url, "/api/v1/session/current");
+  assert.equal(request.options.credentials, "include");
+  assert.deepEqual(observed, summary);
+});
+
 test("FetchGameApi 加入房間時傳送已知 room version", async () => {
   const requests = [];
   const responses = [
