@@ -15,6 +15,7 @@ Demo 與每日進度依本清單逐項驗收。檔案存在不代表完成；必
 
 ## 產品與課程對齊
 
+- [x] 已採用嚴格 Red／Green／Refactor TDD 規範，後續程式行為變更必須保存 test-first 與敏感度證據。
 - [x] 已逐頁檢查 `docs/inbox/專題.pptx` 共 53 張。
 - [x] 已確認 Tier 0–5 是同一主題的累積演進，不是互斥選題。
 - [x] 已完成 Research、15 項訪談與正式 MVP Spec。

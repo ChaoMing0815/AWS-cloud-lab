@@ -87,6 +87,14 @@ flowchart LR
 - 每個計費資源先估價並記錄 owner、用途、停止與刪除方式。
 - 高 Tier 資源只在驗證／Demo 時啟動，保存證據後立即縮減。
 
+## 6.1 開發品質底線
+
+- 所有 production code、API、遊戲規則、資料 adapter、IaC、CI/CD workflow 與可觀察 UI 行為變更採嚴格 TDD。
+- 每個小型行為切片依序完成 Red、Green、Refactor，並將失敗／成功輸出保存至 `docs/evidence/`。
+- `main` 只接收 regression suite 全綠的完成切片；不以事後補測試冒充 TDD。
+- 規則、安全、授權、計費防護與 idempotency 必須額外證明測試對刻意錯誤敏感。
+- 詳細流程與例外見 [`docs/testing-strategy.md`](testing-strategy.md)。
+
 ## 7. 預期成效
 
 - 展示同一產品如何由 monolith 演進為可維運、多組件、CI/CD、微服務與 Agentic AI。

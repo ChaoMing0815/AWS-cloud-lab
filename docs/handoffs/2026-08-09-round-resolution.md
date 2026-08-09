@@ -35,6 +35,8 @@
 
 ## 不可違反的邊界
 
+- 後續所有程式行為變更必須依 [`docs/testing-strategy.md`](../testing-strategy.md) 採嚴格 TDD；先保存 Red，再做 Green 與 Refactor。
+- 不得將 production code 與事後補寫的測試合併描述成 test-first；規則、安全與 idempotency 必須補 mutation 敏感度證據。
 - LLM 只負責敘事，不得修改骰點、結果、點數、星火或結局條件。
 - AWS 部署維持暫停；不得建立／加入 AWS Organizations。
 - 不建立長期 Access Key，不授予應用程式 `AdministratorAccess`。

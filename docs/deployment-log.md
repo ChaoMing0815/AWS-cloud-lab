@@ -43,6 +43,7 @@
 | 2026-08-08 | 角色建立與配點 vertical slice | 建立 player-only 角色 mutation、名稱／背景／特質／弱點、勇氣／洞察／羈絆三點配點與固定 1 星火；Lobby start 要求全員角色完成 | 後端 14 tests、前端 22 tests；Browser 建房→確認世界→加入→`2/1/0` 配點→角色 ready，Console 0 errors；8000 Demo 與 8765 驗證伺服器皆已停止；未執行 AWS 寫入 | [驗證證據](evidence/2026-08-08-character-creation/validation.md) |
 | 2026-08-08 | Deterministic 回合裁定 vertical slice | 建立 action approach、`DiceRoller` port、`2d6 + 屬性` 三段判定、待結算進度／危機，以及 `AWAITING_HOST → AWAITING_SPARK`；擲骰限房主且具 CSRF、version、idempotency | 後端 16 tests、前端 24 tests；固定骰驗證三種結果、重送不重擲；Browser 顯示屬性與骰點區、Console 0 errors；8765 已停止；未執行 AWS 寫入 | [驗證證據](evidence/2026-08-08-deterministic-rules/validation.md) |
 | 2026-08-09 | 星火與完整單回合 vertical slice | 建立 player-only 星火決策、host-only 結算／略過等待者、正式點數與星火套用、Mock 敘事及下一回合；前端加入決策與結算控制 | 後端 18 tests、前端 28 tests；三玩家固定骰整合、授權／CSRF／無星火／pending／replay 負面驗證；Browser Console 0 errors；8765 已停止；未執行 AWS 寫入 | [驗證證據](evidence/2026-08-09-spark-round-resolution/validation.md) |
+| 2026-08-09 | 開發流程治理 | 稽核既有測試歷史，確認過去屬測試規劃先行但非可稽核嚴格 TDD；後續程式行為改採 Red／Green／Refactor、test-first 證據與 mutation 敏感度驗證 | 文件交叉檢查、Git 歷史稽核與規範連結檢查；未修改 production code、未執行 AWS 寫入 | [TDD 採用紀錄](evidence/2026-08-09-tdd-governance/adoption.md) |
 
 ## AWS Budget Alarm
 

@@ -33,6 +33,7 @@ Tier 0  共演計劃可玩 Web App + 公私網段 + 私有資料層
 6. `docs/inbox/專題.pptx`
 7. `docs/course-requirements-alignment.md`
 8. `docs/handoffs/` 中日期最新的交接文件
+9. 涉及程式、API、規則、IaC 或可觀察行為變更時，必讀 `docs/testing-strategy.md`
 
 如果任務涉及 AWS 實作，必須同時確認目前 AWS 成本、安全與資源狀態，不可假設雲端環境已準備完成。
 
@@ -183,6 +184,27 @@ Agent 需要能協助：
 - 檢查 git status
 - 避免 commit secrets、暫存檔與 `.DS_Store`
 
+### 10. 嚴格 Test-Driven Development
+
+凡涉及 production code、API、遊戲規則、資料存取、IaC、workflow 或可觀察 UI 行為的變更，必須遵循 [`docs/testing-strategy.md`](docs/testing-strategy.md) 的嚴格 TDD 流程：
+
+```text
+Red：先寫測試並確認因缺少目標行為而失敗
+  → Green：只寫讓該測試通過的最小實作
+  → Refactor：不改行為地整理設計，重新通過全部測試
+```
+
+強制規則：
+
+- 不得先寫 production implementation 再回頭補測試。
+- 每個行為切片必須保存 Red、Green、Refactor 的指令、結果與 commit 對應。
+- Red 必須是預期 assertion failure，不得是語法、import、環境或測試資料錯誤。
+- Green 除目標測試外，必須通過既有 regression suite。
+- 規則、安全、權限與 idempotency 變更必須做一次 mutation／故障注入敏感度驗證，證明測試會抓到刻意錯誤。
+- 功能分支完成 Green 前不得合併；`main` tip 必須維持全綠。
+- 若 Agent 發現 production code 已先被修改，必須停止該切片、回復尚未提交的 implementation，再從 Red 重新開始；不得以事後補測試冒充 TDD。
+- 文件、註解、純格式化與不改變行為的素材調整不強制 TDD；但不得藉此規避實際行為測試。
+
 ## 工作原則
 
 1. 先完成 Tier 0，再做延伸。
@@ -193,6 +215,7 @@ Agent 需要能協助：
 6. 不要把本機 Demo 當成最終成果，成績以 AWS 實際運作為準。
 7. 不要硬編 secrets。
 8. 能用 SSM 時，不以 SSH 作為主要維運方式。
+9. 所有程式行為變更採嚴格 Red／Green／Refactor TDD，並保存可稽核證據。
 
 ## 建議下一步
 

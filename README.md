@@ -35,6 +35,8 @@ cd backend
 ../.venv/bin/python -m pytest
 ```
 
+後續所有程式、API、規則、IaC 與可觀察 UI 行為變更均採嚴格 Red／Green／Refactor TDD。功能分支必須先保存因缺少目標行為而失敗的 Red 證據，再進行最小 Green 實作與 Refactor；不得以開發後補測試宣稱 TDD。詳細規範見[測試與 TDD 策略](docs/testing-strategy.md)。
+
 ## MVP 範圍
 
 - 3–5 人回合制純文字遊戲
@@ -72,6 +74,7 @@ WordPress 是簡報中的 Tier 0 範例與架構參考，不是目前選定的�
 - [Session／CSRF／Idempotency 設計](docs/architecture/session-and-idempotency.md)
 - [專題決策 ADR-0001](docs/decisions/0001-select-multiplayer-ai-text-rpg.md)
 - [前端架構決策 ADR-0002](docs/decisions/0002-adopt-clean-frontend-architecture.md)
+- [測試與嚴格 TDD 策略](docs/testing-strategy.md)
 - [部署紀錄](docs/deployment-log.md)
 - [2026-08-09 今日任務規劃](docs/daily/2026-08-09.md)
 - [2026-08-08 完成進度與達標分析](docs/daily/2026-08-08.md)
