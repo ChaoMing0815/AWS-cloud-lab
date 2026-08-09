@@ -91,6 +91,64 @@ def test_create_room_and_restore_it_from_http_only_cookie() -> None:
     assert client.cookies.get("co_story_host")
 
 
+def test_create_room_atomically_creates_host_player_and_replays() -> None:
+    payload = {"nickname": "  昭銘  "}
+    with TestClient(create_app()) as client:
+        first = client.post(
+            "/api/v1/rooms",
+            json=payload,
+            headers=headers("create-host-player"),
+        )
+        replay = client.post(
+            "/api/v1/rooms",
+            json=payload,
+            headers=headers("create-host-player"),
+        )
+
+    assert first.status_code == 201
+    assert first.json()["status"] == "DRAFT"
+    assert [player["name"] for player in first.json()["players"]] == ["昭銘"]
+    assert first.json()["session"]["principalType"] == "player"
+    assert first.json()["session"]["isHost"] is True
+    assert first.json()["session"]["playerId"] == first.json()["players"][0]["id"]
+    assert client.cookies.get("co_story_host")
+    assert client.cookies.get("co_story_player")
+    assert replay.json()["id"] == first.json()["id"]
+    assert replay.json()["players"] == first.json()["players"]
+
+
+def test_create_room_rejects_invalid_nickname_without_saving_room() -> None:
+    app = create_app()
+    with TestClient(app) as client:
+        invalid = client.post(
+            "/api/v1/rooms",
+            json={"nickname": "   "},
+            headers=headers("invalid-host-name"),
+        )
+
+    assert invalid.status_code == 422
+    assert invalid.json()["error"]["code"] == "INVALID_NICKNAME"
+    assert len(app.state.room_service.repository._rooms) == 1  # 只有隔離的 Demo room
+
+
+def test_create_room_idempotency_key_cannot_change_host_nickname() -> None:
+    with TestClient(create_app()) as client:
+        first = client.post(
+            "/api/v1/rooms",
+            json={"nickname": "昭銘"},
+            headers=headers("create-host-reused"),
+        )
+        reused = client.post(
+            "/api/v1/rooms",
+            json={"nickname": "洛河"},
+            headers=headers("create-host-reused"),
+        )
+
+    assert first.status_code == 201
+    assert reused.status_code == 422
+    assert reused.json()["error"]["code"] == "IDEMPOTENCY_KEY_REUSED"
+
+
 def test_join_room_and_reject_duplicate_nickname() -> None:
     with TestClient(create_app()) as client:
         room = new_lobby(client)
