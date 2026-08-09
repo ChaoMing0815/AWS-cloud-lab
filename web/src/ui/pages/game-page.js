@@ -25,6 +25,7 @@ export class GamePage {
     finishGame,
     connectionLabel,
     persistenceLabel,
+    navigate = null,
     schedule = (callback, delay) => globalThis.setTimeout(callback, delay),
     cancelSchedule = (id) => globalThis.clearTimeout(id),
     pollingIntervalMs = 3000,
@@ -44,6 +45,7 @@ export class GamePage {
     };
     this.connectionLabel = connectionLabel;
     this.persistenceLabel = persistenceLabel;
+    this.navigate = navigate;
     this.schedule = schedule;
     this.cancelSchedule = cancelSchedule;
     this.pollingIntervalMs = pollingIntervalMs;
@@ -116,6 +118,7 @@ export class GamePage {
     this.pollInFlight = true;
     try {
       this.room = await this.useCases.loadRoom.execute();
+      this.syncRoute();
       this.render();
       return true;
     } finally {
@@ -220,6 +223,7 @@ export class GamePage {
     this.showFeedback("");
     try {
       this.room = await operation();
+      this.syncRoute();
       this.render();
       this.showFeedback(successMessage, "success");
       return true;
@@ -230,6 +234,16 @@ export class GamePage {
       this.setBusy(false);
       if (this.room) this.render();
     }
+  }
+
+  syncRoute() {
+    if (!this.navigate || !this.room?.roomCode) return;
+    let route;
+    if (this.room.status === "DRAFT") route = "/host/setup";
+    else if (this.room.status === "LOBBY") route = `/room/${this.room.roomCode}/lobby`;
+    else if (this.room.status === "COMPLETED") route = `/room/${this.room.roomCode}/ending`;
+    else route = `/room/${this.room.roomCode}/play`;
+    this.navigate(route);
   }
 
   setBusy(busy) {

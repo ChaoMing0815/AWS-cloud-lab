@@ -38,6 +38,11 @@ function mountGamePage({ forceMock = false } = {}) {
     persistenceLabel: apiMode === "http"
       ? "本機原型 · 遊戲資料由 FastAPI memory repository 管理"
       : "教學 Demo · 資料只存在本頁記憶體，重新進入即重設",
+    navigate: forceMock ? null : (route) => {
+      if (globalThis.location.pathname !== route) {
+        globalThis.history.replaceState({}, "", route);
+      }
+    },
   });
 
   document.getElementById("landingPage").hidden = true;
