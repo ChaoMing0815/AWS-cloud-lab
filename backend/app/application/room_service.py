@@ -593,6 +593,15 @@ class RoomService:
                 current.status = "COMPLETED"
                 current.ending_result = ending_result(progress_percent)
                 current.ending_cost = ending_cost(danger_percent)
+                current.entries.append(
+                    StoryEntry(
+                        id=_new_id(),
+                        type="ending",
+                        title="故事結局",
+                        round_number=current.round_number,
+                        text=self.storyteller.resolve_ending(current),
+                    )
+                )
             else:
                 current.round_number += 1
                 current.status = (
