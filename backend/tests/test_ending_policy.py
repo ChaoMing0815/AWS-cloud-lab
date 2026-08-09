@@ -109,6 +109,8 @@ def test_last_round_completes_with_partial_success_and_significant_cost() -> Non
     assert response["dangerPercent"] == 44
     assert response["endingResult"] == "PARTIAL_SUCCESS"
     assert response["endingCost"] == "SIGNIFICANT"
+    assert response["entries"][-1]["type"] == "ending"
+    assert "部分成功" in response["entries"][-1]["text"]
 
 
 def test_reaching_100_percent_before_last_round_waits_for_host_choice() -> None:
