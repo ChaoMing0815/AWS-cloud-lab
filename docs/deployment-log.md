@@ -47,6 +47,7 @@
 | 2026-08-09 | 回合上限與結局策略 | 以四組嚴格 Red／Green 循環完成 4／6／8 回合上限、正式百分比、提前完成、host-only `FINISH_NOW／CONTINUE`、自動結局敘事與前端結局控制 | 後端 `28 passed`、前端 `35 passed`；三項 mutation 敏感度測試；Browser Console 0 errors、無水平溢出；8765 已停止；未執行 AWS 寫入 | [嚴格 TDD 驗證](evidence/2026-08-09-ending-policy/tdd-validation.md) |
 | 2026-08-09 | Mock／HTTP 結局合約一致性 | Mock adapter 對齊目標點數、百分比、提前完成與最大回合自動結局；立即結局共用完成流程 | Red `3 failed`；Green 後端 `28 passed`、前端 `38 passed`；最大回合 operator mutation 正確失敗；未啟動伺服器或執行 AWS 寫入 | [TDD 驗證](evidence/2026-08-09-mock-ending-parity/tdd-validation.md) |
 | 2026-08-09 | 房間狀態 polling | 以串行 3 秒 polling 更新 canonical state；避免重疊 request，完成結局或停止時不再排程 | Red `4 failed`；Green 後端 `28 passed`、前端 `42 passed`；移除 in-flight guard 的 mutation 正確失敗；Browser 觀察多次 `/rooms/current` 200、Console 0 errors；8765 已停止；未執行 AWS 寫入 | [TDD 驗證](evidence/2026-08-09-room-polling/tdd-validation.md) |
+| 2026-08-09 | Web App 流程治理 | 依既有 MVP Spec 補足 Host／Player、Demo、角色轉移、期限與 LLM failure UX；建立輕量 source-of-truth、User Flow、Screen States、入口 Feature Spec 與本機 Test Plan | 文件權威與連結一致性檢查；本階段未修改 production code、未啟動服務、未執行 AWS 寫入 | [權威索引](product/source-of-truth.md)／[入口 Feature Spec](features/entry-and-room-join.md) |
 
 ## AWS Budget Alarm
 

@@ -19,6 +19,8 @@ Demo 與每日進度依本清單逐項驗收。檔案存在不代表完成；必
 - [x] 已逐頁檢查 `docs/inbox/專題.pptx` 共 53 張。
 - [x] 已確認 Tier 0–5 是同一主題的累積演進，不是互斥選題。
 - [x] 已完成 Research、15 項訪談與正式 MVP Spec。
+- [x] 已完成 Web App 補充 Grill，並確認沒有重問既有骰子、星火、角色、回合與結局規則。
+- [x] 已建立文件權威索引、目標 User Flow、Screen States、入口 Feature Spec 與本機 MVP Test Plan。
 - [x] 已建立題材中立的「共演計劃」展示原型。
 - [x] 已接受前端 Clean Architecture、`GameApi` port 與後端 API 安全邊界。
 - [x] 現有原型的第一個 vertical slice 已依 ADR-0002 遷移，遊戲 state 不再存於 `localStorage`。
@@ -35,7 +37,12 @@ Demo 與每日進度依本清單逐項驗收。檔案存在不代表完成；必
 - [x] 結局規則已通過 59／60、39／40、69／70 邊界與三項 mutation 敏感度測試。
 - [x] Mock／HTTP adapter 的目標點數、提前完成與最大回合結局合約已一致，並通過 mutation 敏感度測試。
 - [x] 房間狀態已使用無重疊的 3 秒 polling 同步；完成結局或停止時不再排程，並通過 Browser 驗證。
+- [ ] 正式 `/` 已提供建立／加入／繼續與次要 Demo 入口，不會自動載入 `BONUS7`。
+- [ ] 房主建房時同時取得 Host／Player 身份並計入 3–5 位玩家。
+- [ ] 玩家可用 room code＋暱稱加入任意可加入房間，且錯誤／滿員／已開始案例均被拒絕。
+- [ ] Loading、Offline、Session expired、Version conflict 與 reconnect UX 已完成。
 - [ ] Session expiry／revoke／reassign 與 production Secure cookie 已完成。
+- [ ] PostgreSQL restart persistence、LLM retry／fallback 與三個獨立 browser contexts E2E 已完成。
 - [ ] 講師已確認自製 FastAPI Web／private DB 的 Tier 0 等效檢核與 Tier 0–5 對映。
 - [ ] 已確認 FastAPI＋PostgreSQL 與正式 AWS adapter ADR。
 - [ ] 本機 MVP 已通過 Spec Definition of Done。

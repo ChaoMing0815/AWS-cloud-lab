@@ -1,0 +1,45 @@
+# 共演計劃文件權威索引
+
+- 狀態：Active
+- Owner：專題使用者（產品）／專題開發者（技術）
+- Source of Truth：是，僅負責文件權威與衝突處理
+- 最後檢視：2026-08-09
+
+## 目的
+
+本文件只說明「哪份文件決定什麼」，不重複產品規則。若文件互相衝突，以較具體、已核准且較新的上游文件為準；程式現況不能自行覆蓋已核准規格。
+
+## 權威順序
+
+| 範圍 | 權威文件 | 狀態 | 下游使用者 |
+| --- | --- | --- | --- |
+| Agent 工作、安全與 AWS 變更關卡 | [`AGENTS.md`](../../AGENTS.md) 與專題 Skill | Active | 所有工作階段 |
+| 選題與產品邊界 | [ADR-0001](../decisions/0001-select-multiplayer-ai-text-rpg.md) | Accepted | 產品、架構、課程對照 |
+| 前端與 API 責任邊界 | [ADR-0002](../decisions/0002-adopt-clean-frontend-architecture.md) | Accepted | 前端、後端、測試 |
+| 遊戲規則與 MVP Definition of Done | [正式 MVP Spec](../specs/text-rpg-mvp-spec.md) | Approved | User Flow、Feature Spec、測試 |
+| 2026-08-09 補充產品決策 | [核准紀錄](../governance/approval-log.md) | Approved | 入口、session、LLM failure UX |
+| 頁面導航 | [Web App User Flow](user-flow.md) | Active target | Screen States、入口 Feature Spec |
+| 畫面狀態 | [Screen States](screen-states.md) | Active target | UI、QA |
+| 實作切片 | [`docs/features/`](../features/README.md) | 各切片獨立標示 | Engineer、QA |
+| 嚴格 TDD 程序 | [測試策略](../testing-strategy.md) | Active | 所有行為變更 |
+| 本機 MVP 驗收範圍 | [本機 MVP Test Plan](../qa/local-mvp-test-plan.md) | Active target | QA、Release gate |
+| AWS 課程交付 | [Project Plan](../project-plan.md)、[Checkpoints](../checkpoints.md) | Active | AWS 各 Tier |
+
+## 狀態規則
+
+- `Approved／Accepted／Active` 可以指導正式實作。
+- `Active target` 表示已核准的目標行為，但不代表程式已完成。
+- `Draft` 只能用於討論，不能單獨作為 production code 的依據。
+- `Superseded` 必須連到替代文件，不得繼續作為驗收標準。
+- Checklist 只能反映完成狀態，不能覆蓋 Spec。
+
+## 小型專案角色切換
+
+本專題允許同一 Agent 依序扮演 PM、Designer、Engineer 與 QA，但每個切片必須明確留下：
+
+1. 使用者核准的 acceptance criteria。
+2. Red／Green／Refactor 證據。
+3. Engineer 自我檢查與 QA 驗證結果。
+4. 尚未完成與已知風險。
+
+不要求為小型專案建立多份內容重複的 PRD／SRS／TRD；既有 MVP Spec 是產品規則主文件，Feature Spec 只描述本次差異與可驗收行為。
