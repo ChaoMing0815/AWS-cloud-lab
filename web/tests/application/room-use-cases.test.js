@@ -9,6 +9,13 @@ import { UpdateCharacter } from "../../src/application/use-cases/update-characte
 import { DecideSpark } from "../../src/application/use-cases/decide-spark.js";
 import { ResolveRound } from "../../src/application/use-cases/resolve-round.js";
 
+let FinishGame;
+try {
+  ({ FinishGame } = await import("../../src/application/use-cases/finish-game.js"));
+} catch {
+  FinishGame = undefined;
+}
+
 test("CreateRoom 只透過 GameApi port 建立房間", async () => {
   let calls = 0;
   const expected = { id: "room-1" };
@@ -143,4 +150,25 @@ test("ResolveRound 明確傳送是否略過等待者", async () => {
   const room = await new ResolveRound(gameApi).execute({ skipPendingSpark: true });
   assert.deepEqual(command, { skipPendingSpark: true });
   assert.equal(room.round, 2);
+});
+
+test("FinishGame 只接受 FINISH_NOW 或 CONTINUE", async () => {
+  assert.equal(typeof FinishGame, "function", "FinishGame use case 尚未建立");
+  let command;
+  const gameApi = {
+    async finishGame(received) {
+      command = received;
+      return { status: "COMPLETED" };
+    },
+  };
+  const useCase = new FinishGame(gameApi);
+
+  const room = await useCase.execute({ decision: "FINISH_NOW" });
+
+  assert.deepEqual(command, { decision: "FINISH_NOW" });
+  assert.equal(room.status, "COMPLETED");
+  assert.throws(
+    () => useCase.execute({ decision: "REWRITE_ENDING" }),
+    { code: "INVALID_COMPLETION_DECISION" },
+  );
 });

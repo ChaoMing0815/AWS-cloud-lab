@@ -245,3 +245,35 @@ test("角色更新使用 player CSRF 且不接受 player ID", async () => {
   assert.equal(body.room_version, 7);
   assert.equal("player_id" in body, false);
 });
+
+test("房主結局選擇使用 finish endpoint 與 host CSRF", async () => {
+  const requests = [];
+  const room = {
+    id: "room-1",
+    version: 15,
+    round: 3,
+    status: "COMPLETION_AVAILABLE",
+    players: [],
+    session: { isHost: true, hostCsrfToken: "host-finish-csrf" },
+  };
+  const api = new FetchGameApi({
+    idempotencyKeyFactory: () => "finish-mutation-key",
+    fetchImpl: async (url, options) => {
+      requests.push({ url, options });
+      return jsonResponse(room);
+    },
+  });
+  await api.loadRoom();
+  assert.equal(typeof api.finishGame, "function", "FetchGameApi.finishGame 尚未建立");
+
+  await api.finishGame({ decision: "CONTINUE" });
+
+  const request = requests[1];
+  assert.equal(request.url, "/api/v1/rooms/room-1:finish");
+  assert.equal(request.options.headers["X-CSRF-Token"], "host-finish-csrf");
+  assert.equal(request.options.headers["Idempotency-Key"], "finish-mutation-key");
+  assert.deepEqual(JSON.parse(request.options.body), {
+    decision: "CONTINUE",
+    room_version: 15,
+  });
+});

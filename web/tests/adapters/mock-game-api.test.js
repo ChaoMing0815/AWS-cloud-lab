@@ -138,3 +138,23 @@ test("Mock adapter 可完成星火與一回合結算", async () => {
   assert.equal(resolved.entries.at(-1).type, "narrator");
   assert.equal(resolved.players.every((player) => player.action === ""), true);
 });
+
+test("Mock adapter 可模擬房主立即結局與繼續尾聲", async () => {
+  const api = new MockGameApi();
+  await api.createRoom();
+  api.room.status = "COMPLETION_AVAILABLE";
+  api.room.progressPoints = 18;
+  api.room.dangerPoints = 9;
+  api.room.targetPoints = 18;
+  assert.equal(typeof api.finishGame, "function", "MockGameApi.finishGame 尚未建立");
+
+  const continued = await api.finishGame({ decision: "CONTINUE" });
+  assert.equal(continued.status, "COLLECTING_ACTIONS");
+  assert.equal(continued.successLocked, true);
+
+  api.room.status = "COMPLETION_AVAILABLE";
+  const finished = await api.finishGame({ decision: "FINISH_NOW" });
+  assert.equal(finished.status, "COMPLETED");
+  assert.equal(finished.endingResult, "FULL_SUCCESS");
+  assert.equal(finished.entries.at(-1).type, "ending");
+});

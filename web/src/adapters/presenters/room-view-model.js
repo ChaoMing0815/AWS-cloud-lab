@@ -21,6 +21,10 @@ export function toRoomViewModel(room) {
             ? "骰點已揭曉，等待玩家決定是否使用星火。"
             : room.status === "RESOLVING"
               ? "星火決策已完成，等待房主結算回合。"
+              : room.status === "COMPLETION_AVAILABLE"
+                ? "共同目標已完成，等待房主選擇結束或繼續探索。"
+                : room.status === "COMPLETED"
+                  ? "故事已完成，可查看最終結局。"
           : `還有 ${playerTotal - completed} 位玩家尚未提交。`,
     world: room.world,
     currentPlayerId: room.session?.playerId ?? null,
@@ -58,6 +62,21 @@ export function toRoomViewModel(room) {
       ),
     progressPoints: room.progressPoints ?? 0,
     dangerPoints: room.dangerPoints ?? 0,
+    gameProgressPercent: room.progressPercent ?? 0,
+    dangerPercent: room.dangerPercent ?? 0,
+    canFinishNow: Boolean(room.session?.isHost) && room.status === "COMPLETION_AVAILABLE",
+    canContinue: Boolean(room.session?.isHost) && room.status === "COMPLETION_AVAILABLE",
+    isCompleted: room.status === "COMPLETED",
+    endingResultLabel: {
+      FULL_SUCCESS: "完整成功",
+      PARTIAL_SUCCESS: "部分成功",
+      FAILURE: "主要目標失敗",
+    }[room.endingResult] ?? "",
+    endingCostLabel: {
+      LOW: "低代價",
+      SIGNIFICANT: "明確代價",
+      MAJOR: "重大代價",
+    }[room.endingCost] ?? "",
     pendingProgress: room.pendingProgress ?? 0,
     pendingDanger: room.pendingDanger ?? 0,
     diceResults: (room.diceResults ?? []).map((result) => ({

@@ -2,6 +2,7 @@ from fastapi import APIRouter, Cookie, Header, Response, status
 
 from app.api.schemas import (
     ConfirmWorldRequest,
+    FinishRoomRequest,
     JoinRoomRequest,
     ResolveRoundRequest,
     RollRoundRequest,
@@ -148,6 +149,25 @@ def create_api_router(service: RoomService) -> APIRouter:
     ) -> dict:
         room = service.start_game(
             room_id,
+            request.room_version,
+            host_token or "",
+            csrf_token or "",
+            _required_idempotency_key(idempotency_key),
+        )
+        return room_response(room, service.session_context(room, host_token, player_token))
+
+    @router.post("/rooms/{room_id}:finish")
+    def finish_game(
+        room_id: str,
+        request: FinishRoomRequest,
+        idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+        csrf_token: str | None = Header(default=None, alias="X-CSRF-Token"),
+        host_token: str | None = Cookie(default=None, alias=HOST_SESSION_COOKIE),
+        player_token: str | None = Cookie(default=None, alias=PLAYER_SESSION_COOKIE),
+    ) -> dict:
+        room = service.finish_game(
+            room_id,
+            request.decision,
             request.room_version,
             host_token or "",
             csrf_token or "",

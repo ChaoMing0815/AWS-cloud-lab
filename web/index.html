@@ -148,6 +148,12 @@
 
         <div id="storyFeed" class="story-feed" aria-live="polite"></div>
 
+        <section id="endingPanel" class="ending-panel" hidden>
+          <div class="eyebrow">最終結局</div>
+          <h2 id="endingResultText">部分成功</h2>
+          <p>代價評級：<strong id="endingCostText">明確代價</strong></p>
+        </section>
+
         <form id="actionForm" class="action-composer">
           <div class="composer-meta">
             <label for="activePlayer">以角色身分行動</label>
@@ -184,6 +190,12 @@
           <span>正式進度 <strong id="officialProgress">0</strong></span>
           <span>正式危機 <strong id="officialDanger">0</strong></span>
         </div>
+        <div class="metric-track" aria-label="正式進度百分比">
+          <div id="gameProgressBar"></div>
+        </div>
+        <div class="metric-track danger" aria-label="危機百分比">
+          <div id="dangerBar"></div>
+        </div>
 
         <div id="turnList" class="turn-list"></div>
 
@@ -207,6 +219,15 @@
           <p class="muted">全員完成星火決策後結算；若有人離線，房主可明確略過等待者。</p>
           <button id="resolveRoundButton" class="primary-button" type="button">結算本回合</button>
           <button id="skipAndResolveButton" class="secondary-button" type="button">略過等待者並結算</button>
+        </div>
+
+        <div id="completionControls" class="host-form" hidden>
+          <strong>共同目標已完成</strong>
+          <p class="muted">現在結束會產生完整成功結局；也可以鎖定成功並繼續尾聲探索。</p>
+          <div class="button-row">
+            <button id="finishNowButton" class="primary-button" type="button">現在產生結局</button>
+            <button id="continueButton" class="secondary-button" type="button">繼續尾聲探索</button>
+          </div>
         </div>
 
         <div class="dice-panel">

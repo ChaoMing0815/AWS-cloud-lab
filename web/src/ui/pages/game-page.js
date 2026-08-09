@@ -22,6 +22,7 @@ export class GamePage {
     rollRound,
     decideSpark,
     resolveRound,
+    finishGame,
     connectionLabel,
     persistenceLabel,
   }) {
@@ -36,6 +37,7 @@ export class GamePage {
       rollRound,
       decideSpark,
       resolveRound,
+      finishGame,
     };
     this.connectionLabel = connectionLabel;
     this.persistenceLabel = persistenceLabel;
@@ -63,6 +65,8 @@ export class GamePage {
     byId("declineSparkButton").addEventListener("click", () => this.handleSpark("DECLINE"));
     byId("resolveRoundButton").addEventListener("click", () => this.handleResolve(false));
     byId("skipAndResolveButton").addEventListener("click", () => this.handleResolve(true));
+    byId("finishNowButton").addEventListener("click", () => this.handleFinish("FINISH_NOW"));
+    byId("continueButton").addEventListener("click", () => this.handleFinish("CONTINUE"));
     await this.run(() => this.useCases.loadRoom.execute());
   }
 
@@ -150,6 +154,13 @@ export class GamePage {
     );
   }
 
+  async handleFinish(decision) {
+    const message = decision === "FINISH_NOW"
+      ? "故事已完成。"
+      : "完整成功已鎖定，繼續進行尾聲探索。";
+    await this.run(() => this.useCases.finishGame.execute({ decision }), message);
+  }
+
   async run(operation, successMessage = "") {
     this.setBusy(true);
     this.showFeedback("");
@@ -168,7 +179,7 @@ export class GamePage {
   }
 
   setBusy(busy) {
-    document.querySelectorAll("button[type='submit'], #newRoomButton, #startGameButton, #rollRoundButton, #useSparkButton, #declineSparkButton, #resolveRoundButton, #skipAndResolveButton").forEach((button) => {
+    document.querySelectorAll("button[type='submit'], #newRoomButton, #startGameButton, #rollRoundButton, #useSparkButton, #declineSparkButton, #resolveRoundButton, #skipAndResolveButton, #finishNowButton, #continueButton").forEach((button) => {
       button.disabled = busy;
     });
   }
@@ -193,8 +204,14 @@ export class GamePage {
     byId("worldPremise").textContent = view.world.premise;
     byId("storyTitle").textContent = view.world.storyTitle;
     byId("objectiveText").textContent = view.world.objective;
-    byId("officialProgress").textContent = String(view.progressPoints);
-    byId("officialDanger").textContent = String(view.dangerPoints);
+    byId("officialProgress").textContent = `${view.progressPoints}（${view.gameProgressPercent}%）`;
+    byId("officialDanger").textContent = `${view.dangerPoints}（${view.dangerPercent}%）`;
+    byId("gameProgressBar").style.width = `${view.gameProgressPercent}%`;
+    byId("dangerBar").style.width = `${view.dangerPercent}%`;
+    byId("actionForm").hidden = view.isCompleted || view.status === "COMPLETION_AVAILABLE";
+    byId("endingPanel").hidden = !view.isCompleted;
+    byId("endingResultText").textContent = view.endingResultLabel;
+    byId("endingCostText").textContent = view.endingCostLabel;
     this.renderHostControls(view);
     this.renderPlayers(view.players, view.currentPlayerId, view.canSubmitAction, view.status);
     this.renderEntries(view.entries);
@@ -211,6 +228,7 @@ export class GamePage {
     byId("roundHostControls").hidden = !view.canRoll;
     byId("sparkControls").hidden = !view.canDecideSpark;
     byId("resolveRoundControls").hidden = !view.canResolve;
+    byId("completionControls").hidden = !(view.canFinishNow || view.canContinue);
     if (view.currentDiceResult) {
       const improves = view.currentDiceResult.baseTotal === 6 || view.currentDiceResult.baseTotal === 9;
       byId("sparkHint").textContent = improves

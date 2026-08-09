@@ -29,7 +29,7 @@
 - [x] 建立至 `AWAITING_SPARK` 的 state machine 與 `2d6 + 屬性` deterministic engine。
 - [x] 完成星火 USE／DECLINE、房主略過等待者與 deterministic 結果重算。
 - [x] 完成正式進度／危機套用、星火增減、Mock 敘事與下一回合推進。
-- [ ] 完成 4／6／8 回合上限、提前完成與結局狀態。
+- [x] 完成 4／6／8 回合上限、提前完成、房主選擇與結局狀態。
 - [x] 建立 repository 與 storyteller interfaces。
 - [x] 建立 memory repository、mock storyteller 與 API 自動測試。
 - [x] 建立 `FetchGameApi`，將目前 create／join／submit mutation 與 canonical state 改由 API 管理。

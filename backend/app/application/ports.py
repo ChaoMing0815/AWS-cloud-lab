@@ -19,6 +19,9 @@ class Storyteller(ABC):
     @abstractmethod
     def resolve_round(self, room: Room) -> str: ...
 
+    @abstractmethod
+    def resolve_ending(self, room: Room) -> str: ...
+
 
 class IdempotencyStore(ABC):
     @abstractmethod
