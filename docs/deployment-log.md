@@ -50,6 +50,7 @@
 | 2026-08-09 | Web App 流程治理 | 依既有 MVP Spec 補足 Host／Player、Demo、角色轉移、期限與 LLM failure UX；建立輕量 source-of-truth、User Flow、Screen States、入口 Feature Spec 與本機 Test Plan | 文件權威與連結一致性檢查；本階段未修改 production code、未啟動服務、未執行 AWS 寫入 | [權威索引](product/source-of-truth.md)／[入口 Feature Spec](features/entry-and-room-join.md) |
 | 2026-08-09 | 正式 Landing 第一切片 | 以三組 Red／Green 建立正式根頁、隔離 `/demo`、補 FastAPI app shell route，並修正 Browser 發現的 hidden CSS 回歸 | Backend `29 passed`、Frontend `44 passed`；Browser 驗證 root／demo visibility、`/demo` 200、Console 0 errors；本機 server 已停止，未執行 AWS 寫入 | [TDD 驗證](evidence/2026-08-09-formal-entry/tdd-validation.md) |
 | 2026-08-09 | 房主建房 WP-1B | 建房時原子性建立 Host／Player 雙 session 與第一位玩家；Landing 串接 API 並導向 `/host/setup`；拒絕 client-supplied `player_id` | Backend `34 passed`、Frontend `46 passed`、sensitivity 通過；Browser 建房／deep refresh／`1 / 5`／Console 0 errors；未執行 AWS 寫入 | [TDD 驗證](evidence/2026-08-09-formal-entry/tdd-validation.md) |
+| 2026-08-09 | 房號加入 WP-1C | 以六碼 room code＋暱稱原子性加入 Lobby；建立 Player session；補 Lobby deep-link app shell | Backend `39 passed`、Frontend `51 passed`、sensitivity 通過；Browser 小寫房號加入、`2 / 5`、deep refresh、Console 0 errors；本機 server 已停止，未執行 AWS 寫入 | [TDD 驗證](evidence/2026-08-09-formal-entry/tdd-validation.md) |
 
 ## AWS Budget Alarm
 

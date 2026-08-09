@@ -3,7 +3,7 @@
 - 交接日期：2026-08-09
 - 目前分支：`codex/formal-entry`
 - AWS 寫入／新增資源／費用：無
-- Production code 變更：已完成房主建房 WP-1B
+- Production code 變更：已完成房主建房 WP-1B 與房號加入 WP-1C
 - 本機伺服器：驗證後已停止
 
 ## 本輪完成
@@ -19,7 +19,8 @@
 - 正式 Landing 第一切片已完成三組 Red／Green：root 與 `/demo` 分離，Backend `29 passed`、Frontend `44 passed`、Browser Console 0 errors。
 - 詳細證據：[正式入口 TDD 驗證](../evidence/2026-08-09-formal-entry/tdd-validation.md)。
 - 房主建房已串接 Landing，同時建立 Host／Player session 與第一位玩家，並可在 `/host/setup` 重新整理恢復。
-- 最終回歸：Backend `34 passed`，Frontend `46 passed`，Browser Console `0 errors`。
+- 房號加入已完成原子性 API、repository lookup、adapter／Landing wiring 與 Lobby deep refresh；格式錯誤、不存在、非 Lobby、滿員、重複暱稱及冪等負面案例均有測試。
+- 最終回歸：Backend `39 passed`，Frontend `51 passed`，Browser Console `0 errors`。
 
 ## 已核准且不可重問的內容
 
@@ -29,13 +30,13 @@
 - 進行中房間最後活動後 7 天到期；結局後保留 7 天；房主可提前永久刪除。
 - 世界生成與回合 retry／fallback 沿用正式 Spec 及 approval log，不再重新 grill。
 
-## 下一步：WP-1C room-code join
+## 下一步：WP-1D session continue
 
 依[入口 Feature Spec](../features/entry-and-room-join.md)執行：
 
-1. 以新 Red 定義 room code＋暱稱的原子性加入。
-2. Repository 新增 room-code lookup；拒絕格式錯誤、不存在、非 Lobby、已滿與重複暱稱。
-3. API 不依賴瀏覽器已載入 current room，成功後設定 Player session 並導向 Lobby。
+1. 以新 Red 定義 `GET /api/v1/session/current` 的匿名與有效 session summary。
+2. 由 canonical room state 回傳 setup／lobby／play／ending route，不洩漏 token、hash 或其他玩家隱藏 action。
+3. 正式首頁只有在 session 有效時顯示「繼續目前遊戲」；失效 pointer 回首頁並顯示原因。
 4. 保留 `/demo` 隔離並執行完整 regression。
 
 ## 邊界

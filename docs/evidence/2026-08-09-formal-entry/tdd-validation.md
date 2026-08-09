@@ -45,7 +45,7 @@
 
 ## 尚未完成
 
-- room-code join、session continue 與完整 router 將使用新的 Red cycle 實作。
+- session continue 與完整 router 將使用新的 Red cycle 實作。
 
 ## WP-1B 房主建房（2026-08-09）
 
@@ -58,3 +58,14 @@
 - Sensitivity：暫時移除房主 Player 建立時，目標測試正確失敗；恢復後通過。
 - Regression：Backend `34 passed`；Frontend `46 passed`；Browser Console `0 errors`。
 - AWS：未登入、未呼叫、未建立資源，費用影響為零。
+
+## WP-1C 房號加入（2026-08-09）
+
+- Red commits：`d0b4b34`（後端）、`89fb76c`（前端）。
+- Green commits：`755dd0d`（後端）、`d48212e`（前端與 Lobby deep link）。
+- `POST /api/v1/rooms:join` 不依賴 current room；同一 operation 完成 room-code lookup、狀態／容量／暱稱檢查、Player 建立與 opaque Player session cookie。
+- 拒絕 `ROOM_CODE_INVALID`、`ROOM_NOT_FOUND`、`ROOM_NOT_JOINABLE`、`ROOM_FULL`、`NICKNAME_DUPLICATE`、client-supplied `player_id` 與 `IDEMPOTENCY_KEY_REUSED`；replay 不重複建立玩家。
+- Sensitivity：暫時移除 `LOBBY` gate 後，草稿房間測試由預期 `409` 變成 `201` 並正確失敗；恢復後全綠。
+- Regression：Backend `39 passed`；Frontend `51 passed`。
+- Browser：建立並確認房間 `772JV8`，以小寫 `772jv8`＋暱稱加入後導向 `/room/772JV8/lobby`，玩家數為 `2 / 5`；重新整理維持 Lobby，Console `0 errors`。
+- 清理：本機 FastAPI 已停止；未登入或操作 AWS，費用影響為零。
