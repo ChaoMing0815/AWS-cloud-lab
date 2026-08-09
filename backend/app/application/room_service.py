@@ -291,6 +291,55 @@ class RoomService:
         room = self.idempotency.execute(f"join-room:{room_id}", idempotency_key, payload, operation)
         return room, player_token
 
+    def join_room_by_code(
+        self,
+        room_code: str,
+        nickname: str,
+        idempotency_key: str,
+    ) -> tuple[Room, str]:
+        code = room_code.strip().upper()
+        if len(code) != 6 or any(character not in ROOM_CODE_ALPHABET for character in code):
+            raise DomainError("ROOM_CODE_INVALID", "房間代碼必須是六碼英數字。", 422)
+        name = nickname.strip()
+        if not 1 <= len(name) <= 12 or any(
+            char in string.whitespace and char not in " " for char in name
+        ):
+            raise DomainError("INVALID_NICKNAME", "暱稱必須是 1–12 個可見字元。", 422)
+
+        player_token = self.token_factory.derive(f"player-session:{code}", idempotency_key)
+        player_csrf = self.token_factory.derive(f"player-csrf:{code}", idempotency_key)
+
+        def operation() -> Room:
+            room = self.repository.get_by_code(code)
+            if room is None:
+                raise DomainError("ROOM_NOT_FOUND", "找不到房間。", 404)
+            if room.status != "LOBBY":
+                raise DomainError("ROOM_NOT_JOINABLE", "只有等待中的房間可以加入玩家。", 409)
+            if len(room.players) >= 5:
+                raise DomainError("ROOM_FULL", "房間已達 5 人上限。", 409)
+            if any(player.name.casefold() == name.casefold() for player in room.players):
+                raise DomainError("NICKNAME_DUPLICATE", "這個暱稱已有人使用。", 409)
+            room.players.append(
+                Player(
+                    id=_new_id(),
+                    name=name,
+                    role="共同創作者",
+                    session_hash=hash_session_token(player_token),
+                    csrf_token=player_csrf,
+                )
+            )
+            room.version += 1
+            self.repository.save(room)
+            return room
+
+        room = self.idempotency.execute(
+            "join-room-by-code",
+            idempotency_key,
+            {"room_code": code, "nickname": name},
+            operation,
+        )
+        return room, player_token
+
     def update_character(
         self,
         room_id: str,

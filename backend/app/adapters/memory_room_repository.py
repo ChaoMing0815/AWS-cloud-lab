@@ -17,6 +17,14 @@ class MemoryRoomRepository(RoomRepository):
             room = self._rooms.get(room_id)
             return deepcopy(room) if room else None
 
+    def get_by_code(self, room_code: str) -> Room | None:
+        with self._lock:
+            room = next(
+                (item for item in self._rooms.values() if item.room_code == room_code),
+                None,
+            )
+            return deepcopy(room) if room else None
+
     def save(self, room: Room) -> None:
         with self._lock:
             self._rooms[room.id] = deepcopy(room)

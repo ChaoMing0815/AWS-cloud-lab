@@ -12,6 +12,9 @@ class RoomRepository(ABC):
     def get(self, room_id: str) -> Room | None: ...
 
     @abstractmethod
+    def get_by_code(self, room_code: str) -> Room | None: ...
+
+    @abstractmethod
     def save(self, room: Room) -> None: ...
 
 

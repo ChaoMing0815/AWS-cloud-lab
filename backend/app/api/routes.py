@@ -5,6 +5,7 @@ from app.api.schemas import (
     CreateRoomRequest,
     FinishRoomRequest,
     JoinRoomRequest,
+    JoinRoomByCodeRequest,
     ResolveRoundRequest,
     RollRoundRequest,
     SparkDecisionRequest,
@@ -92,6 +93,22 @@ def create_api_router(service: RoomService) -> APIRouter:
         )
         _set_local_room_cookie(response, room.id)
         _set_session_cookie(response, HOST_SESSION_COOKIE, host_token)
+        _set_session_cookie(response, PLAYER_SESSION_COOKIE, player_token)
+        return room_response(room, service.session_context(room, host_token, player_token))
+
+    @router.post("/rooms:join", status_code=status.HTTP_201_CREATED)
+    def join_room_by_code(
+        request: JoinRoomByCodeRequest,
+        response: Response,
+        idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+        host_token: str | None = Cookie(default=None, alias=HOST_SESSION_COOKIE),
+    ) -> dict:
+        room, player_token = service.join_room_by_code(
+            request.room_code,
+            request.nickname,
+            _required_idempotency_key(idempotency_key),
+        )
+        _set_local_room_cookie(response, room.id)
         _set_session_cookie(response, PLAYER_SESSION_COOKIE, player_token)
         return room_response(room, service.session_context(room, host_token, player_token))
 

@@ -62,6 +62,13 @@ class CreateRoomRequest(BaseModel):
     nickname: str = Field(min_length=1, max_length=12)
 
 
+class JoinRoomByCodeRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    room_code: str
+    nickname: str
+
+
 class SubmitActionRequest(BaseModel):
     text: str = Field(min_length=1, max_length=240)
     approach: Literal["courage", "insight", "bond"]
