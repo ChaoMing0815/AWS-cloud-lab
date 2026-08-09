@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 Tone = Literal[
@@ -57,6 +57,8 @@ class JoinRoomRequest(BaseModel):
 
 
 class CreateRoomRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     nickname: str = Field(min_length=1, max_length=12)
 
 
