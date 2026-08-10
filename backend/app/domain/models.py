@@ -83,6 +83,9 @@ class Room:
     ending_result: str | None = None
     ending_cost: str | None = None
     success_locked: bool = False
+    resolution_mode: str | None = None
+    resolution_failure_code: str | None = None
+    resolution_attempts: int = 0
     players: list[Player] = field(default_factory=list)
     entries: list[StoryEntry] = field(default_factory=list)
     dice_results: list[DiceResult] = field(default_factory=list)

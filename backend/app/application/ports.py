@@ -7,6 +7,24 @@ from typing import Any
 from app.domain.models import Room
 
 
+RETRYABLE_STORYTELLER_FAILURES = {
+    "TIMEOUT",
+    "THROTTLED",
+    "TRANSIENT_SERVICE_ERROR",
+    "SCHEMA_INVALID",
+}
+
+
+class StorytellerFailure(Exception):
+    def __init__(self, code: str) -> None:
+        super().__init__(code)
+        self.code = code
+
+    @property
+    def retryable(self) -> bool:
+        return self.code in RETRYABLE_STORYTELLER_FAILURES
+
+
 class RoomRepository(ABC):
     @abstractmethod
     def get(self, room_id: str) -> Room | None: ...
