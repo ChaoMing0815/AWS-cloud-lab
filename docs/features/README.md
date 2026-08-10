@@ -23,7 +23,7 @@
 | Feature | 狀態 | 下一關 |
 | --- | --- | --- |
 | [正式入口與房間加入](entry-and-room-join.md) | Approved for TDD | 建立 baseline 與第一個 Red commit |
-| Polling 離線狀態 | Planned | 入口完成後整理 Feature Spec |
+| [Polling 離線與重新連線 UX](polling-offline-reconnect.md) | Approved for TDD | 建立 baseline 與 Red commit |
 | Session lifecycle／角色轉移 | Planned | 入口與 Lobby 完成後整理 Feature Spec |
 | PostgreSQL persistence | Planned | 建立資料層 ADR |
 | LLM world／round recovery | Planned | PostgreSQL contract 穩定後整理 Feature Spec |
