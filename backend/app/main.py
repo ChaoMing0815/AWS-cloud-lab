@@ -18,10 +18,10 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 WEB_ROOT = PROJECT_ROOT / "web"
 
 
-def create_app(dice_roller=None) -> FastAPI:
+def create_app(dice_roller=None, room_repository=None) -> FastAPI:
     application = FastAPI(title="共演計劃 API", version="0.1.0")
     service = RoomService(
-        MemoryRoomRepository(),
+        room_repository if room_repository is not None else MemoryRoomRepository(),
         MockStoryteller(),
         MemoryIdempotencyStore(),
         HmacSessionTokenFactory(),
