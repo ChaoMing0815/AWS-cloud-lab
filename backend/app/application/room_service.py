@@ -759,6 +759,87 @@ class RoomService:
                     return "", attempts, failure.code
         raise RuntimeError("storyteller retry loop exited unexpectedly")
 
+    def fallback_round(
+        self,
+        room_id: str,
+        round_number: int,
+        expected_version: int,
+        host_token: str,
+        csrf_token: str,
+        idempotency_key: str,
+    ) -> Room:
+        room = self._required_room(room_id)
+        self._authorize_host(room, host_token, csrf_token)
+
+        def operation() -> Room:
+            current = self._required_room(room_id)
+            self._check_version(current, expected_version)
+            if current.status != "RESOLUTION_FAILED":
+                raise DomainError("FALLBACK_NOT_ALLOWED", "目前不需要使用備援敘事。", 409)
+            if current.round_number != round_number:
+                raise DomainError("ROUND_MISMATCH", "回合已更新，請重新載入。", 409)
+            results = [
+                result
+                for result in current.dice_results
+                if result.round_number == round_number
+            ]
+            current.progress_points += sum(result.progress_delta for result in results)
+            current.danger_points += sum(result.danger_delta for result in results)
+            for result in results:
+                player = next(item for item in current.players if item.id == result.player_id)
+                if player.character is None:
+                    raise DomainError("CHARACTER_REQUIRED", "找不到結算所需角色。", 409)
+                player.character.spark -= result.spark_used
+                if result.result == "FAILURE":
+                    player.character.spark = min(3, player.character.spark + 1)
+            labels = {
+                "SUCCESS": "成功",
+                "PARTIAL_SUCCESS": "部分成功",
+                "FAILURE": "失敗",
+            }
+            outcomes = "、".join(
+                f"{next(player.name for player in current.players if player.id == result.player_id)}為{labels[result.result]}"
+                for result in results
+            )
+            current.entries.append(
+                StoryEntry(
+                    id=_new_id(),
+                    type="narrator",
+                    title="系統備援敘事",
+                    round_number=round_number,
+                    text=(
+                        f"系統依固定判定完成本回合：{outcomes}。"
+                        "此為 deterministic fallback，未使用 AI 故事生成。"
+                    ),
+                )
+            )
+            for player in current.players:
+                player.action = ""
+                player.action_approach = ""
+            completed_round = current.round_number
+            target = target_points(current.initial_player_count, current.max_rounds)
+            progress_percent = points_percent(current.progress_points, target)
+            if completed_round >= current.max_rounds:
+                self._complete_game(current, target)
+            else:
+                current.round_number += 1
+                current.status = (
+                    "COMPLETION_AVAILABLE"
+                    if progress_percent >= 100
+                    else "COLLECTING_ACTIONS"
+                )
+            current.resolution_mode = "fallback"
+            current.version += 1
+            self.repository.save(current)
+            return current
+
+        return self.idempotency.execute(
+            f"fallback-round:{room_id}:{round_number}",
+            idempotency_key,
+            {"round_number": round_number, "room_version": expected_version},
+            operation,
+        )
+
     def finish_game(
         self,
         room_id: str,
