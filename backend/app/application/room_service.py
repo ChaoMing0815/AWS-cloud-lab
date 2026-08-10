@@ -668,7 +668,11 @@ class RoomService:
         def operation() -> Room:
             current = self._required_room(room_id)
             self._check_version(current, expected_version)
-            if current.status not in {"AWAITING_SPARK", "RESOLVING"}:
+            if current.status not in {
+                "AWAITING_SPARK",
+                "RESOLVING",
+                "RESOLUTION_FAILED",
+            }:
                 raise DomainError("RESOLVE_NOT_ALLOWED", "目前不能結算回合。", 409)
             if round_number != current.round_number:
                 raise DomainError("ROUND_MISMATCH", "回合已更新，請重新載入。", 409)
