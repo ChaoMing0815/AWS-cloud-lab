@@ -77,6 +77,9 @@ def room_response(room: Room, session: dict) -> dict:
         "endingResult": room.ending_result,
         "endingCost": room.ending_cost,
         "successLocked": room.success_locked,
+        "resolutionMode": room.resolution_mode,
+        "resolutionFailureCode": room.resolution_failure_code,
+        "resolutionAttempts": room.resolution_attempts,
         "pendingProgress": sum(
             result.progress_delta
             for result in room.dice_results

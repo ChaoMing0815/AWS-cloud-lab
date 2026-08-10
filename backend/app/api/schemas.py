@@ -89,6 +89,10 @@ class ResolveRoundRequest(BaseModel):
     room_version: int = Field(ge=1)
 
 
+class FallbackRoundRequest(BaseModel):
+    room_version: int = Field(ge=1)
+
+
 class FinishRoomRequest(BaseModel):
     decision: Literal["FINISH_NOW", "CONTINUE"]
     room_version: int = Field(ge=1)

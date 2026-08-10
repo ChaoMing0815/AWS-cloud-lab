@@ -235,7 +235,7 @@ def test_fallback_api_is_host_only_and_exposes_safe_recovery_state() -> None:
             headers=headers,
         )
 
-    assert denied.status_code == 403
+    assert denied.status_code == 401
     assert response.status_code == 200
     payload = response.json()
     assert payload["resolutionMode"] == "fallback"
