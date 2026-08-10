@@ -1,6 +1,7 @@
 from copy import deepcopy
 
 import pytest
+from fastapi.testclient import TestClient
 
 from app.adapters.memory_idempotency_store import MemoryIdempotencyStore
 from app.adapters.memory_room_repository import MemoryRoomRepository
@@ -10,6 +11,7 @@ from app.application.ports import StorytellerFailure
 from app.application.room_service import RoomService
 from app.application.security import hash_session_token
 from app.domain.models import Character, DiceResult, Player, Room, World
+from app.main import create_app
 
 
 class ScriptedStoryteller:
@@ -204,3 +206,39 @@ def test_host_fallback_commits_fixed_results_once_without_claiming_llm_success()
     assert "deterministic fallback" in fallback.entries[-1].text
     assert "部分成功" in fallback.entries[-1].text
     assert replay == fallback
+
+
+def test_fallback_api_is_host_only_and_exposes_safe_recovery_state() -> None:
+    storyteller = ScriptedStoryteller(
+        [StorytellerFailure("TIMEOUT"), StorytellerFailure("TIMEOUT")]
+    )
+    app = create_app(storyteller=storyteller)
+    service = app.state.room_service
+    service.repository.save(pending_resolution_room())
+    failed = resolve(service)
+    headers = {
+        "Idempotency-Key": "fallback-api-submit",
+        "X-CSRF-Token": "host-csrf",
+    }
+
+    with TestClient(app) as anonymous:
+        denied = anonymous.post(
+            f"/api/v1/rooms/{failed.id}/rounds/1:fallback",
+            json={"room_version": failed.version},
+            headers=headers,
+        )
+    with TestClient(app) as host:
+        host.cookies.set("co_story_host", "host-token")
+        response = host.post(
+            f"/api/v1/rooms/{failed.id}/rounds/1:fallback",
+            json={"room_version": failed.version},
+            headers=headers,
+        )
+
+    assert denied.status_code == 403
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["resolutionMode"] == "fallback"
+    assert payload["resolutionFailureCode"] == "TIMEOUT"
+    assert payload["resolutionAttempts"] == 2
+    assert payload["entries"][-1]["title"] == "系統備援敘事"
