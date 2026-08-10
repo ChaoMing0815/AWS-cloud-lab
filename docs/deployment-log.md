@@ -59,6 +59,7 @@
 | 2026-08-10 | 日常人員 IAM | 建立 Console-only IAM user `ming-dev` 與 `AWSFinalProjectDevelopers` group；啟用 MFA，Access／API／SSH keys 均為 0 | 群組有 1 位成員；連接 `ReadOnlyAccess`、`IAMUserChangePassword`、`AWSBillingReadOnlyAccess`；未授予 `AdministratorAccess` 或 `PowerUserAccess` | [新帳號基線](evidence/2026-08-10-new-account-baseline/validation.md) |
 | 2026-08-10 | Billing 委派唯讀 | Root 啟用 IAM user／role Billing access；`ming-dev` 可查看當月帳單與 Free plan 狀態 | 群組已連接 `AWSBillingReadOnlyAccess`；2026 年 8 月預估總計 `USD 0.00` | [群組政策](screenshots/phase0-ming-dev-group-policies.png)／[帳單證據](screenshots/phase0-ming-dev-billing-zero.png) |
 | 2026-08-10 | Polling 離線／reconnect UX | 暫時性 network／`5xx` 保留 canonical 畫面並採 3／5／10 秒 bounded backoff；恢復後回 3 秒；`401/403` 停止，`409` reload | Red `4 passed, 5 failed`；Green／還原 mutation 後 Frontend `65 passed`、Backend `59 passed, 7 skipped`；未執行 AWS 寫入 | [TDD 驗證](evidence/2026-08-10-polling-offline-reconnect/tdd-validation.md) |
+| 2026-08-10 | Tier 0 AWS 部署規劃 | 以 Model routing 完成服務、VPC／SG、EC2／RDS／Bedrock、IAM、TLS、成本、驗證與清理設計 | Proposed；尚待講師、帳號、Region、credits、估價與 IAM 關卡；未執行 AWS 寫入 | [Tier 0 部署規劃](architecture/tier0-aws-deployment-plan.md) |
 
 ## AWS Budget Alarm
 

@@ -124,6 +124,6 @@ flowchart LR
 ## 10. 待確認
 
 - 講師是否接受 FastAPI＋private PostgreSQL 作為 Tier 0 Web／DB 分離的等效題卡。
-- PostgreSQL／RDS 與 DynamoDB 的最終資料 adapter ADR。
+- 講師是否接受已由 ADR-0003 決定的 PostgreSQL／RDS 作為 private data layer。
 - 各 Tier 可接受的最低資源數量與 Demo 深度。
 - 最終 AWS 帳號、Budget、Region、模型與逐項估價。

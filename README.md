@@ -19,7 +19,7 @@ python3 -m venv .venv
 .venv/bin/python -m uvicorn app.main:app --app-dir backend --reload
 ```
 
-開啟 `http://127.0.0.1:8000`。目前前端透過 `FetchGameApi` 呼叫 FastAPI；未設定 `DATABASE_URL` 時使用 memory repository，明確設定時改用 ADR-0003 的 PostgreSQL repository。新房間依 `DRAFT → LOBBY → COLLECTING_ACTIONS → AWAITING_HOST → AWAITING_SPARK → RESOLVING` 推進，並依規則回到下一回合、進入 `COMPLETION_AVAILABLE` 或完成為 `COMPLETED`。世界確認、開始遊戲、擲骰、回合結算與結局選擇只接受有效房主 session；3–5 位玩家必須全數完成角色與三點配點才能開始。玩家提交隱藏行動與使用屬性，房主收齊後以 `2d6 + 屬性` 產生三段結果；各玩家再選擇使用或保留星火，房主可在全員完成後結算，或明確略過等待者。正式進度、危機、星火增減、4／6／8 回合上限、提前完成與結局均由 deterministic rules 套用；`MockStoryteller` 只依已決定結果產生無費用敘事，不會修改 canonical state。Storyteller timeout、throttling 與 schema failure 會自動重試一次；仍失敗時進入 `RESOLUTION_FAILED`，房主可手動 retry 或使用不冒充 LLM 的 deterministic fallback。Host／player 使用獨立 `HttpOnly` opaque session，mutation 檢查 CSRF、room version 與 `Idempotency-Key`；角色與 action owner 均由後端 session 決定。PostgreSQL 已通過完整 aggregate 與真正 Uvicorn OS process restart 驗證。3 秒無重疊 polling 已完成；離線重試與 connection UX 尚未完成。正式 Landing 已支援建房、依 room code 加入、session continue 與三個獨立瀏覽器完整單回合 E2E；目前仍未呼叫 Bedrock，也未宣稱完成真實模型 schema／Guardrail 驗證。AWS 資料層建議 private PostgreSQL，但仍須完成講師等價性確認。
+開啟 `http://127.0.0.1:8000`。目前前端透過 `FetchGameApi` 呼叫 FastAPI；未設定 `DATABASE_URL` 時使用 memory repository，明確設定時改用 ADR-0003 的 PostgreSQL repository。新房間依 `DRAFT → LOBBY → COLLECTING_ACTIONS → AWAITING_HOST → AWAITING_SPARK → RESOLVING` 推進，並依規則回到下一回合、進入 `COMPLETION_AVAILABLE` 或完成為 `COMPLETED`。世界確認、開始遊戲、擲骰、回合結算與結局選擇只接受有效房主 session；3–5 位玩家必須全數完成角色與三點配點才能開始。玩家提交隱藏行動與使用屬性，房主收齊後以 `2d6 + 屬性` 產生三段結果；各玩家再選擇使用或保留星火，房主可在全員完成後結算，或明確略過等待者。正式進度、危機、星火增減、4／6／8 回合上限、提前完成與結局均由 deterministic rules 套用；`MockStoryteller` 只依已決定結果產生無費用敘事，不會修改 canonical state。Storyteller timeout、throttling 與 schema failure 會自動重試一次；仍失敗時進入 `RESOLUTION_FAILED`，房主可手動 retry 或使用不冒充 LLM 的 deterministic fallback。Host／player 使用獨立 `HttpOnly` opaque session，mutation 檢查 CSRF、room version 與 `Idempotency-Key`；角色與 action owner 均由後端 session 決定。PostgreSQL 已通過完整 aggregate 與真正 Uvicorn OS process restart 驗證。3 秒無重疊 polling、3／5／10 秒離線 backoff、reconnect、`401/403` 停止與 `409` reload 已完成 deterministic UI 驗證；真實 Browser 網路攔截仍待 release gate。正式 Landing 已支援建房、依 room code 加入、session continue 與三個獨立瀏覽器完整單回合 E2E；目前仍未呼叫 Bedrock，也未宣稱完成真實模型 schema／Guardrail 驗證。AWS 資料層依 ADR-0003 採 private PostgreSQL，但仍須完成講師等價性確認。
 
 根路徑現在顯示正式 Landing，提供建立、加入、有效 session 的「繼續目前遊戲」與次要教學 Demo；`/demo` 使用隔離的 `MockGameApi` 且不保存進度。建立表單會原子性建立 Host／Player session 與第一位玩家；玩家可用六碼 room code＋暱稱加入。後端依 canonical state 將繼續入口導向 setup、lobby、play 或 ending；各 deep link 可重新整理，未知路由提供可回首頁的 404。詳見 [Web App User Flow](docs/product/user-flow.md) 與[正式入口 Feature Spec](docs/features/entry-and-room-join.md)。
 
@@ -77,6 +77,7 @@ WordPress 是簡報中的 Tier 0 範例與架構參考，不是目前選定的�
 - [任務拆分](docs/task-list.md)
 - [AWS 服務清單](docs/aws-services.md)
 - [AWS 架構圖](docs/architecture/README.md)
+- [Tier 0 AWS 部署規劃](docs/architecture/tier0-aws-deployment-plan.md)
 - [前端 Clean Architecture](docs/architecture/frontend-clean-architecture.md)
 - [LLM／Amazon Bedrock 串接設計](docs/architecture/llm-integration.md)
 - [Session／CSRF／Idempotency 設計](docs/architecture/session-and-idempotency.md)

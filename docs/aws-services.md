@@ -9,7 +9,7 @@
 | 共通治理 | AWS Budgets、Cost Explorer、CloudTrail Event history、IAM | 成本告警、費用盤點、操作稽核與最小權限；不建立長期 Access Key |
 | Tier 0 | Amazon VPC、public/private subnet、Internet Gateway、Security Group | 公開 Web、私有資料層與最小網路規則 |
 | Tier 0 | Amazon EC2、Amazon EBS | 執行可玩的 Web App 與 API；使用小型 instance，非 Demo 時停止 |
-| Tier 0 | Amazon RDS for PostgreSQL | 保存房間、角色、回合、判定與故事；放在 private subnet，禁止 public access。最終引擎仍待 ADR 與講師確認 |
+| Tier 0 | Amazon RDS for PostgreSQL | 依 ADR-0003 保存 Room aggregate；放在 private DB subnets，禁止 public access。仍待講師確認 Tier 0 題卡等價性 |
 | Tier 0 | Amazon Bedrock | AI 故事主持人；使用 On-Demand、限制輸入輸出 token，不使用 Provisioned Throughput |
 | Tier 0–1 | AWS Systems Manager | Session Manager、Run Command 與免 SSH 維運 |
 | Tier 0–1 | Amazon CloudWatch | Application logs、EC2/RDS metrics、dashboard、alarm 與 incident 證據 |
@@ -34,8 +34,10 @@
 - 確認可使用的 AWS 帳號、account plan、credits 與每階段可接受預算。
 - 以 AWS Pricing Calculator 保存 EC2、RDS、Public IPv4、CloudWatch、Bedrock，以及後續 ALB/ECS 的估價證據。
 - 由講師確認自製 FastAPI＋private PostgreSQL 是否可作為 Tier 0 Web／DB 分離的等價成果。
-- 以 ADR 確認 PostgreSQL 與 repository adapter；在決策前，本機實作維持可替換的 repository interface。
+- 依已接受的 ADR-0003 使用 PostgreSQL repository；AWS RDS 只替換 endpoint／secret source，不改 application port。
 - 每次寫入 AWS 前再次做 Billing、Budget、Region、principal 與既有資源唯讀盤點。
+
+Tier 0 的精確網路、IAM、runtime、驗證與清理設計見 [`docs/architecture/tier0-aws-deployment-plan.md`](architecture/tier0-aws-deployment-plan.md)。
 
 ## 暫不採用
 

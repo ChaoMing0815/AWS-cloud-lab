@@ -3,7 +3,7 @@
 - 更新日期：2026-08-10
 - Branch：`codex/polling-offline-reconnect`
 - 功能基準：`ce80b79`（polling 離線／reconnect UX 已完成 Green）
-- AWS：已完成新帳號安全／IAM bootstrap，未建立專題 workload；本機 Uvicorn 已停止，臨時 PostgreSQL 容器已停止並移除
+- AWS：已完成新帳號安全／IAM bootstrap 與 Tier 0 Proposed 架構規劃，未建立專題 workload；本機 Uvicorn 已停止，臨時 PostgreSQL 容器已停止並移除
 - Regression：Backend `59 passed, 7 skipped`、Frontend `65 passed`
 
 ## 已完成
@@ -27,8 +27,11 @@
 - 尚未授予 `PowerUserAccess` 或 `AdministratorAccess`，尚未建立 `AWSCourseAccountProtectionDeny`。
 - Credits 精確餘額、Organization 缺席、目前 principal／Region 仍須在任何下一次 AWS 寫入前重新確認。
 - 2026-08-07 Organization／Identity Center／Paid plan 紀錄屬舊帳號事故，不得當成新帳號現況。
+- Tier 0 Proposed 架構採單一 public EC2、兩個 private DB subnets、Single-AZ RDS PostgreSQL、Bedrock On-Demand、SSM 與最小 CloudWatch；不採 NAT Gateway／ALB／ECS。尚未核准或部署。
 
 證據：[`../evidence/2026-08-10-new-account-baseline/validation.md`](../evidence/2026-08-10-new-account-baseline/validation.md)
+
+規劃：[`../architecture/tier0-aws-deployment-plan.md`](../architecture/tier0-aws-deployment-plan.md)
 
 ## 下一個精確起點
 

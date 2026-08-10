@@ -32,7 +32,7 @@ flowchart TB
     B -.-> AWS
 ```
 
-驗收重點：網站可公開操作、資料庫位於 private subnet 且無 public access、只有 Web Security Group 可連 DB、完成一個多人回合並保存資料。PostgreSQL 是目前建議方案，仍需 ADR 與講師確認等價性。
+驗收重點：網站可公開操作、資料庫位於 private subnet 且無 public access、只有 Web Security Group 可連 DB、完成一個多人回合並保存資料。PostgreSQL 已由 ADR-0003 接受；仍需講師確認題卡等價性。精確 subnet、SG、IAM、部署前關卡與清理方案見 [Tier 0 AWS 部署規劃](tier0-aws-deployment-plan.md)。
 
 ## Tier 1：可觀測性與免 SSH 維運
 
