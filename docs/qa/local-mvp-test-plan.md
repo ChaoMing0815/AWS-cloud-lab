@@ -61,7 +61,7 @@
 ## 已知目前缺口
 
 - 正式 Landing、room-code join、session continue 與基本 deep routes 已完成。
-- 三個獨立 browser contexts E2E 尚未完成。
+- 三個獨立 browser contexts 已完成正式單回合 E2E；結局 Browser E2E 仍待 release gate 一併確認。
 - Polling 離線狀態、session lifecycle、PostgreSQL 與 LLM recovery 尚未完成。
 
 因此目前不得將本機 Web MVP 標示為 release-ready。
