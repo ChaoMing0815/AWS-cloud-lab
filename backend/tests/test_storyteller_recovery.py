@@ -242,3 +242,36 @@ def test_fallback_api_is_host_only_and_exposes_safe_recovery_state() -> None:
     assert payload["resolutionFailureCode"] == "TIMEOUT"
     assert payload["resolutionAttempts"] == 2
     assert payload["entries"][-1]["title"] == "系統備援敘事"
+
+
+def test_host_manual_retry_reuses_dice_and_commits_rules_once() -> None:
+    storyteller = ScriptedStoryteller(
+        [
+            StorytellerFailure("SCHEMA_INVALID"),
+            StorytellerFailure("SCHEMA_INVALID"),
+            "房主手動重試後取得有效敘事。",
+        ]
+    )
+    service, _repository = service_with(storyteller)
+    failed = resolve(service)
+    locked_dice = deepcopy(failed.dice_results)
+
+    resolved = service.resolve_round(
+        room_id=failed.id,
+        round_number=1,
+        skip_pending_spark=False,
+        expected_version=failed.version,
+        host_token="host-token",
+        csrf_token="host-csrf",
+        idempotency_key="story-manual-retry",
+    )
+
+    assert len(storyteller.round_calls) == 3
+    assert resolved.dice_results == locked_dice
+    assert resolved.progress_points == 1
+    assert resolved.danger_points == 1
+    assert resolved.round_number == 2
+    assert resolved.resolution_attempts == 1
+    assert resolved.resolution_failure_code is None
+    assert resolved.resolution_mode == "storyteller"
+    assert resolved.entries[-1].text == "房主手動重試後取得有效敘事。"
