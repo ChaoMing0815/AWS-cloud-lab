@@ -55,6 +55,8 @@ export class GamePage {
     this.pollTimer = null;
     this.pollInFlight = false;
     this.pollingStopped = false;
+    this.pollFailureCount = 0;
+    this.nextPollingDelayMs = pollingIntervalMs;
     this.busy = false;
   }
 
@@ -89,6 +91,8 @@ export class GamePage {
 
   startPolling() {
     this.pollingStopped = false;
+    this.pollFailureCount = 0;
+    this.nextPollingDelayMs = this.pollingIntervalMs;
     this.schedulePolling();
   }
 
@@ -109,7 +113,7 @@ export class GamePage {
     this.pollTimer = this.schedule(() => {
       this.pollTimer = null;
       return this.pollOnce();
-    }, this.pollingIntervalMs);
+    }, this.nextPollingDelayMs);
   }
 
   async pollOnce() {
@@ -121,14 +125,83 @@ export class GamePage {
     ) return false;
     this.pollInFlight = true;
     try {
-      this.room = await this.useCases.loadRoom.execute();
-      this.syncRoute();
-      this.render();
+      const room = await this.useCases.loadRoom.execute();
+      this.applyPolledRoom(room);
+      this.handlePollingSuccess();
       return true;
+    } catch (error) {
+      if (error?.status === 409) {
+        try {
+          const room = await this.useCases.loadRoom.execute();
+          this.applyPolledRoom(room);
+          this.resetPollingBackoff();
+          this.showPollingStatus("資料已更新，已重新載入。", "conflict-reloaded");
+          return true;
+        } catch (reloadError) {
+          error = reloadError;
+        }
+      }
+
+      if (error?.status === 401 || error?.status === 403) {
+        this.pollingStopped = true;
+        this.showPollingStatus(
+          "登入狀態已失效，請回首頁重新加入。",
+          "session-expired",
+        );
+        return false;
+      }
+
+      if (error?.status === undefined || error?.status >= 500) {
+        const retryDelayMs = this.advancePollingBackoff();
+        this.showPollingStatus(
+          `連線中斷，將在 ${retryDelayMs / 1000} 秒後重試。`,
+          "offline",
+        );
+        return false;
+      }
+
+      throw error;
     } finally {
       this.pollInFlight = false;
       this.schedulePolling();
     }
+  }
+
+  applyPolledRoom(room) {
+    this.room = room;
+    this.syncRoute();
+    this.render();
+  }
+
+  handlePollingSuccess() {
+    const reconnected = this.pollFailureCount > 0;
+    this.resetPollingBackoff();
+    if (reconnected) {
+      this.showPollingStatus("已重新連線，資料已同步。", "reconnected");
+    } else {
+      this.showPollingStatus("");
+    }
+  }
+
+  advancePollingBackoff() {
+    const retryDelaysMs = [this.pollingIntervalMs, 5000, 10000];
+    const delayIndex = Math.min(this.pollFailureCount, retryDelaysMs.length - 1);
+    this.pollFailureCount += 1;
+    this.nextPollingDelayMs = retryDelaysMs[delayIndex];
+    return this.nextPollingDelayMs;
+  }
+
+  resetPollingBackoff() {
+    this.pollFailureCount = 0;
+    this.nextPollingDelayMs = this.pollingIntervalMs;
+  }
+
+  showPollingStatus(message, kind = "") {
+    const status = globalThis.document?.getElementById("pollingStatus");
+    if (!status) return;
+    status.hidden = !message;
+    status.textContent = message;
+    status.dataset.kind = kind;
   }
 
   async handleCreateRoom() {

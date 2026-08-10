@@ -218,6 +218,9 @@ textarea:focus, input:focus, select:focus { border-color: rgba(99,203,183,.55); 
 .feedback { margin: 18px 0 0; padding: 10px; color: var(--muted); border: 1px solid var(--line); font-size: .7rem; line-height: 1.5; }
 .feedback[data-kind="success"] { color: var(--teal); border-color: rgba(99,203,183,.24); }
 .feedback[data-kind="error"] { color: var(--danger); border-color: rgba(226,123,108,.3); }
+.polling-status { margin: 14px 0 0; padding: 9px 10px; color: var(--muted); border: 1px solid var(--line); font-size: .7rem; line-height: 1.5; }
+.polling-status[data-kind="offline"], .polling-status[data-kind="session-expired"] { color: var(--danger); border-color: rgba(226,123,108,.3); }
+.polling-status[data-kind="reconnected"], .polling-status[data-kind="conflict-reloaded"] { color: var(--teal); border-color: rgba(99,203,183,.24); }
 
 footer { display: flex; justify-content: space-between; width: min(1500px, 94vw); margin: 0 auto 24px; color: #657174; font-size: .65rem; }
 
