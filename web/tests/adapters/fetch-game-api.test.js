@@ -219,6 +219,34 @@ test("星火決策與房主結算使用各自 CSRF 邊界", async () => {
   });
 });
 
+test("房主 fallback 使用鎖定回合版本與 host CSRF", async () => {
+  const requests = [];
+  const room = {
+    id: "room-fallback",
+    version: 15,
+    round: 4,
+    status: "RESOLUTION_FAILED",
+    players: [],
+    session: { isHost: true, hostCsrfToken: "host-fallback-csrf" },
+  };
+  const api = new FetchGameApi({
+    idempotencyKeyFactory: () => "fallback-key",
+    fetchImpl: async (url, options) => {
+      requests.push({ url, options });
+      return jsonResponse(room);
+    },
+  });
+  await api.loadRoom();
+
+  await api.fallbackRound();
+
+  const request = requests[1];
+  assert.equal(request.url, "/api/v1/rooms/room-fallback/rounds/4:fallback");
+  assert.equal(request.options.headers["X-CSRF-Token"], "host-fallback-csrf");
+  assert.equal(request.options.headers["Idempotency-Key"], "fallback-key");
+  assert.deepEqual(JSON.parse(request.options.body), { room_version: 15 });
+});
+
 test("房主確認世界與開始遊戲使用 host CSRF token", async () => {
   const requests = [];
   const room = {

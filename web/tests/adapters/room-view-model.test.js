@@ -51,3 +51,25 @@ test("完成狀態 ViewModel 提供結局與代價文字", () => {
   assert.equal(view.endingCostLabel, "重大代價");
   assert.match(view.aiStatus, /故事已完成/);
 });
+
+
+test("LLM 結算失敗只向房主顯示手動重試與 fallback", () => {
+  const hostView = toRoomViewModel(room({
+    status: "RESOLUTION_FAILED",
+    resolutionFailureCode: "THROTTLED",
+    resolutionAttempts: 2,
+  }));
+  const playerView = toRoomViewModel(room({
+    status: "RESOLUTION_FAILED",
+    resolutionFailureCode: "THROTTLED",
+    resolutionAttempts: 2,
+    session: { isHost: false, principalType: "player" },
+  }));
+
+  assert.equal(hostView.canRetryResolution, true);
+  assert.equal(hostView.canUseFallback, true);
+  assert.equal(playerView.canRetryResolution, false);
+  assert.equal(playerView.canUseFallback, false);
+  assert.match(hostView.aiStatus, /暫時忙碌/);
+  assert.match(hostView.aiStatus, /2 次/);
+});
