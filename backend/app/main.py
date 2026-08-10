@@ -20,7 +20,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 WEB_ROOT = PROJECT_ROOT / "web"
 
 
-def create_app(dice_roller=None, room_repository=None) -> FastAPI:
+def create_app(dice_roller=None, room_repository=None, storyteller=None) -> FastAPI:
     application = FastAPI(title="共演計劃 API", version="0.1.0")
     if room_repository is None:
         database_url = os.environ.get("DATABASE_URL")
@@ -31,7 +31,7 @@ def create_app(dice_roller=None, room_repository=None) -> FastAPI:
         )
     service = RoomService(
         room_repository,
-        MockStoryteller(),
+        storyteller or MockStoryteller(),
         MemoryIdempotencyStore(),
         HmacSessionTokenFactory(),
         dice_roller or SecureDiceRoller(),
