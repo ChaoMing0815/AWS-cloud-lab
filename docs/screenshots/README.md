@@ -21,13 +21,21 @@ phase5-ssm-run-command.png
 
 ## 必備截圖
 
-- [x] AWS Budget Alarm：[`phase0-zero-spend-budget-verified.png`](phase0-zero-spend-budget-verified.png)
-- [x] Root MFA 與無作用中 Root Access Key：[`phase0-root-mfa-and-access-keys.png`](phase0-root-mfa-and-access-keys.png)
-- [x] AWS Organizations management account：[`phase0-organizations-management-account.png`](phase0-organizations-management-account.png)
-- [x] CloudTrail Root `ConsoleLogin`：[`phase0-cloudtrail-console-login.png`](phase0-cloudtrail-console-login.png)
-- [x] IAM Identity Center 啟用前狀態：[`phase0-identity-center-before-enable.png`](phase0-identity-center-before-enable.png)
-- [x] IAM Identity Center 單一區域最終設定審查：[`phase0-identity-center-single-region-review.png`](phase0-identity-center-single-region-review.png)
-- [x] IAM Identity Center 啟用完成：[`phase0-identity-center-enabled.png`](phase0-identity-center-enabled.png)
+### 目前候選部署帳號（2026-08-10 新帳號）
+
+- [x] Free plan 狀態：[`phase0-new-account-free-plan.png`](phase0-new-account-free-plan.png)
+- [x] 每月 `US$1.00` Budget：[`phase0-new-account-budget.png`](phase0-new-account-budget.png)
+- [x] Root MFA 與無 Root Access Key：[`phase0-new-account-root-mfa.png`](phase0-new-account-root-mfa.png)
+- [x] Root／`ming-dev` MFA：[`phase0-new-account-root-and-iam-mfa.png`](phase0-new-account-root-and-iam-mfa.png)
+- [x] `ming-dev` Access／API／SSH keys 均為 0：[`phase0-ming-dev-zero-keys.png`](phase0-ming-dev-zero-keys.png)
+- [x] `AWSFinalProjectDevelopers` 初始政策：[`phase0-ming-dev-group-policies.png`](phase0-ming-dev-group-policies.png)
+- [x] `ming-dev` Billing 唯讀與當月 `USD 0.00`：[`phase0-ming-dev-billing-zero.png`](phase0-ming-dev-billing-zero.png)
+- [ ] Credits 精確餘額與到期日
+- [ ] 未建立 AWS Organization 的證據
+
+### 歷史舊帳號（2026-08-07）
+
+舊帳號的 Budget、Root、Organizations、CloudTrail 與 IAM Identity Center 截圖已於 2026-08-10 全部清除，避免與目前候選部署帳號混淆。事故原因與矯正措施只保留在 `docs/evidence/2026-08-07-*` 文字紀錄；不得把它們當成目前 AWS 狀態或最終報告證據。
 - [ ] IAM Identity Center group、permission set 與 account assignment（遮罩 Email 與帳號識別資訊）
 - [ ] AWS CLI SSO 登入與 caller identity（不得顯示 credential）
 - [ ] 專題 IAM role trust policy 與 permissions policy
@@ -39,13 +47,7 @@ phase5-ssm-run-command.png
 - [ ] WordPress 成功部署畫面
 - [ ] WordPress 發文成功與資料持久保存
 
-## 內部稽核截圖
-
-- [x] CloudTrail 完整寫入事件：[`phase0-cloudtrail-write-events.png`](phase0-cloudtrail-write-events.png)（保存 `CreateOrganization` 等事件；不作最終報告主圖）
-- [x] Identity Center multi-Region KMS 成本警告：[`phase0-identity-center-multi-region-cost-warning.png`](phase0-identity-center-multi-region-cost-warning.png)（證明已辨識並避開非必要費用）
-- [x] Identity Center 空白 group：[`phase0-identity-center-group-created-internal.png`](phase0-identity-center-group-created-internal.png)（Group ID 已遮蔽；僅供內部稽核）
-
-帳號／Region 的狹窄標頭截圖因遮罩影響可讀性未納入；Region 已記錄為 Tokyo `ap-northeast-1`，後續可由服務總覽截圖一併佐證。
+帳號／Region 的狹窄標頭截圖因遮罩影響可讀性未納入；新帳號 Region 尚待下次 AWS 唯讀盤點重新驗證。
 
 ## 加分截圖
 

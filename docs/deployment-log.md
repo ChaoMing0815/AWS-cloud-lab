@@ -26,7 +26,7 @@
 | 2026-08-06 | IAM 前置 | 檢查 AWS CLI／Console 登入狀態；未取得憑證前停止 AWS 寫入 | CLI 無 profile／Region／AWS 環境憑證，Console 需登入 | [前置盤點](evidence/2026-08-06-skill-and-iam/aws-cli-preflight.md) |
 | 2026-08-07 | P0-1 | 驗證 Budget、Root MFA、Root Access Key、Organizations、Region 與 CloudTrail | Console 截圖及 CloudTrail Event history | [帳號安全前置驗證](evidence/2026-08-07-p0-1-account-security/inventory-summary.md) |
 | 2026-08-07 | IAM Identity Center 前置 | 確認尚未啟用，完成 organization instance 啟用前成本、安全、Region 與回復關卡；拒絕預選的 multi-Region KMS 計費方案 | Console 顯示 Tokyo 啟用頁及 KMS 成本警告；尚未執行 AWS 寫入 | [啟用前關卡](evidence/2026-08-07-identity-center/enable-preflight.md) |
-| 2026-08-07 | IAM Identity Center | 經使用者確認，以 Root 在 Tokyo 啟用單一區域 organization instance；使用 AWS owned key，無其他 Region | 去識別化 Dashboard 顯示 Identity Center directory 與主要 Region `ap-northeast-1` | [啟用結果](evidence/2026-08-07-identity-center/enable-result.md)／[截圖](screenshots/phase0-identity-center-enabled.png) |
+| 2026-08-07 | IAM Identity Center | 經使用者確認，以 Root 在 Tokyo 啟用單一區域 organization instance；使用 AWS owned key，無其他 Region | 舊帳號文字事故紀錄；相關截圖已於 2026-08-10 清除，不能作為目前環境證據 | [啟用結果](evidence/2026-08-07-identity-center/enable-result.md) |
 | 2026-08-07 | IAM Identity Center group | 建立空白 `AWSFinalProjectDevelopers` group；未建立任何 account／application assignment | Group 詳細畫面顯示成員數 `0` | [Group 建立結果](evidence/2026-08-07-identity-center/group-result.md) |
 | 2026-08-07 | Identity Center user | 建立 `ming_dev_finalproject`、加入 `AWSFinalProjectDevelopers` 並完成首次登入；Email 仍顯示未驗證、MFA 為 0 | 使用者已啟用且有 1 個作用中工作階段；待完成 Email／MFA | [User 狀態](evidence/2026-08-07-identity-center/user-result.md) |
 | 2026-08-07 | 成本治理 | 收到 Free plan 自動升級 Paid plan 通知；確認由建立 AWS Organization 觸發 | 對照 CloudTrail `CreateOrganization` 與 AWS Free Tier FAQ；原始通知含 account ID 不入庫 | [Account plan 變更](evidence/2026-08-07-p0-1-account-security/account-plan-change.md) |
@@ -55,6 +55,9 @@
 | 2026-08-10 | 三玩家完整回合 E2E | 三個隔離 origin 完成角色、開始、行動、擲骰、星火、結算與 refresh；以 TDD 修正 canonical state 未同步 deep route | Backend `45 passed`、Frontend `58 passed`、route mutation sensitivity；三端 Round `02`、點數一致、Session 隔離、`/play` 一致、Console 0 errors；未執行 AWS 寫入 | [Browser／TDD 驗證](evidence/2026-08-10-three-player-browser-e2e/validation.md) |
 | 2026-08-10 | PostgreSQL restart persistence | 建立 ADR-0003、migration、PostgreSQL adapter、Memory／PostgreSQL 共用 contract 與 `DATABASE_URL` composition；修正 Demo room 重啟唯一鍵衝突 | Backend `56 passed`、Frontend `58 passed`；兩個 FastAPI application instance 還原 room 與 session；遺失 story entries mutation 正確失敗；臨時 DB 容器已移除；未執行 AWS 寫入 | [TDD 驗證](evidence/2026-08-10-postgres-persistence/tdd-validation.md) |
 | 2026-08-10 | LLM recovery 與 OS process restart | 建立 retryable failure taxonomy、自動／手動 retry、`RESOLUTION_FAILED` canonical-state 保護、host-only deterministic fallback API／UI；實際啟停兩個 Uvicorn processes | Backend `66 passed`、Frontend `60 passed`；attempt-limit mutation 正確失敗；完整 room 與 session 跨 OS process restart；臨時 DB 已移除；未呼叫真實 LLM／AWS | [TDD／restart 驗證](evidence/2026-08-10-llm-recovery/tdd-validation.md) |
+| 2026-08-10 | 新 AWS 帳號安全基線 | 在重新申請的 Free plan 帳號驗證每月 `US$1.00` Budget、Root MFA、Root Access Key 0、Free plan 與當月預估 `USD 0.00` | 去識別化 Console 截圖；未建立任何專題 workload | [新帳號基線](evidence/2026-08-10-new-account-baseline/validation.md) |
+| 2026-08-10 | 日常人員 IAM | 建立 Console-only IAM user `ming-dev` 與 `AWSFinalProjectDevelopers` group；啟用 MFA，Access／API／SSH keys 均為 0 | 群組有 1 位成員；連接 `ReadOnlyAccess`、`IAMUserChangePassword`；未授予 `AdministratorAccess` 或 `PowerUserAccess` | [新帳號基線](evidence/2026-08-10-new-account-baseline/validation.md) |
+| 2026-08-10 | Billing 委派唯讀 | Root 啟用 IAM user／role Billing access；`ming-dev` 可查看當月帳單與 Free plan 狀態 | 2026 年 8 月預估總計 `USD 0.00`；有效權限已證明，實際 policy 與附掛位置仍待唯讀 IAM 盤點確認 | [帳單證據](screenshots/phase0-ming-dev-billing-zero.png) |
 
 ## AWS Budget Alarm
 
@@ -62,17 +65,32 @@
 | --- | --- |
 | 是否已建立 | 已驗證，運作狀態正常 |
 | 預算金額 | 每月 `US$1.00` |
-| 目前支出 | `US$0.00`（2026-08-07 驗證） |
+| 目前支出 | `US$0.00`（2026-08-10 新帳號驗證） |
 | 通知設定 | 提醒閾值已確認；Email 位址未保存於證據 |
-| 截圖 | [phase0-zero-spend-budget-verified.png](screenshots/phase0-zero-spend-budget-verified.png) |
+| 截圖 | [phase0-new-account-budget.png](screenshots/phase0-new-account-budget.png) |
 
-## 2026-08-06：Agent Skill 與 IAM
+## 2026-08-10：新 AWS 帳號安全與 IAM 基線
+
+- 本節是目前後續部署候選帳號；下方 2026-08-06–07 的 Organization／Identity Center 紀錄只屬舊帳號歷史。
+- Billing Console 顯示 Free plan；當月預估 `USD 0.00`，每月 `US$1.00` Budget 正常。
+- Root 與 `ming-dev` 均已啟用 MFA；Root 與 `ming-dev` 沒有長期 Access Key。
+- `ming-dev` 是 Console-only 日常人員身分，位於 `AWSFinalProjectDevelopers`。
+- 群組目前只有 `ReadOnlyAccess`、`IAMUserChangePassword`；尚未授予資源寫入權限。
+- `ming-dev` 已能唯讀帳單，但現有截圖未證明實際 policy 與附掛位置；下次 AWS 唯讀盤點必須補驗證。
+- 尚未建立 `AWSCourseAccountProtectionDeny`，尚未授予 `PowerUserAccess`；不得為了課程操作改用 Root 建立一般資源。
+- 本日未建立專題 workload，未驗證 Credits 精確餘額、Organization 缺席與新帳號 Region 現況。
+
+證據：[2026-08-10 新帳號安全與成本基線](evidence/2026-08-10-new-account-baseline/validation.md)
+
+## 歷史舊帳號：2026-08-06–07 Agent Skill、Organizations 與 IAM Identity Center
+
+> 本節帳號已因建立 AWS Organization 永久升級 Paid plan；不得把它的 Organization、Identity Center、principal、Budget 或 credits 狀態套用到 2026-08-10 新帳號。
 
 | 項目 | 狀態 | 證據／下一步 |
 | --- | --- | --- |
 | 專題 Agent Skill | 已建立並通過結構驗證 | [Skill 驗證](evidence/2026-08-06-skill-and-iam/skill-validation.md) |
 | AWS principal／account／Region | Root user；Organizations management account；Tokyo `ap-northeast-1` | 帳號 ID 未保存；[P0-1 證據](evidence/2026-08-07-p0-1-account-security/inventory-summary.md) |
-| IAM Identity Center | 已在 Tokyo 啟用單一區域 organization instance | [啟用結果](evidence/2026-08-07-identity-center/enable-result.md)／[截圖](screenshots/phase0-identity-center-enabled.png) |
+| IAM Identity Center | 舊帳號曾在 Tokyo 啟用單一區域 organization instance | [舊帳號啟用結果](evidence/2026-08-07-identity-center/enable-result.md)；相關截圖已清除 |
 | Root MFA／Budget／CloudTrail | 已由 Console 即時驗證 | [P0-1 證據](evidence/2026-08-07-p0-1-account-security/inventory-summary.md) |
 | Identity Center group | 已建立 `AWSFinalProjectDevelopers`；目前 0 位成員、無 assignment | [Group 建立結果](evidence/2026-08-07-identity-center/group-result.md) |
 | Identity Center user／permission set／assignment | 尚未建立 | [預定變更集](evidence/2026-08-06-skill-and-iam/proposed-iam-change-set.md) |

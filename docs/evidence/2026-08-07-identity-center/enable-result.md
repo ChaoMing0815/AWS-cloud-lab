@@ -21,9 +21,7 @@
 
 Console 已顯示 Identity Center Dashboard、Identity Center directory 與主要 Region `ap-northeast-1`，足以確認 AWS 狀態。但原始驗證畫面包含 Organization ID、Issuer URL 與 AWS access portal URLs，依專案證據規範不複製到 repository。
 
-去識別化截圖已保存：保留 Dashboard、Identity source 與主要 Region，並裁掉 Organization ID、Issuer URL、portal URL、Email 與帳號識別資訊。
-
-[IAM Identity Center 啟用完成](../../screenshots/phase0-identity-center-enabled.png)
+去識別化截圖曾保存於 repository，但已於 2026-08-10 隨舊帳號截圖清理移除，避免被誤認為目前 AWS 環境。本文件只作事故歷史追溯，不可作為新帳號完成證據。
 
 ## 下一步
 
