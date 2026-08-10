@@ -64,6 +64,6 @@
 - 三個獨立 browser contexts 已完成正式單回合 E2E；結局 Browser E2E 仍待 release gate 一併確認。
 - PostgreSQL repository contract、FastAPI application restart 與正式 Uvicorn OS process restart 已完成；application container restart 待 Docker image 切片。
 - LLM failure taxonomy、自動／手動 retry、deterministic fallback 與房主 recovery UI 已完成；真實模型 schema／Guardrail adapter 尚未完成。
-- Polling 離線狀態與 session lifecycle 尚未完成。
+- Polling 離線／reconnect deterministic UI 已完成；真實 Browser 網路攔截仍待 release gate 驗證。Session lifecycle 尚未完成。
 
 因此目前不得將本機 Web MVP 標示為 release-ready。

@@ -58,6 +58,7 @@
 | 2026-08-10 | 新 AWS 帳號安全基線 | 在重新申請的 Free plan 帳號驗證每月 `US$1.00` Budget、Root MFA、Root Access Key 0、Free plan 與當月預估 `USD 0.00` | 去識別化 Console 截圖；未建立任何專題 workload | [新帳號基線](evidence/2026-08-10-new-account-baseline/validation.md) |
 | 2026-08-10 | 日常人員 IAM | 建立 Console-only IAM user `ming-dev` 與 `AWSFinalProjectDevelopers` group；啟用 MFA，Access／API／SSH keys 均為 0 | 群組有 1 位成員；連接 `ReadOnlyAccess`、`IAMUserChangePassword`；未授予 `AdministratorAccess` 或 `PowerUserAccess` | [新帳號基線](evidence/2026-08-10-new-account-baseline/validation.md) |
 | 2026-08-10 | Billing 委派唯讀 | Root 啟用 IAM user／role Billing access；`ming-dev` 可查看當月帳單與 Free plan 狀態 | 2026 年 8 月預估總計 `USD 0.00`；有效權限已證明，實際 policy 與附掛位置仍待唯讀 IAM 盤點確認 | [帳單證據](screenshots/phase0-ming-dev-billing-zero.png) |
+| 2026-08-10 | Polling 離線／reconnect UX | 暫時性 network／`5xx` 保留 canonical 畫面並採 3／5／10 秒 bounded backoff；恢復後回 3 秒；`401/403` 停止，`409` reload | Red `4 passed, 5 failed`；Green／還原 mutation 後 Frontend `65 passed`、Backend `59 passed, 7 skipped`；未執行 AWS 寫入 | [TDD 驗證](evidence/2026-08-10-polling-offline-reconnect/tdd-validation.md) |
 
 ## AWS Budget Alarm
 
