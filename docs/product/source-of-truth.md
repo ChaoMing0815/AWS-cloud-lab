@@ -17,6 +17,7 @@
 | 目前 branch、驗證基準與下一步 | [`handoffs/CURRENT.md`](../handoffs/CURRENT.md) | Active | 每個新 task 的最小啟動集 |
 | 選題與產品邊界 | [ADR-0001](../decisions/0001-select-multiplayer-ai-text-rpg.md) | Accepted | 產品、架構、課程對照 |
 | 前端與 API 責任邊界 | [ADR-0002](../decisions/0002-adopt-clean-frontend-architecture.md) | Accepted | 前端、後端、測試 |
+| PostgreSQL persistence 與 repository 邊界 | [ADR-0003](../decisions/0003-adopt-postgresql-room-aggregate-repository.md) | Accepted | 後端、migration、RDS |
 | 遊戲規則與 MVP Definition of Done | [正式 MVP Spec](../specs/text-rpg-mvp-spec.md) | Approved | User Flow、Feature Spec、測試 |
 | 2026-08-09 補充產品決策 | [核准紀錄](../governance/approval-log.md) | Approved | 入口、session、LLM failure UX |
 | 頁面導航 | [Web App User Flow](user-flow.md) | Active target | Screen States、入口 Feature Spec |
