@@ -5,7 +5,14 @@ import secrets
 import string
 from uuid import uuid4
 
-from app.application.ports import DiceRoller, IdempotencyStore, RoomRepository, SessionTokenFactory, Storyteller
+from app.application.ports import (
+    DiceRoller,
+    IdempotencyStore,
+    RoomRepository,
+    SessionTokenFactory,
+    Storyteller,
+    StorytellerFailure,
+)
 from app.application.rules import (
     apply_spark,
     classify_result,
@@ -681,6 +688,17 @@ class RoomService:
                 result.spark_decision = "DECLINE"
 
             current.status = "RESOLVING"
+            narration, attempts, failure_code = self._resolve_story(current)
+            current.resolution_attempts = attempts
+            current.resolution_failure_code = failure_code
+            if failure_code is not None:
+                current.resolution_mode = None
+                current.status = "RESOLUTION_FAILED"
+                current.version += 1
+                self.repository.save(current)
+                return current
+
+            current.resolution_mode = "storyteller"
             current.progress_points += sum(result.progress_delta for result in results)
             current.danger_points += sum(result.danger_delta for result in results)
             for result in results:
@@ -697,7 +715,7 @@ class RoomService:
                     type="narrator",
                     title="故事主持人",
                     round_number=round_number,
-                    text=self.storyteller.resolve_round(current),
+                    text=narration,
                 )
             )
             for player in current.players:
@@ -729,6 +747,17 @@ class RoomService:
             },
             operation,
         )
+
+    def _resolve_story(self, room: Room) -> tuple[str, int, str | None]:
+        attempts = 0
+        while attempts < 2:
+            attempts += 1
+            try:
+                return self.storyteller.resolve_round(room), attempts, None
+            except StorytellerFailure as failure:
+                if not failure.retryable or attempts == 2:
+                    return "", attempts, failure.code
+        raise RuntimeError("storyteller retry loop exited unexpectedly")
 
     def finish_game(
         self,
