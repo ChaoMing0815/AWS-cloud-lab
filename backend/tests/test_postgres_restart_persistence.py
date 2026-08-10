@@ -34,14 +34,13 @@ def test_room_and_session_survive_application_restart(monkeypatch) -> None:
         }
 
     with TestClient(create_app()) as restarted_process:
-        restored_response = restarted_process.get(
-            "/api/v1/rooms/current",
-            cookies=session_cookies,
-        )
+        for name, value in session_cookies.items():
+            restarted_process.cookies.set(name, value)
+        restored_response = restarted_process.get("/api/v1/rooms/current")
 
     assert restored_response.status_code == 200
     restored = restored_response.json()
     assert restored["id"] == created["id"]
     assert restored["roomCode"] == created["roomCode"]
     assert restored["session"]["isHost"] is True
-    assert restored["session"]["currentPlayerId"] == created["session"]["currentPlayerId"]
+    assert restored["session"]["playerId"] == created["session"]["playerId"]

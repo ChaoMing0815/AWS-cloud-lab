@@ -62,6 +62,9 @@ class RoomService:
         self.demo_room_id = self._create_demo_room()
 
     def _create_demo_room(self) -> str:
+        existing = self.repository.get_by_code("BONUS7")
+        if existing is not None:
+            return existing.id
         room = Room(
             id=_new_id(),
             room_code="BONUS7",
