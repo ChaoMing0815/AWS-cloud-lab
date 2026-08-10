@@ -45,7 +45,8 @@ Demo 與每日進度依本清單逐項驗收。檔案存在不代表完成；必
 - [ ] Session expiry／revoke／reassign 與 production Secure cookie 已完成。
 - [x] PostgreSQL repository contract、migration、runtime composition 與 FastAPI application restart persistence 已完成。
 - [x] 三個獨立 browser contexts 正式單回合 E2E 已完成。
-- [ ] LLM retry／fallback 與正式 process／container restart 演練已完成。
+- [x] LLM 自動／手動 retry、deterministic fallback 與正式 Uvicorn OS process restart 演練已完成。
+- [ ] 真實 Bedrock schema／Guardrail 驗證與 application container restart 演練已完成。
 - [ ] 講師已確認自製 FastAPI Web／private DB 的 Tier 0 等效檢核與 Tier 0–5 對映。
 - [x] 已以 ADR-0003 確認 FastAPI＋PostgreSQL 本機 MVP adapter；正式 AWS data service 仍須於部署前決定。
 - [ ] 本機 MVP 已通過 Spec Definition of Done。

@@ -54,6 +54,7 @@
 | 2026-08-10 | Session Continue 與正式路由 | 安全 session summary、首頁繼續入口、setup／lobby／play／ending mapping、Play／Ending deep link 與 HTML 404 | Backend `45 passed`、Frontend `56 passed`、兩項 sensitivity；Browser 有效／失效 session、deep routes、404、Demo 隔離與 Console 0 errors；server 已停止，未執行 AWS 寫入 | [TDD 驗證](evidence/2026-08-10-session-continue/tdd-validation.md) |
 | 2026-08-10 | 三玩家完整回合 E2E | 三個隔離 origin 完成角色、開始、行動、擲骰、星火、結算與 refresh；以 TDD 修正 canonical state 未同步 deep route | Backend `45 passed`、Frontend `58 passed`、route mutation sensitivity；三端 Round `02`、點數一致、Session 隔離、`/play` 一致、Console 0 errors；未執行 AWS 寫入 | [Browser／TDD 驗證](evidence/2026-08-10-three-player-browser-e2e/validation.md) |
 | 2026-08-10 | PostgreSQL restart persistence | 建立 ADR-0003、migration、PostgreSQL adapter、Memory／PostgreSQL 共用 contract 與 `DATABASE_URL` composition；修正 Demo room 重啟唯一鍵衝突 | Backend `56 passed`、Frontend `58 passed`；兩個 FastAPI application instance 還原 room 與 session；遺失 story entries mutation 正確失敗；臨時 DB 容器已移除；未執行 AWS 寫入 | [TDD 驗證](evidence/2026-08-10-postgres-persistence/tdd-validation.md) |
+| 2026-08-10 | LLM recovery 與 OS process restart | 建立 retryable failure taxonomy、自動／手動 retry、`RESOLUTION_FAILED` canonical-state 保護、host-only deterministic fallback API／UI；實際啟停兩個 Uvicorn processes | Backend `66 passed`、Frontend `60 passed`；attempt-limit mutation 正確失敗；完整 room 與 session 跨 OS process restart；臨時 DB 已移除；未呼叫真實 LLM／AWS | [TDD／restart 驗證](evidence/2026-08-10-llm-recovery/tdd-validation.md) |
 
 ## AWS Budget Alarm
 
