@@ -4,7 +4,7 @@
 - Owner：QA
 - Source of Truth：是，僅負責本機 Web MVP release gate
 - Depends on：[MVP Spec](../specs/text-rpg-mvp-spec.md)、[Screen States](../product/screen-states.md)、[測試策略](../testing-strategy.md)
-- 最後檢視：2026-08-09
+- 最後檢視：2026-08-10
 
 > 嚴格 Red／Green／Refactor 步驟與 evidence 格式不在此重複，全部引用測試策略。本文件定義「哪些使用者旅程必須通過」。
 
@@ -62,6 +62,7 @@
 
 - 正式 Landing、room-code join、session continue 與基本 deep routes 已完成。
 - 三個獨立 browser contexts 已完成正式單回合 E2E；結局 Browser E2E 仍待 release gate 一併確認。
-- Polling 離線狀態、session lifecycle、PostgreSQL 與 LLM recovery 尚未完成。
+- PostgreSQL repository contract 與 FastAPI application restart persistence 已完成；正式 process／container restart 演練仍待補。
+- Polling 離線狀態、session lifecycle 與 LLM recovery 尚未完成。
 
 因此目前不得將本機 Web MVP 標示為 release-ready。

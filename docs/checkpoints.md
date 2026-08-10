@@ -43,9 +43,11 @@ Demo 與每日進度依本清單逐項驗收。檔案存在不代表完成；必
 - [x] 玩家可用 room code＋暱稱加入任意可加入房間，且錯誤／滿員／已開始案例均被拒絕。
 - [ ] Loading、Offline、Session expired、Version conflict 與 reconnect UX 已完成。
 - [ ] Session expiry／revoke／reassign 與 production Secure cookie 已完成。
-- [ ] PostgreSQL restart persistence、LLM retry／fallback 與三個獨立 browser contexts E2E 已完成。
+- [x] PostgreSQL repository contract、migration、runtime composition 與 FastAPI application restart persistence 已完成。
+- [x] 三個獨立 browser contexts 正式單回合 E2E 已完成。
+- [ ] LLM retry／fallback 與正式 process／container restart 演練已完成。
 - [ ] 講師已確認自製 FastAPI Web／private DB 的 Tier 0 等效檢核與 Tier 0–5 對映。
-- [ ] 已確認 FastAPI＋PostgreSQL 與正式 AWS adapter ADR。
+- [x] 已以 ADR-0003 確認 FastAPI＋PostgreSQL 本機 MVP adapter；正式 AWS data service 仍須於部署前決定。
 - [ ] 本機 MVP 已通過 Spec Definition of Done。
 
 ## Tier 0：AWS 可玩 MVP
