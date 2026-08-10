@@ -22,8 +22,8 @@
 - Billing Console 顯示 Free plan；每月 `US$1.00` Budget 正常，2026 年 8 月預估 `USD 0.00`。
 - Root MFA 已啟用且無 Root Access Key；Root 只用於低頻帳號管理，完成後應登出。
 - Console-only IAM user `ming-dev` 已啟用 MFA；Access Key、API Key、CodeCommit SSH key 均為 0。
-- `ming-dev` 位於 `AWSFinalProjectDevelopers`；群組只連接 `ReadOnlyAccess`、`IAMUserChangePassword`。
-- `ming-dev` 已能唯讀帳單，但實際 Billing policy 與附掛位置尚待下次 AWS 唯讀盤點確認。
+- `ming-dev` 位於 `AWSFinalProjectDevelopers`；群組只連接 `ReadOnlyAccess`、`IAMUserChangePassword`、`AWSBillingReadOnlyAccess`。
+- `ming-dev` 已能唯讀帳單；更新後群組截圖已證明 Billing policy 名稱與附掛位置。
 - 尚未授予 `PowerUserAccess` 或 `AdministratorAccess`，尚未建立 `AWSCourseAccountProtectionDeny`。
 - Credits 精確餘額、Organization 缺席、目前 principal／Region 仍須在任何下一次 AWS 寫入前重新確認。
 - 2026-08-07 Organization／Identity Center／Paid plan 紀錄屬舊帳號事故，不得當成新帳號現況。

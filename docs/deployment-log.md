@@ -56,8 +56,8 @@
 | 2026-08-10 | PostgreSQL restart persistence | 建立 ADR-0003、migration、PostgreSQL adapter、Memory／PostgreSQL 共用 contract 與 `DATABASE_URL` composition；修正 Demo room 重啟唯一鍵衝突 | Backend `56 passed`、Frontend `58 passed`；兩個 FastAPI application instance 還原 room 與 session；遺失 story entries mutation 正確失敗；臨時 DB 容器已移除；未執行 AWS 寫入 | [TDD 驗證](evidence/2026-08-10-postgres-persistence/tdd-validation.md) |
 | 2026-08-10 | LLM recovery 與 OS process restart | 建立 retryable failure taxonomy、自動／手動 retry、`RESOLUTION_FAILED` canonical-state 保護、host-only deterministic fallback API／UI；實際啟停兩個 Uvicorn processes | Backend `66 passed`、Frontend `60 passed`；attempt-limit mutation 正確失敗；完整 room 與 session 跨 OS process restart；臨時 DB 已移除；未呼叫真實 LLM／AWS | [TDD／restart 驗證](evidence/2026-08-10-llm-recovery/tdd-validation.md) |
 | 2026-08-10 | 新 AWS 帳號安全基線 | 在重新申請的 Free plan 帳號驗證每月 `US$1.00` Budget、Root MFA、Root Access Key 0、Free plan 與當月預估 `USD 0.00` | 去識別化 Console 截圖；未建立任何專題 workload | [新帳號基線](evidence/2026-08-10-new-account-baseline/validation.md) |
-| 2026-08-10 | 日常人員 IAM | 建立 Console-only IAM user `ming-dev` 與 `AWSFinalProjectDevelopers` group；啟用 MFA，Access／API／SSH keys 均為 0 | 群組有 1 位成員；連接 `ReadOnlyAccess`、`IAMUserChangePassword`；未授予 `AdministratorAccess` 或 `PowerUserAccess` | [新帳號基線](evidence/2026-08-10-new-account-baseline/validation.md) |
-| 2026-08-10 | Billing 委派唯讀 | Root 啟用 IAM user／role Billing access；`ming-dev` 可查看當月帳單與 Free plan 狀態 | 2026 年 8 月預估總計 `USD 0.00`；有效權限已證明，實際 policy 與附掛位置仍待唯讀 IAM 盤點確認 | [帳單證據](screenshots/phase0-ming-dev-billing-zero.png) |
+| 2026-08-10 | 日常人員 IAM | 建立 Console-only IAM user `ming-dev` 與 `AWSFinalProjectDevelopers` group；啟用 MFA，Access／API／SSH keys 均為 0 | 群組有 1 位成員；連接 `ReadOnlyAccess`、`IAMUserChangePassword`、`AWSBillingReadOnlyAccess`；未授予 `AdministratorAccess` 或 `PowerUserAccess` | [新帳號基線](evidence/2026-08-10-new-account-baseline/validation.md) |
+| 2026-08-10 | Billing 委派唯讀 | Root 啟用 IAM user／role Billing access；`ming-dev` 可查看當月帳單與 Free plan 狀態 | 群組已連接 `AWSBillingReadOnlyAccess`；2026 年 8 月預估總計 `USD 0.00` | [群組政策](screenshots/phase0-ming-dev-group-policies.png)／[帳單證據](screenshots/phase0-ming-dev-billing-zero.png) |
 | 2026-08-10 | Polling 離線／reconnect UX | 暫時性 network／`5xx` 保留 canonical 畫面並採 3／5／10 秒 bounded backoff；恢復後回 3 秒；`401/403` 停止，`409` reload | Red `4 passed, 5 failed`；Green／還原 mutation 後 Frontend `65 passed`、Backend `59 passed, 7 skipped`；未執行 AWS 寫入 | [TDD 驗證](evidence/2026-08-10-polling-offline-reconnect/tdd-validation.md) |
 
 ## AWS Budget Alarm
@@ -76,8 +76,7 @@
 - Billing Console 顯示 Free plan；當月預估 `USD 0.00`，每月 `US$1.00` Budget 正常。
 - Root 與 `ming-dev` 均已啟用 MFA；Root 與 `ming-dev` 沒有長期 Access Key。
 - `ming-dev` 是 Console-only 日常人員身分，位於 `AWSFinalProjectDevelopers`。
-- 群組目前只有 `ReadOnlyAccess`、`IAMUserChangePassword`；尚未授予資源寫入權限。
-- `ming-dev` 已能唯讀帳單，但現有截圖未證明實際 policy 與附掛位置；下次 AWS 唯讀盤點必須補驗證。
+- 群組目前只有 `ReadOnlyAccess`、`IAMUserChangePassword`、`AWSBillingReadOnlyAccess`；尚未授予資源寫入權限。
 - 尚未建立 `AWSCourseAccountProtectionDeny`，尚未授予 `PowerUserAccess`；不得為了課程操作改用 Root 建立一般資源。
 - 本日未建立專題 workload，未驗證 Credits 精確餘額、Organization 缺席與新帳號 Region 現況。
 

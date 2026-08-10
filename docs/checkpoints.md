@@ -11,8 +11,7 @@ Demo 與每日進度依本清單逐項驗收。檔案存在不代表完成；必
 - [x] 本專題禁止再建立／加入 AWS Organizations。
 - [x] 未建立長期 Access Key，未授予應用程式 `AdministratorAccess`。
 - [x] 新帳號已建立 Console-only `ming-dev`、啟用 MFA，並確認 Access／API／SSH keys 均為 0。
-- [x] `AWSFinalProjectDevelopers` 已連接 `ReadOnlyAccess` 與 `IAMUserChangePassword`；尚未授予 `PowerUserAccess`。
-- [ ] `ming-dev` 的 Billing 唯讀權限附掛位置與實際 policy 已由唯讀 IAM 盤點確認。
+- [x] `AWSFinalProjectDevelopers` 已連接 `ReadOnlyAccess`、`IAMUserChangePassword` 與 `AWSBillingReadOnlyAccess`；尚未授予 `PowerUserAccess`。
 - [ ] 最終部署帳號、account plan、credits、Budget、Region 與 principal 已確認。
 - [ ] 所有資源已有估價、owner、最大預算、停止與刪除方式。
 
