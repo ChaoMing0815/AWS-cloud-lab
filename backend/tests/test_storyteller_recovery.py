@@ -166,3 +166,41 @@ def test_content_rejection_is_not_retried_and_preserves_rules_state() -> None:
     assert failed.entries == before.entries
     assert failed.resolution_attempts == 1
     assert failed.resolution_failure_code == "CONTENT_REJECTED"
+
+
+def test_host_fallback_commits_fixed_results_once_without_claiming_llm_success() -> None:
+    storyteller = ScriptedStoryteller(
+        [StorytellerFailure("TIMEOUT"), StorytellerFailure("TIMEOUT")]
+    )
+    service, _repository = service_with(storyteller)
+    failed = resolve(service)
+
+    fallback = service.fallback_round(
+        room_id=failed.id,
+        round_number=1,
+        expected_version=failed.version,
+        host_token="host-token",
+        csrf_token="host-csrf",
+        idempotency_key="story-fallback-submit",
+    )
+    replay = service.fallback_round(
+        room_id=failed.id,
+        round_number=1,
+        expected_version=failed.version,
+        host_token="host-token",
+        csrf_token="host-csrf",
+        idempotency_key="story-fallback-submit",
+    )
+
+    assert fallback.status == "COLLECTING_ACTIONS"
+    assert fallback.round_number == 2
+    assert fallback.progress_points == 1
+    assert fallback.danger_points == 1
+    assert fallback.players[0].character is not None
+    assert fallback.players[0].character.spark == 1
+    assert fallback.players[0].action == ""
+    assert fallback.resolution_mode == "fallback"
+    assert fallback.resolution_failure_code == "TIMEOUT"
+    assert "deterministic fallback" in fallback.entries[-1].text
+    assert "部分成功" in fallback.entries[-1].text
+    assert replay == fallback
