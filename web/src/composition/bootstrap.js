@@ -10,6 +10,7 @@ import { UpdateCharacter } from "../application/use-cases/update-character.js";
 import { RollRound } from "../application/use-cases/roll-round.js";
 import { DecideSpark } from "../application/use-cases/decide-spark.js";
 import { ResolveRound } from "../application/use-cases/resolve-round.js";
+import { FallbackRound } from "../application/use-cases/fallback-round.js";
 import { FinishGame } from "../application/use-cases/finish-game.js";
 import { FetchGameApi } from "../adapters/api/fetch-game-api.js";
 import { MockGameApi } from "../adapters/api/mock-game-api.js";
@@ -33,6 +34,7 @@ function mountGamePage({ forceMock = false } = {}) {
     rollRound: new RollRound(gameApi),
     decideSpark: new DecideSpark(gameApi),
     resolveRound: new ResolveRound(gameApi),
+    fallbackRound: new FallbackRound(gameApi),
     finishGame: new FinishGame(gameApi),
     connectionLabel: apiMode === "http" ? "本機 FastAPI 模式" : "教學 Demo · 不保存進度",
     persistenceLabel: apiMode === "http"

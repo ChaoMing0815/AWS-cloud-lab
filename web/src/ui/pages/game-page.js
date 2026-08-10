@@ -22,6 +22,7 @@ export class GamePage {
     rollRound,
     decideSpark,
     resolveRound,
+    fallbackRound,
     finishGame,
     connectionLabel,
     persistenceLabel,
@@ -41,6 +42,7 @@ export class GamePage {
       rollRound,
       decideSpark,
       resolveRound,
+      fallbackRound,
       finishGame,
     };
     this.connectionLabel = connectionLabel;
@@ -77,6 +79,8 @@ export class GamePage {
     byId("declineSparkButton").addEventListener("click", () => this.handleSpark("DECLINE"));
     byId("resolveRoundButton").addEventListener("click", () => this.handleResolve(false));
     byId("skipAndResolveButton").addEventListener("click", () => this.handleResolve(true));
+    byId("retryResolutionButton").addEventListener("click", () => this.handleResolve(false));
+    byId("fallbackRoundButton").addEventListener("click", () => this.handleFallback());
     byId("finishNowButton").addEventListener("click", () => this.handleFinish("FINISH_NOW"));
     byId("continueButton").addEventListener("click", () => this.handleFinish("CONTINUE"));
     await this.run(() => this.useCases.loadRoom.execute());
@@ -211,6 +215,13 @@ export class GamePage {
     );
   }
 
+  async handleFallback() {
+    await this.run(
+      () => this.useCases.fallbackRound.execute(),
+      "已使用系統備援敘事完成本回合。",
+    );
+  }
+
   async handleFinish(decision) {
     const message = decision === "FINISH_NOW"
       ? "故事已完成。"
@@ -248,7 +259,7 @@ export class GamePage {
 
   setBusy(busy) {
     this.busy = busy;
-    document.querySelectorAll("button[type='submit'], #newRoomButton, #startGameButton, #rollRoundButton, #useSparkButton, #declineSparkButton, #resolveRoundButton, #skipAndResolveButton, #finishNowButton, #continueButton").forEach((button) => {
+    document.querySelectorAll("button[type='submit'], #newRoomButton, #startGameButton, #rollRoundButton, #useSparkButton, #declineSparkButton, #resolveRoundButton, #skipAndResolveButton, #retryResolutionButton, #fallbackRoundButton, #finishNowButton, #continueButton").forEach((button) => {
       button.disabled = busy;
     });
   }
@@ -297,6 +308,8 @@ export class GamePage {
     byId("roundHostControls").hidden = !view.canRoll;
     byId("sparkControls").hidden = !view.canDecideSpark;
     byId("resolveRoundControls").hidden = !view.canResolve;
+    byId("resolutionRecoveryControls").hidden = !(view.canRetryResolution || view.canUseFallback);
+    byId("resolutionFailureText").textContent = `${view.resolutionFailureLabel}。固定骰子與星火判定已保留，尚未提交進度、危機或故事。`;
     byId("completionControls").hidden = !(view.canFinishNow || view.canContinue);
     if (view.currentDiceResult) {
       const improves = view.currentDiceResult.baseTotal === 6 || view.currentDiceResult.baseTotal === 9;

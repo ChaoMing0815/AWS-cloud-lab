@@ -277,6 +277,15 @@
           <button id="skipAndResolveButton" class="secondary-button" type="button">略過等待者並結算</button>
         </div>
 
+        <div id="resolutionRecoveryControls" class="host-form" hidden>
+          <strong>故事生成需要房主處理</strong>
+          <p id="resolutionFailureText" class="muted">固定骰子與星火判定已保留，尚未提交進度、危機或故事。</p>
+          <div class="button-row">
+            <button id="retryResolutionButton" class="primary-button" type="button">手動重試一次</button>
+            <button id="fallbackRoundButton" class="secondary-button" type="button">使用系統備援敘事</button>
+          </div>
+        </div>
+
         <div id="completionControls" class="host-form" hidden>
           <strong>共同目標已完成</strong>
           <p class="muted">現在結束會產生完整成功結局；也可以鎖定成功並繼續尾聲探索。</p>

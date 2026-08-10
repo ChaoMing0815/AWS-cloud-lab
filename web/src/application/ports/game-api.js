@@ -47,6 +47,10 @@ export class GameApi {
     throw new Error("GameApi.resolveRound 尚未實作");
   }
 
+  async fallbackRound() {
+    throw new Error("GameApi.fallbackRound 尚未實作");
+  }
+
   async finishGame(_command) {
     throw new Error("GameApi.finishGame 尚未實作");
   }

@@ -163,6 +163,20 @@ export class FetchGameApi extends GameApi {
     return this.room;
   }
 
+  async fallbackRound() {
+    this.requireRoom();
+    this.room = await this.request(
+      `/rooms/${this.room.id}/rounds/${this.room.round}:fallback`,
+      {
+        method: "POST",
+        idempotent: true,
+        hostCsrfProtected: true,
+        body: { room_version: this.room.version },
+      },
+    );
+    return this.room;
+  }
+
   async finishGame({ decision }) {
     this.requireRoom();
     this.room = await this.request(`/rooms/${this.room.id}:finish`, {
