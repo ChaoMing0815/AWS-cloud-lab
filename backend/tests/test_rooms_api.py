@@ -97,6 +97,19 @@ def test_create_room_and_restore_it_from_http_only_cookie() -> None:
     assert client.cookies.get("co_story_player")
 
 
+def test_room_pointer_without_a_member_session_cannot_read_the_room() -> None:
+    app = create_app()
+    with TestClient(app) as owner:
+        room = new_room(owner)
+
+    with TestClient(app) as outsider:
+        outsider.cookies.set("co_story_local_room", room["id"])
+        response = outsider.get("/api/v1/rooms/current")
+
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "SESSION_NOT_FOUND"
+
+
 def test_create_room_atomically_creates_host_player_and_replays() -> None:
     payload = {"nickname": "  昭銘  "}
     with TestClient(create_app()) as client:
