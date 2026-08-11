@@ -263,6 +263,29 @@ def test_retryable_bedrock_errors_map_to_safe_storyteller_failures(
     assert secret_prompt not in str(captured.value)
 
 
+@pytest.mark.parametrize(
+    ("error_code", "expected_failure"),
+    [
+        ("AccessDeniedException", "AUTHORIZATION_ERROR"),
+        ("ValidationException", "INVALID_MODEL"),
+        ("ResourceNotFoundException", "INVALID_MODEL"),
+    ],
+)
+def test_configuration_errors_are_non_retryable_and_do_not_leak_aws_details(
+    error_code: str, expected_failure: str
+) -> None:
+    secret_detail = "model ARN and account details must remain private"
+    client = FakeBedrockClient(FakeBedrockError(error_code, secret_detail))
+
+    with pytest.raises(StorytellerFailure) as captured:
+        adapter(client).resolve_round(resolution_room())
+
+    assert captured.value.code == expected_failure
+    assert captured.value.retryable is False
+    assert str(captured.value) == expected_failure
+    assert secret_detail not in str(captured.value)
+
+
 @pytest.mark.parametrize("error_code", ["GuardrailIntervenedException", "ContentRejectedException"])
 def test_guardrail_or_content_rejection_is_non_retryable_and_does_not_leak_details(error_code: str) -> None:
     secret_response = "模型回覆全文不得外洩"
