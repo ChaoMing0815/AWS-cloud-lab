@@ -108,8 +108,20 @@ def test_issue_transfer_code_enforces_room_allowlist_and_expiry(
             _issue(service, persisted, host_token, key=f"issue-{status.lower()}")
         assert error.value.code == expected_error
     else:
+        original_room_expiry = persisted.expires_at
         _, raw_code = _issue(service, persisted, host_token)
         assert raw_code
+        if status == "COMPLETED":
+            stored = repository.get(room.id)
+            assert stored is not None
+            assert stored.expires_at == original_room_expiry
+
+
+def test_create_room_records_the_host_player_identity() -> None:
+    service, _, _ = _service_and_clock()
+    room, _, _ = _formal_room(service)
+
+    assert room.host_player_id == room.players[0].id
 
 
 def test_issue_transfer_code_stores_only_hash_replaces_prior_code_and_sets_ten_minutes() -> None:

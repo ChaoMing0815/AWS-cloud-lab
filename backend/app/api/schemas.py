@@ -56,6 +56,10 @@ class JoinRoomRequest(BaseModel):
     room_version: int = Field(ge=1)
 
 
+class IssueTransferCodeRequest(BaseModel):
+    room_version: int = Field(ge=1)
+
+
 class CreateRoomRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

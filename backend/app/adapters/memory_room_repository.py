@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from collections.abc import Callable
 from threading import RLock
+from typing import Any
 
 from app.application.ports import RoomRepository
 from app.domain.models import Room
@@ -28,3 +30,11 @@ class MemoryRoomRepository(RoomRepository):
     def save(self, room: Room) -> None:
         with self._lock:
             self._rooms[room.id] = deepcopy(room)
+
+    def mutate(self, room_id: str, operation: Callable[[Room | None], Any]) -> Any:
+        with self._lock:
+            room = deepcopy(self._rooms[room_id]) if room_id in self._rooms else None
+            result = operation(room)
+            if room is not None:
+                self._rooms[room.id] = deepcopy(room)
+            return deepcopy(result)

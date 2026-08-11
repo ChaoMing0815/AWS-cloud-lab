@@ -36,6 +36,9 @@ class RoomRepository(ABC):
     @abstractmethod
     def save(self, room: Room) -> None: ...
 
+    @abstractmethod
+    def mutate(self, room_id: str, operation: Callable[[Room | None], Any]) -> Any: ...
+
 
 class Storyteller(ABC):
     @abstractmethod

@@ -5,6 +5,7 @@ from app.api.schemas import (
     CreateRoomRequest,
     FallbackRoundRequest,
     FinishRoomRequest,
+    IssueTransferCodeRequest,
     JoinRoomRequest,
     JoinRoomByCodeRequest,
     ResolveRoundRequest,
@@ -163,6 +164,34 @@ def create_api_router(service: RoomService, *, secure_cookies: bool = False) -> 
         _set_local_room_cookie(response, room.id, secure=secure_cookies)
         _set_session_cookie(response, PLAYER_SESSION_COOKIE, player_token, secure=secure_cookies)
         return room_response(room, service.session_context(room, host_token, player_token))
+
+    @router.post("/rooms/{room_id}/players/{player_id}/transfer-codes")
+    def issue_transfer_code(
+        room_id: str,
+        player_id: str,
+        request: IssueTransferCodeRequest,
+        idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+        csrf_token: str | None = Header(default=None, alias="X-CSRF-Token"),
+        host_token: str | None = Cookie(default=None, alias=HOST_SESSION_COOKIE),
+    ) -> dict:
+        room, transfer_code = service.issue_transfer_code(
+            room_id,
+            player_id,
+            request.room_version,
+            host_token or "",
+            csrf_token or "",
+            _required_idempotency_key(idempotency_key),
+        )
+        metadata = next(player for player in room.players if player.id == player_id).transfer_code
+        if metadata is None:
+            raise RuntimeError("Transfer code was not issued")
+        return {
+            "playerId": player_id,
+            "transferCode": transfer_code,
+            "expiresAt": metadata.expires_at.isoformat(),
+            "transfersHostPlayer": room.host_player_id == player_id,
+            "hostSessionTransferred": False,
+        }
 
     @router.put("/rooms/{room_id}/world")
     def confirm_world(

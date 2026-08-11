@@ -26,9 +26,20 @@ from app.application.rules import (
 from app.application.security import hash_session_token
 from app.application.session_lifecycle import is_expired_at
 from app.domain.errors import DomainError
-from app.domain.models import Character, DiceResult, Player, Room, StoryEntry, World
+from app.domain.models import Character, DiceResult, Player, Room, StoryEntry, TransferCode, World
 
 ROOM_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+TRANSFER_CODE_ISSUE_STATUSES = {
+    "DRAFT",
+    "LOBBY",
+    "COLLECTING_ACTIONS",
+    "AWAITING_HOST",
+    "AWAITING_SPARK",
+    "RESOLVING",
+    "RESOLUTION_FAILED",
+    "COMPLETION_AVAILABLE",
+    "COMPLETED",
+}
 
 
 def _new_id() -> str:
@@ -177,6 +188,14 @@ class RoomService:
         expires_at = self.clock.now() + timedelta(days=7)
 
         def operation() -> Room:
+            creator = Player(
+                id=_new_id(),
+                name=name,
+                role="共同創作者",
+                session_hash=hash_session_token(player_token),
+                csrf_token=player_csrf,
+                session_expires_at=expires_at,
+            )
             room = Room(
                 id=_new_id(),
                 room_code=_room_code(),
@@ -186,18 +205,10 @@ class RoomService:
                 world=_empty_world(),
                 host_session_hash=hash_session_token(host_token),
                 host_csrf_token=host_csrf,
+                host_player_id=creator.id,
                 expires_at=expires_at,
                 host_session_expires_at=expires_at,
-                players=[
-                    Player(
-                        id=_new_id(),
-                        name=name,
-                        role="共同創作者",
-                        session_hash=hash_session_token(player_token),
-                        csrf_token=player_csrf,
-                        session_expires_at=expires_at,
-                    )
-                ],
+                players=[creator],
                 entries=[
                     StoryEntry(
                         id=_new_id(),
@@ -407,6 +418,55 @@ class RoomService:
             operation,
         )
         return room, player_token
+
+    def issue_transfer_code(
+        self,
+        room_id: str,
+        player_id: str,
+        expected_version: int,
+        host_token: str,
+        csrf_token: str,
+        idempotency_key: str,
+    ) -> tuple[Room, str]:
+        initial = self._required_room(room_id)
+        self._authorize_host(initial, host_token, csrf_token)
+        raw_code = self.token_factory.derive(
+            f"transfer-code:{room_id}:{player_id}", idempotency_key
+        )
+
+        def operation() -> tuple[Room, str]:
+            def issue(room: Room | None) -> tuple[Room, str]:
+                if room is None:
+                    raise DomainError("ROOM_NOT_FOUND", "找不到房間。", 404)
+                self._authorize_host(room, host_token, csrf_token)
+                self._check_version(room, expected_version)
+                if room.status not in TRANSFER_CODE_ISSUE_STATUSES:
+                    raise DomainError(
+                        "TRANSFER_CODE_ISSUE_NOT_ALLOWED",
+                        "目前不能發行角色轉移碼。",
+                        409,
+                    )
+                player = next((item for item in room.players if item.id == player_id), None)
+                if player is None:
+                    raise DomainError("PLAYER_NOT_FOUND", "找不到指定玩家。", 404)
+                now = self.clock.now()
+                player.transfer_code = TransferCode(
+                    code_hash=hash_session_token(raw_code),
+                    issued_at=now,
+                    expires_at=now + timedelta(minutes=10),
+                )
+                room.version += 1
+                self._refresh_activity(room, host=True)
+                return room, raw_code
+
+            return self.repository.mutate(room_id, issue)
+
+        return self.idempotency.execute(
+            f"issue-transfer-code:{room_id}:{player_id}",
+            idempotency_key,
+            {"room_version": expected_version, "player_id": player_id},
+            operation,
+        )
 
     def update_character(
         self,

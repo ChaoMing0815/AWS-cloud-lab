@@ -5,7 +5,7 @@ import psycopg
 from psycopg.types.json import Jsonb
 
 from app.application.ports import RoomRepository
-from app.domain.models import Character, DiceResult, Player, Room, StoryEntry, World
+from app.domain.models import Character, DiceResult, Player, Room, StoryEntry, TransferCode, World
 
 
 def _room_payload(room: Room) -> dict:
@@ -17,6 +17,17 @@ def _room_payload(room: Room) -> dict:
     for player_payload, player in zip(payload["players"], room.players, strict=True):
         player_payload["session_expires_at"] = _datetime_to_json(
             player.session_expires_at
+        )
+        transfer_code = player.transfer_code
+        player_payload["transfer_code"] = (
+            {
+                "code_hash": transfer_code.code_hash,
+                "issued_at": _datetime_to_json(transfer_code.issued_at),
+                "expires_at": _datetime_to_json(transfer_code.expires_at),
+                "consumed_at": _datetime_to_json(transfer_code.consumed_at),
+            }
+            if transfer_code
+            else None
         )
     return payload
 
@@ -50,19 +61,34 @@ class PostgresRoomRepository(RoomRepository):
 
     def save(self, room: Room) -> None:
         with psycopg.connect(self.dsn) as connection:
-            connection.execute(
-                """
-                INSERT INTO rooms (id, room_code, status, version, payload)
-                VALUES (%s, %s, %s, %s, %s)
-                ON CONFLICT (id) DO UPDATE SET
-                    room_code = EXCLUDED.room_code,
-                    status = EXCLUDED.status,
-                    version = EXCLUDED.version,
-                    payload = EXCLUDED.payload,
-                    updated_at = now()
-                """,
-                (room.id, room.room_code, room.status, room.version, Jsonb(_room_payload(room))),
-            )
+            self._save(connection, room)
+
+    def mutate(self, room_id: str, operation):
+        with psycopg.connect(self.dsn) as connection:
+            row = connection.execute(
+                "SELECT payload FROM rooms WHERE id = %s FOR UPDATE", (room_id,)
+            ).fetchone()
+            room = _room_from_payload(row[0]) if row else None
+            result = operation(room)
+            if room is not None:
+                self._save(connection, room)
+            return result
+
+    @staticmethod
+    def _save(connection, room: Room) -> None:
+        connection.execute(
+            """
+            INSERT INTO rooms (id, room_code, status, version, payload)
+            VALUES (%s, %s, %s, %s, %s)
+            ON CONFLICT (id) DO UPDATE SET
+                room_code = EXCLUDED.room_code,
+                status = EXCLUDED.status,
+                version = EXCLUDED.version,
+                payload = EXCLUDED.payload,
+                updated_at = now()
+            """,
+            (room.id, room.room_code, room.status, room.version, Jsonb(_room_payload(room))),
+        )
 
     def _find(self, field: str, value: str) -> Room | None:
         if field not in {"id", "room_code"}:
@@ -82,12 +108,23 @@ def _room_from_payload(data: dict) -> Room:
     for raw_player in payload.pop("players"):
         player = dict(raw_player)
         raw_character = player.pop("character")
+        raw_transfer_code = player.pop("transfer_code", None)
         player["session_expires_at"] = _datetime_from_json(
             player.get("session_expires_at")
         )
         players.append(
             Player(
                 **player,
+                transfer_code=(
+                    TransferCode(
+                        code_hash=raw_transfer_code["code_hash"],
+                        issued_at=_datetime_from_json(raw_transfer_code["issued_at"]),
+                        expires_at=_datetime_from_json(raw_transfer_code["expires_at"]),
+                        consumed_at=_datetime_from_json(raw_transfer_code.get("consumed_at")),
+                    )
+                    if raw_transfer_code
+                    else None
+                ),
                 character=Character(**raw_character) if raw_character else None,
             )
         )

@@ -87,6 +87,7 @@ class Room:
     world: World
     host_session_hash: str = ""
     host_csrf_token: str = ""
+    host_player_id: str | None = None
     expires_at: datetime | None = None
     host_session_expires_at: datetime | None = None
     max_rounds: int = 6
