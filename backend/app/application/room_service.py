@@ -62,7 +62,7 @@ class RoomService:
         idempotency: IdempotencyStore,
         token_factory: SessionTokenFactory,
         dice_roller: DiceRoller,
-        clock: Clock | None = None,
+        clock: Clock,
     ) -> None:
         self.repository = repository
         self.storyteller = storyteller
@@ -173,8 +173,6 @@ class RoomService:
         host_csrf = self.token_factory.derive("host-csrf", idempotency_key)
         player_token = self.token_factory.derive("host-player-session", idempotency_key)
         player_csrf = self.token_factory.derive("host-player-csrf", idempotency_key)
-        if self.clock is None:
-            raise RuntimeError("Clock is required to create a formal room")
         expires_at = self.clock.now() + timedelta(days=7)
 
         def operation() -> Room:
@@ -261,6 +259,7 @@ class RoomService:
                     text="世界設定已確認。邀請 3–5 位玩家加入後，由房主開始遊戲。",
                 )
             )
+            self._refresh_activity(current, host=True)
             self.repository.save(current)
             return current
 
@@ -301,6 +300,7 @@ class RoomService:
                     text=current.world.opening_scene,
                 )
             )
+            self._refresh_activity(current, host=True)
             self.repository.save(current)
             return current
 
@@ -349,6 +349,7 @@ class RoomService:
                 )
             )
             room.version += 1
+            self._refresh_activity(room, player_id=room.players[-1].id)
             self.repository.save(room)
             return room
 
@@ -394,6 +395,7 @@ class RoomService:
                 )
             )
             room.version += 1
+            self._refresh_activity(room, player_id=room.players[-1].id)
             self.repository.save(room)
             return room
 
@@ -515,6 +517,7 @@ class RoomService:
                 if len(current.players) >= 3 and all(item.action for item in current.players)
                 else "COLLECTING_ACTIONS"
             )
+            self._refresh_activity(current, player_id=current_player.id)
             self.repository.save(current)
             return current
 
@@ -585,6 +588,7 @@ class RoomService:
                 else "AWAITING_SPARK"
             )
             current.version += 1
+            self._refresh_activity(current, host=True)
             self.repository.save(current)
             return current
 
@@ -647,6 +651,7 @@ class RoomService:
                 if item.round_number == round_number
             ):
                 current.status = "RESOLVING"
+            self._refresh_activity(current, player_id=current_player.id)
             self.repository.save(current)
             return current
 
@@ -709,6 +714,7 @@ class RoomService:
                 current.resolution_mode = None
                 current.status = "RESOLUTION_FAILED"
                 current.version += 1
+                self._refresh_activity(current, host=True)
                 self.repository.save(current)
                 return current
 
@@ -738,7 +744,8 @@ class RoomService:
             completed_round = current.round_number
             target = target_points(current.initial_player_count, current.max_rounds)
             progress_percent = points_percent(current.progress_points, target)
-            if completed_round >= current.max_rounds:
+            completed = completed_round >= current.max_rounds
+            if completed:
                 self._complete_game(current, target)
             else:
                 current.round_number += 1
@@ -748,6 +755,7 @@ class RoomService:
                     else "COLLECTING_ACTIONS"
                 )
             current.version += 1
+            self._refresh_activity(current, host=True, completed=completed)
             self.repository.save(current)
             return current
 
@@ -833,7 +841,8 @@ class RoomService:
             completed_round = current.round_number
             target = target_points(current.initial_player_count, current.max_rounds)
             progress_percent = points_percent(current.progress_points, target)
-            if completed_round >= current.max_rounds:
+            completed = completed_round >= current.max_rounds
+            if completed:
                 self._complete_game(current, target)
             else:
                 current.round_number += 1
@@ -844,6 +853,7 @@ class RoomService:
                 )
             current.resolution_mode = "fallback"
             current.version += 1
+            self._refresh_activity(current, host=True, completed=completed)
             self.repository.save(current)
             return current
 
@@ -872,12 +882,14 @@ class RoomService:
             if current.status != "COMPLETION_AVAILABLE":
                 raise DomainError("FINISH_NOT_ALLOWED", "目前不能選擇結局。", 409)
             current.success_locked = True
-            if decision == "CONTINUE":
+            completed = decision != "CONTINUE"
+            if not completed:
                 current.status = "COLLECTING_ACTIONS"
             else:
                 target = target_points(current.initial_player_count, current.max_rounds)
                 self._complete_game(current, target)
             current.version += 1
+            self._refresh_activity(current, host=True, completed=completed)
             self.repository.save(current)
             return current
 
@@ -901,6 +913,26 @@ class RoomService:
                 text=self.storyteller.resolve_ending(room),
             )
         )
+
+    def _refresh_activity(
+        self,
+        room: Room,
+        *,
+        host: bool = False,
+        player_id: str | None = None,
+        completed: bool = False,
+    ) -> None:
+        activity_expiry = self.clock.now() + timedelta(days=7)
+        if completed or room.status != "COMPLETED":
+            room.expires_at = activity_expiry
+        if room.expires_at is None:
+            raise RuntimeError("Formal room expiry is required for session activity")
+        actor_expiry = min(activity_expiry, room.expires_at)
+        if host:
+            room.host_session_expires_at = actor_expiry
+        if player_id is not None:
+            player = next(item for item in room.players if item.id == player_id)
+            player.session_expires_at = actor_expiry
 
     def session_context(
         self,

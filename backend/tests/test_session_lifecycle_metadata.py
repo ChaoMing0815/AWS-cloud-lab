@@ -24,16 +24,13 @@ EXPIRY = NOW + timedelta(days=7)
 
 
 def _service(clock: FixedClock | None = None) -> RoomService:
-    dependencies = {}
-    if clock is not None:
-        dependencies["clock"] = clock
     return RoomService(
         MemoryRoomRepository(),
         MockStoryteller(),
         MemoryIdempotencyStore(),
         HmacSessionTokenFactory(secret=b"test-secret"),
         SecureDiceRoller(),
-        **dependencies,
+        clock or FixedClock(NOW),
     )
 
 

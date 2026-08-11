@@ -1,4 +1,5 @@
 from copy import deepcopy
+from datetime import datetime, timezone
 
 import pytest
 from fastapi.testclient import TestClient
@@ -28,6 +29,11 @@ class ScriptedStoryteller:
 
     def resolve_ending(self, _room: Room) -> str:
         return "測試結局"
+
+
+class FixedClock:
+    def now(self) -> datetime:
+        return datetime(2026, 8, 11, 12, 0, tzinfo=timezone.utc)
 
 
 def pending_resolution_room() -> Room:
@@ -92,6 +98,7 @@ def service_with(storyteller: ScriptedStoryteller) -> tuple[RoomService, MemoryR
         MemoryIdempotencyStore(),
         HmacSessionTokenFactory(),
         SecureDiceRoller(),
+        FixedClock(),
     )
     repository.save(pending_resolution_room())
     return service, repository
