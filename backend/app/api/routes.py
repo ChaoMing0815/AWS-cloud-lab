@@ -16,6 +16,7 @@ from app.api.schemas import (
 )
 from app.api.serialization import room_response
 from app.application.room_service import RoomService
+from app.domain.errors import DomainError
 
 LOCAL_ROOM_COOKIE = "co_story_local_room"
 HOST_SESSION_COOKIE = "co_story_host"
@@ -45,8 +46,11 @@ def create_api_router(service: RoomService) -> APIRouter:
         player_token: str | None = Cookie(default=None, alias=PLAYER_SESSION_COOKIE),
     ) -> dict:
         room = service.load_current(room_id)
+        session = service.session_context(room, host_token, player_token)
+        if session["principalType"] == "anonymous":
+            raise DomainError("SESSION_NOT_FOUND", "目前的遊戲工作階段已失效。", 401)
         _set_local_room_cookie(response, room.id)
-        return room_response(room, service.session_context(room, host_token, player_token))
+        return room_response(room, session)
 
     @router.put("/rooms/{room_id}/rounds/{round_number}/spark")
     def decide_spark(
