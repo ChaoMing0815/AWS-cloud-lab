@@ -381,3 +381,49 @@ test("房主永久刪除房間時送出 version、host CSRF 與 Idempotency-Key"
   assert.deepEqual(JSON.parse(request.options.body), { room_version: 16 });
   assert.equal(api.room, null, "成功刪除後不應保留過期房間狀態");
 });
+
+test("FetchGameApi 生成世界草稿時帶 canonical version、host CSRF 與 Idempotency-Key", async () => {
+  const requests = [];
+  const draft = {
+    id: "room-world",
+    version: 2,
+    status: "DRAFT",
+    worldGenerationCount: 1,
+    session: { isHost: true, hostCsrfToken: "host-world-csrf" },
+  };
+  const api = new FetchGameApi({
+    idempotencyKeyFactory: () => "world-generation-key",
+    fetchImpl: async (url, options) => {
+      requests.push({ url, options });
+      return jsonResponse(draft);
+    },
+  });
+  api.room = {
+    id: "room-world",
+    version: 1,
+    status: "DRAFT",
+    session: { isHost: true, hostCsrfToken: "host-world-csrf" },
+  };
+
+  assert.equal(typeof api.generateWorld, "function", "FetchGameApi.generateWorld 尚未建立");
+  const room = await api.generateWorld({
+    keywords: ["夜班", "便利商店", "盤點"],
+    tone: "mystery",
+    customTone: null,
+    supplementalRequest: "讓玩家先編輯。",
+  });
+
+  const request = requests[0];
+  assert.equal(request.url, "/api/v1/rooms/room-world/world:generate");
+  assert.equal(request.options.method, "POST");
+  assert.equal(request.options.headers["X-CSRF-Token"], "host-world-csrf");
+  assert.equal(request.options.headers["Idempotency-Key"], "world-generation-key");
+  assert.deepEqual(JSON.parse(request.options.body), {
+    keywords: ["夜班", "便利商店", "盤點"],
+    tone: "mystery",
+    custom_tone: null,
+    supplemental_request: "讓玩家先編輯。",
+    room_version: 1,
+  });
+  assert.equal(room.worldGenerationCount, 1);
+});
