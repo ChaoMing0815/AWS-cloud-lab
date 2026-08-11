@@ -23,7 +23,7 @@ HOST_SESSION_COOKIE = "co_story_host"
 PLAYER_SESSION_COOKIE = "co_story_player"
 
 
-def create_api_router(service: RoomService) -> APIRouter:
+def create_api_router(service: RoomService, *, secure_cookies: bool = False) -> APIRouter:
     router = APIRouter(prefix="/api/v1")
 
     @router.get("/health")
@@ -49,7 +49,7 @@ def create_api_router(service: RoomService) -> APIRouter:
         session = service.session_context(room, host_token, player_token)
         if session["principalType"] == "anonymous":
             raise DomainError("SESSION_NOT_FOUND", "目前的遊戲工作階段已失效。", 401)
-        _set_local_room_cookie(response, room.id)
+        _set_local_room_cookie(response, room.id, secure=secure_cookies)
         return room_response(room, session)
 
     @router.put("/rooms/{room_id}/rounds/{round_number}/spark")
@@ -124,9 +124,9 @@ def create_api_router(service: RoomService) -> APIRouter:
             request.nickname,
             _required_idempotency_key(idempotency_key),
         )
-        _set_local_room_cookie(response, room.id)
-        _set_session_cookie(response, HOST_SESSION_COOKIE, host_token)
-        _set_session_cookie(response, PLAYER_SESSION_COOKIE, player_token)
+        _set_local_room_cookie(response, room.id, secure=secure_cookies)
+        _set_session_cookie(response, HOST_SESSION_COOKIE, host_token, secure=secure_cookies)
+        _set_session_cookie(response, PLAYER_SESSION_COOKIE, player_token, secure=secure_cookies)
         return room_response(room, service.session_context(room, host_token, player_token))
 
     @router.post("/rooms:join", status_code=status.HTTP_201_CREATED)
@@ -141,8 +141,8 @@ def create_api_router(service: RoomService) -> APIRouter:
             request.nickname,
             _required_idempotency_key(idempotency_key),
         )
-        _set_local_room_cookie(response, room.id)
-        _set_session_cookie(response, PLAYER_SESSION_COOKIE, player_token)
+        _set_local_room_cookie(response, room.id, secure=secure_cookies)
+        _set_session_cookie(response, PLAYER_SESSION_COOKIE, player_token, secure=secure_cookies)
         return room_response(room, service.session_context(room, host_token, player_token))
 
     @router.post("/rooms/{room_id}/players", status_code=status.HTTP_201_CREATED)
@@ -160,8 +160,8 @@ def create_api_router(service: RoomService) -> APIRouter:
             request.room_version,
             _required_idempotency_key(idempotency_key),
         )
-        _set_local_room_cookie(response, room.id)
-        _set_session_cookie(response, PLAYER_SESSION_COOKIE, player_token)
+        _set_local_room_cookie(response, room.id, secure=secure_cookies)
+        _set_session_cookie(response, PLAYER_SESSION_COOKIE, player_token, secure=secure_cookies)
         return room_response(room, service.session_context(room, host_token, player_token))
 
     @router.put("/rooms/{room_id}/world")
@@ -295,24 +295,24 @@ def create_api_router(service: RoomService) -> APIRouter:
     return router
 
 
-def _set_local_room_cookie(response: Response, room_id: str) -> None:
+def _set_local_room_cookie(response: Response, room_id: str, *, secure: bool) -> None:
     response.set_cookie(
         key=LOCAL_ROOM_COOKIE,
         value=room_id,
         httponly=True,
         samesite="lax",
-        secure=False,
+        secure=secure,
         max_age=60 * 60 * 24,
     )
 
 
-def _set_session_cookie(response: Response, name: str, token: str) -> None:
+def _set_session_cookie(response: Response, name: str, token: str, *, secure: bool) -> None:
     response.set_cookie(
         key=name,
         value=token,
         httponly=True,
         samesite="lax",
-        secure=False,
+        secure=secure,
         max_age=60 * 60 * 24,
     )
 

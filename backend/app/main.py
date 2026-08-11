@@ -64,7 +64,8 @@ def create_app(dice_roller=None, room_repository=None, storyteller=None) -> Fast
             headers=error.headers,
         )
 
-    application.include_router(create_api_router(service))
+    secure_cookies = os.environ.get("CO_STORY_COOKIE_SECURE", "false").lower() == "true"
+    application.include_router(create_api_router(service, secure_cookies=secure_cookies))
 
     @application.get("/demo", include_in_schema=False)
     async def demo_app_shell() -> FileResponse:
