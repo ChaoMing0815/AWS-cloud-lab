@@ -1,6 +1,6 @@
 # Polling 離線與重新連線 UX
 
-- 狀態：Implemented（deterministic UI verified；Browser release-gate 驗證待完成）
+- 狀態：Implemented（deterministic UI＋Browser release gate verified）
 - Owner：Product／Engineer／QA
 - 核准來源：2026-08-10 使用者明確要求接續此基礎切片
 - Depends on：[Screen States](../product/screen-states.md)、[本機 MVP Test Plan](../qa/local-mvp-test-plan.md)、[測試策略](../testing-strategy.md)

@@ -17,4 +17,10 @@
 - Sensitivity：boundary、`None` fail-open、移除 Host／Player expiry guard，以及 refresh placement／actor 錯誤均被抓到並已還原。
 - Boundary：before／equal／after、naive datetime、legacy payload、demo room。
 - Rollback：回復兩組 Red／Green commits；沒有 SQL migration 或既有資料寫入。
-- Residual risk：transfer code／atomic reassign／舊 session revoke 尚未完成。
+- Transfer issuance Red／Green：`6c0ef60` → `511b744`；10 分鐘、hash-only、新碼取代舊碼、Memory／PostgreSQL atomic mutate。
+- Reassign Red／Green：`3b9ed79` → `c7bcc29`；consume／rotate／revoke 同 transaction，舊 Player `401`，Host session 保留。
+- Permanent delete Red／Green：`91fc2a9` → `85bcf2c`；204／三 cookie 清除／callback rollback／刪後 aggregate 與 transfer 不可讀。
+- Ending delete UX Red／Green：`4277305` → `30cdffe`；Frontend `68 passed`。
+- Browser：本機 Uvicorn 下驗證 503 offline → reconnected、單次 401 session-expired、completed 結局，console `0 errors/warnings`。
+- Full regression：Backend `134 passed, 8 skipped`；Frontend `68 passed`。
+- Residual risk：現有 idempotency 僅 process memory；commit 後 response 前 crash 不能跨 process 精確 replay。Tier 2 前需 durable idempotency／tombstone 設計。

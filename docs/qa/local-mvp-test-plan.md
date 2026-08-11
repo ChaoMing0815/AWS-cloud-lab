@@ -1,6 +1,6 @@
 # 本機 Web MVP Test Plan
 
-- 狀態：Active target
+- 狀態：P0 release gate passed
 - Owner：QA
 - Source of Truth：是，僅負責本機 Web MVP release gate
 - Depends on：[MVP Spec](../specs/text-rpg-mvp-spec.md)、[Screen States](../product/screen-states.md)、[測試策略](../testing-strategy.md)
@@ -58,12 +58,12 @@
 - 同一 mutation 不因 double-click 或 retry 產生重複副作用。
 - 本機 Demo 不呼叫 AWS 或產生雲端費用。
 
-## 已知目前缺口
+## 驗收結果與部署後續
 
 - 正式 Landing、room-code join、session continue 與基本 deep routes 已完成。
-- 三個獨立 browser contexts 已完成正式單回合 E2E；結局 Browser E2E 仍待 release gate 一併確認。
+- 三個獨立 browser contexts 已完成正式單回合 E2E；結局、session expired 與 console 已通過 Browser release gate。
 - PostgreSQL repository contract、FastAPI application restart 與正式 Uvicorn OS process restart 已完成；application container restart 待 Docker image 切片。
 - LLM failure taxonomy、自動／手動 retry、deterministic fallback 與房主 recovery UI 已完成；真實模型 schema／Guardrail adapter 尚未完成。
-- Polling 離線／reconnect deterministic UI 已完成；真實 Browser 網路攔截仍待 release gate 驗證。Session lifecycle 尚未完成。
+- Polling 離線／reconnect deterministic UI 與 Browser 503／恢復驗證已完成；Session lifecycle、transfer／revoke 與房主永久刪除已完成。
 
-因此目前不得將本機 Web MVP 標示為 release-ready。
+本機 Web MVP P0 已可標示為 release-ready。真實 Bedrock schema／Guardrail、HTTPS Secure cookie Browser 與 application container restart 在 AWS 部署 gate 驗證，不以本機 Mock／HTTP 冒充。

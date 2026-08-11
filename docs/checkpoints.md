@@ -43,15 +43,15 @@ Demo 與每日進度依本清單逐項驗收。檔案存在不代表完成；必
 - [x] 正式 `/` 已提供建立／加入／繼續與次要 Demo 入口，不會自動載入 `BONUS7`。
 - [x] 房主建房時同時取得 Host／Player 身份並計入 3–5 位玩家。
 - [x] 玩家可用 room code＋暱稱加入任意可加入房間，且錯誤／滿員／已開始案例均被拒絕。
-- [ ] Loading、Offline、Session expired、Version conflict 與 reconnect UX 已完成。
-- [ ] Session expiry／revoke／reassign 與 production Secure cookie 已完成。
+- [x] Loading、Offline、Session expired、Version conflict 與 reconnect UX 已完成。
+- [x] Session expiry／revoke／reassign 與 production Secure cookie 設定合約已完成。
 - [x] PostgreSQL repository contract、migration、runtime composition 與 FastAPI application restart persistence 已完成。
 - [x] 三個獨立 browser contexts 正式單回合 E2E 已完成。
 - [x] LLM 自動／手動 retry、deterministic fallback 與正式 Uvicorn OS process restart 演練已完成。
 - [ ] 真實 Bedrock schema／Guardrail 驗證與 application container restart 演練已完成。
 - [ ] 講師已確認自製 FastAPI Web／private DB 的 Tier 0 等效檢核與 Tier 0–5 對映。
 - [x] 已以 ADR-0003 確認 FastAPI＋PostgreSQL 本機 MVP adapter；正式 AWS data service 仍須於部署前決定。
-- [ ] 本機 MVP 已通過 Spec Definition of Done。
+- [x] 本機 MVP P0 已通過 Spec Definition of Done；真實 Bedrock／HTTPS／container 另屬 AWS 部署 gate。
 
 ## Tier 0：AWS 可玩 MVP
 

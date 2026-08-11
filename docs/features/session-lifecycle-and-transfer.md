@@ -1,6 +1,6 @@
 # Session lifecycle 與角色轉移
 
-- 狀態：Ready for TDD（R3）
+- 狀態：Implemented（R3）
 - Owner：Product／Engineer／QA
 - 已核准來源：[正式 MVP Spec](../specs/text-rpg-mvp-spec.md)、[產品核准紀錄](../governance/approval-log.md)
 - Depends on：[Session／CSRF／Idempotency 設計](../architecture/session-and-idempotency.md)、[本機 MVP Test Plan](../qa/local-mvp-test-plan.md)、[測試策略](../testing-strategy.md)
