@@ -100,6 +100,7 @@ function baseRoom({ withDemoPlayers = false } = {}) {
     endingResult: null,
     endingCost: null,
     successLocked: false,
+    worldGenerationCount: 0,
     diceResults: [],
     players,
     session: currentPlayer
@@ -185,6 +186,32 @@ export class MockGameApi extends GameApi {
     };
     this.room.maxRounds = world.maxRounds;
     this.room.status = "LOBBY";
+    this.room.version += 1;
+    return clone(this.room);
+  }
+
+  async generateWorld({ keywords, tone, customTone, supplementalRequest }) {
+    if (!this.room.session?.isHost) {
+      throw new ApiError("HOST_SESSION_REQUIRED", "需要有效的房主工作階段。", 401);
+    }
+    if (this.room.status !== "DRAFT") {
+      throw new ApiError("WORLD_ALREADY_CONFIRMED", "世界設定已確認。", 409);
+    }
+    if (this.room.worldGenerationCount >= 2) {
+      throw new ApiError("WORLD_GENERATION_LIMIT", "世界生成次數已達上限。", 409);
+    }
+    const title = keywords.join("");
+    this.room.world = {
+      name: title,
+      storyTitle: title,
+      premise: `${title}的資料在夜班期間出現異常，玩家必須共同找出原因。`,
+      objective: `完成與${keywords[0]}有關的共同任務。`,
+      openingScene: `${keywords[0]}突然讓所有既有安排失效。`,
+      coreObstacle: `${keywords.at(-1)}遮蔽了關鍵線索。`,
+      tone,
+      customTone: customTone || null,
+    };
+    this.room.worldGenerationCount += 1;
     this.room.version += 1;
     return clone(this.room);
   }

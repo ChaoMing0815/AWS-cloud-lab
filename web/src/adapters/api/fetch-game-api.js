@@ -75,6 +75,23 @@ export class FetchGameApi extends GameApi {
     return this.room;
   }
 
+  async generateWorld({ keywords, tone, customTone, supplementalRequest }) {
+    this.requireRoom();
+    this.room = await this.request(`/rooms/${this.room.id}/world:generate`, {
+      method: "POST",
+      idempotent: true,
+      hostCsrfProtected: true,
+      body: {
+        keywords,
+        tone,
+        custom_tone: customTone,
+        supplemental_request: supplementalRequest,
+        room_version: this.room.version,
+      },
+    });
+    return this.room;
+  }
+
   async startGame() {
     this.requireRoom();
     this.room = await this.request(`/rooms/${this.room.id}:start`, {

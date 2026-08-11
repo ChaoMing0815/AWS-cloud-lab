@@ -138,6 +138,14 @@
           </div>
           <label id="customToneLabel" for="customToneInput" hidden>自訂調性</label>
           <input id="customToneInput" maxlength="40" hidden />
+          <label for="worldKeywordsInput">生成關鍵字（3–5 個，以逗號分隔）</label>
+          <textarea id="worldKeywordsInput" maxlength="104" rows="2" placeholder="例如：夜班，便利商店，盤點"></textarea>
+          <label for="supplementalRequestInput">補充要求</label>
+          <textarea id="supplementalRequestInput" maxlength="200" rows="2" placeholder="可選，最多 200 字"></textarea>
+          <div class="button-row">
+            <button id="generateWorldButton" class="secondary-button" type="button">生成世界草稿</button>
+            <span id="worldGenerationRemaining" class="muted">剩餘 2 次生成</span>
+          </div>
           <button class="primary-button" type="submit">確認世界並開放加入</button>
         </form>
 

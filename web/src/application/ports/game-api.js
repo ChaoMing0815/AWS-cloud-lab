@@ -23,6 +23,10 @@ export class GameApi {
     throw new Error("GameApi.confirmWorld 尚未實作");
   }
 
+  async generateWorld(_command) {
+    throw new Error("GameApi.generateWorld 尚未實作");
+  }
+
   async startGame() {
     throw new Error("GameApi.startGame 尚未實作");
   }

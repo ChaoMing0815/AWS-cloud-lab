@@ -16,6 +16,7 @@ export class GamePage {
     createRoom,
     joinRoom,
     confirmWorld,
+    generateWorld,
     startGame,
     updateCharacter,
     submitAction,
@@ -38,6 +39,7 @@ export class GamePage {
       createRoom,
       joinRoom,
       confirmWorld,
+      generateWorld,
       startGame,
       updateCharacter,
       submitAction,
@@ -72,6 +74,7 @@ export class GamePage {
     byId("resetButton").addEventListener("click", () => this.handleResetRoom());
     byId("joinForm").addEventListener("submit", (event) => this.handleJoin(event));
     byId("worldForm").addEventListener("submit", (event) => this.handleConfirmWorld(event));
+    byId("generateWorldButton").addEventListener("click", (event) => this.handleGenerateWorld(event));
     byId("startGameButton").addEventListener("click", () => this.handleStartGame());
     byId("characterForm").addEventListener("submit", (event) => this.handleCharacter(event));
     ["courageInput", "insightInput", "bondInput"].forEach((id) => {
@@ -275,6 +278,33 @@ export class GamePage {
     );
   }
 
+  async handleGenerateWorld(event) {
+    event.preventDefault();
+    const completed = await this.run(
+      () => this.useCases.generateWorld.execute({
+        keywords: byId("worldKeywordsInput").value,
+        tone: byId("toneInput").value,
+        customTone: byId("customToneInput").value,
+        supplementalRequest: byId("supplementalRequestInput").value,
+      }),
+      "世界草稿已生成，請編輯後再確認。",
+    );
+    if (completed) this.applyGeneratedWorldDraft();
+  }
+
+  applyGeneratedWorldDraft() {
+    const world = this.room?.world;
+    if (!world) return;
+    byId("worldTitle").value = world.storyTitle ?? "";
+    byId("worldPremiseInput").value = world.premise ?? "";
+    byId("worldObjectiveInput").value = world.objective ?? "";
+    byId("openingSceneInput").value = world.openingScene ?? "";
+    byId("coreObstacleInput").value = world.coreObstacle ?? "";
+    byId("toneInput").value = world.tone ?? byId("toneInput").value;
+    byId("customToneInput").value = world.customTone ?? "";
+    byId("worldGenerationRemaining").textContent = `剩餘 ${Math.max(0, 2 - (this.room.worldGenerationCount ?? 0))} 次生成`;
+  }
+
   async handleStartGame() {
     await this.run(() => this.useCases.startGame.execute(), "遊戲已開始。所有玩家可以提交行動。");
   }
@@ -368,7 +398,7 @@ export class GamePage {
 
   setBusy(busy) {
     this.busy = busy;
-    document.querySelectorAll("button[type='submit'], #newRoomButton, #startGameButton, #rollRoundButton, #useSparkButton, #declineSparkButton, #resolveRoundButton, #skipAndResolveButton, #retryResolutionButton, #fallbackRoundButton, #finishNowButton, #continueButton, #deleteRoomButton").forEach((button) => {
+    document.querySelectorAll("button[type='submit'], #newRoomButton, #startGameButton, #rollRoundButton, #useSparkButton, #declineSparkButton, #resolveRoundButton, #skipAndResolveButton, #retryResolutionButton, #fallbackRoundButton, #finishNowButton, #continueButton, #deleteRoomButton, #generateWorldButton").forEach((button) => {
       button.disabled = busy;
     });
   }
@@ -447,6 +477,8 @@ export class GamePage {
     }
     if (view.canEditWorld) {
       byId("maxRoundsInput").value = String(view.maxRounds ?? 6);
+      byId("worldGenerationRemaining").textContent = `剩餘 ${Math.max(0, 2 - view.worldGenerationCount)} 次生成`;
+      byId("generateWorldButton").disabled = this.busy || view.worldGenerationCount >= 2;
       this.renderCustomTone();
     }
   }

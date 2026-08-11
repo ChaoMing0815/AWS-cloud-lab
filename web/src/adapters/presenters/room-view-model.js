@@ -47,6 +47,7 @@ export function toRoomViewModel(room) {
     entries: room.entries,
     status: room.status,
     maxRounds: room.maxRounds,
+    worldGenerationCount: room.worldGenerationCount ?? 0,
     isHost: Boolean(room.session?.isHost),
     canEditWorld: Boolean(room.session?.isHost) && room.status === "DRAFT",
     canJoin: room.status === "LOBBY" && !room.session?.playerId,

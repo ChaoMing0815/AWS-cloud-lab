@@ -13,6 +13,7 @@ import { ResolveRound } from "../application/use-cases/resolve-round.js";
 import { FallbackRound } from "../application/use-cases/fallback-round.js";
 import { FinishGame } from "../application/use-cases/finish-game.js";
 import { DeleteRoom } from "../application/use-cases/delete-room.js";
+import { GenerateWorld } from "../application/use-cases/generate-world.js";
 import { FetchGameApi } from "../adapters/api/fetch-game-api.js";
 import { MockGameApi } from "../adapters/api/mock-game-api.js";
 import { GamePage } from "../ui/pages/game-page.js";
@@ -31,6 +32,7 @@ function mountGamePage({ forceMock = false } = {}) {
     createRoom: new CreateRoom(gameApi),
     joinRoom: new JoinRoom(gameApi),
     confirmWorld: new ConfirmWorld(gameApi),
+    generateWorld: new GenerateWorld(gameApi),
     startGame: new StartGame(gameApi),
     updateCharacter: new UpdateCharacter(gameApi),
     submitAction: new SubmitAction(gameApi),
