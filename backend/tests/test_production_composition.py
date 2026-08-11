@@ -1,3 +1,6 @@
+import sys
+from types import ModuleType
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -20,6 +23,11 @@ def configure_production(monkeypatch, *, database_url: str | None = None) -> Non
         "CO_STORY_COOKIE_SECURE",
         "CO_STORY_ALLOWED_HOSTS",
         "CO_STORY_ALLOWED_ORIGINS",
+        "CO_STORY_AWS_REGION",
+        "CO_STORY_BEDROCK_MODEL_ID",
+        "CO_STORY_BEDROCK_GUARDRAIL_ID",
+        "CO_STORY_BEDROCK_GUARDRAIL_VERSION",
+        "CO_STORY_BEDROCK_MAX_TOKENS",
     ):
         monkeypatch.delenv(name, raising=False)
     monkeypatch.setenv("CO_STORY_ENV", "production")
@@ -31,6 +39,14 @@ def configure_production(monkeypatch, *, database_url: str | None = None) -> Non
     monkeypatch.setenv("CO_STORY_COOKIE_SECURE", "true")
     monkeypatch.setenv("CO_STORY_ALLOWED_HOSTS", "app.example.test")
     monkeypatch.setenv("CO_STORY_ALLOWED_ORIGINS", "https://app.example.test")
+
+
+def configure_bedrock(monkeypatch, *, max_tokens: str = "800") -> None:
+    monkeypatch.setenv("CO_STORY_AWS_REGION", "ap-northeast-1")
+    monkeypatch.setenv("CO_STORY_BEDROCK_MODEL_ID", "anthropic.claude-test-v1")
+    monkeypatch.setenv("CO_STORY_BEDROCK_GUARDRAIL_ID", "gr-story-safety")
+    monkeypatch.setenv("CO_STORY_BEDROCK_GUARDRAIL_VERSION", "7")
+    monkeypatch.setenv("CO_STORY_BEDROCK_MAX_TOKENS", max_tokens)
 
 
 @pytest.mark.parametrize(
@@ -73,11 +89,84 @@ def test_production_rejects_database_url_without_full_tls_verification(monkeypat
         )
 
 
-def test_production_rejects_default_mock_storyteller(monkeypatch) -> None:
+@pytest.mark.parametrize(
+    "name",
+    [
+        "CO_STORY_AWS_REGION",
+        "CO_STORY_BEDROCK_MODEL_ID",
+        "CO_STORY_BEDROCK_GUARDRAIL_ID",
+        "CO_STORY_BEDROCK_GUARDRAIL_VERSION",
+        "CO_STORY_BEDROCK_MAX_TOKENS",
+    ],
+)
+def test_production_default_storyteller_requires_each_bedrock_setting(monkeypatch, name) -> None:
+    configure_production(monkeypatch)
+    configure_bedrock(monkeypatch)
+    monkeypatch.delenv(name)
+
+    with pytest.raises(RuntimeError) as error:
+        create_app()
+
+    assert str(error.value) == name
+
+
+@pytest.mark.parametrize("max_tokens", ["0", "1201", "not-an-integer"])
+def test_production_default_storyteller_rejects_invalid_bedrock_token_limit(monkeypatch, max_tokens) -> None:
+    configure_production(monkeypatch)
+    configure_bedrock(monkeypatch, max_tokens=max_tokens)
+
+    with pytest.raises(RuntimeError) as error:
+        create_app()
+
+    assert str(error.value) == "CO_STORY_BEDROCK_MAX_TOKENS"
+
+
+def test_production_default_storyteller_builds_bedrock_without_calling_runtime(monkeypatch) -> None:
+    configure_production(monkeypatch)
+    configure_bedrock(monkeypatch)
+    client_calls = []
+
+    class FakeConfig:
+        def __init__(self, **kwargs) -> None:
+            self.kwargs = kwargs
+
+    runtime_client = object()
+
+    def fake_client(service_name, *, region_name, config):
+        client_calls.append((service_name, region_name, config))
+        return runtime_client
+
+    fake_boto3 = ModuleType("boto3")
+    fake_boto3.client = fake_client
+    fake_botocore = ModuleType("botocore")
+    fake_config_module = ModuleType("botocore.config")
+    fake_config_module.Config = FakeConfig
+    monkeypatch.setitem(sys.modules, "boto3", fake_boto3)
+    monkeypatch.setitem(sys.modules, "botocore", fake_botocore)
+    monkeypatch.setitem(sys.modules, "botocore.config", fake_config_module)
+
+    app = create_app()
+
+    assert isinstance(app.state.room_service.repository, PostgresRoomRepository)
+    assert type(app.state.room_service.storyteller).__name__ == "BedrockStoryteller"
+    assert len(client_calls) == 1
+    service_name, region_name, config = client_calls[0]
+    assert service_name == "bedrock-runtime"
+    assert region_name == "ap-northeast-1"
+    assert config.kwargs["read_timeout"] == 30
+    assert config.kwargs["connect_timeout"] <= 5
+    assert config.kwargs["retries"] == {"max_attempts": 0}
+
+
+def test_explicit_production_storyteller_does_not_require_bedrock_settings(monkeypatch) -> None:
     configure_production(monkeypatch)
 
-    with pytest.raises(RuntimeError, match="storyteller"):
-        create_app(room_repository=MemoryRoomRepository())
+    app = create_app(
+        room_repository=MemoryRoomRepository(),
+        storyteller=FakeProductionStoryteller(),
+    )
+
+    assert app.state.room_service.storyteller.__class__ is FakeProductionStoryteller
 
 
 def test_production_with_injected_dependencies_does_not_seed_bonus7_demo_room(monkeypatch) -> None:
