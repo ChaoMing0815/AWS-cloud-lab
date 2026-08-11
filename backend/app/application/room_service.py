@@ -75,6 +75,8 @@ class RoomService:
         token_factory: SessionTokenFactory,
         dice_roller: DiceRoller,
         clock: Clock,
+        *,
+        seed_demo_room: bool = True,
     ) -> None:
         self.repository = repository
         self.storyteller = storyteller
@@ -82,7 +84,7 @@ class RoomService:
         self.token_factory = token_factory
         self.dice_roller = dice_roller
         self.clock = clock
-        self.demo_room_id = self._create_demo_room()
+        self.demo_room_id = self._create_demo_room() if seed_demo_room else None
 
     def _create_demo_room(self) -> str:
         existing = self.repository.get_by_code("BONUS7")
@@ -125,6 +127,8 @@ class RoomService:
             room = self.repository.get(room_id)
             if room:
                 return room
+        if self.demo_room_id is None:
+            raise DomainError("ROOM_NOT_FOUND", "找不到目前房間。", 404)
         room = self.repository.get(self.demo_room_id)
         if room is None:
             raise RuntimeError("Demo room was not initialized")

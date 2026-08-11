@@ -377,7 +377,7 @@ def _set_local_room_cookie(response: Response, room_id: str, *, secure: bool) ->
         httponly=True,
         samesite="lax",
         secure=secure,
-        max_age=60 * 60 * 24,
+        max_age=60 * 60 * 24 * 7,
     )
 
 
@@ -388,7 +388,7 @@ def _set_session_cookie(response: Response, name: str, token: str, *, secure: bo
         httponly=True,
         samesite="lax",
         secure=secure,
-        max_age=60 * 60 * 24,
+        max_age=60 * 60 * 24 * 7,
     )
 
 

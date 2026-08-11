@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from urllib.parse import parse_qs, urlsplit
 
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse
@@ -21,7 +22,32 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 WEB_ROOT = PROJECT_ROOT / "web"
 
 
+def _production_configuration_is_valid() -> bool:
+    if os.environ.get("CO_STORY_ENV", "").lower() != "production":
+        return False
+
+    database_url = os.environ.get("DATABASE_URL")
+    if not database_url:
+        raise RuntimeError("DATABASE_URL")
+    if os.environ.get("CO_STORY_COOKIE_SECURE", "").lower() != "true":
+        raise RuntimeError("CO_STORY_COOKIE_SECURE")
+    if not os.environ.get("CO_STORY_ALLOWED_HOSTS"):
+        raise RuntimeError("CO_STORY_ALLOWED_HOSTS")
+    if not os.environ.get("CO_STORY_ALLOWED_ORIGINS"):
+        raise RuntimeError("CO_STORY_ALLOWED_ORIGINS")
+
+    query = parse_qs(urlsplit(database_url).query, keep_blank_values=True)
+    sslmode = query.get("sslmode")
+    sslrootcert = query.get("sslrootcert")
+    if sslmode != ["verify-full"] or sslrootcert is None or not sslrootcert[0].strip():
+        raise RuntimeError("DATABASE_URL")
+    return True
+
+
 def create_app(dice_roller=None, room_repository=None, storyteller=None, clock=None) -> FastAPI:
+    production = _production_configuration_is_valid()
+    if production and storyteller is None:
+        raise RuntimeError("storyteller")
     application = FastAPI(title="共演計劃 API", version="0.1.0")
     if room_repository is None:
         database_url = os.environ.get("DATABASE_URL")
@@ -37,6 +63,7 @@ def create_app(dice_roller=None, room_repository=None, storyteller=None, clock=N
         HmacSessionTokenFactory(),
         dice_roller or SecureDiceRoller(),
         clock or SystemClock(),
+        seed_demo_room=not production,
     )
     application.state.room_service = service
 
