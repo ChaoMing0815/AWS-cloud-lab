@@ -26,7 +26,7 @@ OWASP 建議自訂 session ID 使用 CSPRNG、至少 128 bits，且不要把 ses
 
 Session token 由 server-only 隨機 HMAC secret 與本次 idempotency key 導出 256-bit opaque value；Room／Player 只保存 token hash。CSRF token 與 session 綁定，由 API response 的 `session.csrfToken` 提供給同源 JavaScript，僅保存於記憶體。
 
-本機 HTTP 必須使用 `Secure=False` 才能測試；部署至 HTTPS 時必須改成 `Secure=True`，並評估 `__Host-` cookie prefix、有效期限、撤銷與 server-side expiry。
+本機 HTTP 預設使用 `Secure=False`；設定 `CO_STORY_COOKIE_SECURE=true` 時，local room、Host 與 Player cookie 都會切換為 `Secure=True`。真實 HTTPS Browser 驗證、`__Host-` prefix、有效期限、撤銷與 server-side expiry 仍待完成。
 
 ## CSRF
 
@@ -74,8 +74,8 @@ Idempotency-Key: <client-generated UUID>
 
 ## 尚未完成
 
-- Session server-side expiry、revoke、reassign 與 logout。
-- Production HTTPS `Secure` cookie 與 reverse proxy trusted headers。
+- Session server-side expiry、revoke、reassign 與 logout；精確 contract 見 [Session lifecycle Feature Spec](../features/session-lifecycle-and-transfer.md)。
+- Production reverse proxy trusted headers 與真實 HTTPS Browser 驗證。
 - Origin／Fetch Metadata defense-in-depth policy。
 - PostgreSQL session／idempotency persistence 與 concurrent transaction test。
 - 正式跨裝置 reassign 與舊 session 失效測試。

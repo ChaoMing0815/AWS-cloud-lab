@@ -3,7 +3,7 @@
 - 狀態：Active
 - Owner：Product／Engineer／QA
 - Source of Truth：各功能只對自己的差異與 acceptance criteria 負責
-- 最後檢視：2026-08-09
+- 最後檢視：2026-08-11
 
 小型專案不為每項功能重寫 PRD、SRS、TRD 與 Test Plan。每個 production 行為切片以一份 Feature Spec 串起上游規格與嚴格 TDD。
 
@@ -24,6 +24,6 @@
 | --- | --- | --- |
 | [正式入口與房間加入](entry-and-room-join.md) | Approved for TDD | 建立 baseline 與第一個 Red commit |
 | [Polling 離線與重新連線 UX](polling-offline-reconnect.md) | Implemented | Browser offline／reconnected release-gate 驗證 |
-| Session lifecycle／角色轉移 | Planned | 入口與 Lobby 完成後整理 Feature Spec |
+| [Session lifecycle／角色轉移](session-lifecycle-and-transfer.md) | Proposed for approval | 核准 expiry／transfer 精確 contract 後建立 Clock Red |
 | PostgreSQL persistence | Planned | 建立資料層 ADR |
 | LLM world／round recovery | Planned | PostgreSQL contract 穩定後整理 Feature Spec |

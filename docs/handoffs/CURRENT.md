@@ -1,10 +1,10 @@
 # CURRENT：目前工作交接
 
-- 更新日期：2026-08-10
-- Branch：`codex/polling-offline-reconnect`
-- 功能基準：`ce80b79`（polling 離線／reconnect UX 已完成 Green）
+- 更新日期：2026-08-11
+- Branch：`codex/session-lifecycle`
+- 功能基準：`1e75b69`（current-room member authorization 與 production Secure-cookie Green）
 - AWS：已完成新帳號安全／IAM bootstrap 與 Tier 0 Proposed 架構規劃，未建立專題 workload；本機 Uvicorn 已停止，臨時 PostgreSQL 容器已停止並移除
-- Regression：Backend `59 passed, 7 skipped`、Frontend `65 passed`
+- Regression：Backend `61 passed, 7 skipped`、Frontend `65 passed`
 
 ## 已完成
 
@@ -16,6 +16,9 @@
 - 暫時性 network／`5xx` 保留最後 canonical 畫面，採 3／5／10 秒 bounded backoff；恢復後回到 3 秒。
 - Polling `401/403` 停止並顯示 session 下一步；`409` 立即 reload canonical state。
 - Polling backoff 上限 mutation sensitivity 已通過；真實 Browser 離線／reconnect release-gate 驗證仍待完成。
+- 只有 local-room pointer、沒有有效 member session 時，current-room API 回 `401`，不再洩漏房間。
+- `CO_STORY_COOKIE_SECURE=true` 時三個正式 cookie 都帶 `Secure`；本機 HTTP 預設維持可測。
+- 兩項 session security prerequisite 均保存 Red／Green 與故障注入敏感度證據。
 
 ## AWS 目前狀態（2026-08-10 新帳號）
 
@@ -35,15 +38,15 @@
 
 ## 下一個精確起點
 
-依本機 MVP Test Plan，下一個基礎切片處理 session lifecycle：
+先核准 [Session lifecycle／角色轉移 Feature Spec](../features/session-lifecycle-and-transfer.md) 的精確時間與 transfer contract；未核准前不得建立 server-side expiry production Red。建議核准後依序：
 
 ```text
-session expiry → revoke／reassign 邊界
+Clock／session expiry → activity refresh → revoke／reassign 邊界
 → 角色轉移碼錯誤、過期與 replay 負面測試
 → 成功轉移後舊 session 失效
 ```
 
-三玩家 Browser E2E、LLM recovery 與 Uvicorn OS process restart 已通過；完整本機 MVP 仍不得標示 release-ready，直到真實模型 schema／Guardrail、Browser 離線／reconnect、session lifecycle 與其餘 Test Plan 缺口完成。
+三玩家 Browser E2E、LLM recovery 與 Uvicorn OS process restart 已通過；完整本機 MVP 仍不得標示 release-ready，直到真實模型 schema／Guardrail、Browser 離線／reconnect、server-side session lifecycle 與其餘 Test Plan 缺口完成。TDD 證據見 [`../evidence/2026-08-11-session-security-prerequisites/tdd-validation.md`](../evidence/2026-08-11-session-security-prerequisites/tdd-validation.md)。
 
 下一個 AWS 起點（不與本機 MVP 切片混用）：先唯讀確認 account plan、Credits、Organizations、Region、當月費用與 principal；再審查修正版 `AWSCourseAccountProtectionDeny`。政策必須保留 Billing read，只拒絕方案升級、Organizations、Control Tower、購買／承諾與帳務寫入；完成 validation、simulation 與負面測試前不得連接 `PowerUserAccess`。
 
