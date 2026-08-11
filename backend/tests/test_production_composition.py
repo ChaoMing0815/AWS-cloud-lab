@@ -5,6 +5,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.adapters.memory_room_repository import MemoryRoomRepository
+from app.adapters.postgres_room_repository import PostgresRoomRepository
 from app.main import create_app
 
 
