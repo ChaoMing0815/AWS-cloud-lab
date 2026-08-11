@@ -3,6 +3,7 @@ from fastapi import APIRouter, Cookie, Header, Response, status
 from app.api.schemas import (
     ConfirmWorldRequest,
     CreateRoomRequest,
+    DeleteRoomRequest,
     FallbackRoundRequest,
     FinishRoomRequest,
     IssueTransferCodeRequest,
@@ -212,6 +213,31 @@ def create_api_router(service: RoomService, *, secure_cookies: bool = False) -> 
         _set_local_room_cookie(response, room.id, secure=secure_cookies)
         _set_session_cookie(response, PLAYER_SESSION_COOKIE, player_token, secure=secure_cookies)
         return room_response(room, service.session_context(room, None, player_token))
+
+    @router.delete("/rooms/{room_id}", status_code=status.HTTP_204_NO_CONTENT)
+    def delete_room(
+        room_id: str,
+        request: DeleteRoomRequest,
+        response: Response,
+        idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+        csrf_token: str | None = Header(default=None, alias="X-CSRF-Token"),
+        host_token: str | None = Cookie(default=None, alias=HOST_SESSION_COOKIE),
+    ) -> None:
+        service.delete_room(
+            room_id,
+            request.room_version,
+            host_token or "",
+            csrf_token or "",
+            _required_idempotency_key(idempotency_key),
+        )
+        for cookie in (LOCAL_ROOM_COOKIE, HOST_SESSION_COOKIE, PLAYER_SESSION_COOKIE):
+            response.delete_cookie(
+                cookie,
+                path="/",
+                httponly=True,
+                samesite="lax",
+                secure=secure_cookies,
+            )
 
     @router.put("/rooms/{room_id}/world")
     def confirm_world(

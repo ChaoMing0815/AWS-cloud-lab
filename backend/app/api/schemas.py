@@ -65,6 +65,10 @@ class ReassignPlayerRequest(BaseModel):
     room_version: int = Field(ge=1)
 
 
+class DeleteRoomRequest(BaseModel):
+    room_version: int = Field(ge=1)
+
+
 class CreateRoomRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

@@ -74,6 +74,17 @@ class PostgresRoomRepository(RoomRepository):
                 self._save(connection, room)
             return result
 
+    def delete(self, room_id: str, operation):
+        with psycopg.connect(self.dsn) as connection:
+            row = connection.execute(
+                "SELECT payload FROM rooms WHERE id = %s FOR UPDATE", (room_id,)
+            ).fetchone()
+            room = _room_from_payload(row[0]) if row else None
+            result = operation(room)
+            if room is not None:
+                connection.execute("DELETE FROM rooms WHERE id = %s", (room_id,))
+            return result
+
     @staticmethod
     def _save(connection, room: Room) -> None:
         connection.execute(

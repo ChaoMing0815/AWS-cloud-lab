@@ -38,3 +38,11 @@ class MemoryRoomRepository(RoomRepository):
             if room is not None:
                 self._rooms[room.id] = deepcopy(room)
             return deepcopy(result)
+
+    def delete(self, room_id: str, operation: Callable[[Room | None], Any]) -> Any:
+        with self._lock:
+            room = deepcopy(self._rooms[room_id]) if room_id in self._rooms else None
+            result = operation(room)
+            if room is not None:
+                del self._rooms[room_id]
+            return deepcopy(result)

@@ -531,6 +531,35 @@ class RoomService:
             operation,
         )
 
+    def delete_room(
+        self,
+        room_id: str,
+        expected_version: int,
+        host_token: str,
+        csrf_token: str,
+        idempotency_key: str,
+    ) -> None:
+        scope = f"delete-room:{room_id}"
+        payload = {"room_version": expected_version}
+        initial = self.repository.get(room_id)
+        if initial is None:
+            def missing_room() -> None:
+                raise DomainError("ROOM_NOT_FOUND", "找不到房間。", 404)
+
+            return self.idempotency.execute(scope, idempotency_key, payload, missing_room)
+        self._authorize_host(initial, host_token, csrf_token)
+
+        def operation() -> None:
+            def delete(room: Room | None) -> None:
+                if room is None:
+                    raise DomainError("ROOM_NOT_FOUND", "找不到房間。", 404)
+                self._authorize_host(room, host_token, csrf_token)
+                self._check_version(room, expected_version)
+
+            return self.repository.delete(room_id, delete)
+
+        return self.idempotency.execute(scope, idempotency_key, payload, operation)
+
     def update_character(
         self,
         room_id: str,
