@@ -33,20 +33,34 @@ Tier 0  共演計劃可玩 Web App + 公私網段 + 私有資料層
 
 - 程式／API／UI：`docs/testing-strategy.md`、當前 Feature Spec、相關 ADR 與目標程式碼。
 - 遊戲規則：只讀正式 MVP Spec 的相關章節。
-- AWS 寫入：專題 Skill、Project Plan、Checkpoints、成本／安全證據與 Skill 指定 reference。
+- AWS／IAM／成本／部署：專題 Skill、Project Plan、Checkpoints、成本／安全證據與 Skill 指定 reference。純本機 MVP coding 不載入 AWS Skill。
 - 時程／課程對照：Project Brief、Gantt、course requirements alignment。
 - 原始 `docs/inbox/專題.pptx`：只在課程要求有歧義或需要核對原頁時讀取。
 - 全域規劃／final review：才讀 README、Project Brief、project plan、gantt 與 checkpoints 全集。
 
 禁止為建立背景而遞迴讀取整個 `docs/`。同一 task 內已完整讀取且未變更的文件不得重讀；先用 `rg` 定位檔案與章節，再讀必要範圍。測試輸出只保留 pass／fail 摘要與失敗片段。若任務涉及 AWS 實作，仍必須確認目前 AWS 成本、安全與資源狀態，不可假設環境已準備完成。
 
-## 模型路由
+## 風險式模型路由
 
-- 約 70% 使用 Terra：coding、tests、docs、一般 refactor、debugging、implementation。
-- 約 20% 使用 Luna 處理 search、extract、rename、format、inventory、classification、cleanup；若 Luna 不可用，改用 Terra low reasoning。
-- 約 10% 使用 Sol：architecture、SSOT、security、major bug、cross-layer conflict、final review。
+- R0（文件、格式、rename、inventory）：Luna；不可用時使用 Terra low。
+- R1／R2（例行或跨層 coding、tests、docs、debugging）：Terra 主導並自行 QA。
+- R3（Auth、session、migration、IAM、成本、不可逆操作）：Sol 只做一次前置決策或完成前安全 review，不逐 assertion 重審。
+- 單一局部任務不為湊比例啟動 subagent。需要分工時使用短 task packet 與有限 turns；禁止多個 Agent 重讀同一批 evidence，回傳只保留結論、風險與必要檔案位置。
 
-比例是長期路由原則，不為湊比例切換模型；混合任務只把高價值決策交給 Sol。
+## 核可邊界與常設授權
+
+已在 Approved Spec、Accepted ADR 或 approval log 核准的產品行為視為常設授權，不得換一份 Feature Spec 再要求使用者核准。Agent 可自主決定可逆的實作細節，例如 UTC、Clock injection、內部 API／class 拆分、測試 fixture、命名、refactor 與安全的錯誤預設，並以測試與 commit 留痕。
+
+只有以下差異需要詢問使用者：新增／改變產品行為、上游規格衝突、成本上限或架構範圍明顯擴張、IAM 權限提升、Root／MFA／帳務、外部傳輸、刪除大量資料、production deploy 或其他不可逆操作。詢問時只列「差異、建議值、影響」，不要求 review 整份 Spec 或 evidence。
+
+使用者已授權下列 repo-local 操作自動執行；執行環境若仍要求 sandbox approval，必須遵守工具核准，文件不得繞過：
+
+| 類別 | 自動執行 | 需人工／條件式核准 |
+| --- | --- | --- |
+| Git 讀取／本機歷史 | `status`、`diff`、`log`、列出 branch、`add`、`commit`、建立 local branch、local checkpoint commits | merge 到主要 branch、rebase、刪除 branch、`reset --hard`、`clean -fd`、force push |
+| Repo 工作 | 建立／修改 repo 內檔案、formatter、lint、test、build；大量刪除若有精確 repo-local 清單、可復原且 auto-review 無異常，可自動執行 | 大量刪除的範圍不明、不可復原或超出 repo 時詢問 |
+| 遠端 Git | `fetch` 可自動；工作樹乾淨且不需 rebase／衝突處理時可 `pull --ff-only` | `push` 只有使用者在當前任務明確要求時自動，否則詢問 |
+| 憑證／雲端 | 無 | 任何 AWS CLI batch、修改 `~/.ssh`、`~/.aws`、Keychain、GitHub release、production deploy；憑證位置預設禁止修改，除非使用者明確指定 |
 
 ## 文件語言規範
 
@@ -195,7 +209,7 @@ Agent 需要能協助：
 - 檢查 git status
 - 避免 commit secrets、暫存檔與 `.DS_Store`
 
-### 10. 嚴格 Test-Driven Development
+### 10. 風險式嚴格 Test-Driven Development
 
 凡涉及 production code、API、遊戲規則、資料存取、IaC、workflow 或可觀察 UI 行為的變更，必須遵循 [`docs/testing-strategy.md`](docs/testing-strategy.md) 的嚴格 TDD 流程：
 
@@ -207,26 +221,24 @@ Red：先寫測試並確認因缺少目標行為而失敗
 
 強制規則：
 
-- 不得先寫 production implementation 再回頭補測試。
-- 每個行為切片必須保存 Red、Green、Refactor 的指令、結果與 commit 對應。
-- Red 必須是預期 assertion failure，不得是語法、import、環境或測試資料錯誤。
-- Green 除目標測試外，必須通過既有 regression suite。
-- 規則、安全、權限與 idempotency 變更必須做一次 mutation／故障注入敏感度驗證，證明測試會抓到刻意錯誤。
-- 功能分支完成 Green 前不得合併；`main` tip 必須維持全綠。
-- 若 Agent 發現 production code 已先被修改，必須停止該切片、回復尚未提交的 implementation，再從 Red 重新開始；不得以事後補測試冒充 TDD。
-- 文件、註解、純格式化與不改變行為的素材調整不強制 TDD；但不得藉此規避實際行為測試。
+- Production 行為仍必須 test-first；Red 必須因缺少目標行為而失敗，不得以事後補測試冒充 TDD。
+- 一個 cohesive feature／安全 invariant 可包含數個相關案例，不為每個 assertion 建立獨立治理循環。
+- Red 只跑 targeted test；Green 跑 targeted＋受影響 suite；相關的完整 Backend／Frontend／contract regression 在 cohesive feature 完成或 merge gate 跑一次。
+- R3 必須有負面／boundary／rollback 驗證，並對每類新 guard 做一個代表性 sensitivity；R1 不建人工 evidence，R2 只留短 validation manifest。
+- 無實質 refactor 不需另建 commit、重跑完整 suite或撰寫「無需重構」段落。
+- 功能分支最新狀態與 `main` tip 必須全綠；純文件、註解與格式化不強制 TDD。
 
 ## 工作原則
 
 1. 先完成 Tier 0，再做延伸。
 2. 優先建立可運作、可展示、可截圖的成果。
-3. 每次實作都要同步更新文件。
-4. 每個階段都要對應 `docs/checkpoints.md`。
+3. 文件採 milestone 更新：CURRENT 只記當前狀態，checkpoints 只在 Tier gate 改變，deployment log 只記實際 AWS／環境部署。
+4. 開發中的詳細歷史留在 Git；不把同一狀態重寫到 README、daily、task list、evidence 與 handoff。
 5. 任何 AWS 實作都要先考慮成本與安全。
 6. 不要把本機 Demo 當成最終成果，成績以 AWS 實際運作為準。
 7. 不要硬編 secrets。
 8. 能用 SSM 時，不以 SSH 作為主要維運方式。
-9. 所有程式行為變更採嚴格 Red／Green／Refactor TDD，並保存可稽核證據。
+9. 所有程式行為變更採風險式嚴格 TDD；證據深度依 R0–R3 分級。
 
 ## 建議下一步
 

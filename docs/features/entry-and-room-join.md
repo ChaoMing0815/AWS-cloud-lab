@@ -1,6 +1,6 @@
 # Feature Spec：正式入口與房間加入
 
-- 狀態：Approved for TDD
+- 狀態：Implemented baseline（Accessibility／Browser release gates pending）
 - Owner：Product／Engineer／QA
 - Source of Truth：是，僅限正式入口與加入流程
 - Depends on：[MVP Spec](../specs/text-rpg-mvp-spec.md)、[User Flow](../product/user-flow.md)、[Screen States](../product/screen-states.md)、[ADR-0002](../decisions/0002-adopt-clean-frontend-architecture.md)

@@ -1,6 +1,6 @@
 # Session lifecycle 與角色轉移
 
-- 狀態：Proposed for approval
+- 狀態：Partially ready（R3；技術基礎可做，產品差異待核可）
 - Owner：Product／Engineer／QA
 - 已核准來源：[正式 MVP Spec](../specs/text-rpg-mvp-spec.md)、[產品核准紀錄](../governance/approval-log.md)
 - Depends on：[Session／CSRF／Idempotency 設計](../architecture/session-and-idempotency.md)、[本機 MVP Test Plan](../qa/local-mvp-test-plan.md)、[測試策略](../testing-strategy.md)
@@ -26,12 +26,16 @@
 
 這兩項不代表 server-side expiry 或角色轉移已完成。
 
-## 建議核准的精確 contract
+## 可自主採用的技術決策
+
+下列決策不改變使用者可觀察的產品語意，可直接進入 TDD：時間一律使用 UTC、application 注入 `Clock`、測試不用 `sleep`、`now >= expires_at` 視為過期、token／code 只保存 hash，以及 redeem／revoke 以 atomic transaction 實作。
+
+其餘條目是為補齊上游規格而提出的 observable contract，不能由治理修改自行核准。開始對應 production Red 前，只向使用者一次詢問下方「待核可產品差異」，不重送整份 Spec 或既有 evidence。
 
 ### 時間與到期
 
-1. 所有時間使用 UTC，application 透過可注入 `Clock` 取得現在時間；測試不得使用 `sleep`。
-2. `now >= expires_at` 即視為過期。
+1. 所有時間使用 UTC，application 透過可注入 `Clock` 取得現在時間；測試不得使用 `sleep`。（技術決策）
+2. `now >= expires_at` 即視為過期。（技術決策）
 3. 有效加入、action、星火決策、回合結算與房主 mutation 成功後，將 room expiry 更新為該次活動後 7 天；GET／polling、被拒絕或失敗的 mutation 不延長期限。
 4. Player 活動只延長該 Player session；Host 操作只延長 Host session。session expiry 取「該次活動後 7 天」與 room expiry 的較早者。
 5. 房間完成後固定為結局時間後 7 天；後續讀取不延長房間或 session。
@@ -48,6 +52,18 @@
 4. Redeem 必須原子完成：consume code、rotate Player session／CSRF、保存 room；任何一步失敗都不能留下半完成狀態。
 5. 已開始或已滿房仍可轉移既有 Player，因為不新增 roster 成員；完成或過期房間不可再發碼或兌換。
 6. 房主轉移自己的 Player 身分時，只撤銷 Player session；獨立 Host session 留在原裝置。Host session 跨裝置轉移不在 MVP。
+
+## 待核可產品差異
+
+上游已核准 7 天期限、房主核准的 10 分鐘一次性 code 與成功後撤銷舊 Player session；以下只列尚未核准的 observable delta：
+
+1. 哪些成功活動延長 room／actor session，以及 GET、polling、拒絕與失敗 mutation 是否一律不延長。
+2. 過期 current read／mutation 的對外錯誤語意，以及是否隱藏 CSRF／version 細節。
+3. 同一 Player 發新 transfer code 時，是否立即使尚未使用的舊碼失效。
+4. 已開始／已滿房是否允許轉移既有 Player；完成／過期房是否禁止發碼與兌換。
+5. 房主轉移自己的 Player 身分時，原裝置的獨立 Host session 是否保留。
+
+上述五項核准前，僅可推進 Clock、到期比較、hash storage 與 transaction primitive 等不鎖定產品語意的測試／基礎設計。
 
 ## Acceptance criteria
 
@@ -71,8 +87,8 @@
 
 依序進行：Clock／expiry domain → repository round-trip → authorization → activity allowlist → host 發碼 → atomic redeem／revoke → replay／concurrency／restart → Browser E2E。
 
-至少注入以下錯誤並確認測試會失敗：`>=` 改為 `>`、7 天改 8 天、失敗 mutation 錯誤延長期限、移除 Host／CSRF／version guard、10 分鐘改 11 分鐘、取消 code binding／consume、保留舊 session hash，以及允許兩個 concurrent redeems 同時成功。
+R3 change batch 對每類新 guard 選代表性 mutation：expiry comparator、失敗 activity、Host／CSRF／version、code consume、舊 session revoke 與 concurrent redeem；不為每個列舉錯誤建立獨立 evidence 文件。
 
 ## Rollback
 
-每個行為切片可獨立回復 Red／Green commits。不得在只有部分 lifecycle metadata 的狀態部署；migration 必須可重跑，rollback 不得重新啟用已撤銷的 session 或已使用的 transfer code。
+以 change batch 記錄 rollback 與 residual risk。不得在只有部分 lifecycle metadata 的狀態部署；migration 必須可重跑，rollback 不得重新啟用已撤銷的 session 或已使用的 transfer code。

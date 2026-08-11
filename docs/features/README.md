@@ -5,25 +5,22 @@
 - Source of Truth：各功能只對自己的差異與 acceptance criteria 負責
 - 最後檢視：2026-08-11
 
-小型專案不為每項功能重寫 PRD、SRS、TRD 與 Test Plan。每個 production 行為切片以一份 Feature Spec 串起上游規格與嚴格 TDD。
+小型專案不為每項功能重寫 PRD、SRS、TRD 與 Test Plan。Feature Spec 只補充上游 Approved Spec／ADR／approval log 尚未定義的產品差異；若沒有產品差異，可直接依上游來源進入風險式 TDD。
 
 ## 每份 Feature Spec 最低內容
 
-1. 狀態、Owner、相依規格與不在範圍。
-2. 使用者可觀察的 acceptance criteria。
-3. API／頁面 contract 的必要差異。
-4. 正常、拒絕、錯誤與恢復案例。
-5. 允許修改與不得碰觸的邊界。
-6. Red／Green／Refactor、Browser／API 驗證與 rollback。
+1. 上游核准來源與真正新增的差異；沒有差異時明記「無產品差異」。
+2. 使用者可觀察的 acceptance criteria、必要 contract 與 non-goals。
+3. 風險等級 R1–R3，以及只有該 feature 特有的驗證／rollback 邊界。
 
-只有 `Approved for TDD` 的 Feature Spec 可以開始 production code。實作證據另存 `docs/evidence/<date>-<slice>/`，不塞回規格本文。
+上游已核准的行為可標示 `Ready for TDD`，不需再次取得整份 Feature Spec 核准。R1 以 commits／測試摘要為證據；R2／R3 每個 cohesive feature 最多一份短 validation manifest。
 
 ## 目前切片
 
 | Feature | 狀態 | 下一關 |
 | --- | --- | --- |
-| [正式入口與房間加入](entry-and-room-join.md) | Approved for TDD | 建立 baseline 與第一個 Red commit |
+| [正式入口與房間加入](entry-and-room-join.md) | Implemented baseline | Accessibility／Browser release gates |
 | [Polling 離線與重新連線 UX](polling-offline-reconnect.md) | Implemented | Browser offline／reconnected release-gate 驗證 |
-| [Session lifecycle／角色轉移](session-lifecycle-and-transfer.md) | Proposed for approval | 核准 expiry／transfer 精確 contract 後建立 Clock Red |
-| PostgreSQL persistence | Planned | 建立資料層 ADR |
-| LLM world／round recovery | Planned | PostgreSQL contract 穩定後整理 Feature Spec |
+| [Session lifecycle／角色轉移](session-lifecycle-and-transfer.md) | Partially ready（R3） | 技術基礎可做；observable delta 一次核可後推進完整切片 |
+| PostgreSQL persistence | Implemented baseline | Multi-process CAS／durable idempotency 另立 R3 batch |
+| LLM round recovery | Implemented baseline | 真實 Bedrock schema／Guardrail 另立 R2／R3 batch |

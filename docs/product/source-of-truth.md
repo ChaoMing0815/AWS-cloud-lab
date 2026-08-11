@@ -3,7 +3,7 @@
 - 狀態：Active
 - Owner：專題使用者（產品）／專題開發者（技術）
 - Source of Truth：是，僅負責文件權威與衝突處理
-- 最後檢視：2026-08-09
+- 最後檢視：2026-08-11
 
 ## 目的
 
@@ -29,7 +29,7 @@
 
 ## 狀態規則
 
-- `Approved／Accepted／Active` 可以指導正式實作。
+- `Approved／Accepted／Active` 可以指導正式實作；下游 Feature 若無新增產品差異，可標示 `Ready for TDD`，不再重複核可。
 - `Active target` 表示已核准的目標行為，但不代表程式已完成。
 - `Draft` 只能用於討論，不能單獨作為 production code 的依據。
 - `Superseded` 必須連到替代文件，不得繼續作為驗收標準。
@@ -37,12 +37,7 @@
 
 ## 小型專案角色切換
 
-本專題允許同一 Agent 依序扮演 PM、Designer、Engineer 與 QA，但每個切片必須明確留下：
-
-1. 使用者核准的 acceptance criteria。
-2. Red／Green／Refactor 證據。
-3. Engineer 自我檢查與 QA 驗證結果。
-4. 尚未完成與已知風險。
+本專題允許同一 Agent 依序扮演 PM、Designer、Engineer 與 QA。已在上游核准的 acceptance criteria 不重複詢問；驗證與證據依 [R0–R3 測試策略](../testing-strategy.md) 分級。R1 由 commits／測試摘要留痕，R2／R3 才建立 feature-level manifest；尚未完成與已知風險只在 CURRENT 或 manifest 記一次。
 
 不要求為小型專案建立多份內容重複的 PRD／SRS／TRD；既有 MVP Spec 是產品規則主文件，Feature Spec 只描述本次差異與可驗收行為。
 
