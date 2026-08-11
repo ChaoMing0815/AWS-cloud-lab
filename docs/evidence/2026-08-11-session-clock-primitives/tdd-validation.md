@@ -1,13 +1,14 @@
-# Session Clock primitives 驗證摘要
+# Session lifecycle foundations 驗證摘要
 
-- Scope／risk：R3 session 技術基礎；只含 UTC Clock 與純 expiry comparator。
-- Upstream：Session Feature Spec 已允許 UTC、Clock injection 與 `now >= expires_at` 技術決策。
-- Baseline：`62502d5`；Backend `61 passed, 7 skipped`。
-- Red：`91306ef`；targeted 6 cases 中 5 個依預期失敗。
-- Red reason：缺少 UTC-aware clock、精確到期比較與 naive datetime guard。
-- Green：`be8d915`；targeted `6 passed`。
-- Full regression：Backend `67 passed, 7 skipped`。
-- Sensitivity：暫將 `>=` 改成 `>`，`at-expiry` case 失敗；還原後 `6 passed`。
-- Boundary：before／equal／after expiry 與 naive expiry／clock output。
-- Rollback：回復 Red／Green commits；沒有 migration 或資料狀態影響。
-- Residual risk：尚未接入 Room／repository／authorization／API；五項 observable delta 仍待一次性核可。
+- Scope／risk：R3 UTC Clock、expiry comparator、正式房 metadata 初始化與 JSON round-trip。
+- Upstream：Session Feature Spec 與 2026-08-11 五項 observable contract 均已核准。
+- Clock Red／Green：`91306ef` → `be8d915`；targeted `6 passed`。
+- Metadata Red／Green：`35bc6ba` → `ecf6ec2`；targeted `4 passed`。
+- Metadata：Room、Host session、房主 Player session 由同一次 Clock 設為 7 天後。
+- Compatibility：demo／legacy payload 缺少 metadata 時保留 `None`，不視為正式有效 session。
+- Persistence：PostgreSQL JSON 使用 ISO-8601，還原為 aware UTC datetime。
+- Full regression：Backend `71 passed, 7 skipped`。
+- Sensitivity：`>=`→`>`、7→8 天、ISO→一般字串均被對應測試抓到並已還原。
+- Boundary：before／equal／after、naive datetime、legacy payload、demo room。
+- Rollback：回復兩組 Red／Green commits；沒有 SQL migration 或既有資料寫入。
+- Residual risk：metadata 尚未接 authorization／activity refresh／API，不可單獨部署。
