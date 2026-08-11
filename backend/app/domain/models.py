@@ -29,6 +29,14 @@ class Character:
 
 
 @dataclass(slots=True)
+class TransferCode:
+    code_hash: str
+    issued_at: datetime
+    expires_at: datetime
+    consumed_at: datetime | None = None
+
+
+@dataclass(slots=True)
 class Player:
     id: str
     name: str
@@ -38,6 +46,7 @@ class Player:
     session_hash: str = ""
     csrf_token: str = ""
     session_expires_at: datetime | None = None
+    transfer_code: TransferCode | None = None
     character: Character | None = None
 
 
