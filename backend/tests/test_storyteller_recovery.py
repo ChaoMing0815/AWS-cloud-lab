@@ -36,6 +36,9 @@ class FixedClock:
         return datetime(2026, 8, 11, 12, 0, tzinfo=timezone.utc)
 
 
+FUTURE_EXPIRY = datetime(2099, 1, 1, tzinfo=timezone.utc)
+
+
 def pending_resolution_room() -> Room:
     return Room(
         id="story-recovery-room",
@@ -51,6 +54,8 @@ def pending_resolution_room() -> Room:
         ),
         host_session_hash=hash_session_token("host-token"),
         host_csrf_token="host-csrf",
+        expires_at=FUTURE_EXPIRY,
+        host_session_expires_at=FUTURE_EXPIRY,
         initial_player_count=1,
         players=[
             Player(

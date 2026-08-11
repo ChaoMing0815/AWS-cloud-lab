@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from fastapi.testclient import TestClient
 
 from app.api.serialization import room_response
@@ -48,6 +50,8 @@ def resolving_room(
         ),
         host_session_hash=hash_session_token("host-token"),
         host_csrf_token="host-csrf",
+        expires_at=datetime(2099, 1, 1, tzinfo=timezone.utc),
+        host_session_expires_at=datetime(2099, 1, 1, tzinfo=timezone.utc),
         max_rounds=max_rounds,
         initial_player_count=3,
         progress_points=progress_points,

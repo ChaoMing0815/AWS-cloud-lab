@@ -233,6 +233,9 @@ def test_current_session_independently_downgrades_expired_principal(
     app, _ = _app_and_clock()
     with TestClient(app) as client:
         room = _create_room(client)
+        stored = _stored_room(app, room["id"])
+        stored.status = "LOBBY"
+        app.state.room_service.repository.save(stored)
         _save_expiries(
             app,
             room["id"],

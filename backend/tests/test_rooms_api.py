@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from fastapi.testclient import TestClient
 
 from app.application.security import hash_session_token
@@ -1036,6 +1038,8 @@ def test_host_can_explicitly_skip_pending_spark_decisions() -> None:
         ),
         host_session_hash=hash_session_token("host-token"),
         host_csrf_token="host-csrf",
+        expires_at=datetime(2099, 1, 1, tzinfo=timezone.utc),
+        host_session_expires_at=datetime(2099, 1, 1, tzinfo=timezone.utc),
         players=[
             Player(
                 id="player-1",

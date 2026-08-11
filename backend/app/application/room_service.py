@@ -3,7 +3,7 @@ from __future__ import annotations
 import hmac
 import secrets
 import string
-from datetime import timedelta
+from datetime import datetime, timedelta
 from uuid import uuid4
 
 from app.application.ports import (
@@ -24,6 +24,7 @@ from app.application.rules import (
     target_points,
 )
 from app.application.security import hash_session_token
+from app.application.session_lifecycle import is_expired_at
 from app.domain.errors import DomainError
 from app.domain.models import Character, DiceResult, Player, Room, StoryEntry, World
 
@@ -940,12 +941,20 @@ class RoomService:
         host_token: str | None,
         player_token: str | None,
     ) -> dict:
+        now = self.clock.now()
+        if not self._session_is_active(room.expires_at, now):
+            return self._anonymous_session()
         is_host = bool(
             host_token
             and room.host_session_hash
+            and self._session_is_active(room.host_session_expires_at, now)
             and hmac.compare_digest(room.host_session_hash, hash_session_token(host_token))
         )
         player = self._player_for_token(room, player_token)
+        if player is not None and not self._session_is_active(
+            player.session_expires_at, now
+        ):
+            player = None
         if player:
             return {
                 "principalType": "player",
@@ -962,6 +971,10 @@ class RoomService:
                 "isHost": True,
                 "hostCsrfToken": room.host_csrf_token,
             }
+        return self._anonymous_session()
+
+    @staticmethod
+    def _anonymous_session() -> dict:
         return {
             "principalType": "anonymous",
             "playerId": None,
@@ -971,20 +984,36 @@ class RoomService:
         }
 
     def _authorize_host(self, room: Room, host_token: str, csrf_token: str) -> None:
-        if not host_token or not room.host_session_hash or not hmac.compare_digest(
-            room.host_session_hash, hash_session_token(host_token)
+        now = self.clock.now()
+        if (
+            not self._session_is_active(room.expires_at, now)
+            or not self._session_is_active(room.host_session_expires_at, now)
+            or not host_token
+            or not room.host_session_hash
+            or not hmac.compare_digest(
+                room.host_session_hash, hash_session_token(host_token)
+            )
         ):
             raise DomainError("HOST_SESSION_REQUIRED", "需要有效的房主工作階段。", 401)
         if not csrf_token or not hmac.compare_digest(room.host_csrf_token, csrf_token):
             raise DomainError("CSRF_FAILED", "CSRF 驗證失敗。", 403)
 
     def _authorize_player(self, room: Room, player_token: str, csrf_token: str) -> Player:
+        now = self.clock.now()
         player = self._player_for_token(room, player_token)
-        if player is None:
+        if (
+            not self._session_is_active(room.expires_at, now)
+            or player is None
+            or not self._session_is_active(player.session_expires_at, now)
+        ):
             raise DomainError("PLAYER_SESSION_REQUIRED", "需要有效的玩家工作階段。", 401)
         if not csrf_token or not hmac.compare_digest(player.csrf_token, csrf_token):
             raise DomainError("CSRF_FAILED", "CSRF 驗證失敗。", 403)
         return player
+
+    @staticmethod
+    def _session_is_active(expires_at: datetime | None, now: datetime) -> bool:
+        return expires_at is not None and not is_expired_at(expires_at, now)
 
     @staticmethod
     def _player_for_token(room: Room, player_token: str | None) -> Player | None:
