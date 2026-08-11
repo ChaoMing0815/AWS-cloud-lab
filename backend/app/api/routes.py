@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Cookie, Header, Response, status
+from fastapi.responses import JSONResponse
 
 from app.api.schemas import (
     ConfirmWorldRequest,
@@ -32,6 +33,24 @@ def create_api_router(service: RoomService, *, secure_cookies: bool = False) -> 
     @router.get("/health")
     def health() -> dict:
         return {"status": "ok", "service": "co-story-api", "storyteller": "mock"}
+
+    @router.get("/live")
+    def live() -> dict:
+        return {"status": "ok", "service": "co-story-api"}
+
+    @router.get("/ready")
+    def ready():
+        probe = getattr(service.repository, "is_ready", None)
+        try:
+            is_ready = True if probe is None else bool(probe())
+        except Exception:
+            is_ready = False
+        if not is_ready:
+            return JSONResponse(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                content={"status": "unavailable", "service": "co-story-api"},
+            )
+        return {"status": "ok", "service": "co-story-api"}
 
     @router.get("/session/current")
     def current_session(

@@ -6,6 +6,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from app.adapters.memory_room_repository import MemoryRoomRepository
 from app.adapters.postgres_room_repository import PostgresRoomRepository
@@ -22,6 +23,14 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 WEB_ROOT = PROJECT_ROOT / "web"
 
 
+def _comma_separated_setting(name: str) -> tuple[str, ...]:
+    return tuple(
+        value.strip()
+        for value in os.environ.get(name, "").split(",")
+        if value.strip()
+    )
+
+
 def _production_configuration_is_valid() -> bool:
     if os.environ.get("CO_STORY_ENV", "").lower() != "production":
         return False
@@ -31,9 +40,9 @@ def _production_configuration_is_valid() -> bool:
         raise RuntimeError("DATABASE_URL")
     if os.environ.get("CO_STORY_COOKIE_SECURE", "").lower() != "true":
         raise RuntimeError("CO_STORY_COOKIE_SECURE")
-    if not os.environ.get("CO_STORY_ALLOWED_HOSTS"):
+    if not _comma_separated_setting("CO_STORY_ALLOWED_HOSTS"):
         raise RuntimeError("CO_STORY_ALLOWED_HOSTS")
-    if not os.environ.get("CO_STORY_ALLOWED_ORIGINS"):
+    if not _comma_separated_setting("CO_STORY_ALLOWED_ORIGINS"):
         raise RuntimeError("CO_STORY_ALLOWED_ORIGINS")
 
     query = parse_qs(urlsplit(database_url).query, keep_blank_values=True)
@@ -49,6 +58,10 @@ def create_app(dice_roller=None, room_repository=None, storyteller=None, clock=N
     if production and storyteller is None:
         raise RuntimeError("storyteller")
     application = FastAPI(title="共演計劃 API", version="0.1.0")
+    allowed_hosts = _comma_separated_setting("CO_STORY_ALLOWED_HOSTS")
+    allowed_origins = _comma_separated_setting("CO_STORY_ALLOWED_ORIGINS")
+    if production:
+        application.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
     if room_repository is None:
         database_url = os.environ.get("DATABASE_URL")
         room_repository = (
@@ -69,9 +82,18 @@ def create_app(dice_roller=None, room_repository=None, storyteller=None, clock=N
 
     @application.middleware("http")
     async def security_headers(request: Request, call_next):
-        response = await call_next(request)
+        unsafe_api_request = request.url.path.startswith("/api/") and request.method in {
+            "POST", "PUT", "PATCH", "DELETE",
+        }
+        if production and unsafe_api_request and request.headers.get("origin") not in allowed_origins:
+            response = JSONResponse(status_code=403, content={"detail": "Forbidden"})
+        else:
+            response = await call_next(request)
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["Referrer-Policy"] = "same-origin"
+        if production:
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+            response.headers["Content-Security-Policy"] = "default-src 'self'; frame-ancestors 'none'"
         if request.url.path.startswith("/api/"):
             response.headers["Cache-Control"] = "no-store"
         return response
