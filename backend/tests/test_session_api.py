@@ -54,6 +54,24 @@ def test_host_player_session_summary_routes_draft_to_setup_without_secrets() -> 
     assert "action" not in serialized
 
 
+def test_https_mode_marks_all_session_and_room_cookies_secure(monkeypatch) -> None:
+    monkeypatch.setenv("CO_STORY_COOKIE_SECURE", "true")
+    with TestClient(create_app()) as client:
+        response = client.post(
+            "/api/v1/rooms",
+            json={"nickname": "房主"},
+            headers={"Idempotency-Key": "secure-cookie-mode"},
+        )
+
+    assert response.status_code == 201
+    cookies = response.headers.get_list("set-cookie")
+    for name in ("co_story_local_room", "co_story_host", "co_story_player"):
+        cookie = next(value for value in cookies if value.startswith(f"{name}="))
+        assert "Secure" in cookie
+        assert "HttpOnly" in cookie
+        assert "SameSite=lax" in cookie
+
+
 def test_session_summary_maps_canonical_room_states_to_routes() -> None:
     app = create_app()
     with TestClient(app) as client:
