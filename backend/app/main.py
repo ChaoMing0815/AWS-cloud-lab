@@ -11,6 +11,7 @@ from app.adapters.postgres_room_repository import PostgresRoomRepository
 from app.adapters.memory_idempotency_store import MemoryIdempotencyStore
 from app.adapters.mock_storyteller import MockStoryteller
 from app.adapters.session_security import HmacSessionTokenFactory
+from app.adapters.system_clock import SystemClock
 from app.adapters.secure_dice_roller import SecureDiceRoller
 from app.api.routes import create_api_router
 from app.application.room_service import RoomService
@@ -20,7 +21,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 WEB_ROOT = PROJECT_ROOT / "web"
 
 
-def create_app(dice_roller=None, room_repository=None, storyteller=None) -> FastAPI:
+def create_app(dice_roller=None, room_repository=None, storyteller=None, clock=None) -> FastAPI:
     application = FastAPI(title="共演計劃 API", version="0.1.0")
     if room_repository is None:
         database_url = os.environ.get("DATABASE_URL")
@@ -35,6 +36,7 @@ def create_app(dice_roller=None, room_repository=None, storyteller=None) -> Fast
         MemoryIdempotencyStore(),
         HmacSessionTokenFactory(),
         dice_roller or SecureDiceRoller(),
+        clock or SystemClock(),
     )
     application.state.room_service = service
 

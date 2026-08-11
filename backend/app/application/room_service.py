@@ -3,6 +3,7 @@ from __future__ import annotations
 import hmac
 import secrets
 import string
+from datetime import timedelta
 from uuid import uuid4
 
 from app.application.ports import (
@@ -68,6 +69,7 @@ class RoomService:
         self.idempotency = idempotency
         self.token_factory = token_factory
         self.dice_roller = dice_roller
+        self.clock = clock
         self.demo_room_id = self._create_demo_room()
 
     def _create_demo_room(self) -> str:
@@ -171,6 +173,9 @@ class RoomService:
         host_csrf = self.token_factory.derive("host-csrf", idempotency_key)
         player_token = self.token_factory.derive("host-player-session", idempotency_key)
         player_csrf = self.token_factory.derive("host-player-csrf", idempotency_key)
+        if self.clock is None:
+            raise RuntimeError("Clock is required to create a formal room")
+        expires_at = self.clock.now() + timedelta(days=7)
 
         def operation() -> Room:
             room = Room(
@@ -182,6 +187,8 @@ class RoomService:
                 world=_empty_world(),
                 host_session_hash=hash_session_token(host_token),
                 host_csrf_token=host_csrf,
+                expires_at=expires_at,
+                host_session_expires_at=expires_at,
                 players=[
                     Player(
                         id=_new_id(),
@@ -189,6 +196,7 @@ class RoomService:
                         role="共同創作者",
                         session_hash=hash_session_token(player_token),
                         csrf_token=player_csrf,
+                        session_expires_at=expires_at,
                     )
                 ],
                 entries=[

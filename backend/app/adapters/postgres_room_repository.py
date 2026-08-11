@@ -1,4 +1,5 @@
 from dataclasses import asdict
+from datetime import datetime, timedelta, timezone
 
 import psycopg
 from psycopg.types.json import Jsonb
@@ -8,7 +9,33 @@ from app.domain.models import Character, DiceResult, Player, Room, StoryEntry, W
 
 
 def _room_payload(room: Room) -> dict:
-    return asdict(room)
+    payload = asdict(room)
+    payload["expires_at"] = _datetime_to_json(room.expires_at)
+    payload["host_session_expires_at"] = _datetime_to_json(
+        room.host_session_expires_at
+    )
+    for player_payload, player in zip(payload["players"], room.players, strict=True):
+        player_payload["session_expires_at"] = _datetime_to_json(
+            player.session_expires_at
+        )
+    return payload
+
+
+def _datetime_to_json(value: datetime | None) -> str | None:
+    if value is None:
+        return None
+    if value.tzinfo is None or value.utcoffset() != timedelta(0):
+        raise ValueError("lifecycle datetime must be UTC-aware")
+    return value.isoformat()
+
+
+def _datetime_from_json(value: str | datetime | None) -> datetime | None:
+    if value is None:
+        return None
+    parsed = datetime.fromisoformat(value) if isinstance(value, str) else value
+    if parsed.tzinfo is None:
+        raise ValueError("stored lifecycle datetime must be timezone-aware")
+    return parsed.astimezone(timezone.utc)
 
 
 class PostgresRoomRepository(RoomRepository):
@@ -55,6 +82,9 @@ def _room_from_payload(data: dict) -> Room:
     for raw_player in payload.pop("players"):
         player = dict(raw_player)
         raw_character = player.pop("character")
+        player["session_expires_at"] = _datetime_from_json(
+            player.get("session_expires_at")
+        )
         players.append(
             Player(
                 **player,
@@ -63,6 +93,10 @@ def _room_from_payload(data: dict) -> Room:
         )
     entries = [StoryEntry(**entry) for entry in payload.pop("entries")]
     dice_results = [DiceResult(**result) for result in payload.pop("dice_results")]
+    payload["expires_at"] = _datetime_from_json(payload.get("expires_at"))
+    payload["host_session_expires_at"] = _datetime_from_json(
+        payload.get("host_session_expires_at")
+    )
     return Room(
         **payload,
         world=world,
