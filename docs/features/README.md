@@ -21,6 +21,6 @@
 | --- | --- | --- |
 | [正式入口與房間加入](entry-and-room-join.md) | Implemented baseline | Accessibility／Browser release gates |
 | [Polling 離線與重新連線 UX](polling-offline-reconnect.md) | Implemented | Browser offline／reconnected release-gate 驗證 |
-| [Session lifecycle／角色轉移](session-lifecycle-and-transfer.md) | Partially ready（R3） | 技術基礎可做；observable delta 一次核可後推進完整切片 |
+| [Session lifecycle／角色轉移](session-lifecycle-and-transfer.md) | Ready for TDD（R3） | Session metadata／activity refresh |
 | PostgreSQL persistence | Implemented baseline | Multi-process CAS／durable idempotency 另立 R3 batch |
 | LLM round recovery | Implemented baseline | 真實 Bedrock schema／Guardrail 另立 R2／R3 batch |

@@ -1,6 +1,6 @@
 # Session lifecycle 與角色轉移
 
-- 狀態：Partially ready（R3；技術基礎可做，產品差異待核可）
+- 狀態：Ready for TDD（R3）
 - Owner：Product／Engineer／QA
 - 已核准來源：[正式 MVP Spec](../specs/text-rpg-mvp-spec.md)、[產品核准紀錄](../governance/approval-log.md)
 - Depends on：[Session／CSRF／Idempotency 設計](../architecture/session-and-idempotency.md)、[本機 MVP Test Plan](../qa/local-mvp-test-plan.md)、[測試策略](../testing-strategy.md)
@@ -30,7 +30,7 @@
 
 下列決策不改變使用者可觀察的產品語意，可直接進入 TDD：時間一律使用 UTC、application 注入 `Clock`、測試不用 `sleep`、`now >= expires_at` 視為過期、token／code 只保存 hash，以及 redeem／revoke 以 atomic transaction 實作。
 
-其餘條目是為補齊上游規格而提出的 observable contract，不能由治理修改自行核准。開始對應 production Red 前，只向使用者一次詢問下方「待核可產品差異」，不重送整份 Spec 或既有 evidence。
+下列 observable contract 已於 2026-08-11 完成一次性核准，可直接約束後續 production Red。
 
 ### 時間與到期
 
@@ -50,20 +50,18 @@
    - `POST /rooms/{room_id}/players/{player_id}:reassign`：新裝置提交 transfer code 與 room version，成功後取得新的 Player cookie／CSRF。
 3. Code 綁定 room＋Player，10 分鐘後失效；server 只保存 code hash、expiry、consumed timestamp 與必要 audit metadata。
 4. Redeem 必須原子完成：consume code、rotate Player session／CSRF、保存 room；任何一步失敗都不能留下半完成狀態。
-5. 已開始或已滿房仍可轉移既有 Player，因為不新增 roster 成員；完成或過期房間不可再發碼或兌換。
-6. 房主轉移自己的 Player 身分時，只撤銷 Player session；獨立 Host session 留在原裝置。Host session 跨裝置轉移不在 MVP。
+5. DRAFT／LOBBY／已開始或已滿房可轉移既有 Player，因為不新增 roster 成員；完成房在 7 天保留期內只允許唯讀轉移，過期房不可再發碼或兌換。
+6. 房主轉移自己的 Player 身分時，只撤銷 Player session；獨立 Host session 留在原裝置，UI 必須提示 Host 權限未移轉。Host session 跨裝置轉移不在 MVP。
 
-## 待核可產品差異
+## 2026-08-11 已核准產品差異
 
 上游已核准 7 天期限、房主核准的 10 分鐘一次性 code 與成功後撤銷舊 Player session；以下只列尚未核准的 observable delta：
 
 1. 哪些成功活動延長 room／actor session，以及 GET、polling、拒絕與失敗 mutation 是否一律不延長。
 2. 過期 current read／mutation 的對外錯誤語意，以及是否隱藏 CSRF／version 細節。
 3. 同一 Player 發新 transfer code 時，是否立即使尚未使用的舊碼失效。
-4. 已開始／已滿房是否允許轉移既有 Player；完成／過期房是否禁止發碼與兌換。
-5. 房主轉移自己的 Player 身分時，原裝置的獨立 Host session 是否保留。
-
-上述五項核准前，僅可推進 Clock、到期比較、hash storage 與 transaction primitive 等不鎖定產品語意的測試／基礎設計。
+4. DRAFT／LOBBY／已開始／已滿房允許轉移既有 Player；完成後 7 天內允許唯讀轉移；過期房禁止發碼與兌換。
+5. 房主轉移自己的 Player 時，原裝置獨立 Host session 保留，且 UI 明確提示 Host 權限未移轉。
 
 ## Acceptance criteria
 

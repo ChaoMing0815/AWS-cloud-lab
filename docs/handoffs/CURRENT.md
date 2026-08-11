@@ -11,18 +11,17 @@
 
 - Session security prerequisites 已完成 Red／Green 與代表性 sensitivity。
 - Session Clock／UTC／expiry comparator 已完成 Red／Green 與 `>=` boundary sensitivity；尚未接入 Room／authorization／API。
-- [Session lifecycle／角色轉移](../features/session-lifecycle-and-transfer.md) 的其餘 observable delta 尚待一次性核可。
+- [Session lifecycle／角色轉移](../features/session-lifecycle-and-transfer.md) 的五項 observable delta 已於 2026-08-11 完成核准。
 - 本機 Uvicorn 與臨時 PostgreSQL 已停止；沒有進行中的 AWS change batch。
 
 ## Next
 
 ```text
-一次核可 session observable delta
-→ activity refresh
+Session metadata／activity refresh
 → transfer code／atomic reassign／舊 session revoke
 ```
 
-唯一產品 blocker：完整 session lifecycle／transfer production slice 前，確認 Feature Spec 集中的五項 observable delta；不需 review 整份 Spec 或既有 evidence。下一次 AWS 工作另建 change envelope，先確認 account、principal、Region、Free plan／credits、Budget、資源集合、權限、費用上限、rollback 與清理責任。
+目前沒有產品核可 blocker。下一次 AWS 工作另建 change envelope，先確認 account、principal、Region、Free plan／credits、Budget、資源集合、權限、費用上限、rollback 與清理責任。
 
 ## Pointers
 
