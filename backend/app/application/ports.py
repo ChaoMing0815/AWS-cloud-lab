@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Callable
+from datetime import datetime
 from typing import Any
 
 from app.domain.models import Room
@@ -63,3 +64,8 @@ class SessionTokenFactory(ABC):
 class DiceRoller(ABC):
     @abstractmethod
     def roll_d6(self) -> int: ...
+
+
+class Clock(ABC):
+    @abstractmethod
+    def now(self) -> datetime: ...
