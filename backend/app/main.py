@@ -53,10 +53,53 @@ def _production_configuration_is_valid() -> bool:
     return True
 
 
+def _required_setting(name: str) -> str:
+    value = os.environ.get(name, "").strip()
+    if not value:
+        raise RuntimeError(name)
+    return value
+
+
+def _production_bedrock_storyteller():
+    region = _required_setting("CO_STORY_AWS_REGION")
+    model_id = _required_setting("CO_STORY_BEDROCK_MODEL_ID")
+    guardrail_id = _required_setting("CO_STORY_BEDROCK_GUARDRAIL_ID")
+    guardrail_version = _required_setting("CO_STORY_BEDROCK_GUARDRAIL_VERSION")
+    raw_max_tokens = _required_setting("CO_STORY_BEDROCK_MAX_TOKENS")
+    try:
+        max_tokens = int(raw_max_tokens)
+    except ValueError:
+        raise RuntimeError("CO_STORY_BEDROCK_MAX_TOKENS") from None
+    if not 1 <= max_tokens <= 1200:
+        raise RuntimeError("CO_STORY_BEDROCK_MAX_TOKENS")
+
+    import boto3
+    from botocore.config import Config
+
+    from app.adapters.bedrock_storyteller import BedrockStoryteller
+
+    client = boto3.client(
+        "bedrock-runtime",
+        region_name=region,
+        config=Config(
+            read_timeout=30,
+            connect_timeout=5,
+            retries={"max_attempts": 0},
+        ),
+    )
+    return BedrockStoryteller(
+        client=client,
+        model_id=model_id,
+        guardrail_id=guardrail_id,
+        guardrail_version=guardrail_version,
+        max_tokens=max_tokens,
+    )
+
+
 def create_app(dice_roller=None, room_repository=None, storyteller=None, clock=None) -> FastAPI:
     production = _production_configuration_is_valid()
-    if production and storyteller is None:
-        raise RuntimeError("storyteller")
+    if storyteller is None:
+        storyteller = _production_bedrock_storyteller() if production else MockStoryteller()
     application = FastAPI(title="共演計劃 API", version="0.1.0")
     allowed_hosts = _comma_separated_setting("CO_STORY_ALLOWED_HOSTS")
     allowed_origins = _comma_separated_setting("CO_STORY_ALLOWED_ORIGINS")
@@ -71,7 +114,7 @@ def create_app(dice_roller=None, room_repository=None, storyteller=None, clock=N
         )
     service = RoomService(
         room_repository,
-        storyteller or MockStoryteller(),
+        storyteller,
         MemoryIdempotencyStore(),
         HmacSessionTokenFactory(),
         dice_roller or SecureDiceRoller(),
