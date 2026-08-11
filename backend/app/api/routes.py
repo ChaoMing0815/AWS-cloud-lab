@@ -7,6 +7,7 @@ from app.api.schemas import (
     DeleteRoomRequest,
     FallbackRoundRequest,
     FinishRoomRequest,
+    GenerateWorldRequest,
     IssueTransferCodeRequest,
     JoinRoomRequest,
     JoinRoomByCodeRequest,
@@ -281,6 +282,28 @@ def create_api_router(service: RoomService, *, secure_cookies: bool = False) -> 
                 }
             ),
             request.max_rounds,
+            request.room_version,
+            host_token or "",
+            csrf_token or "",
+            _required_idempotency_key(idempotency_key),
+        )
+        return room_response(room, service.session_context(room, host_token, player_token))
+
+    @router.post("/rooms/{room_id}/world:generate")
+    def generate_world(
+        room_id: str,
+        request: GenerateWorldRequest,
+        idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+        csrf_token: str | None = Header(default=None, alias="X-CSRF-Token"),
+        host_token: str | None = Cookie(default=None, alias=HOST_SESSION_COOKIE),
+        player_token: str | None = Cookie(default=None, alias=PLAYER_SESSION_COOKIE),
+    ) -> dict:
+        room = service.generate_world(
+            room_id,
+            request.keywords,
+            request.tone,
+            request.custom_tone,
+            request.supplemental_request,
             request.room_version,
             host_token or "",
             csrf_token or "",

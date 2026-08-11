@@ -1,8 +1,28 @@
 from app.application.ports import Storyteller
-from app.domain.models import Room
+from app.domain.models import Room, World
 
 
 class MockStoryteller(Storyteller):
+    def generate_world(
+        self,
+        keywords: list[str],
+        tone: str,
+        custom_tone: str | None,
+        supplemental_request: str | None,
+    ) -> World:
+        subject = "、".join(keywords)
+        request = supplemental_request or "讓玩家共同補完關鍵細節。"
+        return World(
+            name=f"{keywords[0]}計畫",
+            story_title=f"{keywords[0]}的共同任務",
+            premise=f"圍繞{subject}的異常狀況，所有玩家必須合作找出真相。",
+            objective=f"在有限時間內完成與{keywords[0]}有關的共同目標。",
+            opening_scene=f"故事開始時，{keywords[0]}突然讓所有既有安排失效。",
+            core_obstacle=f"關鍵線索被{keywords[-1]}遮蔽，團隊必須協調不同立場。",
+            tone=tone,
+            custom_tone=custom_tone,
+        )
+
     def resolve_round(self, room: Room) -> str:
         names = "、".join(player.name for player in room.players)
         results = [

@@ -100,6 +100,7 @@ class Room:
     resolution_mode: str | None = None
     resolution_failure_code: str | None = None
     resolution_attempts: int = 0
+    world_generation_count: int = 0
     players: list[Player] = field(default_factory=list)
     entries: list[StoryEntry] = field(default_factory=list)
     dice_results: list[DiceResult] = field(default_factory=list)

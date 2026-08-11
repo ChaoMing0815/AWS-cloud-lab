@@ -45,6 +45,15 @@ class RoomRepository(ABC):
 
 class Storyteller(ABC):
     @abstractmethod
+    def generate_world(
+        self,
+        keywords: list[str],
+        tone: str,
+        custom_tone: str | None,
+        supplemental_request: str | None,
+    ) -> "World": ...
+
+    @abstractmethod
     def resolve_round(self, room: Room) -> str: ...
 
     @abstractmethod

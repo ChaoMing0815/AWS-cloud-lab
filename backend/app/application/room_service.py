@@ -284,6 +284,61 @@ class RoomService:
             f"confirm-world:{room_id}", idempotency_key, payload, operation
         )
 
+    def generate_world(
+        self,
+        room_id: str,
+        keywords: list[str],
+        tone: str,
+        custom_tone: str | None,
+        supplemental_request: str | None,
+        expected_version: int,
+        host_token: str,
+        csrf_token: str,
+        idempotency_key: str,
+    ) -> Room:
+        room = self._required_room(room_id)
+        self._authorize_host(room, host_token, csrf_token)
+
+        def operation() -> dict:
+            current = self._required_room(room_id)
+            self._check_version(current, expected_version)
+            if current.status != "DRAFT":
+                raise DomainError("WORLD_ALREADY_CONFIRMED", "世界設定已確認。", 409)
+            if current.world_generation_count >= 2:
+                raise DomainError("WORLD_GENERATION_LIMIT", "世界生成次數已達上限。", 409)
+
+            current.world_generation_count += 1
+            current.version += 1
+            self.repository.save(current)
+            try:
+                generated = self.storyteller.generate_world(
+                    keywords, tone, custom_tone, supplemental_request
+                )
+            except StorytellerFailure as failure:
+                return {"room": current, "failure": failure.code}
+
+            current.world = generated
+            self.repository.save(current)
+            return {"room": current, "failure": None}
+
+        outcome = self.idempotency.execute(
+            f"generate-world:{room_id}",
+            idempotency_key,
+            {
+                "keywords": keywords,
+                "tone": tone,
+                "custom_tone": custom_tone,
+                "supplemental_request": supplemental_request,
+                "room_version": expected_version,
+            },
+            operation,
+        )
+        if outcome["failure"]:
+            if outcome["failure"] == "CONTENT_REJECTED":
+                raise DomainError("WORLD_GENERATION_REJECTED", "世界生成暫時無法完成。", 422)
+            raise DomainError("WORLD_GENERATION_UNAVAILABLE", "世界生成暫時無法完成。", 503)
+        return outcome["room"]
+
     def start_game(
         self,
         room_id: str,

@@ -114,6 +114,7 @@ class PostgresRoomRepository(RoomRepository):
 
 def _room_from_payload(data: dict) -> Room:
     payload = dict(data)
+    payload.setdefault("world_generation_count", 0)
     world = World(**payload.pop("world"))
     players = []
     for raw_player in payload.pop("players"):

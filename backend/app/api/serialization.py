@@ -14,6 +14,7 @@ def room_response(room: Room, session: dict) -> dict:
         "roomCode": room.room_code,
         "status": room.status,
         "version": room.version,
+        "worldGenerationCount": room.world_generation_count,
         "round": room.round_number,
         "world": {
             "name": room.world.name,
