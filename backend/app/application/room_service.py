@@ -468,6 +468,69 @@ class RoomService:
             operation,
         )
 
+    def redeem_transfer_code(
+        self,
+        room_id: str,
+        player_id: str,
+        transfer_code: str,
+        expected_version: int,
+        idempotency_key: str,
+    ) -> tuple[Room, str, str]:
+        player_token = self.token_factory.derive(
+            f"reassigned-player-session:{room_id}:{player_id}", idempotency_key
+        )
+        player_csrf = self.token_factory.derive(
+            f"reassigned-player-csrf:{room_id}:{player_id}", idempotency_key
+        )
+
+        def operation() -> tuple[Room, str, str]:
+            def redeem(room: Room | None) -> tuple[Room, str, str]:
+                now = self.clock.now()
+                player = (
+                    next((item for item in room.players if item.id == player_id), None)
+                    if room is not None
+                    else None
+                )
+                grant = player.transfer_code if player is not None else None
+                if (
+                    room is None
+                    or not self._session_is_active(room.expires_at, now)
+                    or room.status not in TRANSFER_CODE_ISSUE_STATUSES
+                    or grant is None
+                    or grant.consumed_at is not None
+                    or is_expired_at(grant.expires_at, now)
+                    or not hmac.compare_digest(
+                        grant.code_hash, hash_session_token(transfer_code)
+                    )
+                ):
+                    raise DomainError(
+                        "TRANSFER_CODE_INVALID",
+                        "角色轉移碼無效或已過期。",
+                        401,
+                    )
+                self._check_version(room, expected_version)
+                grant.consumed_at = now
+                player.session_hash = hash_session_token(player_token)
+                player.csrf_token = player_csrf
+                player.session_expires_at = min(
+                    now + timedelta(days=7), room.expires_at
+                )
+                room.version += 1
+                return room, player_token, player_csrf
+
+            return self.repository.mutate(room_id, redeem)
+
+        return self.idempotency.execute(
+            f"redeem-transfer-code:{room_id}:{player_id}",
+            idempotency_key,
+            {
+                "transfer_code_hash": hash_session_token(transfer_code),
+                "room_version": expected_version,
+                "player_id": player_id,
+            },
+            operation,
+        )
+
     def update_character(
         self,
         room_id: str,

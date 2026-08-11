@@ -9,6 +9,7 @@ from app.api.schemas import (
     JoinRoomRequest,
     JoinRoomByCodeRequest,
     ResolveRoundRequest,
+    ReassignPlayerRequest,
     RollRoundRequest,
     SparkDecisionRequest,
     StartGameRequest,
@@ -192,6 +193,25 @@ def create_api_router(service: RoomService, *, secure_cookies: bool = False) -> 
             "transfersHostPlayer": room.host_player_id == player_id,
             "hostSessionTransferred": False,
         }
+
+    @router.post("/rooms/{room_id}/players/{player_id}:reassign")
+    def reassign_player(
+        room_id: str,
+        player_id: str,
+        request: ReassignPlayerRequest,
+        response: Response,
+        idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+    ) -> dict:
+        room, player_token, _ = service.redeem_transfer_code(
+            room_id,
+            player_id,
+            request.transfer_code,
+            request.room_version,
+            _required_idempotency_key(idempotency_key),
+        )
+        _set_local_room_cookie(response, room.id, secure=secure_cookies)
+        _set_session_cookie(response, PLAYER_SESSION_COOKIE, player_token, secure=secure_cookies)
+        return room_response(room, service.session_context(room, None, player_token))
 
     @router.put("/rooms/{room_id}/world")
     def confirm_world(

@@ -79,7 +79,7 @@ def test_redeem_atomically_consumes_grant_rotates_player_session_and_preserves_h
     original_host = (room.host_session_hash, room.host_csrf_token, room.host_session_expires_at)
     original_room_expiry = room.expires_at
     old_player = room.players[0]
-    clock.now_value += timedelta(hours=1)
+    clock.now_value += timedelta(minutes=1)
 
     redeemed, new_player_token, new_player_csrf = _redeem(service, room, transfer_code)
 

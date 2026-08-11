@@ -60,6 +60,11 @@ class IssueTransferCodeRequest(BaseModel):
     room_version: int = Field(ge=1)
 
 
+class ReassignPlayerRequest(BaseModel):
+    transfer_code: str = Field(min_length=1, max_length=512)
+    room_version: int = Field(ge=1)
+
+
 class CreateRoomRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
