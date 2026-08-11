@@ -6,6 +6,7 @@ import string
 from uuid import uuid4
 
 from app.application.ports import (
+    Clock,
     DiceRoller,
     IdempotencyStore,
     RoomRepository,
@@ -60,6 +61,7 @@ class RoomService:
         idempotency: IdempotencyStore,
         token_factory: SessionTokenFactory,
         dice_roller: DiceRoller,
+        clock: Clock | None = None,
     ) -> None:
         self.repository = repository
         self.storyteller = storyteller

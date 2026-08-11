@@ -7,6 +7,10 @@ from app.application.ports import RoomRepository
 from app.domain.models import Character, DiceResult, Player, Room, StoryEntry, World
 
 
+def _room_payload(room: Room) -> dict:
+    return asdict(room)
+
+
 class PostgresRoomRepository(RoomRepository):
     def __init__(self, dsn: str) -> None:
         self.dsn = dsn
@@ -30,7 +34,7 @@ class PostgresRoomRepository(RoomRepository):
                     payload = EXCLUDED.payload,
                     updated_at = now()
                 """,
-                (room.id, room.room_code, room.status, room.version, Jsonb(asdict(room))),
+                (room.id, room.room_code, room.status, room.version, Jsonb(_room_payload(room))),
             )
 
     def _find(self, field: str, value: str) -> Room | None:

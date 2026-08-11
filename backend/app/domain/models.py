@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime
 
 
 @dataclass(slots=True)
@@ -36,6 +37,7 @@ class Player:
     action_approach: str = ""
     session_hash: str = ""
     csrf_token: str = ""
+    session_expires_at: datetime | None = None
     character: Character | None = None
 
 
@@ -76,6 +78,8 @@ class Room:
     world: World
     host_session_hash: str = ""
     host_csrf_token: str = ""
+    expires_at: datetime | None = None
+    host_session_expires_at: datetime | None = None
     max_rounds: int = 6
     initial_player_count: int = 0
     progress_points: int = 0
