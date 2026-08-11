@@ -162,3 +162,14 @@ def test_room_repository_updates_existing_aggregate(repository: RoomRepository) 
     restored = repository.get(room.id)
 
     assert restored == room
+
+
+def test_repository_delete_rolls_back_when_callback_raises(repository: RoomRepository) -> None:
+    room = complete_room()
+    assert_save_succeeds(repository, room)
+    assert hasattr(repository, "delete"), "RoomRepository.delete 尚未建立"
+
+    with pytest.raises(RuntimeError, match="abort deletion"):
+        repository.delete(room.id, lambda _room: (_ for _ in ()).throw(RuntimeError("abort deletion")))
+
+    assert repository.get(room.id) == room
