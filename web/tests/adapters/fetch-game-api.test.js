@@ -350,3 +350,34 @@ test("房主結局選擇使用 finish endpoint 與 host CSRF", async () => {
     room_version: 15,
   });
 });
+
+test("房主永久刪除房間時送出 version、host CSRF 與 Idempotency-Key", async () => {
+  const requests = [];
+  const room = {
+    id: "room-delete",
+    version: 16,
+    status: "COMPLETED",
+    session: { isHost: true, hostCsrfToken: "host-delete-csrf" },
+  };
+  const api = new FetchGameApi({
+    idempotencyKeyFactory: () => "delete-room-key",
+    fetchImpl: async (url, options) => {
+      requests.push({ url, options });
+      if (options.method === "DELETE") return new Response(null, { status: 204 });
+      return jsonResponse(room);
+    },
+  });
+  await api.loadRoom();
+
+  assert.equal(typeof api.deleteRoom, "function", "FetchGameApi.deleteRoom 尚未建立");
+  await api.deleteRoom();
+
+  const request = requests[1];
+  assert.equal(request.url, "/api/v1/rooms/room-delete");
+  assert.equal(request.options.method, "DELETE");
+  assert.equal(request.options.credentials, "include");
+  assert.equal(request.options.headers["X-CSRF-Token"], "host-delete-csrf");
+  assert.equal(request.options.headers["Idempotency-Key"], "delete-room-key");
+  assert.deepEqual(JSON.parse(request.options.body), { room_version: 16 });
+  assert.equal(api.room, null, "成功刪除後不應保留過期房間狀態");
+});
