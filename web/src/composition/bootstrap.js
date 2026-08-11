@@ -18,6 +18,8 @@ import { MockGameApi } from "../adapters/api/mock-game-api.js";
 import { GamePage } from "../ui/pages/game-page.js";
 import { LandingPage } from "../ui/pages/landing-page.js";
 
+globalThis.addEventListener("popstate", () => globalThis.location.reload());
+
 function mountGamePage({ forceMock = false } = {}) {
   const config = globalThis.CO_STORY_CONFIG ?? { apiMode: "mock", apiBasePath: "/api/v1" };
   const apiMode = forceMock ? "mock" : config.apiMode;

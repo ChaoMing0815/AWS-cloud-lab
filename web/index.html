@@ -22,6 +22,8 @@
       <div id="connectionStatus" class="connection"><span></span> 準備開始</div>
     </header>
 
+    <p id="serverRequiredNotice" role="alert" hidden>此頁面需由本機或正式 Web server 開啟，請使用專案提供的網址。</p>
+
     <main id="landingPage" class="landing-shell">
       <section class="landing-copy">
         <div class="eyebrow">3–5 人 AI 共創故事</div>
@@ -327,6 +329,12 @@
       <span>AWS 部署尚未執行</span>
     </footer>
 
+    <script>
+      const serverRequiredNotice = document.getElementById("serverRequiredNotice");
+      if (globalThis.location.protocol === "file:") {
+        serverRequiredNotice.hidden = false;
+      }
+    </script>
     <script src="/runtime-config.js"></script>
     <script type="module" src="/src/composition/bootstrap.js"></script>
   </body>
