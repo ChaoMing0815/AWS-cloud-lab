@@ -191,6 +191,17 @@ export class FetchGameApi extends GameApi {
     return this.room;
   }
 
+  async deleteRoom() {
+    this.requireRoom();
+    await this.request(`/rooms/${this.room.id}`, {
+      method: "DELETE",
+      idempotent: true,
+      hostCsrfProtected: true,
+      body: { room_version: this.room.version },
+    });
+    this.room = null;
+  }
+
   requireRoom() {
     if (!this.room) {
       throw new ApiError("ROOM_NOT_LOADED", "房間尚未載入。", 409);
@@ -229,6 +240,8 @@ export class FetchGameApi extends GameApi {
       headers,
       body: body ? JSON.stringify(body) : undefined,
     });
+
+    if (response.status === 204 && response.ok) return undefined;
 
     let payload;
     try {

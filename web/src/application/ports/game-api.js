@@ -54,4 +54,8 @@ export class GameApi {
   async finishGame(_command) {
     throw new Error("GameApi.finishGame 尚未實作");
   }
+
+  async deleteRoom() {
+    throw new Error("GameApi.deleteRoom 尚未實作");
+  }
 }

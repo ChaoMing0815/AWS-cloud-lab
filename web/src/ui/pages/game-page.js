@@ -24,6 +24,8 @@ export class GamePage {
     resolveRound,
     fallbackRound,
     finishGame,
+    deleteRoom,
+    apiMode = "mock",
     connectionLabel,
     persistenceLabel,
     navigate = null,
@@ -44,7 +46,9 @@ export class GamePage {
       resolveRound,
       fallbackRound,
       finishGame,
+      deleteRoom,
     };
+    this.apiMode = apiMode;
     this.connectionLabel = connectionLabel;
     this.persistenceLabel = persistenceLabel;
     this.navigate = navigate;
@@ -64,9 +68,8 @@ export class GamePage {
     byId("connectionStatus").lastChild.textContent = ` ${this.connectionLabel}`;
     byId("persistenceStatus").textContent = this.persistenceLabel;
     byId("newRoomButton").addEventListener("click", () => this.handleCreateRoom());
-    byId("resetButton").addEventListener("click", () => {
-      if (window.confirm("要清除目前 Mock 房間並建立新房間嗎？")) this.handleCreateRoom();
-    });
+    byId("resetButton").hidden = this.apiMode !== "mock";
+    byId("resetButton").addEventListener("click", () => this.handleResetRoom());
     byId("joinForm").addEventListener("submit", (event) => this.handleJoin(event));
     byId("worldForm").addEventListener("submit", (event) => this.handleConfirmWorld(event));
     byId("startGameButton").addEventListener("click", () => this.handleStartGame());
@@ -85,6 +88,7 @@ export class GamePage {
     byId("fallbackRoundButton").addEventListener("click", () => this.handleFallback());
     byId("finishNowButton").addEventListener("click", () => this.handleFinish("FINISH_NOW"));
     byId("continueButton").addEventListener("click", () => this.handleFinish("CONTINUE"));
+    byId("deleteRoomButton").addEventListener("click", () => this.handleDeleteRoom());
     await this.run(() => this.useCases.loadRoom.execute());
     this.startPolling();
   }
@@ -206,6 +210,38 @@ export class GamePage {
 
   async handleCreateRoom() {
     await this.run(() => this.useCases.createRoom.execute(), "已建立新房間。");
+  }
+
+  async handleResetRoom() {
+    if (this.apiMode !== "mock") return false;
+    if (!globalThis.window.confirm("要清除目前 Mock 房間並建立新房間嗎？")) return false;
+    return this.handleCreateRoom();
+  }
+
+  async handleDeleteRoom() {
+    const canDelete = this.apiMode === "http"
+      && this.room?.status === "COMPLETED"
+      && this.room?.session?.isHost;
+    if (!canDelete) return false;
+    const confirmed = globalThis.window.confirm(
+      "此操作會永久刪除房間。僅房主可執行，且所有資料都無法復原。要繼續嗎？",
+    );
+    if (!confirmed) return false;
+    this.setBusy(true);
+    this.showFeedback("");
+    try {
+      await this.useCases.deleteRoom.execute();
+      this.room = null;
+      this.stopPolling();
+      this.showFeedback("房間已永久刪除。", "success");
+      if (this.navigate) this.navigate("/");
+      return true;
+    } catch (error) {
+      this.showFeedback(error.message || "刪除失敗，請稍後再試。", "error");
+      return false;
+    } finally {
+      this.setBusy(false);
+    }
   }
 
   async handleJoin(event) {
@@ -332,7 +368,7 @@ export class GamePage {
 
   setBusy(busy) {
     this.busy = busy;
-    document.querySelectorAll("button[type='submit'], #newRoomButton, #startGameButton, #rollRoundButton, #useSparkButton, #declineSparkButton, #resolveRoundButton, #skipAndResolveButton, #retryResolutionButton, #fallbackRoundButton, #finishNowButton, #continueButton").forEach((button) => {
+    document.querySelectorAll("button[type='submit'], #newRoomButton, #startGameButton, #rollRoundButton, #useSparkButton, #declineSparkButton, #resolveRoundButton, #skipAndResolveButton, #retryResolutionButton, #fallbackRoundButton, #finishNowButton, #continueButton, #deleteRoomButton").forEach((button) => {
       button.disabled = busy;
     });
   }
@@ -384,6 +420,9 @@ export class GamePage {
     byId("resolutionRecoveryControls").hidden = !(view.canRetryResolution || view.canUseFallback);
     byId("resolutionFailureText").textContent = `${view.resolutionFailureLabel}。固定骰子與星火判定已保留，尚未提交進度、危機或故事。`;
     byId("completionControls").hidden = !(view.canFinishNow || view.canContinue);
+    const canDeleteRoom = this.apiMode === "http" && view.isHost && view.status === "COMPLETED";
+    byId("deleteRoomControls").hidden = !canDeleteRoom;
+    byId("deleteRoomButton").disabled = !canDeleteRoom;
     if (view.currentDiceResult) {
       const improves = view.currentDiceResult.baseTotal === 6 || view.currentDiceResult.baseTotal === 9;
       byId("sparkHint").textContent = improves

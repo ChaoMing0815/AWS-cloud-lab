@@ -78,9 +78,11 @@ test("GamePage 正式永久刪除確認後處理成功／失敗，Mock 分支維
       navigate: (route) => routes.push(route),
     });
     page.room = { status: "COMPLETED", session: { isHost: true } };
-    page.run = async (operation) => {
-      await operation();
-      return true;
+    page.setBusy = () => {};
+    page.showFeedback = () => {};
+    page.syncRoute = () => {};
+    page.render = () => {
+      if (!page.room) throw new Error("刪除成功後不得再 render 已移除的 room");
     };
     let stopCalls = 0;
     page.stopPolling = () => { stopCalls += 1; };
@@ -101,7 +103,10 @@ test("GamePage 正式永久刪除確認後處理成功／失敗，Mock 分支維
       navigate: (route) => routes.push(route),
     });
     failedPage.room = endingRoom;
-    failedPage.run = async () => false;
+    failedPage.setBusy = () => {};
+    failedPage.showFeedback = () => {};
+    failedPage.syncRoute = () => {};
+    failedPage.render = () => {};
     let failedStopCalls = 0;
     failedPage.stopPolling = () => { failedStopCalls += 1; };
     await failedPage.handleDeleteRoom();

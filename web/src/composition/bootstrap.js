@@ -12,6 +12,7 @@ import { DecideSpark } from "../application/use-cases/decide-spark.js";
 import { ResolveRound } from "../application/use-cases/resolve-round.js";
 import { FallbackRound } from "../application/use-cases/fallback-round.js";
 import { FinishGame } from "../application/use-cases/finish-game.js";
+import { DeleteRoom } from "../application/use-cases/delete-room.js";
 import { FetchGameApi } from "../adapters/api/fetch-game-api.js";
 import { MockGameApi } from "../adapters/api/mock-game-api.js";
 import { GamePage } from "../ui/pages/game-page.js";
@@ -36,6 +37,8 @@ function mountGamePage({ forceMock = false } = {}) {
     resolveRound: new ResolveRound(gameApi),
     fallbackRound: new FallbackRound(gameApi),
     finishGame: new FinishGame(gameApi),
+    deleteRoom: new DeleteRoom(gameApi),
+    apiMode,
     connectionLabel: apiMode === "http" ? "本機 FastAPI 模式" : "教學 Demo · 不保存進度",
     persistenceLabel: apiMode === "http"
       ? "本機原型 · 遊戲資料由 FastAPI memory repository 管理"
