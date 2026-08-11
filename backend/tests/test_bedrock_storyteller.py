@@ -4,7 +4,7 @@ import json
 import pytest
 
 from app.application.ports import StorytellerFailure
-from app.domain.models import Room, World
+from app.domain.models import DiceResult, Player, Room, World
 
 
 MAX_BEDROCK_TOKENS = 1200
@@ -106,6 +106,30 @@ def resolution_room() -> Room:
         danger_points=1,
         ending_result="PARTIAL_SUCCESS",
         ending_cost="SIGNIFICANT",
+        players=[
+            Player(
+                id="player-1",
+                name="小明",
+                role="夜班夥伴",
+                action="查閱交班紀錄並比對監視器時間",
+                action_approach="insight",
+            )
+        ],
+        dice_results=[
+            DiceResult(
+                player_id="player-1",
+                round_number=2,
+                d6_1=3,
+                d6_2=4,
+                approach="insight",
+                attribute_value=1,
+                base_total=8,
+                final_total=8,
+                result="PARTIAL_SUCCESS",
+                progress_delta=2,
+                danger_delta=1,
+            )
+        ],
     )
 
 
@@ -133,6 +157,21 @@ def test_generate_world_uses_injected_converse_client_with_bounded_tokens_guardr
     prompt = request["messages"][0]["content"][0]["text"]
     assert "\x00" not in prompt
     assert " 夜班 " not in prompt
+    instructions = json.dumps(
+        {"system": request["system"], "messages": request["messages"]},
+        ensure_ascii=False,
+    )
+    for field in (
+        "title",
+        "premise",
+        "objective",
+        "opening_scene",
+        "core_obstacle",
+        "tone",
+        "custom_tone",
+        "suggested_round_limit",
+    ):
+        assert field in instructions
 
 
 @pytest.mark.parametrize("invalid_max_tokens", [0, -1, MAX_BEDROCK_TOKENS + 1])
@@ -331,6 +370,14 @@ def test_round_and_ending_are_text_only_bounded_and_leave_canonical_room_state_u
     assert len(ending_text) <= 1200
     assert (room.progress_points, room.danger_points, room.ending_result, room.ending_cost) == before
     assert len(client.calls) == 2
+    round_prompt = client.calls[0]["messages"][0]["content"][0]["text"]
+    ending_prompt = client.calls[1]["messages"][0]["content"][0]["text"]
+    assert "查閱交班紀錄並比對監視器時間" in round_prompt
+    assert "PARTIAL_SUCCESS" in round_prompt
+    assert '"progress_delta": 2' in round_prompt
+    assert '"danger_delta": 1' in round_prompt
+    assert "PARTIAL_SUCCESS" in ending_prompt
+    assert "SIGNIFICANT" in ending_prompt
 
 
 @pytest.mark.parametrize("method_name", ["resolve_round", "resolve_ending"])
