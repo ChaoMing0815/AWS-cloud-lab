@@ -2,8 +2,8 @@
 
 - 更新日期：2026-08-11
 - Branch：`codex/session-lifecycle`
-- 已驗證功能基準：`30cdffe`（本機 MVP P0 完成）
-- Regression：Backend `134 passed, 8 skipped`；Frontend `68 passed`
+- 已驗證功能基準：`447cc36`（production Bedrock composition Green）
+- Regression：Backend `212 passed, 8 skipped`；Frontend `76 passed`
 - AWS：專題 workload 為 0；本批無 AWS 寫入
 
 ## Current
@@ -13,13 +13,16 @@
 - 房主轉移自己的 Player 時保留原 Host session；完成房在保留期可唯讀轉移。
 - 房主永久刪除有原子 repository contract、204 與三 cookie 清除；刪後所有舊 session／transfer 不可用。
 - Browser 已觀察 offline→reconnected、session-expired、completed 與 console 無未處理錯誤。
+- 房主可輸入 3–5 個關鍵字生成兩次可編輯 WorldDraft；失敗與 replay 仍受 inference／idempotency 成本邊界限制。
+- `BedrockStoryteller` 已完成 Converse、Guardrail、schema、canonical 結果 prompt 與安全錯誤分類；production 缺 Region／model／Guardrail／token ceiling 時拒絕啟動。
 
 ## Next
 
 ```text
-講師等價性確認／Tier 0 AWS change envelope
-→ 估價、IAM／SG／SSM 邊界與 IaC Red
-→ 取得人工核准後才可執行 AWS 寫入
+PostgreSQL migration-aware readiness／retention runner
+→ Nginx＋systemd release bundle、dependency lock 與去敏 logs
+→ production-parity local gate／IaC Red
+→ Tier 0 AWS bounded change envelope 人工核准後才可操作 AWS
 ```
 
-無本機 P0 blocker。Residual risk：idempotency 仍是 process memory，不宣稱 multi-process exactly-once。
+尚不可正式上線：boto3 release dependency、真實 model／Guardrail、RDS readiness、TLS runtime bundle 與 AWS 驗證未完成。Residual risk：idempotency 仍是 process memory，不宣稱 multi-process exactly-once。
