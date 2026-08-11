@@ -1,8 +1,8 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.application.ports import Clock
 
 
 class SystemClock(Clock):
     def now(self) -> datetime:
-        return datetime.now()
+        return datetime.now(timezone.utc)
