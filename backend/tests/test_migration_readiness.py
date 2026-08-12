@@ -97,7 +97,15 @@ def test_migration_runner_discovers_sorted_unapplied_files_and_records_each_vers
     assert connection.transaction_count == 1
 
 
-@pytest.mark.parametrize("filenames", [("001_create_rooms.sql", "001_duplicate.sql"), ("001_create_rooms.sql", "not-a-migration.sql")])
+@pytest.mark.parametrize(
+    "filenames",
+    [
+        ("001_create_rooms.sql", "001_duplicate.sql"),
+        ("001_create_rooms.sql", "not-a-migration.sql"),
+        ("001_create_rooms.sql", "1_ambiguous_version.sql"),
+        ("001_create_rooms.sql", "0001_overwide_version.sql"),
+    ],
+)
 def test_migration_runner_rejects_duplicate_versions_and_invalid_filenames(
     tmp_path, monkeypatch, filenames
 ) -> None:
