@@ -1,6 +1,10 @@
+import json
+import logging
 import os
+from time import perf_counter
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
+from uuid import uuid4
 
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse
@@ -21,6 +25,7 @@ from app.domain.errors import DomainError
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 WEB_ROOT = PROJECT_ROOT / "web"
+REQUEST_LOGGER = logging.getLogger("co_story.request")
 
 
 def _comma_separated_setting(name: str) -> tuple[str, ...]:
@@ -125,6 +130,8 @@ def create_app(dice_roller=None, room_repository=None, storyteller=None, clock=N
 
     @application.middleware("http")
     async def security_headers(request: Request, call_next):
+        request_id = uuid4().hex
+        started_at = perf_counter()
         unsafe_api_request = request.url.path.startswith("/api/") and request.method in {
             "POST", "PUT", "PATCH", "DELETE",
         }
@@ -139,6 +146,19 @@ def create_app(dice_roller=None, room_repository=None, storyteller=None, clock=N
             response.headers["Content-Security-Policy"] = "default-src 'self'; frame-ancestors 'none'"
         if request.url.path.startswith("/api/"):
             response.headers["Cache-Control"] = "no-store"
+        response.headers["X-Request-ID"] = request_id
+        REQUEST_LOGGER.info(
+            json.dumps(
+                {
+                    "request_id": request_id,
+                    "method": request.method,
+                    "path": request.url.path,
+                    "status": response.status_code,
+                    "latency_ms": int((perf_counter() - started_at) * 1000),
+                },
+                separators=(",", ":"),
+            )
+        )
         return response
 
     @application.exception_handler(DomainError)
