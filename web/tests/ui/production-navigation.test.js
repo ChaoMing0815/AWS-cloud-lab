@@ -40,3 +40,19 @@ test("browser back／forward 的 popstate 會重新依 server canonical route �
     "popstate 必須 reload，交回 FastAPI route shell 處理",
   );
 });
+
+test("遊戲規則頁有獨立路徑、返回首頁與核心規則摘要", async () => {
+  const html = await readFile(new URL("../../index.html", import.meta.url), "utf8");
+  const bootstrap = await readFile(
+    new URL("../../src/composition/bootstrap.js", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(html, /href=["']\/rules["'][^>]*>遊戲規則/);
+  assert.match(html, /id=["']rulesPage["']/);
+  assert.match(html, /回合怎麼進行/);
+  assert.match(html, /2d6 \+ 屬性/);
+  assert.match(html, /星火/);
+  assert.match(html, /href=["']\/["'][^>]*>返回首頁/);
+  assert.match(bootstrap, /path === ["']\/rules["']/);
+});
