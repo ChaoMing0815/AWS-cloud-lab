@@ -2,8 +2,8 @@
 
 - 更新日期：2026-08-12
 - Branch：`codex/session-lifecycle`
-- 最後全綠功能基準：`eefc5e4`（production runtime 與 release rollback contract）
-- Regression：Backend `235 passed, 8 skipped`；Frontend `76 passed`
+- 最後全綠功能基準：`6f4c184`（structured request logging）
+- Regression：Backend `237 passed, 8 skipped`；Frontend `76 passed`
 - AWS：專題 workload 為 0；本批無 AWS 寫入
 
 ## Current
@@ -19,13 +19,14 @@
 - 到期房間 cleanup 以獨立 use case／repository bulk delete 實作：所有狀態的 `expires_at <= now` 均會刪除，demo `None` 與未到期房間保留；未連接 timer 或 Web boot。
 - `requirements-prod.txt` 為精確 runtime lock，包含 `boto3`／`botocore`；開發依賴引用同一 lock。
 - runtime bundle 採 Nginx loopback proxy、systemd non-root single worker 與 repo 外 environment／TLS；release 以 per-release `.venv`、candidate readiness 與 `mv -Tf` 原子切換，rollback 禁止 schema downgrade。
+- API request log 為 JSON allowlist：僅含 server-generated request ID、method、純 path、status 與 latency；不得記錄 query、headers、cookies 或 body。
 
 ## Next
 
 ```text
-先完成 structured allowlist logs 與 secret redaction TDD
-→ production-parity local gate／IaC Red
+先執行 production-parity local gate（lock install、production composition、health、security、secret scan）
+→ IaC Red
 → Tier 0 AWS bounded change envelope 人工核准後才可操作 AWS
 ```
 
-尚不可正式上線：去敏 logs、production-parity gate、真實 model／Guardrail、RDS readiness、TLS 與 AWS 驗證未完成。Residual risk：idempotency 仍是 process memory，不宣稱 multi-process exactly-once；release assets 尚未在 Linux VM／EC2 實機驗證。
+尚不可正式上線：production-parity gate、真實 model／Guardrail、RDS readiness、TLS 與 AWS 驗證未完成。Residual risk：idempotency 仍是 process memory，不宣稱 multi-process exactly-once；release assets 尚未在 Linux VM／EC2 實機驗證。
