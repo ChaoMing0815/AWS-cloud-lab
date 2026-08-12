@@ -9,14 +9,13 @@ User=co-story
 Group=co-story
 WorkingDirectory=/opt/co-story/current/backend
 EnvironmentFile=/etc/co-story/runtime.env
-ExecStart=/opt/co-story/venv/bin/uvicorn app.main:create_app --factory --host 127.0.0.1 --port 8000 --workers 1
+ExecStart=/opt/co-story/current/.venv/bin/uvicorn app.main:create_app --factory --host 127.0.0.1 --port 8000 --workers 1
 Restart=on-failure
 RestartSec=5
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/opt/co-story
 
 [Install]
 WantedBy=multi-user.target

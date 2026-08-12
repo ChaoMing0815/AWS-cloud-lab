@@ -75,7 +75,7 @@ class PostgresRoomRepository(RoomRepository):
                         "SELECT version FROM schema_migrations"
                     ).fetchall()
                 }
-            return expected_versions.issubset(applied_versions)
+            return expected_versions == applied_versions
         except Exception:
             return False
 

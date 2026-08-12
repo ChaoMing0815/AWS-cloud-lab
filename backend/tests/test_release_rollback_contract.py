@@ -32,10 +32,12 @@ def test_activation_migrates_and_checks_candidate_before_atomic_current_switch()
 
     migrate_at = activate.index("co-story-migrate@")
     candidate_at = activate.index("co-story-candidate@")
-    ready_at = activate.index("/api/v1/ready")
+    ready_before_switch = activate.index("/api/v1/ready")
     switch_at = activate.index("mv -Tf")
     restart_at = activate.index("systemctl restart co-story.service")
-    assert migrate_at < candidate_at < ready_at < switch_at < restart_at
+    ready_after_restart = activate.rindex("/api/v1/ready")
+    assert migrate_at < candidate_at < ready_before_switch < switch_at < restart_at < ready_after_restart
+    assert "current.restore" in activate
     assert "ln -s" in activate
     assert "current.previous" in activate
     assert "set -x" not in activate
@@ -49,6 +51,10 @@ def test_rollback_validates_candidate_without_migrating_or_downgrading_schema() 
     assert "co-story-candidate@" in rollback
     assert "/api/v1/ready" in rollback
     assert "mv -Tf" in rollback
+    move_lines = [line.strip() for line in rollback.splitlines() if line.strip().startswith("mv ")]
+    assert move_lines
+    assert all("mv -Tf" in line for line in move_lines)
+    assert "current.restore" in rollback
     assert "co-story-migrate@" not in rollback
     assert "migrate" not in lowered
     assert "psql" not in lowered
