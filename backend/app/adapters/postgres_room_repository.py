@@ -101,6 +101,18 @@ class PostgresRoomRepository(RoomRepository):
                 connection.execute("DELETE FROM rooms WHERE id = %s", (room_id,))
             return result
 
+    def delete_expired_at_or_before(self, now: datetime) -> int:
+        with psycopg.connect(self.dsn) as connection:
+            result = connection.execute(
+                """
+                DELETE FROM rooms
+                WHERE (payload ->> 'expires_at') IS NOT NULL
+                  AND (payload ->> 'expires_at')::timestamptz <= %s
+                """,
+                (now,),
+            )
+            return result.rowcount
+
     @staticmethod
     def _save(connection, room: Room) -> None:
         connection.execute(

@@ -42,6 +42,9 @@ class RoomRepository(ABC):
     @abstractmethod
     def delete(self, room_id: str, operation: Callable[[Room | None], Any]) -> Any: ...
 
+    @abstractmethod
+    def delete_expired_at_or_before(self, now: datetime) -> int: ...
+
 
 class Storyteller(ABC):
     @abstractmethod

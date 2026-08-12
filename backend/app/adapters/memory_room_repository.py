@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from collections.abc import Callable
+from datetime import datetime
 from threading import RLock
 from typing import Any
 
@@ -46,3 +47,14 @@ class MemoryRoomRepository(RoomRepository):
             if room is not None:
                 del self._rooms[room_id]
             return deepcopy(result)
+
+    def delete_expired_at_or_before(self, now: datetime) -> int:
+        with self._lock:
+            expired_room_ids = [
+                room.id
+                for room in self._rooms.values()
+                if room.expires_at is not None and room.expires_at <= now
+            ]
+            for room_id in expired_room_ids:
+                del self._rooms[room_id]
+            return len(expired_room_ids)
