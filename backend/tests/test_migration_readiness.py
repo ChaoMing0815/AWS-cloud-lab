@@ -222,6 +222,7 @@ def test_postgres_readiness_requires_database_and_current_schema(monkeypatch) ->
     "connection",
     [
         _ReadinessConnection(versions=()),
+        _ReadinessConnection(versions=("001_create_rooms", "999_unknown")),
         _ReadinessConnection(failure=RuntimeError("database unavailable")),
     ],
 )

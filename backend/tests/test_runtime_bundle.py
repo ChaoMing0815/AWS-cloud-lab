@@ -30,6 +30,8 @@ def test_systemd_runs_one_non_root_uvicorn_process_with_external_environment() -
     assert "User=co-story" in unit
     assert "Group=co-story" in unit
     assert "EnvironmentFile=/etc/co-story/runtime.env" in unit
+    assert "ExecStart=/opt/co-story/current/.venv/bin/uvicorn" in unit
+    assert "/opt/co-story/venv" not in unit
     assert "--host 127.0.0.1" in unit
     assert "--port 8000" in unit
     assert "--workers 1" in unit
