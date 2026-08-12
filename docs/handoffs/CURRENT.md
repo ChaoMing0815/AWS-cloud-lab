@@ -1,10 +1,9 @@
 # CURRENT：目前工作交接
 
-- 更新日期：2026-08-11
+- 更新日期：2026-08-12
 - Branch：`codex/session-lifecycle`
-- 最後全綠功能基準：`71650a2`（世界生成／Bedrock milestone）
-- 暫停中的 Red checkpoint：`7edc7cf`（migration-aware readiness；尚未 Green）
-- Regression：Backend `212 passed, 8 skipped`；Frontend `76 passed`
+- 最後全綠功能基準：`cbf43f1`（migration readiness 與到期房間 cleanup）
+- Regression：Backend `224 passed, 8 skipped`；Frontend `76 passed`
 - AWS：專題 workload 為 0；本批無 AWS 寫入
 
 ## Current
@@ -16,17 +15,18 @@
 - Browser 已觀察 offline→reconnected、session-expired、completed 與 console 無未處理錯誤。
 - 房主可輸入 3–5 個關鍵字生成兩次可編輯 WorldDraft；失敗與 replay 仍受 inference／idempotency 成本邊界限制。
 - `BedrockStoryteller` 已完成 Converse、Guardrail、schema、canonical 結果 prompt 與安全錯誤分類；production 缺 Region／model／Guardrail／token ceiling 時拒絕啟動。
-- Migration/readiness Red 已保存：targeted `1 passed, 8 expected failed`；未完成 Green 已回復，工作樹不保留 production 半成品。
+- Migration 為獨立、可重跑 command；readiness 同時驗證 PostgreSQL 與所有 schema migration version，Web boot 不會自動套用 migration。
+- 到期房間 cleanup 以獨立 use case／repository bulk delete 實作：所有狀態的 `expires_at <= now` 均會刪除，demo `None` 與未到期房間保留；未連接 timer 或 Web boot。
 
 ## Next
 
 ```text
-先補 `NNN_*.sql` 必須恰為三位數 prefix 的 Red boundary
-→ 重做 versioned migration CLI／PostgreSQL schema-aware readiness Green
-→ retention runner
-→ Nginx＋systemd release bundle、dependency lock 與去敏 logs
+先建立 production dependency manifest／精確 lock（含 boto3／botocore）
+→ Nginx＋systemd non-root runtime bundle 的靜態 TDD
+→ release／rollback 操作契約
+→ structured allowlist logs
 → production-parity local gate／IaC Red
 → Tier 0 AWS bounded change envelope 人工核准後才可操作 AWS
 ```
 
-專題已依使用者指示暫停。尚不可正式上線：migration Green、boto3 release dependency、真實 model／Guardrail、RDS readiness、TLS runtime bundle 與 AWS 驗證未完成。Residual risk：idempotency 仍是 process memory，不宣稱 multi-process exactly-once。
+尚不可正式上線：production dependency lock、runtime bundle、去敏 logs、真實 model／Guardrail、RDS readiness、TLS 與 AWS 驗證未完成。Residual risk：idempotency 仍是 process memory，不宣稱 multi-process exactly-once。
