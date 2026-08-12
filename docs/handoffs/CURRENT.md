@@ -2,8 +2,8 @@
 
 - 更新日期：2026-08-12
 - Branch：`codex/session-lifecycle`
-- 最後全綠功能基準：`6f4c184`（structured request logging）
-- Regression：Backend `237 passed, 8 skipped`；Frontend `76 passed`
+- 最後全綠功能基準：`b7a1f8c`（輕量遊戲規則頁）
+- Regression：Backend `238 passed, 8 skipped`；Frontend `76 passed`（shell 缺 Node runner，規則頁已 Browser 驗證）
 - AWS：專題 workload 為 0；本批無 AWS 寫入
 
 ## Current
@@ -20,11 +20,13 @@
 - `requirements-prod.txt` 為精確 runtime lock，包含 `boto3`／`botocore`；開發依賴引用同一 lock。
 - runtime bundle 採 Nginx loopback proxy、systemd non-root single worker 與 repo 外 environment／TLS；release 以 per-release `.venv`、candidate readiness 與 `mv -Tf` 原子切換，rollback 禁止 schema downgrade。
 - API request log 為 JSON allowlist：僅含 server-generated request ID、method、純 path、status 與 latency；不得記錄 query、headers、cookies 或 body。
+- 正式 `/rules` 提供唯讀的新手規則摘要，首頁與遊戲頁可開啟；不改變遊戲規則、session 或 API state。
 
 ## Next
 
 ```text
-先執行 production-parity local gate（lock install、production composition、health、security、secret scan）
+先修正本機試玩發現的 Mock WorldDraft 與 ConfirmWorld schema 長度不一致，並提供欄位級錯誤提示
+→ 執行 production-parity local gate（lock install、production composition、health、security、secret scan）
 → IaC Red
 → Tier 0 AWS bounded change envelope 人工核准後才可操作 AWS
 ```
