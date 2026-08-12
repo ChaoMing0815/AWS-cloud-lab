@@ -64,6 +64,11 @@ const formalRoomPath = /^\/room\/[A-HJ-NP-Z2-9]{6}/;
 const formalGameSuffixes = ["/lobby", "/play", "/ending"];
 if (path === "/demo") mountGamePage({ forceMock: true });
 else if (path === "/host/setup") mountGamePage();
+else if (path === "/rules") {
+  document.getElementById("landingPage").hidden = true;
+  document.getElementById("gamePage").hidden = true;
+  document.getElementById("rulesPage").hidden = false;
+}
 else if (formalRoomPath.test(path) && formalGameSuffixes.some((suffix) => path.endsWith(suffix))) {
   mountGamePage();
 }

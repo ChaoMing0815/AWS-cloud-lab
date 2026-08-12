@@ -20,6 +20,7 @@
         </span>
       </a>
       <div id="connectionStatus" class="connection"><span></span> 準備開始</div>
+      <a class="topbar-link" href="/rules">遊戲規則</a>
     </header>
 
     <p id="serverRequiredNotice" role="alert" hidden>此頁面需由本機或正式 Web server 開啟，請使用專案提供的網址。</p>
@@ -77,6 +78,24 @@
         <p id="sessionNotice" class="entry-error" role="status" hidden></p>
 
         <a class="demo-link" href="/demo">第一次遊玩？先體驗不保存進度的教學 Demo →</a>
+      </section>
+    </main>
+
+    <main id="rulesPage" class="landing-shell rules-shell" hidden>
+      <section class="landing-copy">
+        <div class="eyebrow">新手快速說明</div>
+        <h1>遊戲規則</h1>
+        <p>自由決定角色與行動；骰子、星火與進度決定結果，故事主持人只負責把既定結果寫成劇情。</p>
+        <a class="secondary-button rules-return" href="/">返回首頁</a>
+      </section>
+
+      <section class="entry-panel rules-content" aria-label="遊戲規則說明">
+        <section><div class="eyebrow">1. 開始遊戲</div><h2>3–5 人共演</h2><p>房主建立世界並分享六碼房號；所有玩家完成角色後，由房主開始遊戲。</p></section>
+        <section><div class="eyebrow">2. 回合怎麼進行</div><h2>各自行動，再共同結算</h2><p>每位玩家秘密提交行動與使用的屬性。行動收齊後，房主擲骰、玩家決定是否使用星火，最後由房主結算故事。</p></section>
+        <section><div class="eyebrow">3. 骰子與屬性</div><h2>2d6 + 屬性</h2><p>角色有勇氣、洞察、羈絆三項屬性；建立角色時各為 0–2，合計必須是 3。骰點加上選定屬性，決定成功、部分成功或失敗。</p></section>
+        <section><div class="eyebrow">4. 星火</div><h2>看見骰點後再決定</h2><p>每位角色開始時有 1 點星火。使用星火會讓本次總值 +1；失敗結算後可獲得星火，最多持有 3 點。</p></section>
+        <section><div class="eyebrow">5. 結局</div><h2>推進目標、控制危機</h2><p>成功會推進共同目標，失敗可能增加危機。達成目標或到達選定的回合上限後，故事會依結果與代價收束。</p></section>
+        <p class="muted">房主負責世界設定、開始、擲骰與結算；所有玩家都能建立角色、提交行動與決定自己的星火。</p>
       </section>
     </main>
 

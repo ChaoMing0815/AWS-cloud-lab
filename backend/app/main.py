@@ -185,6 +185,10 @@ def create_app(dice_roller=None, room_repository=None, storyteller=None, clock=N
     async def demo_app_shell() -> FileResponse:
         return FileResponse(WEB_ROOT / "index.html")
 
+    @application.get("/rules", include_in_schema=False)
+    async def rules_app_shell() -> FileResponse:
+        return FileResponse(WEB_ROOT / "index.html")
+
     @application.get("/host/setup", include_in_schema=False)
     async def host_setup_app_shell() -> FileResponse:
         return FileResponse(WEB_ROOT / "index.html")
