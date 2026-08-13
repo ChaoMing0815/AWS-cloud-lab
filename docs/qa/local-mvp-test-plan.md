@@ -20,6 +20,20 @@
 6. Loading、empty、error、offline、reconnected 與 completed 狀態可由 Browser 驗證。
 7. Console 無未處理錯誤；畫面不洩漏 token、cookie、stack、SQL 或 AWS credential。
 
+## 「本機 MVP 100%」完成定義與停止規則
+
+本機 MVP 可標示為 **100%（AWS 串接準備完成）**，僅表示下列可部署前條件皆已完成，不宣稱 Tier 0 已在 AWS 上線：
+
+1. 本文件的 P0 使用者旅程、必要負面案例與非功能檢查全部通過。
+2. PostgreSQL repository／migration、session lifecycle、LLM recovery、polling 與可玩世界設定均有回歸與 Browser 證據。
+3. 乾淨 runtime 可依精確 production lock 安裝；production 設定、liveness／readiness、origin／host、Secure cookie 與 security headers 均 fail closed。
+4. release assets 可通過本機語法檢查，且 tracked files 的高訊號 secret scan 為空。
+5. 真實 AWS 所需的輸入已限縮為受控的 runtime environment：RDS `DATABASE_URL`、Bedrock Region／model／Guardrail 與 TLS／host／origin 值；接入後不需為既有 P0 功能另寫產品程式。
+
+達到此定義後，下一個工作是 IaC Red、AWS bounded change envelope 與經人工核准的實際部署／串接。以下項目**不再阻擋本機 MVP 100%**：視覺微調、額外遊戲模式、P1 UX、微服務、CI/CD、RAG／Agentic AI、Docker 容器實機演練，以及尚未執行的 AWS 驗證。
+
+只有 P0 regression、資料遺失、權限／session／secret 漏洞、無法以正式 runtime 啟動，或 AWS 串接發現既有 API／設定契約不相容時，才重新打開本機 MVP gate；其餘需求改列後續 Tier 工作，不進入無限優化迴圈。
+
 ## 測試層級
 
 | 層級 | 主要責任 |
