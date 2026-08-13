@@ -2,8 +2,8 @@
 
 - 更新日期：2026-08-13
 - Branch：`codex/session-lifecycle`
-- 最後全綠功能基準：`fafea8a`（WorldDraft 確認契約與欄位錯誤提示）
-- Regression：Backend `239 passed, 8 skipped`；Frontend `80 passed`（使用工作區 bundled Node runner）
+- 最後全綠功能基準：`f4ff321`（Tier 0 network IaC local contract）
+- Regression：Backend `242 passed, 8 skipped`；Frontend `80 passed`（使用工作區 bundled Node runner）
 - AWS：專題 workload 為 0；本批無 AWS 寫入
 
 ## Current
@@ -23,12 +23,13 @@
 - 正式 `/rules` 提供唯讀的新手規則摘要，首頁與遊戲頁可開啟；不改變遊戲規則、session 或 API state。
 - 預設 Mock 生成的 WorldDraft 可直接確認為 Lobby，不再因 `premise` 長度不足得到 `422`；HTTP 的 FastAPI `422` 會以安全的欄位級提示標示世界表單，草稿保持可編輯。
 - 本機 MVP 為 **100%（AWS 串接準備完成）**：乾淨 production lock install／import、production live／ready fail-closed、security headers、release assets 與 tracked-file secret scan 已驗證；完整定義與停止規則見 `docs/qa/local-mvp-test-plan.md`。
+- Tier 0 network CloudFormation 已通過本機 topology／route／SG contract 與 SG-reference sensitivity；template 尚未對 AWS validate 或建立資源。
 
 ## Next
 
 ```text
-IaC Red（僅 repo-local contract，不建立 AWS 資源）
-→ Tier 0 AWS bounded change envelope 人工核准後才可操作 AWS
+完成 Tier 0 AWS bounded change envelope（帳號、Region、credits、Budget、精確 resource names、IAM、成本、rollback）
+→ 使用者人工核准後，才可做 AWS readonly inventory 與 CloudFormation validate／create
 ```
 
 本機 MVP 100% 不等於 Tier 0 AWS 已完成：真實 model／Guardrail、RDS readiness、TLS 與 AWS 驗證尚未執行。Residual risk：idempotency 仍是 process memory，不宣稱 multi-process exactly-once；release assets 尚未在 Linux VM／EC2 實機驗證。
