@@ -28,8 +28,8 @@
 ## Next
 
 ```text
-完成 Tier 0 AWS bounded change envelope（帳號、Region、credits、Budget、精確 resource names、IAM、成本、rollback）
-→ 使用者人工核准後，才可做 AWS readonly inventory 與 CloudFormation validate／create
+取得使用者對 [Tier 0 AWS change envelope](../architecture/tier0-aws-change-envelope.md) 的 **Batch 0 唯讀盤點** 明確核准
+→ 完成帳號／Region／credits／Budget／principal 盤點後，再提出 Batch 1 network CloudFormation 核准
 ```
 
 本機 MVP 100% 不等於 Tier 0 AWS 已完成：真實 model／Guardrail、RDS readiness、TLS 與 AWS 驗證尚未執行。Residual risk：idempotency 仍是 process memory，不宣稱 multi-process exactly-once；release assets 尚未在 Linux VM／EC2 實機驗證。
