@@ -125,15 +125,20 @@
             <span class="count-pill">DRAFT</span>
           </div>
           <label for="worldTitle">故事名稱</label>
-          <input id="worldTitle" maxlength="40" required />
+          <input id="worldTitle" maxlength="40" aria-describedby="worldTitleError" required />
+          <p id="worldTitleError" class="field-error" role="alert" hidden></p>
           <label for="worldPremiseInput">故事背景</label>
-          <textarea id="worldPremiseInput" minlength="50" maxlength="500" rows="4" required></textarea>
+          <textarea id="worldPremiseInput" minlength="50" maxlength="500" rows="4" aria-describedby="worldPremiseError" required></textarea>
+          <p id="worldPremiseError" class="field-error" role="alert" hidden></p>
           <label for="worldObjectiveInput">共同目標</label>
-          <textarea id="worldObjectiveInput" minlength="10" maxlength="200" rows="2" required></textarea>
+          <textarea id="worldObjectiveInput" minlength="10" maxlength="200" rows="2" aria-describedby="worldObjectiveError" required></textarea>
+          <p id="worldObjectiveError" class="field-error" role="alert" hidden></p>
           <label for="openingSceneInput">初始場景</label>
-          <textarea id="openingSceneInput" minlength="20" maxlength="400" rows="3" required></textarea>
+          <textarea id="openingSceneInput" minlength="20" maxlength="400" rows="3" aria-describedby="openingSceneError" required></textarea>
+          <p id="openingSceneError" class="field-error" role="alert" hidden></p>
           <label for="coreObstacleInput">核心阻礙</label>
-          <textarea id="coreObstacleInput" minlength="10" maxlength="200" rows="2" required></textarea>
+          <textarea id="coreObstacleInput" minlength="10" maxlength="200" rows="2" aria-describedby="coreObstacleError" required></textarea>
+          <p id="coreObstacleError" class="field-error" role="alert" hidden></p>
           <div class="join-row">
             <label>故事調性
               <select id="toneInput">

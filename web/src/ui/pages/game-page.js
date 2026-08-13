@@ -2,6 +2,14 @@ import { toRoomViewModel } from "../../adapters/presenters/room-view-model.js";
 
 const byId = (id) => document.getElementById(id);
 
+const WORLD_FIELD_ERRORS = {
+  story_title: { inputId: "worldTitle", errorId: "worldTitleError" },
+  premise: { inputId: "worldPremiseInput", errorId: "worldPremiseError" },
+  objective: { inputId: "worldObjectiveInput", errorId: "worldObjectiveError" },
+  opening_scene: { inputId: "openingSceneInput", errorId: "openingSceneError" },
+  core_obstacle: { inputId: "coreObstacleInput", errorId: "coreObstacleError" },
+};
+
 function element(tagName, { className, text, title } = {}) {
   const node = document.createElement(tagName);
   if (className) node.className = className;
@@ -263,6 +271,7 @@ export class GamePage {
 
   async handleConfirmWorld(event) {
     event.preventDefault();
+    this.clearWorldFieldErrors();
     await this.run(
       () => this.useCases.confirmWorld.execute({
         storyTitle: byId("worldTitle").value,
@@ -275,7 +284,34 @@ export class GamePage {
         maxRounds: Number(byId("maxRoundsInput").value),
       }),
       "世界設定已確認，現在可以邀請玩家加入。",
+      { onError: (error) => this.showWorldFieldErrors(error.fieldErrors) },
     );
+  }
+
+  clearWorldFieldErrors() {
+    Object.values(WORLD_FIELD_ERRORS).forEach(({ inputId, errorId }) => {
+      const input = byId(inputId);
+      const error = byId(errorId);
+      input?.removeAttribute("aria-invalid");
+      if (error) {
+        error.hidden = true;
+        error.textContent = "";
+      }
+    });
+  }
+
+  showWorldFieldErrors(fieldErrors = {}) {
+    Object.entries(fieldErrors).forEach(([field, message]) => {
+      const target = WORLD_FIELD_ERRORS[field];
+      if (!target) return;
+      const input = byId(target.inputId);
+      const error = byId(target.errorId);
+      input?.setAttribute("aria-invalid", "true");
+      if (error) {
+        error.hidden = false;
+        error.textContent = message;
+      }
+    });
   }
 
   async handleGenerateWorld(event) {
@@ -368,7 +404,7 @@ export class GamePage {
     await this.run(() => this.useCases.finishGame.execute({ decision }), message);
   }
 
-  async run(operation, successMessage = "") {
+  async run(operation, successMessage = "", { onError = null } = {}) {
     this.setBusy(true);
     this.showFeedback("");
     try {
@@ -378,6 +414,7 @@ export class GamePage {
       this.showFeedback(successMessage, "success");
       return true;
     } catch (error) {
+      onError?.(error);
       this.showFeedback(error.message || "操作失敗，請稍後再試。", "error");
       return false;
     } finally {
