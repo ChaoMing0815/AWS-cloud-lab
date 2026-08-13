@@ -18,3 +18,18 @@ test("DRAFT 房主世界表單提供生成草稿輸入、按鈕與剩餘次數",
   assert.match(html, /生成世界草稿/);
   assert.match(html, /剩餘.*次/);
 });
+
+test("DRAFT 世界表單為可由 API 標示的欄位提供錯誤訊息區", async () => {
+  const html = await readFile(new URL("../../index.html", import.meta.url), "utf8");
+
+  for (const id of [
+    "worldTitleError",
+    "worldPremiseError",
+    "worldObjectiveError",
+    "openingSceneError",
+    "coreObstacleError",
+  ]) {
+    assert.match(html, new RegExp(`id=["']${id}["']`), `缺少 #${id}`);
+  }
+  assert.match(html, /aria-describedby=["']worldPremiseError["']/);
+});
