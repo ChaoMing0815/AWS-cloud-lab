@@ -1,9 +1,9 @@
 # CURRENT：目前工作交接
 
-- 更新日期：2026-08-12
+- 更新日期：2026-08-13
 - Branch：`codex/session-lifecycle`
-- 最後全綠功能基準：`b7a1f8c`（輕量遊戲規則頁）
-- Regression：Backend `238 passed, 8 skipped`；Frontend `76 passed`（shell 缺 Node runner，規則頁已 Browser 驗證）
+- 最後全綠功能基準：`fafea8a`（WorldDraft 確認契約與欄位錯誤提示）
+- Regression：Backend `239 passed, 8 skipped`；Frontend `80 passed`（使用工作區 bundled Node runner）
 - AWS：專題 workload 為 0；本批無 AWS 寫入
 
 ## Current
@@ -21,12 +21,12 @@
 - runtime bundle 採 Nginx loopback proxy、systemd non-root single worker 與 repo 外 environment／TLS；release 以 per-release `.venv`、candidate readiness 與 `mv -Tf` 原子切換，rollback 禁止 schema downgrade。
 - API request log 為 JSON allowlist：僅含 server-generated request ID、method、純 path、status 與 latency；不得記錄 query、headers、cookies 或 body。
 - 正式 `/rules` 提供唯讀的新手規則摘要，首頁與遊戲頁可開啟；不改變遊戲規則、session 或 API state。
+- 預設 Mock 生成的 WorldDraft 可直接確認為 Lobby，不再因 `premise` 長度不足得到 `422`；HTTP 的 FastAPI `422` 會以安全的欄位級提示標示世界表單，草稿保持可編輯。
 
 ## Next
 
 ```text
-先修正本機試玩發現的 Mock WorldDraft 與 ConfirmWorld schema 長度不一致，並提供欄位級錯誤提示
-→ 執行 production-parity local gate（lock install、production composition、health、security、secret scan）
+執行 production-parity local gate（lock install、production composition、health、security、secret scan）
 → IaC Red
 → Tier 0 AWS bounded change envelope 人工核准後才可操作 AWS
 ```
