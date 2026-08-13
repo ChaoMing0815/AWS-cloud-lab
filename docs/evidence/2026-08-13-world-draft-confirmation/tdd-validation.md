@@ -7,7 +7,8 @@
 - Frontend Green：`fafea8a`；只轉譯已知結構化 validation type，並對世界表單的對應欄位設 `aria-invalid` 與訊息。
 - Targeted：World generation API `14 passed`；Frontend adapter／world UI／markup `20 passed`。
 - Full regression：Backend `239 passed, 8 skipped`；Frontend `80 passed`。
+- Browser：重啟載入最新 commit 的本機 `127.0.0.1:8000` 後，3 關鍵字生成的 `premise` 為 58 字；確認世界成功進入 Lobby。
 - Negative／boundary：短於 50 字的 generated `premise` 會使確認 API 回傳 `422`；422 僅顯示安全的本地化欄位提示。
 - Sensitivity：暫時將 Mock `premise` 還原為過短字串，新增確認契約測試如預期失敗；已立即還原並重跑全套。
 - Rollback：回復上述 Green commits；本批沒有 migration、network、secret 或 AWS 狀態變更。
-- Residual risk：瀏覽器尚未重新手測此欄位提示；下一個 production-parity gate 仍需驗證正式設定與 Linux runtime。
+- Residual risk：下一個 production-parity gate 仍需驗證正式設定與 Linux runtime。
