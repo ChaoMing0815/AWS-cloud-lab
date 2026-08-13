@@ -15,7 +15,10 @@ class MockStoryteller(Storyteller):
         return World(
             name=f"{keywords[0]}計畫",
             story_title=f"{keywords[0]}的共同任務",
-            premise=f"圍繞{subject}的異常狀況，所有玩家必須合作找出真相。",
+            premise=(
+                f"圍繞{subject}接連發生的異常狀況，所有玩家必須在有限時間內合作找出真相，"
+                "並決定是否相信彼此帶來的關鍵線索。"
+            ),
             objective=f"在有限時間內完成與{keywords[0]}有關的共同目標。",
             opening_scene=f"故事開始時，{keywords[0]}突然讓所有既有安排失效。",
             core_obstacle=f"關鍵線索被{keywords[-1]}遮蔽，團隊必須協調不同立場。",
