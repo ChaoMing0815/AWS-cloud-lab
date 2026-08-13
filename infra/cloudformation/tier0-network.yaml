@@ -1,0 +1,254 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Tier 0 Co-Story network only. This template intentionally creates no compute, database, IAM, or Bedrock resources.
+
+Parameters:
+  VpcCidr:
+    Type: String
+    Default: 10.20.0.0/16
+    AllowedPattern: ^([0-9]{1,3}\.){3}[0-9]{1,3}/(16)$
+  PublicAppSubnetCidr:
+    Type: String
+    Default: 10.20.10.0/24
+  PrivateDbSubnetACidr:
+    Type: String
+    Default: 10.20.110.0/24
+  PrivateDbSubnetBCidr:
+    Type: String
+    Default: 10.20.120.0/24
+
+Resources:
+  Vpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock:
+        Ref: VpcCidr
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Project
+          Value: co-story
+        - Key: Tier
+          Value: '0'
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Project
+          Value: co-story
+
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId:
+        Ref: InternetGateway
+      VpcId:
+        Ref: Vpc
+
+  PublicAppSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:
+        Ref: Vpc
+      CidrBlock:
+        Ref: PublicAppSubnetCidr
+      AvailabilityZone:
+        Fn::Select:
+          - 0
+          - Fn::GetAZs: ''
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: co-story-tier0-public-app
+        - Key: Project
+          Value: co-story
+
+  PrivateDbSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:
+        Ref: Vpc
+      CidrBlock:
+        Ref: PrivateDbSubnetACidr
+      AvailabilityZone:
+        Fn::Select:
+          - 0
+          - Fn::GetAZs: ''
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: co-story-tier0-private-db-a
+        - Key: Project
+          Value: co-story
+
+  PrivateDbSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:
+        Ref: Vpc
+      CidrBlock:
+        Ref: PrivateDbSubnetBCidr
+      AvailabilityZone:
+        Fn::Select:
+          - 1
+          - Fn::GetAZs: ''
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: co-story-tier0-private-db-b
+        - Key: Project
+          Value: co-story
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId:
+        Ref: Vpc
+      Tags:
+        - Key: Name
+          Value: co-story-tier0-public
+        - Key: Project
+          Value: co-story
+
+  PublicInternetRoute:
+    Type: AWS::EC2::Route
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      RouteTableId:
+        Ref: PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId:
+        Ref: InternetGateway
+
+  PublicAppRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId:
+        Ref: PublicRouteTable
+      SubnetId:
+        Ref: PublicAppSubnet
+
+  PrivateDbRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId:
+        Ref: Vpc
+      Tags:
+        - Key: Name
+          Value: co-story-tier0-private-db
+        - Key: Project
+          Value: co-story
+
+  PrivateDbSubnetARouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId:
+        Ref: PrivateDbRouteTable
+      SubnetId:
+        Ref: PrivateDbSubnetA
+
+  PrivateDbSubnetBRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId:
+        Ref: PrivateDbRouteTable
+      SubnetId:
+        Ref: PrivateDbSubnetB
+
+  AppSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Co-Story Tier 0 public web application ingress boundary
+      VpcId:
+        Ref: Vpc
+      SecurityGroupEgress: []
+      Tags:
+        - Key: Name
+          Value: co-story-tier0-app
+        - Key: Project
+          Value: co-story
+
+  DbSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Co-Story Tier 0 private PostgreSQL boundary
+      VpcId:
+        Ref: Vpc
+      SecurityGroupEgress: []
+      Tags:
+        - Key: Name
+          Value: co-story-tier0-db
+        - Key: Project
+          Value: co-story
+
+  AppHttpIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId:
+        Ref: AppSecurityGroup
+      IpProtocol: tcp
+      FromPort: 80
+      ToPort: 80
+      CidrIp: 0.0.0.0/0
+
+  AppHttpsIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId:
+        Ref: AppSecurityGroup
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+      CidrIp: 0.0.0.0/0
+
+  DbFromAppIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId:
+        Ref: DbSecurityGroup
+      IpProtocol: tcp
+      FromPort: 5432
+      ToPort: 5432
+      SourceSecurityGroupId:
+        Ref: AppSecurityGroup
+
+  AppHttpsEgress:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId:
+        Ref: AppSecurityGroup
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+      CidrIp: 0.0.0.0/0
+
+  AppToDbEgress:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId:
+        Ref: AppSecurityGroup
+      IpProtocol: tcp
+      FromPort: 5432
+      ToPort: 5432
+      DestinationSecurityGroupId:
+        Ref: DbSecurityGroup
+
+Outputs:
+  VpcId:
+    Value:
+      Ref: Vpc
+  PublicAppSubnetId:
+    Value:
+      Ref: PublicAppSubnet
+  PrivateDbSubnetAId:
+    Value:
+      Ref: PrivateDbSubnetA
+  PrivateDbSubnetBId:
+    Value:
+      Ref: PrivateDbSubnetB
+  AppSecurityGroupId:
+    Value:
+      Ref: AppSecurityGroup
+  DbSecurityGroupId:
+    Value:
+      Ref: DbSecurityGroup
