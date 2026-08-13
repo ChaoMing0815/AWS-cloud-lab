@@ -83,6 +83,30 @@ test("FetchGameApi 將 structured API error 轉為 ApiError", async () => {
   });
 });
 
+test("FetchGameApi 將 FastAPI 422 detail 轉為可標示欄位的錯誤", async () => {
+  const api = new FetchGameApi({
+    fetchImpl: async () => jsonResponse(
+      {
+        detail: [{
+          type: "string_too_short",
+          loc: ["body", "premise"],
+          msg: "String should have at least 50 characters",
+          ctx: { min_length: 50 },
+        }],
+      },
+      422,
+    ),
+  });
+
+  await assert.rejects(api.loadRoom(), (error) => {
+    assert.equal(error.code, "REQUEST_VALIDATION_FAILED");
+    assert.equal(error.status, 422);
+    assert.equal(error.message, "請檢查標示的欄位。");
+    assert.deepEqual(error.fieldErrors, { premise: "至少需要 50 個字元。" });
+    return true;
+  });
+});
+
 test("FetchGameApi 建立房間時送出房主暱稱與 Idempotency-Key", async () => {
   let request;
   const api = new FetchGameApi({
