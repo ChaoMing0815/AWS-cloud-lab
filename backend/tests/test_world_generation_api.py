@@ -119,6 +119,36 @@ def test_host_generates_editable_draft_once_and_idempotency_replay_does_not_rein
     ]
 
 
+def test_default_mock_generated_draft_can_be_confirmed_without_manual_repair() -> None:
+    with TestClient(create_app()) as client:
+        created = create_room(client, "mock-generated-world-create")
+        generated = generate_world(client, created, "mock-generated-world-generate")
+
+        assert generated.status_code == 200
+        draft = generated.json()["world"]
+        confirmed = client.put(
+            f"/api/v1/rooms/{created['id']}/world",
+            json={
+                "story_title": draft["storyTitle"],
+                "premise": draft["premise"],
+                "objective": draft["objective"],
+                "opening_scene": draft["openingScene"],
+                "core_obstacle": draft["coreObstacle"],
+                "tone": draft["tone"],
+                "custom_tone": draft["customTone"],
+                "max_rounds": 6,
+                "room_version": generated.json()["version"],
+            },
+            headers={
+                "Idempotency-Key": "mock-generated-world-confirm",
+                "X-CSRF-Token": created["session"]["hostCsrfToken"],
+            },
+        )
+
+    assert confirmed.status_code == 200
+    assert confirmed.json()["status"] == "LOBBY"
+
+
 @pytest.mark.parametrize(
     "overrides",
     [
