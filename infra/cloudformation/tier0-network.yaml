@@ -161,7 +161,10 @@ Resources:
       GroupDescription: Co-Story Tier 0 public web application ingress boundary
       VpcId:
         Ref: Vpc
-      SecurityGroupEgress: []
+      SecurityGroupEgress:
+        - Description: Suppress the AWS default allow-all egress rule
+          IpProtocol: '-1'
+          CidrIp: 127.0.0.1/32
       Tags:
         - Key: Name
           Value: co-story-tier0-app
@@ -174,7 +177,10 @@ Resources:
       GroupDescription: Co-Story Tier 0 private PostgreSQL boundary
       VpcId:
         Ref: Vpc
-      SecurityGroupEgress: []
+      SecurityGroupEgress:
+        - Description: Suppress the AWS default allow-all egress rule
+          IpProtocol: '-1'
+          CidrIp: 127.0.0.1/32
       Tags:
         - Key: Name
           Value: co-story-tier0-db
