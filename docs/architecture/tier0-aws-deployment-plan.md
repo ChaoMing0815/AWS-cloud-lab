@@ -115,13 +115,12 @@ App SG 不保留 default all-traffic egress；DB 規則使用 SG reference，不
 
 | Principal／role | Trust／登入 | 只允許 | 明確禁止 |
 | --- | --- | --- | --- |
-| `ming-dev` | Console-only、MFA；目前 read-only group | 帳務／資源唯讀、改密碼 | Access Key、日常 Root、永久 Admin |
-| `AWSFinalProjectProvisionerRole`（提案） | 只允許指定人員以 MFA 短期 assume | 建立核准 change set 的 VPC、EC2、RDS、logs、SSM 與有限 role／PassRole | Organizations、Control Tower、plan upgrade、購買承諾、任意 IAM／PassRole |
+| `ming-dev` | Console-only、MFA；`AWSFinalProjectDevelopers` group | 使用 `PowerUserAccess` 完成課程各 Tier 的 service resources；以 customer managed policy 管理 `AWSFinalProject*` role／policy／instance profile與限定 PassRole | Access Key、新 IAM user／group、Organizations、Control Tower、plan upgrade、購買承諾、萬用 PassRole、日常 Root |
 | `AWSFinalProjectAppRole` | Trust only `ec2.amazonaws.com` | SSM core、指定 log group／metric namespace、指定 secret、指定 Bedrock model／inference profile＋Guardrail | IAM 管理、任意 secret、服務 Full Access、billing write |
 | `AWSFinalProjectOperatorRole`（Tier 1） | 指定人員 MFA session | CloudWatch read、EC2 describe、受控 SSM document／tagged instance | 任意 target shell、secret 明文、IAM 修改 |
 | `AWSFinalProjectGitHubDeployRole`（Tier 3） | GitHub OIDC 精確 repo／branch／environment | 指定 ECR repo 與 deployment path | 長期 key、萬用 subject、萬用 PassRole |
 
-AppRole 不需要 `rds:*`；它以 VPC TCP 與 DB credential 存取 PostgreSQL。若使用 AWS managed encryption key，不額外授予萬用 `kms:Decrypt`。在任何權限擴張前，先修正並驗證 `AWSCourseAccountProtectionDeny`：保留 Billing read，只拒絕 account plan upgrade、Organizations／Control Tower、購買／承諾與帳務寫入。每份 policy 需通過 IAM Access Analyzer validation、正面 simulation 與負面 simulation。
+使用者於 2026-08-14 明確選擇單人課程帳號的便利性取捨：`ming-dev` 一次取得 `PowerUserAccess`，不為每個一般 service 操作反覆變更人員權限；這不代表 application roles 可使用相同廣泛權限。AppRole 不需要 `rds:*`；它以 VPC TCP 與 DB credential 存取 PostgreSQL。若使用 AWS managed encryption key，不額外授予萬用 `kms:Decrypt`。權限擴張同批先建立並驗證 `AWSCourseAccountProtectionDeny`：保留 Billing read，只拒絕 account plan upgrade、Organizations／Control Tower／Identity Center bootstrap、購買承諾與新長期人員 credential。每份 policy 需通過 IAM Access Analyzer validation、正面 simulation 與負面 simulation。
 
 ## 8. 主要威脅與控制
 

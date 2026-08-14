@@ -30,8 +30,21 @@ phase5-ssm-run-command.png
 - [x] `ming-dev` Access／API／SSH keys 均為 0：[`phase0-ming-dev-zero-keys.png`](phase0-ming-dev-zero-keys.png)
 - [x] `AWSFinalProjectDevelopers` 初始政策：[`phase0-ming-dev-group-policies.png`](phase0-ming-dev-group-policies.png)
 - [x] `ming-dev` Billing 唯讀與當月 `USD 0.00`：[`phase0-ming-dev-billing-zero.png`](phase0-ming-dev-billing-zero.png)
-- [ ] Credits 精確餘額與到期日
-- [ ] 未建立 AWS Organization 的證據
+- [x] Batch 0 Free plan 即時狀態：[`phase0-tier0-batch0-account-plan.png`](phase0-tier0-batch0-account-plan.png)
+- [x] Free plan 結束日與剩餘天數：[`phase0-tier0-batch0-free-plan-expiration.png`](phase0-tier0-batch0-free-plan-expiration.png)
+- [x] Credits 精確餘額、狀態與到期日：[`phase0-tier0-batch0-credits-summary.png`](phase0-tier0-batch0-credits-summary.png)／[`phase0-tier0-batch0-credits-detail.png`](phase0-tier0-batch0-credits-detail.png)
+- [x] Budget 基本狀態與本月實際支出：[`phase0-tier0-batch0-budget-status.png`](phase0-tier0-batch0-budget-status.png)
+- [x] Budget 告警清單：[`phase0-tier0-batch0-budget-alert-list.png`](phase0-tier0-batch0-budget-alert-list.png)
+- [x] Budget 告警門檻與 Email subscriber 已由使用者在 Console 確認；Email 不入庫
+- [x] Cost Explorer 可見性與 2026-02-01 至 2026-07-31 零成本：[`phase0-tier0-batch0-cost-explorer-visibility.png`](phase0-tier0-batch0-cost-explorer-visibility.png)
+- [x] 2026 年 8 月本月至今成本摘要：[`phase0-tier0-batch0-current-month-cost.png`](phase0-tier0-batch0-current-month-cost.png)
+- [x] 2026 年 8 月本月至今 7 個服務的成本明細：[`phase0-tier0-batch0-current-month-service-breakdown.png`](phase0-tier0-batch0-current-month-service-breakdown.png)
+- [x] 未建立 AWS Organization：[`phase0-tier0-batch0-no-organization.png`](phase0-tier0-batch0-no-organization.png)
+- [x] Tokyo 候選盤點 Region：[`phase0-tier0-batch0-region-tokyo.png`](phase0-tier0-batch0-region-tokyo.png)
+- [x] Tokyo RDS 無資料庫資源：[`phase0-tier0-batch0-rds-tokyo-empty.png`](phase0-tier0-batch0-rds-tokyo-empty.png)
+- [x] Tokyo Amazon Bedrock Model catalog：[`phase0-tier0-batch0-bedrock-tokyo-catalog.png`](phase0-tier0-batch0-bedrock-tokyo-catalog.png)
+- [x] Tokyo VPC dashboard：[`phase0-tier0-batch0-vpc-dashboard-tokyo.png`](phase0-tier0-batch0-vpc-dashboard-tokyo.png)／[`phase0-tier0-batch0-vpc-dashboard-tokyo-zero-resources.png`](phase0-tier0-batch0-vpc-dashboard-tokyo-zero-resources.png)
+- [x] CloudTrail 非唯讀 onboarding 事件：[`phase0-tier0-batch0-cloudtrail-write-events.png`](phase0-tier0-batch0-cloudtrail-write-events.png)
 
 ### 歷史舊帳號（2026-08-07）
 

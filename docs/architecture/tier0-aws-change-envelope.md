@@ -1,4 +1,4 @@
-# Tier 0 AWS 變更封套（待人工核准）
+# Tier 0 AWS 變更封套（分批人工核准）
 
 - 狀態：Draft；本文件不是 AWS 授權，也不代表已有任何 AWS 資源。
 - 日期：2026-08-13
@@ -6,6 +6,8 @@
 - 前置事實：2026-08-10 證據顯示 Free plan、每月 `US$1.00` Budget、Root MFA、無 Root Access Key，以及 `ming-dev` 的 Console＋MFA；Credits 精確餘額／到期日、目前 principal、Region 與既有資源仍未以最新唯讀資料確認。
 
 ## Batch 0：唯讀盤點（先核准此批）
+
+> 2026-08-13 結果：已由使用者操作 Console 完成並通過；未執行 AWS CLI 或 AWS 寫入。完整去識別化結果與證據見 [`2026-08-13-tier0-batch0-console-inventory`](../evidence/2026-08-13-tier0-batch0-console-inventory/inventory-summary.md)。此結果不授權 Batch 1。
 
 目的：取得建立基礎設施前不可假設的帳號與費用事實；不建立、修改或刪除資源。
 
@@ -18,6 +20,21 @@
 | 證據 | 依 Skill 保存 sanitized inventory summary、必要 JSON 與 Console 截圖；不記錄 deployment log 的「部署」。 |
 
 停止條件：帳號不是預期新帳號、Free plan／credits 與預期不同、Budget 不存在或告警失效、principal 沒有最小必要權限、存在未知計費資源，或 Region 無法提供所需 RDS／Bedrock，均停止而不進行寫入。
+
+## IAM Bootstrap：一次性課程開發權限（使用者已同意方向；等待 Console change set）
+
+| 項目 | 固定邊界 |
+| --- | --- |
+| Template | `infra/cloudformation/iam-bootstrap.json`；只建立並附加 `AWSCourseAccountProtectionDeny`、`AWSFinalProjectIamDelegation` 到既有 `AWSFinalProjectDevelopers` group。 |
+| Power user | Root 在同一 bounded batch 手動附加 AWS managed `PowerUserAccess` 到該 group；完成後立即登出。 |
+| 便利性取捨 | 使用者明確選擇讓 `ming-dev` 一次取得完成 Tier 0–5 所需的大部分 service 權限，不為每個一般操作反覆改權限；此為單人課程帳號決策，不宣稱 production least privilege。 |
+| IAM delegation | 只管理 `AWSFinalProject*` role／policy／instance profile；新 role 強制 `PowerUserAccess` permissions boundary；PassRole 只限專題 roles 與 EC2／ECS tasks／Lambda／CloudFormation；GitHub OIDC 只限 `token.actions.githubusercontent.com`。 |
+| 明確拒絕 | Organizations／Control Tower／Identity Center instance bootstrap、Free plan upgrade、Marketplace／Reserved／Savings Plans 購買、新 IAM user、Access Key 與 login profile。 |
+| 不包含 | 不建立 workload、EC2、RDS、VPC、Bedrock、IAM user、Access Key 或 application role。 |
+| 成本／回復 | IAM policies、group attachment 與本 stack 無專題固定費；回復為 detach `PowerUserAccess` 後刪除 `co-story-iam-bootstrap` stack。 |
+| 驗證 | Change set 只能有 2 個 `AWS::IAM::ManagedPolicy`；完成後執行 policy validation、Allow simulation 與 explicit-deny simulation。 |
+
+本機 R3 TDD 與完整驗證見 [`2026-08-14-iam-bootstrap-policy`](../evidence/2026-08-14-iam-bootstrap-policy/tdd-validation.md)；Console 步驟見 [`iam-bootstrap-console.md`](../runbooks/iam-bootstrap-console.md)。
 
 ## Batch 1：Tier 0 network CloudFormation（僅在 Batch 0 與下列欄位確認後）
 
