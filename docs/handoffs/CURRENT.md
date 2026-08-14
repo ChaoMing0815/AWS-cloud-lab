@@ -2,9 +2,9 @@
 
 - 更新日期：2026-08-14
 - Branch：`codex/session-lifecycle`
-- 最後全綠功能基準：`23375e8`（IAM bootstrap local contract）
+- 最後全綠功能基準：`a78da19`（Tier 0 SG default-egress correction）
 - Regression：Backend `247 passed, 8 skipped`；Frontend `80 passed`（未受本批影響，沿用最近全綠基準）
-- AWS：Tier 0 Batch 0 Console 唯讀盤點已通過；專題 workload 為 0；本批無 AWS CLI／AWS 寫入
+- AWS：IAM bootstrap 與 Tier 0 network 已在 Tokyo 部署；network stack `UPDATE_COMPLETE`；無 EC2／RDS／NAT／EIP；全程無 AWS CLI
 
 ## Current
 
@@ -23,15 +23,16 @@
 - 正式 `/rules` 提供唯讀的新手規則摘要，首頁與遊戲頁可開啟；不改變遊戲規則、session 或 API state。
 - 預設 Mock 生成的 WorldDraft 可直接確認為 Lobby，不再因 `premise` 長度不足得到 `422`；HTTP 的 FastAPI `422` 會以安全的欄位級提示標示世界表單，草稿保持可編輯。
 - 本機 MVP 為 **100%（AWS 串接準備完成）**：乾淨 production lock install／import、production live／ready fail-closed、security headers、release assets 與 tracked-file secret scan 已驗證；完整定義與停止規則見 `docs/qa/local-mvp-test-plan.md`。
-- Tier 0 network CloudFormation 已通過本機 topology／route／SG contract 與 SG-reference sensitivity；template 尚未對 AWS validate 或建立資源。
+- Tier 0 network CloudFormation 已部署：VPC `10.20.0.0/16`、1 public app subnet、2 private DB subnets、local-only private route 與 App／DB SG 均通過 Console 驗證。
 - 2026-08-13 Batch 0 已確認 Free plan／credits／Budget／本月零成本、Organizations 缺席、IAM 安全基線、Tokyo `ap-northeast-1`、RDS／EC2／NAT／EIP／endpoint 零資源、default VPC `172.31.0.0/16` 與 CloudTrail onboarding 事件；證據見 [`docs/evidence/2026-08-13-tier0-batch0-console-inventory/`](../evidence/2026-08-13-tier0-batch0-console-inventory/inventory-summary.md)。
-- 使用者已選擇單人課程帳號的一次性權限模式：`ming-dev` 使用 `PowerUserAccess`＋專題前綴 IAM delegation，保留 account／Organizations／購買／長期 key deny；本機 template、runbook、負面 boundary 與 sensitivity 已完成，Backend `247 passed, 8 skipped`，AWS 尚未寫入。
+- `ming-dev` 已使用 `PowerUserAccess`＋專題前綴 IAM delegation，並保留 account／Organizations／購買／長期 key deny；Root bootstrap 後已登出，日常操作回到 MFA 的 `ming-dev`。
+- 實機發現 SG 空 egress list 會產生 EC2 default allow-all；已用 localhost sink 修正 App／DB SG。Red `117bf3b`、Green `a78da19`，stack `UPDATE_COMPLETE`，Backend `247 passed, 8 skipped`。
 
 ## Next
 
 ```text
-依 [`IAM Bootstrap Console Runbook`](../runbooks/iam-bootstrap-console.md) 由 Root＋MFA 在 Tokyo 建立 `co-story-iam-bootstrap` **change set only**
-→ 使用者與 Agent 核對 change set 只有 2 個 `AWS::IAM::ManagedPolicy` 後，再決定是否 Execute；完成 IAM validation／simulation 後才進 Batch 1 network CloudFormation
+規劃 Tier 0 private PostgreSQL 的 bounded batch：先固定 RDS engine／version、instance class、storage、Multi-AZ、backup、deletion protection、Secrets Manager 與月成本上限
+→ 完成估價與 rollback envelope 後，才由 Console 建立 RDS change set；EC2／SSM／application role 另批處理
 ```
 
 本機 MVP 100% 不等於 Tier 0 AWS 已完成：真實 model／Guardrail、RDS readiness、TLS 與 AWS 驗證尚未執行。Residual risk：idempotency 仍是 process memory，不宣稱 multi-process exactly-once；release assets 尚未在 Linux VM／EC2 實機驗證。

@@ -11,9 +11,9 @@
 | 演進內容 | Web／DB 分離、可觀測性、SSM、分層架構、CI/CD、微服務、RAG、MCP、Agentic AI |
 | 期末專題繳交日 | 2026-09-07 |
 | AWS Region | Asia Pacific (Tokyo) — `ap-northeast-1` |
-| VPC CIDR | 待確認 |
-| Public Subnet CIDR | 待確認 |
-| Private Subnet CIDR | 待確認 |
+| VPC CIDR | `10.20.0.0/16` |
+| Public Subnet CIDR | `10.20.10.0/24` |
+| Private Subnet CIDR | `10.20.110.0/24`、`10.20.120.0/24` |
 | EC2 規格 | 待確認 |
 | 資料層規格 | 待確認 |
 
@@ -60,6 +60,9 @@
 | 2026-08-10 | Billing 委派唯讀 | Root 啟用 IAM user／role Billing access；`ming-dev` 可查看當月帳單與 Free plan 狀態 | 群組已連接 `AWSBillingReadOnlyAccess`；2026 年 8 月預估總計 `USD 0.00` | [群組政策](screenshots/phase0-ming-dev-group-policies.png)／[帳單證據](screenshots/phase0-ming-dev-billing-zero.png) |
 | 2026-08-10 | Polling 離線／reconnect UX | 暫時性 network／`5xx` 保留 canonical 畫面並採 3／5／10 秒 bounded backoff；恢復後回 3 秒；`401/403` 停止，`409` reload | Red `4 passed, 5 failed`；Green／還原 mutation 後 Frontend `65 passed`、Backend `59 passed, 7 skipped`；未執行 AWS 寫入 | [TDD 驗證](evidence/2026-08-10-polling-offline-reconnect/tdd-validation.md) |
 | 2026-08-10 | Tier 0 AWS 部署規劃 | 以 Model routing 完成服務、VPC／SG、EC2／RDS／Bedrock、IAM、TLS、成本、驗證與清理設計 | Proposed；尚待講師、帳號、Region、credits、估價與 IAM 關卡；未執行 AWS 寫入 | [Tier 0 部署規劃](architecture/tier0-aws-deployment-plan.md) |
+| 2026-08-14 | IAM bootstrap | 以 Root＋MFA 一次性建立 account protection deny 與 project-prefixed IAM delegation，並將 `PowerUserAccess` 附加至既有 developer group；隨即改回 `ming-dev` | `co-story-iam-bootstrap` `CREATE_COMPLETE`；group 6 policies；無 Access Key | [IAM／Network 部署驗證](evidence/2026-08-14-tier0-network-deployment/validation.md) |
+| 2026-08-14 | Tier 0 network | 在 Tokyo 建立 `10.20.0.0/16` VPC、1 public app subnet、2 private DB subnets、IGW、route tables 與 App／DB SG；不含 compute、database、NAT 或 EIP | 19 resources `CREATE_COMPLETE`；private route local-only；DB `5432` 只接受 App SG | [IAM／Network 部署驗證](evidence/2026-08-14-tier0-network-deployment/validation.md) |
+| 2026-08-14 | SG egress correction | Console 驗證發現 EC2 default allow-all egress；以 R3 TDD 與 CloudFormation localhost sink 修正 App／DB SG | Red `117bf3b`、Green `a78da19`；stack `UPDATE_COMPLETE`；final egress 截圖通過 | [IAM／Network 部署驗證](evidence/2026-08-14-tier0-network-deployment/validation.md) |
 
 ## AWS Budget Alarm
 
@@ -76,10 +79,9 @@
 - 本節是目前後續部署候選帳號；下方 2026-08-06–07 的 Organization／Identity Center 紀錄只屬舊帳號歷史。
 - Billing Console 顯示 Free plan；當月預估 `USD 0.00`，每月 `US$1.00` Budget 正常。
 - Root 與 `ming-dev` 均已啟用 MFA；Root 與 `ming-dev` 沒有長期 Access Key。
-- `ming-dev` 是 Console-only 日常人員身分，位於 `AWSFinalProjectDevelopers`。
-- 群組目前只有 `ReadOnlyAccess`、`IAMUserChangePassword`、`AWSBillingReadOnlyAccess`；尚未授予資源寫入權限。
-- 尚未建立 `AWSCourseAccountProtectionDeny`，尚未授予 `PowerUserAccess`；不得為了課程操作改用 Root 建立一般資源。
-- 本日未建立專題 workload，未驗證 Credits 精確餘額、Organization 缺席與新帳號 Region 現況。
+- `ming-dev` 是 Console-only 日常人員身分，位於 `AWSFinalProjectDevelopers`；2026-08-14 已附加 `PowerUserAccess` 與專題前綴 IAM delegation，並以 account protection explicit deny 限制高風險帳號操作。
+- Root 只用於一次性 IAM bootstrap，完成後已登出；一般專題資源由 MFA 的 `ming-dev` 操作，仍無長期 Access Key。
+- 2026-08-13 已補驗證 Credits、Organizations 缺席與 Tokyo Region；2026-08-14 已建立 IAM bootstrap 與 Tier 0 network，詳見最新變更紀錄。
 
 證據：[2026-08-10 新帳號安全與成本基線](evidence/2026-08-10-new-account-baseline/validation.md)
 

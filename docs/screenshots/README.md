@@ -45,6 +45,11 @@ phase5-ssm-run-command.png
 - [x] Tokyo Amazon Bedrock Model catalog：[`phase0-tier0-batch0-bedrock-tokyo-catalog.png`](phase0-tier0-batch0-bedrock-tokyo-catalog.png)
 - [x] Tokyo VPC dashboard：[`phase0-tier0-batch0-vpc-dashboard-tokyo.png`](phase0-tier0-batch0-vpc-dashboard-tokyo.png)／[`phase0-tier0-batch0-vpc-dashboard-tokyo-zero-resources.png`](phase0-tier0-batch0-vpc-dashboard-tokyo-zero-resources.png)
 - [x] CloudTrail 非唯讀 onboarding 事件：[`phase0-tier0-batch0-cloudtrail-write-events.png`](phase0-tier0-batch0-cloudtrail-write-events.png)
+- [x] IAM bootstrap 與最終 6 份 group policies：[`phase0-iam-bootstrap-create-complete.png`](phase0-iam-bootstrap-create-complete.png)／[`phase0-iam-group-policies-final.png`](phase0-iam-group-policies-final.png)
+- [x] Tier 0 network change set 與建立完成：[`phase0-tier0-network-change-set.png`](phase0-tier0-network-change-set.png)／[`phase0-tier0-network-create-complete.png`](phase0-tier0-network-create-complete.png)
+- [x] Private DB local-only route 與 DB ingress：[`phase0-tier0-private-db-route.png`](phase0-tier0-private-db-route.png)／[`phase0-tier0-db-sg-ingress.png`](phase0-tier0-db-sg-ingress.png)
+- [x] Default egress 發現、修正 change set 與更新完成：[`phase0-tier0-db-sg-default-egress-detected.png`](phase0-tier0-db-sg-default-egress-detected.png)／[`phase0-tier0-network-egress-fix-change-set.png`](phase0-tier0-network-egress-fix-change-set.png)／[`phase0-tier0-network-update-complete.png`](phase0-tier0-network-update-complete.png)
+- [x] App／DB final egress：[`phase0-tier0-app-sg-egress-final.png`](phase0-tier0-app-sg-egress-final.png)／[`phase0-tier0-db-sg-egress-final.png`](phase0-tier0-db-sg-egress-final.png)
 
 ### 歷史舊帳號（2026-08-07）
 

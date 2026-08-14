@@ -21,7 +21,7 @@
 
 停止條件：帳號不是預期新帳號、Free plan／credits 與預期不同、Budget 不存在或告警失效、principal 沒有最小必要權限、存在未知計費資源，或 Region 無法提供所需 RDS／Bedrock，均停止而不進行寫入。
 
-## IAM Bootstrap：一次性課程開發權限（使用者已同意方向；等待 Console change set）
+## IAM Bootstrap：一次性課程開發權限（2026-08-14 已完成）
 
 | 項目 | 固定邊界 |
 | --- | --- |
@@ -37,6 +37,8 @@
 本機 R3 TDD 與完整驗證見 [`2026-08-14-iam-bootstrap-policy`](../evidence/2026-08-14-iam-bootstrap-policy/tdd-validation.md)；Console 步驟見 [`iam-bootstrap-console.md`](../runbooks/iam-bootstrap-console.md)。
 
 ## Batch 1：Tier 0 network CloudFormation（僅在 Batch 0 與下列欄位確認後）
+
+> 2026-08-14 結果：使用者已核准並以 Console 完成；stack `co-story-tier0-network` 為 `UPDATE_COMPLETE`。實機發現並以 R3 TDD 修正 EC2 default allow-all egress，最終 App／DB SG、private route 與 19-resource boundary 均通過；全程未使用 AWS CLI。證據見 [`2026-08-14-tier0-network-deployment`](../evidence/2026-08-14-tier0-network-deployment/validation.md)。
 
 | 範圍 | 固定邊界 |
 | --- | --- |
