@@ -56,6 +56,21 @@
 3. Bedrock：Region、實際 model 或 inference profile、Guardrail、token ceiling、model access 與最小 ARN policy 需先確認可用性與預期費用。
 4. TLS：網域、DNS、certificate／Nginx TLS 檔與 HTTPS Browser 驗證需另決定；沒有真實 HTTPS 不標示為正式上線。
 
+## Batch 2：Tier 0 private PostgreSQL（等待使用者明確核准）
+
+| 項目 | 固定邊界 |
+| --- | --- |
+| Template | `infra/cloudformation/tier0-rds.yaml`；只建立 1 個 DB subnet group 與 1 個 RDS DB instance。 |
+| Engine／size | PostgreSQL `18.3-R2`、Extended Support disabled、Single-AZ、`db.t4g.micro`、20 GiB gp2、無 storage autoscaling。 |
+| Network | 使用 Batch 1 的兩個 private DB subnets 與 DB SG；`PubliclyAccessible=false`；不建立 NAT、public IPv4、proxy 或新 SG。 |
+| Credential | RDS-managed master password 存於 Secrets Manager；template、Git 與 Console 截圖都不輸入或保存明文密碼。 |
+| Encryption／monitoring | RDS 預設 AWS managed KMS key、Database Insights Standard 7 days；Enhanced Monitoring、DevOps Guru 與 log exports 關閉。 |
+| Backup／回復 | backup retention 1 day；失敗刪除 stack；DeletionPolicy 為 Delete，不留持續計費 snapshot。需保留資料時另行核准 snapshot。 |
+| 成本上限 | Console compute 牌價 `US$0.029/hour`，730 小時約 `US$21.17/month`；1 個 Secrets Manager secret 約 `US$0.40/month`＋少量 API calls。含 storage／backup buffer，本批 credits burn 上限 `US$25/month`。 |
+| 停止日期 | 最晚 2026-09-08 清理或另行核准延長；Free plan／credits 任一異常、change set 超出兩項 resources、public access 或 Multi-AZ 出現時立即停止。 |
+
+本機 R3 TDD 證據見 [`2026-08-14-tier0-rds-iac`](../evidence/2026-08-14-tier0-rds-iac/tdd-validation.md)。本批不包含 EC2、application role、migration、Bedrock 或 production deploy。
+
 ## 必填核准欄位
 
 - Batch：`0 唯讀盤點` 或 `1 network CloudFormation`（不得以一般「開始 AWS」同意代替）。
