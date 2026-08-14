@@ -65,8 +65,15 @@ def test_tier0_network_template_allows_only_https_http_and_app_to_database() -> 
     app_group = resources["AppSecurityGroup"]["Properties"]
     db_group = resources["DbSecurityGroup"]["Properties"]
 
-    assert app_group["SecurityGroupEgress"] == []
-    assert db_group["SecurityGroupEgress"] == []
+    localhost_sink_egress = [
+        {
+            "Description": "Suppress the AWS default allow-all egress rule",
+            "IpProtocol": "-1",
+            "CidrIp": "127.0.0.1/32",
+        }
+    ]
+    assert app_group["SecurityGroupEgress"] == localhost_sink_egress
+    assert db_group["SecurityGroupEgress"] == localhost_sink_egress
     assert {rule["Properties"]["FromPort"] for rule in ingress.values()} == {80, 443, 5432}
     assert all(rule["Properties"]["FromPort"] not in {22, 8000} for rule in ingress.values())
     db_ingress = ingress["DbFromAppIngress"]["Properties"]
