@@ -59,7 +59,6 @@ def test_tier0_rds_template_manages_master_secret_without_hardcoded_password() -
     assert database["MasterUsername"] == "postgres"
     assert database["ManageMasterUserPassword"] is True
     assert "MasterUserPassword" not in database
-    assert "Password" not in str(_template())
     assert _template()["Outputs"]["MasterSecretArn"]["Value"] == {
         "Fn::GetAtt": ["Database", "MasterUserSecret.SecretArn"]
     }
