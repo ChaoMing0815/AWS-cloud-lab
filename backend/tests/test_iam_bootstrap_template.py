@@ -119,7 +119,22 @@ def test_pass_role_is_scoped_to_project_roles_and_expected_services() -> None:
 
 
 def test_template_never_creates_users_access_keys_or_login_profiles() -> None:
-    template_text = json.dumps(_template(), sort_keys=True)
-    assert "AWS::IAM::User" not in template_text
-    assert "AWS::IAM::AccessKey" not in template_text
-    assert "LoginProfile" not in template_text
+    template = _template()
+    resource_types = {
+        resource["Type"] for resource in template["Resources"].values()
+    }
+    assert "AWS::IAM::User" not in resource_types
+    assert "AWS::IAM::AccessKey" not in resource_types
+
+    allowed_actions = set().union(
+        *(
+            _actions(statement)
+            for statement in _statements("ProjectIamDelegationPolicy")
+            if statement["Effect"] == "Allow"
+        )
+    )
+    assert not {
+        "iam:CreateUser",
+        "iam:CreateAccessKey",
+        "iam:CreateLoginProfile",
+    } & allowed_actions
