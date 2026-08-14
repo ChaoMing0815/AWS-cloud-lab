@@ -50,6 +50,7 @@ phase5-ssm-run-command.png
 - [x] Private DB local-only route 與 DB ingress：[`phase0-tier0-private-db-route.png`](phase0-tier0-private-db-route.png)／[`phase0-tier0-db-sg-ingress.png`](phase0-tier0-db-sg-ingress.png)
 - [x] Default egress 發現、修正 change set 與更新完成：[`phase0-tier0-db-sg-default-egress-detected.png`](phase0-tier0-db-sg-default-egress-detected.png)／[`phase0-tier0-network-egress-fix-change-set.png`](phase0-tier0-network-egress-fix-change-set.png)／[`phase0-tier0-network-update-complete.png`](phase0-tier0-network-update-complete.png)
 - [x] App／DB final egress：[`phase0-tier0-app-sg-egress-final.png`](phase0-tier0-app-sg-egress-final.png)／[`phase0-tier0-db-sg-egress-final.png`](phase0-tier0-db-sg-egress-final.png)
+- [x] Tier 0 private RDS 兩項資源 change set（尚未 Execute）：[`phase0-tier0-rds-change-set.png`](phase0-tier0-rds-change-set.png)
 
 ### 歷史舊帳號（2026-08-07）
 

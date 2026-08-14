@@ -4,7 +4,7 @@
 - Branch：`codex/session-lifecycle`
 - 最後全綠功能基準：`58fb058`（Tier 0 private RDS local contract）
 - Regression：Backend `252 passed, 8 skipped`；Frontend `80 passed`（未受本批影響，沿用最近全綠基準）
-- AWS：IAM bootstrap 與 Tier 0 network 已在 Tokyo 部署；network stack `UPDATE_COMPLETE`；無 EC2／RDS／NAT／EIP；全程無 AWS CLI
+- AWS：IAM bootstrap 與 Tier 0 network 已在 Tokyo 部署；RDS change set 已建立但未 Execute；仍無 EC2／RDS／NAT／EIP；全程無 AWS CLI
 
 ## Current
 
@@ -28,12 +28,13 @@
 - `ming-dev` 已使用 `PowerUserAccess`＋專題前綴 IAM delegation，並保留 account／Organizations／購買／長期 key deny；Root bootstrap 後已登出，日常操作回到 MFA 的 `ming-dev`。
 - 實機發現 SG 空 egress list 會產生 EC2 default allow-all；已用 localhost sink 修正 App／DB SG。Red `117bf3b`、Green `a78da19`，stack `UPDATE_COMPLETE`，Backend `247 passed, 8 skipped`。
 - Tier 0 private RDS template 已完成本機 R3 TDD：PostgreSQL `18.3-R2`、Single-AZ `db.t4g.micro`、20 GiB gp2、private-only、RDS-managed secret、Extended Support disabled；Red `7d6cebd`、Green `58fb058`，AWS 尚未建立 RDS。
+- Batch 2 已核准；`tier0-rds-20260814` change set 為 `CREATE_COMPLETE`／`AVAILABLE`，只有 `Database` 與 `DbSubnetGroup` 兩筆 `Add`。2026-08-14 暫停於 Execute 前，因此尚未開始 RDS 計費。
 
 ## Next
 
 ```text
-取得使用者對 [`Batch 2 private PostgreSQL`](../architecture/tier0-aws-change-envelope.md) 的明確核准
-→ 由 `ming-dev` 在 Tokyo 建立 RDS change set only；核對只有 DB subnet group 與 private RDS 後再執行
+2026-08-15 由 `ming-dev` 在 Tokyo 執行已核對完成的 `tier0-rds-20260814`
+→ 等待 RDS available，驗證 private subnet／Public access No／DB SG／managed secret，再規劃 EC2＋SSM bounded batch
 ```
 
 本機 MVP 100% 不等於 Tier 0 AWS 已完成：真實 model／Guardrail、RDS readiness、TLS 與 AWS 驗證尚未執行。Residual risk：idempotency 仍是 process memory，不宣稱 multi-process exactly-once；release assets 尚未在 Linux VM／EC2 實機驗證。

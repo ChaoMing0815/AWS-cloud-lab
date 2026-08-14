@@ -10,5 +10,7 @@
 - Operations：backup retention 1 day、刪除 stack 時刪除 automated backups、deletion protection false、auto minor upgrade、Database Insights Standard 7 days、Enhanced Monitoring off。
 - Local verification：RDS＋network＋IAM contracts `13 passed`；完整 Backend `252 passed, 8 skipped`。
 - Sensitivity：將 `PubliclyAccessible` 改為 true，以及將 managed master password 改為 false，對應 tests 均如預期失敗；已還原並全綠。
-- AWS：尚未建立 change set 或 RDS resources；全程未使用 AWS CLI。
+- AWS：使用者已核准 Batch 2，並在 Tokyo Console 建立 `tier0-rds-20260814` change set；狀態 `CREATE_COMPLETE`／`AVAILABLE`，只有 `Database` 與 `DbSubnetGroup` 兩筆 `Add`。2026-08-14 停在執行前，尚無 RDS resources／計費；全程未使用 AWS CLI。
 - Rollback：建立失敗或使用者要求清理時刪除 RDS stack；template 的 `DeletionPolicy`／`UpdateReplacePolicy` 為 `Delete`，不留下持續計費 snapshot。正式資料若需保留，teardown 前另行核准 snapshot。
+
+Console 證據：[`RDS change set only`](../../screenshots/phase0-tier0-rds-change-set.png)。
