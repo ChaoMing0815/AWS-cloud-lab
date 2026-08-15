@@ -110,6 +110,20 @@
 
 > 2026-08-15：secrets Change Set `tier0-runtime-secrets-20260815` 為 `CREATE_COMPLETE`／`AVAILABLE`，三筆皆為預期 `Add`，尚未 Execute。staging release bundle（約 120 KiB、SHA-256 驗證、只含 `backend/`／`ops/`／`web/`）與 private artifact template 已完成本機 R3 驗證；Bucket 依使用者指示尚未建立。Backend regression `282 passed, 8 skipped`；AWS DB user／migration／runtime 均尚未執行。
 
+## Batch 5：Bedrock Guardrail（暫停於建立完成）
+
+| 項目 | 固定邊界 |
+| --- | --- |
+| Region／model | Tokyo `ap-northeast-1`；候選 model `amazon.nova-lite-v1:0`，Serverless／Standard；不得使用 Marketplace、Batch 或 Global inference。 |
+| Guardrail | `co-story-tier0-safety`；Standard tier、APAC cross-Region profile `apac.guardrail.v1:0`、default KMS。使用者已明確同意資料僅在 APAC geographic boundary 內跨區域處理。 |
+| Content | Hate High、Insults Medium、Sexual High、Violence Low、Misconduct Low，prompt／response Block；Prompt Attack High。只處理 Text。 |
+| Privacy | EMAIL／PHONE input／output 均 Mask；無 regex。Denied topics、Profanity、custom words、Grounding、Relevance 全部停用。 |
+| Price baseline | Nova Lite Standard：input `US$0.072／1M tokens`、output `US$0.288／1M tokens`；Guardrail 另按啟用政策的 text units 計費。 |
+| 尚未核准／執行 | 不 Test、不 Invoke model、不啟用 invocation logging、不發布／使用未驗證 version、不授予 AppRole Bedrock 權限。 |
+| 停止條件 | 出現 Global profile、Marketplace subscription、Provisioned Throughput、未限定 model／Guardrail 的 `Resource: *`、明文 prompt logging 或單次測試無 token ceiling 時停止。 |
+
+> 2026-08-15 結果：Guardrail resource 建立完成且 status `Ready`；未進行任何 Test／model invocation，未發布或驗證固定 version，EC2 AppRole 仍無 Bedrock 權限。證據摘要見 [`2026-08-15-tier0-bedrock-guardrail`](../evidence/2026-08-15-tier0-bedrock-guardrail/validation.md)。
+
 ## 必填核准欄位
 
 - Batch：`0 唯讀盤點` 或 `1 network CloudFormation`（不得以一般「開始 AWS」同意代替）。

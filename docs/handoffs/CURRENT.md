@@ -4,7 +4,7 @@
 - Branch：`codex/session-lifecycle`
 - 最後全綠功能基準：`a97b8f2`（private artifact boundary）
 - Regression：Backend `282 passed, 8 skipped`；Frontend `80 passed`（未受本批影響，沿用最近全綠基準）
-- AWS：IAM bootstrap、Tier 0 network、private RDS 與 EC2＋SSM management plane 已在 Tokyo 部署；無 NAT／EIP／SSH；全程無 AWS CLI
+- AWS：IAM bootstrap、Tier 0 network、private RDS、EC2＋SSM management plane 與 Bedrock Guardrail 已在 Tokyo 建立；無 NAT／EIP／SSH；全程無 AWS CLI
 
 ## Current
 
@@ -36,13 +36,16 @@
 - staging release bundle 與 AL2023 install／activation 已完成本機 R3 TDD：Nginx 僅綁 `127.0.0.1:8080`、systemd non-root runtime、checksum-before-install、candidate readiness、first-deploy cleanup 與 previous-release rollback。最終 bundle 約 `120 KiB`，SHA-256 驗證成功，archive 只含 `backend/`、`ops/`、`web/`。
 - `infra/cloudformation/tier0-deployment-artifacts.yaml` 已完成本機 TDD：generated-name private S3 bucket、四項 Block Public Access、SSE-S3、BucketOwnerEnforced、`releases/` 7 日到期、TLS-only policy，AppRole 只可 list／read exact prefix，沒有 put／delete。
 - 使用者已核准短期 private S3 deployment artifact bucket，但明確要求目前先不建立；Bucket 尚未建立、bundle 尚未上傳，無 S3 資源或費用。
+- Batch 5 Bedrock preflight 已完成：候選模型為 Tokyo Serverless `amazon.nova-lite-v1:0`，標準方案為 input `US$0.072／1M tokens`、output `US$0.288／1M tokens`；未進行推論。
+- Guardrail `co-story-tier0-safety` 已建立且 status `Ready`：Standard content filters、APAC profile `apac.guardrail.v1:0`、EMAIL／PHONE Mask；Denied topics／Profanity／Grounding／Relevance 均未啟用。尚未 Test、未發布／驗證固定版本、未授予 AppRole Bedrock 權限。
 
 ## Next
 
 ```text
 使用者準備實際傳送時，再建立／審查 artifact Change Set 並以 Console 上傳已驗證 release bundle
 → Execute secrets Change Set，立即以 SSM Console bootstrap `co_story_app`、migration 與 internal staging runtime
-→ 將 EnableMigrationBootstrapAccess 更新為 false 後，驗證 private RDS readiness 與 restart persistence；TLS／Bedrock 維持獨立後續邊界
+→ 將 EnableMigrationBootstrapAccess 更新為 false 後，驗證 private RDS readiness 與 restart persistence
+→ 發布固定 Guardrail version，以 exact model／Guardrail ARN 收斂 AppRole，再做 bounded allow／block／PII mask 測試；TLS 維持獨立後續邊界
 ```
 
-本機 MVP 100% 不等於 Tier 0 AWS 已完成：真實 model／Guardrail、RDS readiness、TLS 與 AWS 驗證尚未執行。Residual risk：idempotency 仍是 process memory，不宣稱 multi-process exactly-once；release assets 與 DB bootstrap 尚未在 Linux VM／EC2 實機驗證；Bucket 尚未建立。
+本機 MVP 100% 不等於 Tier 0 AWS 已完成：真實 model invocation、固定 Guardrail version、RDS readiness、TLS 與 AWS application integration 尚未驗證。Residual risk：idempotency 仍是 process memory，不宣稱 multi-process exactly-once；release assets 與 DB bootstrap 尚未在 Linux VM／EC2 實機驗證；Bucket 尚未建立。
