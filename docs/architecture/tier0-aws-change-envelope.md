@@ -103,12 +103,12 @@
 | Temporary bootstrap | `EnableMigrationBootstrapAccess=true` 時只可讀 Batch 2 的 RDS master secret ARN；建立／更新 `co_story_app` 並 migration 完成後，必須以 stack update 改為 `false`，使 temporary policy 被刪除。 |
 | DB boundary | `co_story_app` 固定為 LOGIN，但必須是 `NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS`；只連 `co_story` 並在 `public` schema 建立／使用專題 migration objects。TLS 固定 `sslmode=verify-full`＋RDS CA。 |
 | Host secret | DSN 只寫入 `/etc/co-story/database.env`，owner `root:co-story`、mode `0640`、原子 replace；不得出現在 template、Run Command parameters、shell history、Git 或截圖。 |
-| Artifact path | 使用者已核准短期 private S3 deployment bucket，但延後至 release bundle 本機驗證後建立；必須 Block Public Access、SSE、7-day expiration、exact prefix read。不得公開 object。 |
+| Artifact path | `infra/cloudformation/tier0-deployment-artifacts.yaml` 已完成本機驗證：generated-name bucket、四項 Block Public Access、SSE-S3、BucketOwnerEnforced、TLS-only、`releases/` 7 日到期，AppRole 只有 exact prefix list／read。使用者明確要求目前先不建立 Bucket。 |
 | 成本 | Change Set 本身無費用。Execute 後新增 1 個 Secrets Manager secret，可能約 `US$0.40/month` 加少量 request；短期 S3 只有少量 storage／request usage。無 NAT／ALB／EIP／新 compute／新 DB。 |
 | Rollback | migration 前可刪 secrets stack；migration 後先將 bootstrap access 改 `false`。Artifact bucket 清空 objects 後刪 stack。DB schema 採 forward-only，不做自動 downgrade。 |
 | 停止條件 | Change Set 超過 3 項或含非 Secret／IAM policy、任何 `Resource: *`、public bucket、secret value、master access 無法撤除、DB user 取得管理權限或 TLS 非 `verify-full` 時停止。 |
 
-> 2026-08-15：secrets Change Set `tier0-runtime-secrets-20260815` 為 `CREATE_COMPLETE`／`AVAILABLE`，三筆皆為預期 `Add`，尚未 Execute。短期 private S3 artifact path 已獲原則核准但尚未建立。DB bootstrap 本機 R3 tests 與 Backend regression 全綠；AWS DB user／migration／runtime 均尚未執行。
+> 2026-08-15：secrets Change Set `tier0-runtime-secrets-20260815` 為 `CREATE_COMPLETE`／`AVAILABLE`，三筆皆為預期 `Add`，尚未 Execute。staging release bundle（約 120 KiB、SHA-256 驗證、只含 `backend/`／`ops/`／`web/`）與 private artifact template 已完成本機 R3 驗證；Bucket 依使用者指示尚未建立。Backend regression `282 passed, 8 skipped`；AWS DB user／migration／runtime 均尚未執行。
 
 ## 必填核准欄位
 
