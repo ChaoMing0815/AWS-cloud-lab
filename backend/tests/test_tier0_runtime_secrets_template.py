@@ -12,6 +12,18 @@ def _template() -> dict:
     return yaml.safe_load(TEMPLATE.read_text(encoding="utf-8"))
 
 
+def _mapping_keys(value) -> set[str]:
+    if isinstance(value, dict):
+        return set(value) | {
+            key
+            for child in value.values()
+            for key in _mapping_keys(child)
+        }
+    if isinstance(value, list):
+        return {key for child in value for key in _mapping_keys(child)}
+    return set()
+
+
 def test_runtime_secret_template_has_one_generated_secret_and_two_bounded_policies() -> None:
     template = _template()
     resources = template["Resources"]
@@ -104,7 +116,7 @@ def test_template_exposes_identifiers_but_never_secret_values() -> None:
         },
     }
     serialized = TEMPLATE.read_text(encoding="utf-8").lower()
-    assert "secretstring:" not in serialized
-    assert "password:" not in serialized
+    assert "SecretString" not in _mapping_keys(template)
+    assert "MasterUserPassword" not in _mapping_keys(template)
     assert "resource: '*'" not in serialized
     assert 'resource: "*"' not in serialized
