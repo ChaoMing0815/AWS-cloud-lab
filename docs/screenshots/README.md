@@ -52,6 +52,8 @@ phase5-ssm-run-command.png
 - [x] App／DB final egress：[`phase0-tier0-app-sg-egress-final.png`](phase0-tier0-app-sg-egress-final.png)／[`phase0-tier0-db-sg-egress-final.png`](phase0-tier0-db-sg-egress-final.png)
 - [x] Tier 0 private RDS 兩項資源 change set（尚未 Execute）：[`phase0-tier0-rds-change-set.png`](phase0-tier0-rds-change-set.png)
 - [x] Tier 0 RDS 建立失敗診斷：[`空白 network parameters`](phase0-tier0-rds-parameter-validation-failure.png)／[`EngineVersion 使用 Console 描述而非 API 值`](phase0-tier0-rds-engine-version-failure.png)
+- [x] Tier 0 private RDS 建立完成與 Available：[`CloudFormation events`](phase0-tier0-rds-create-complete-events.png)／[`stack`](phase0-tier0-rds-stack-create-complete.png)／[`RDS summary`](phase0-tier0-rds-available-summary.png)
+- [x] Tier 0 private RDS 最終設定與 network boundary：[`configuration`](phase0-tier0-rds-configuration.png)／[`internet access disabled`](phase0-tier0-rds-internet-access-disabled.png)／[`DB SG rules`](phase0-tier0-rds-security-group-rules.png)
 
 ### 歷史舊帳號（2026-08-07）
 

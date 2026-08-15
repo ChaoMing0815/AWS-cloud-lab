@@ -4,7 +4,7 @@
 - Branch：`codex/session-lifecycle`
 - 最後全綠功能基準：`7b01591`（RDS API engine version correction）
 - Regression：Backend `252 passed, 8 skipped`；Frontend `80 passed`（未受本批影響，沿用最近全綠基準）
-- AWS：IAM bootstrap 與 Tier 0 network 已在 Tokyo 部署；RDS 兩次建立均 rollback，仍無 EC2／RDS／NAT／EIP；全程無 AWS CLI
+- AWS：IAM bootstrap、Tier 0 network 與 private RDS 已在 Tokyo 部署；仍無 EC2／NAT／EIP；全程無 AWS CLI
 
 ## Current
 
@@ -27,16 +27,16 @@
 - 2026-08-13 Batch 0 已確認 Free plan／credits／Budget／本月零成本、Organizations 缺席、IAM 安全基線、Tokyo `ap-northeast-1`、RDS／EC2／NAT／EIP／endpoint 零資源、default VPC `172.31.0.0/16` 與 CloudTrail onboarding 事件；證據見 [`docs/evidence/2026-08-13-tier0-batch0-console-inventory/`](../evidence/2026-08-13-tier0-batch0-console-inventory/inventory-summary.md)。
 - `ming-dev` 已使用 `PowerUserAccess`＋專題前綴 IAM delegation，並保留 account／Organizations／購買／長期 key deny；Root bootstrap 後已登出，日常操作回到 MFA 的 `ming-dev`。
 - 實機發現 SG 空 egress list 會產生 EC2 default allow-all；已用 localhost sink 修正 App／DB SG。Red `117bf3b`、Green `a78da19`，stack `UPDATE_COMPLETE`，Backend `247 passed, 8 skipped`。
-- Tier 0 private RDS template 已完成本機 R3 TDD：PostgreSQL `18.3-R2`、Single-AZ `db.t4g.micro`、20 GiB gp2、private-only、RDS-managed secret、Extended Support disabled；Red `7d6cebd`、Green `58fb058`，AWS 尚未建立 RDS。
+- Tier 0 private RDS template 已完成本機 R3 TDD：RDS API PostgreSQL `18.3`、Single-AZ `db.t4g.micro`、20 GiB gp2、private-only、RDS-managed secret、Extended Support disabled；原始 Red `7d6cebd`、Green `58fb058`，engine version correction `7b01591`。
 - Batch 2 已核准；`tier0-rds-20260814` change set 為 `CREATE_COMPLETE`／`AVAILABLE`，只有 `Database` 與 `DbSubnetGroup` 兩筆 `Add`。2026-08-14 暫停於 Execute 前，因此尚未開始 RDS 計費。
-- 2026-08-15 第一次執行因三個 network parameters 留空而 rollback；第二次填入正確 IDs 後，發現 Console 版本描述 `18.3-R2` 不能直接作為 RDS API `EngineVersion`。IaC 已 test-first 修正為 `18.3`，RDS／network／IAM contracts `13 passed`；AWS 仍未建立 RDS。
+- 2026-08-15 第一次 RDS 執行因三個 network parameters 留空而 rollback；第二次發現 Console 版本描述 `18.3-R2` 不能直接作為 API `EngineVersion`。test-first 修正為 `18.3` 後第三次建立成功：stack／Database `CREATE_COMPLETE`、RDS `Available`、Internet access gateway disabled、加密、managed secret 與 DB SG boundary 均通過 Console 驗證。
 
 ## Next
 
 ```text
-等待第二個失敗 RDS stack `ROLLBACK_COMPLETE` 後刪除
-→ 使用修正後 `infra/cloudformation/tier0-rds.yaml` 與三個非空 network Outputs 建立新 change set
-→ 等待 RDS available，驗證 private subnet／Public access No／DB SG／managed secret，再規劃 EC2＋SSM bounded batch
+規劃並核准 EC2＋SSM bounded batch
+→ 建立 public app EC2、instance role／profile 與 SSM 管理路徑，不開 SSH
+→ 部署 runtime、執行 migration 並驗證 private RDS readiness
 ```
 
 本機 MVP 100% 不等於 Tier 0 AWS 已完成：真實 model／Guardrail、RDS readiness、TLS 與 AWS 驗證尚未執行。Residual risk：idempotency 仍是 process memory，不宣稱 multi-process exactly-once；release assets 尚未在 Linux VM／EC2 實機驗證。

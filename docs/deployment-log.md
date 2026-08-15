@@ -63,6 +63,7 @@
 | 2026-08-14 | IAM bootstrap | 以 Root＋MFA 一次性建立 account protection deny 與 project-prefixed IAM delegation，並將 `PowerUserAccess` 附加至既有 developer group；隨即改回 `ming-dev` | `co-story-iam-bootstrap` `CREATE_COMPLETE`；group 6 policies；無 Access Key | [IAM／Network 部署驗證](evidence/2026-08-14-tier0-network-deployment/validation.md) |
 | 2026-08-14 | Tier 0 network | 在 Tokyo 建立 `10.20.0.0/16` VPC、1 public app subnet、2 private DB subnets、IGW、route tables 與 App／DB SG；不含 compute、database、NAT 或 EIP | 19 resources `CREATE_COMPLETE`；private route local-only；DB `5432` 只接受 App SG | [IAM／Network 部署驗證](evidence/2026-08-14-tier0-network-deployment/validation.md) |
 | 2026-08-14 | SG egress correction | Console 驗證發現 EC2 default allow-all egress；以 R3 TDD 與 CloudFormation localhost sink 修正 App／DB SG | Red `117bf3b`、Green `a78da19`；stack `UPDATE_COMPLETE`；final egress 截圖通過 | [IAM／Network 部署驗證](evidence/2026-08-14-tier0-network-deployment/validation.md) |
+| 2026-08-15 | Tier 0 private PostgreSQL | 在 Tokyo 以 CloudFormation 建立 1 個 private Single-AZ PostgreSQL RDS 與 DB subnet group；第一次因空白 network parameters、第二次因將 Console 版本描述誤作 API engine version 而 rollback，修正後第三次成功 | `co-story-tier0-rds` `CREATE_COMPLETE`；PostgreSQL `18.3`、`db.t4g.micro`、20 GiB gp2、encrypted、Internet access gateway disabled、RDS-managed secret；credits burn 上限 `US$25/month`；最晚 2026-09-08 清理 | [RDS IaC／部署驗證](evidence/2026-08-14-tier0-rds-iac/tdd-validation.md) |
 
 ## AWS Budget Alarm
 
