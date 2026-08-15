@@ -20,8 +20,10 @@ def test_release_assets_keep_migration_and_candidate_checks_outside_main_service
     assert "Type=oneshot" in migration
     assert "User=co-story" in migration
     assert "EnvironmentFile=/etc/co-story/runtime.env" in migration
+    assert "EnvironmentFile=/etc/co-story/database.env" in migration
     assert "/opt/co-story/releases/%i/.venv/bin/python -m app.commands.migrate" in migration
     assert "User=co-story" in candidate
+    assert "EnvironmentFile=/etc/co-story/database.env" in candidate
     assert "--host 127.0.0.1" in candidate
     assert "--port 8001" in candidate
     assert "--workers 1" in candidate
