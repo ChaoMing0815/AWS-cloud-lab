@@ -44,6 +44,9 @@ def test_activation_migrates_and_checks_candidate_before_atomic_current_switch()
     assert "current.previous" in activate
     assert "set -x" not in activate
     assert "DATABASE_URL" not in activate
+    assert 'if [ -L "$ROOT/current" ]' in activate
+    assert "remove unverified first deployment" in activate
+    assert activate.count('--header "Host: $health_host"') == 2
 
 
 def test_rollback_validates_candidate_without_migrating_or_downgrading_schema() -> None:
