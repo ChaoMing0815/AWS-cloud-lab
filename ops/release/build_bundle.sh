@@ -27,7 +27,7 @@ mkdir -p "$artifact_dir"
 
 archive="$artifact_dir/co-story.tar.gz"
 temporary_tar="$artifact_dir/co-story.tar"
-git archive --format=tar --prefix=co-story/ HEAD -o "$temporary_tar"
+git archive --format=tar --prefix=co-story/ -o "$temporary_tar" HEAD backend web ops
 gzip -n "$temporary_tar"
 install -m 0755 "$ROOT/ops/release/install_staging.sh" "$artifact_dir/install_staging.sh"
 
