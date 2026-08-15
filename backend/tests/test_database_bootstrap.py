@@ -43,6 +43,7 @@ class _Connection:
     def __init__(self, role_exists=False):
         self.role_exists = role_exists
         self.statements = []
+        self.raw_statements = []
 
     def __enter__(self):
         return self
@@ -51,7 +52,8 @@ class _Connection:
         return False
 
     def execute(self, sql, params=None):
-        rendered = str(sql)
+        self.raw_statements.append((sql, params))
+        rendered = sql.as_string() if hasattr(sql, "as_string") else str(sql)
         self.statements.append((rendered, params))
         if "FROM pg_roles" in rendered:
             return _Result((1,) if self.role_exists else None)
@@ -136,15 +138,17 @@ def test_role_bootstrap_is_rerunnable_and_never_interpolates_password(role_exist
     statements = [sql for sql, _ in connection.statements]
     assert any("FROM pg_roles" in sql for sql in statements)
     assert any(("CREATE ROLE" if not role_exists else "ALTER ROLE") in sql for sql in statements)
-    assert any("GRANT CONNECT ON DATABASE co_story" in sql for sql in statements)
-    assert any("GRANT USAGE, CREATE ON SCHEMA public" in sql for sql in statements)
-    assert all(password not in sql for sql in statements)
+    assert any('GRANT CONNECT ON DATABASE "co_story"' in sql for sql in statements)
+    assert any('GRANT USAGE, CREATE ON SCHEMA public TO "co_story_app"' in sql for sql in statements)
     password_statements = [
-        params
-        for sql, params in connection.statements
-        if "CREATE ROLE" in sql or "ALTER ROLE" in sql
+        query
+        for query, _ in connection.raw_statements
+        if "CREATE ROLE" in (query.as_string() if hasattr(query, "as_string") else str(query))
+        or "ALTER ROLE" in (query.as_string() if hasattr(query, "as_string") else str(query))
     ]
-    assert password_statements == [(password,)]
+    assert len(password_statements) == 1
+    assert not isinstance(password_statements[0], str)
+    assert "Literal(" in repr(password_statements[0])
     assert any("NOSUPERUSER" in sql for sql in statements)
     assert any("NOCREATEDB" in sql for sql in statements)
     assert any("NOCREATEROLE" in sql for sql in statements)
