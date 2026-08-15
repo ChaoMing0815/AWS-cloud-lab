@@ -61,7 +61,7 @@
 | 項目 | 固定邊界 |
 | --- | --- |
 | Template | `infra/cloudformation/tier0-rds.yaml`；只建立 1 個 DB subnet group 與 1 個 RDS DB instance。 |
-| Engine／size | PostgreSQL `18.3-R2`、Extended Support disabled、Single-AZ、`db.t4g.micro`、20 GiB gp2、無 storage autoscaling。 |
+| Engine／size | RDS API `EngineVersion` 為 PostgreSQL `18.3`（Console 版本描述 `18.3-R2`）、Extended Support disabled、Single-AZ、`db.t4g.micro`、20 GiB gp2、無 storage autoscaling。 |
 | Network | 使用 Batch 1 的兩個 private DB subnets 與 DB SG；`PubliclyAccessible=false`；不建立 NAT、public IPv4、proxy 或新 SG。 |
 | Credential | RDS-managed master password 存於 Secrets Manager；template、Git 與 Console 截圖都不輸入或保存明文密碼。 |
 | Encryption／monitoring | RDS 預設 AWS managed KMS key、Database Insights Standard 7 days；Enhanced Monitoring、DevOps Guru 與 log exports 關閉。 |

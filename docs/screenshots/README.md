@@ -51,6 +51,7 @@ phase5-ssm-run-command.png
 - [x] Default egress 發現、修正 change set 與更新完成：[`phase0-tier0-db-sg-default-egress-detected.png`](phase0-tier0-db-sg-default-egress-detected.png)／[`phase0-tier0-network-egress-fix-change-set.png`](phase0-tier0-network-egress-fix-change-set.png)／[`phase0-tier0-network-update-complete.png`](phase0-tier0-network-update-complete.png)
 - [x] App／DB final egress：[`phase0-tier0-app-sg-egress-final.png`](phase0-tier0-app-sg-egress-final.png)／[`phase0-tier0-db-sg-egress-final.png`](phase0-tier0-db-sg-egress-final.png)
 - [x] Tier 0 private RDS 兩項資源 change set（尚未 Execute）：[`phase0-tier0-rds-change-set.png`](phase0-tier0-rds-change-set.png)
+- [x] Tier 0 RDS 建立失敗診斷：[`空白 network parameters`](phase0-tier0-rds-parameter-validation-failure.png)／[`EngineVersion 使用 Console 描述而非 API 值`](phase0-tier0-rds-engine-version-failure.png)
 
 ### 歷史舊帳號（2026-08-07）
 

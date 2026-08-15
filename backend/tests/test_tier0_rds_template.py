@@ -32,7 +32,8 @@ def test_tier0_rds_template_uses_free_plan_sized_single_az_postgresql() -> None:
     database = _template()["Resources"]["Database"]["Properties"]
 
     assert database["Engine"] == "postgres"
-    assert database["EngineVersion"] == "18.3-R2"
+    assert database["EngineVersion"] == "18.3"
+    assert "-R" not in database["EngineVersion"]
     assert database["EngineLifecycleSupport"] == (
         "open-source-rds-extended-support-disabled"
     )

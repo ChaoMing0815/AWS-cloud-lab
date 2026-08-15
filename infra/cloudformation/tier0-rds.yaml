@@ -35,7 +35,7 @@ Resources:
       DBInstanceIdentifier: co-story-tier0-postgres
       DBName: co_story
       Engine: postgres
-      EngineVersion: 18.3-R2
+      EngineVersion: '18.3'
       EngineLifecycleSupport: open-source-rds-extended-support-disabled
       DBInstanceClass: db.t4g.micro
       MultiAZ: false
