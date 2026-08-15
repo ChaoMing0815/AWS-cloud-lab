@@ -11,4 +11,6 @@
 - Full regression：Backend `257 passed, 8 skipped`；Frontend 未受影響，沿用 `80 passed`。
 - Sensitivity：暫時加入 `KeyName` 後 no-SSH contract 如預期失敗；已還原並重新全綠。
 - Cost／rollback：EC2＋8 GiB gp3＋1 個 public IPv4 credits burn 上限 `US$20/month`；刪除 stack 會 terminate instance、刪除 root EBS、釋放自動 public IPv4並刪除 role／profile。
-- AWS：尚未建立 change set 或任何 Batch 3 resource；全程未使用 AWS CLI。
+- AWS Green：`tier0-compute-20260815` change set 只有 AppRole、instance profile 與 EC2 三筆 `Add`；`co-story-tier0-compute` 與 AppInstance 均為 `CREATE_COMPLETE`。EC2 為 running、`t4g.micro`、IMDSv2 required、自動 public IPv4、無 Elastic IP，System／Instance／EBS checks passed；SSM managed node 為 Amazon Linux、Ping Online、Agent `3.3.4624.0`。Console Session Manager 成功連線，唯讀指令驗證 `ssm-user`、`aarch64` 與 SSM Agent active；全程無 SSH／AWS CLI。
+
+Console 證據：[`change set`](../../screenshots/phase0-tier0-compute-change-set.png)、[`stack CREATE_COMPLETE`](../../screenshots/phase0-tier0-compute-stack-create-complete.png)、[`EC2 event`](../../screenshots/phase0-tier0-compute-create-complete-events.png)、[`SSM managed node Online`](../../screenshots/phase0-tier0-ssm-managed-node-online.png)、[`Session Manager validation`](../../screenshots/phase0-tier0-ssm-session-validation.png)。

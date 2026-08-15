@@ -73,7 +73,7 @@
 
 > 2026-08-15 結果：修正空白 parameters 與 API `EngineVersion` 後，`co-story-tier0-rds` 為 `CREATE_COMPLETE`；RDS `Available`，Internet access gateway disabled，並使用既有 private DB network boundary。RDS 與 managed secret 已開始消耗 credits。
 
-## Batch 3：Tier 0 EC2＋SSM management plane（待核准）
+## Batch 3：Tier 0 EC2＋SSM management plane（已部署並驗證）
 
 | 項目 | 固定邊界 |
 | --- | --- |
@@ -90,6 +90,8 @@
 | 負面驗證 | EC2 沒有 Key Pair／SSH ingress；IMDSv2 required；AppRole 只有 SSM core；無 EC2、EBS、public IPv4、IAM 殘留於 rollback。 |
 
 本機 R3 TDD 證據見 [`2026-08-15-tier0-compute-iac`](../evidence/2026-08-15-tier0-compute-iac/tdd-validation.md)。本批不包含 application code、DB credential、migration、TLS、Bedrock、CloudWatch logs 或 CI/CD。
+
+> 2026-08-15 結果：`co-story-tier0-compute` 為 `CREATE_COMPLETE`；EC2 running 且 health checks passed，SSM managed node Online。Console Session Manager 以 `ssm-user` 登入，實機確認 ARM64 `aarch64` 與 SSM Agent active；無 Key Pair、SSH 或 AWS CLI。
 
 ## 必填核准欄位
 

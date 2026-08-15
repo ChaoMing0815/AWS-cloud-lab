@@ -54,6 +54,8 @@ phase5-ssm-run-command.png
 - [x] Tier 0 RDS 建立失敗診斷：[`空白 network parameters`](phase0-tier0-rds-parameter-validation-failure.png)／[`EngineVersion 使用 Console 描述而非 API 值`](phase0-tier0-rds-engine-version-failure.png)
 - [x] Tier 0 private RDS 建立完成與 Available：[`CloudFormation events`](phase0-tier0-rds-create-complete-events.png)／[`stack`](phase0-tier0-rds-stack-create-complete.png)／[`RDS summary`](phase0-tier0-rds-available-summary.png)
 - [x] Tier 0 private RDS 最終設定與 network boundary：[`configuration`](phase0-tier0-rds-configuration.png)／[`internet access disabled`](phase0-tier0-rds-internet-access-disabled.png)／[`DB SG rules`](phase0-tier0-rds-security-group-rules.png)
+- [x] Tier 0 EC2＋SSM change set 與建立完成：[`change set`](phase0-tier0-compute-change-set.png)／[`stack`](phase0-tier0-compute-stack-create-complete.png)／[`events`](phase0-tier0-compute-create-complete-events.png)
+- [x] SSM managed node Online 與免 SSH Session Manager：[`managed node`](phase0-tier0-ssm-managed-node-online.png)／[`session validation`](phase0-tier0-ssm-session-validation.png)
 
 ### 歷史舊帳號（2026-08-07）
 
