@@ -18,6 +18,7 @@ def test_bundle_builder_archives_only_committed_head_with_checksum_and_installer
 
     assert "git status --porcelain" in script
     assert "git archive" in script
+    assert "HEAD backend web ops" in script
     assert "gzip -n" in script
     assert "shasum -a 256" in script
     assert "co-story.tar.gz.sha256" in script
