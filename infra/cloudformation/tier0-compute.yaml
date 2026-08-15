@@ -1,0 +1,92 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Tier 0 Co-Story EC2 and SSM management plane only. Creates no SSH key, application secret, or runtime deployment.
+
+Parameters:
+  PublicAppSubnetId:
+    Type: AWS::EC2::Subnet::Id
+    Description: Public app subnet from co-story-tier0-network.
+  AppSecurityGroupId:
+    Type: AWS::EC2::SecurityGroup::Id
+    Description: App security group from co-story-tier0-network.
+  LatestAmiId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-arm64
+
+Resources:
+  AppRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: AWSFinalProjectAppRole
+      Description: Co-Story Tier 0 EC2 role with SSM core only.
+      PermissionsBoundary:
+        Fn::Sub: arn:${AWS::Partition}:iam::aws:policy/PowerUserAccess
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - Fn::Sub: arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore
+      Tags:
+        - Key: Project
+          Value: co-story
+        - Key: Tier
+          Value: '0'
+
+  AppInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: AWSFinalProjectAppInstanceProfile
+      Roles:
+        - Ref: AppRole
+
+  AppInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId:
+        Ref: LatestAmiId
+      InstanceType: t4g.micro
+      IamInstanceProfile:
+        Ref: AppInstanceProfile
+      CreditSpecification:
+        CPUCredits: standard
+      Monitoring: false
+      MetadataOptions:
+        HttpEndpoint: enabled
+        HttpTokens: required
+        HttpPutResponseHopLimit: 1
+        InstanceMetadataTags: disabled
+      NetworkInterfaces:
+        - AssociatePublicIpAddress: true
+          DeviceIndex: '0'
+          GroupSet:
+            - Ref: AppSecurityGroupId
+          SubnetId:
+            Ref: PublicAppSubnetId
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            DeleteOnTermination: true
+            Encrypted: true
+            VolumeSize: 8
+            VolumeType: gp3
+      Tags:
+        - Key: Name
+          Value: co-story-tier0-app
+        - Key: Project
+          Value: co-story
+        - Key: Tier
+          Value: '0'
+
+Outputs:
+  AppInstanceId:
+    Value:
+      Ref: AppInstance
+  AppRoleName:
+    Value:
+      Ref: AppRole
+  AppInstanceProfileName:
+    Value:
+      Ref: AppInstanceProfile

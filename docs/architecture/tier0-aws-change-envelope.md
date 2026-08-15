@@ -73,6 +73,24 @@
 
 > 2026-08-15 結果：修正空白 parameters 與 API `EngineVersion` 後，`co-story-tier0-rds` 為 `CREATE_COMPLETE`；RDS `Available`，Internet access gateway disabled，並使用既有 private DB network boundary。RDS 與 managed secret 已開始消耗 credits。
 
+## Batch 3：Tier 0 EC2＋SSM management plane（待核准）
+
+| 項目 | 固定邊界 |
+| --- | --- |
+| Account／principal／Region | 沿用已驗證的新 Free plan account；MFA `ming-dev`；Tokyo `ap-northeast-1`；Console-first、無 AWS CLI。 |
+| Template | `infra/cloudformation/tier0-compute.yaml`；只建立 1 個 EC2 instance、1 個 `AWSFinalProjectAppRole` 與 1 個 instance profile。 |
+| Compute | Amazon Linux 2023 ARM64、`t4g.micro`、CPU credits `standard`、8 GiB encrypted gp3、detailed monitoring disabled。AMI 由 AWS public SSM parameter 解析。 |
+| Network | 使用 Batch 1 public app subnet 與既有 App SG；自動 public IPv4、無 Elastic IP／NAT／ALB／新 SG。App SG 仍只有 public `80/443`，永不開 `22` 或 `8000`。 |
+| IAM／SSM | Role trust 只允許 `ec2.amazonaws.com`，使用 `PowerUserAccess` permissions boundary，但實際只掛 `AmazonSSMManagedInstanceCore`；不授予 Secrets Manager、Bedrock、CloudWatch 或 IAM 管理權限。 |
+| Host security | IMDSv2 required、hop limit 1、instance metadata tags disabled；不建立 Key Pair、UserData、secret、runtime environment 或 application deployment。 |
+| 成本上限 | EC2＋8 GiB gp3＋1 個 public IPv4 的 credits burn 上限 `US$20/month`；public IPv4 官方牌價為 `US$0.005/hour`（約 `US$3.65/month`）。不含既有 RDS 成本。 |
+| 失敗／rollback | CloudFormation rollback all resources。刪除 stack 會 terminate instance、刪除 root EBS、釋放自動 public IPv4，並刪除 role／profile；不建立 snapshot。 |
+| 停止日期 | 最晚 2026-09-08 清理或另行核准延長；change set 超過 3 項、出現 Key Pair／EIP／新 SG／secret／UserData、非 `t4g.micro` 或 role 多出 policy 時立即停止。 |
+| 正面驗證 | Stack `CREATE_COMPLETE`；EC2 running／2-of-2 checks；SSM managed node online；Console Session Manager 可連線。 |
+| 負面驗證 | EC2 沒有 Key Pair／SSH ingress；IMDSv2 required；AppRole 只有 SSM core；無 EC2、EBS、public IPv4、IAM 殘留於 rollback。 |
+
+本機 R3 TDD 證據見 [`2026-08-15-tier0-compute-iac`](../evidence/2026-08-15-tier0-compute-iac/tdd-validation.md)。本批不包含 application code、DB credential、migration、TLS、Bedrock、CloudWatch logs 或 CI/CD。
+
 ## 必填核准欄位
 
 - Batch：`0 唯讀盤點` 或 `1 network CloudFormation`（不得以一般「開始 AWS」同意代替）。

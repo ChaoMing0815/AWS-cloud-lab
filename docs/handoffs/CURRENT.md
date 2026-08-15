@@ -30,13 +30,14 @@
 - Tier 0 private RDS template 已完成本機 R3 TDD：RDS API PostgreSQL `18.3`、Single-AZ `db.t4g.micro`、20 GiB gp2、private-only、RDS-managed secret、Extended Support disabled；原始 Red `7d6cebd`、Green `58fb058`，engine version correction `7b01591`。
 - Batch 2 已核准；`tier0-rds-20260814` change set 為 `CREATE_COMPLETE`／`AVAILABLE`，只有 `Database` 與 `DbSubnetGroup` 兩筆 `Add`。2026-08-14 暫停於 Execute 前，因此尚未開始 RDS 計費。
 - 2026-08-15 第一次 RDS 執行因三個 network parameters 留空而 rollback；第二次發現 Console 版本描述 `18.3-R2` 不能直接作為 API `EngineVersion`。test-first 修正為 `18.3` 後第三次建立成功：stack／Database `CREATE_COMPLETE`、RDS `Available`、Internet access gateway disabled、加密、managed secret 與 DB SG boundary 均通過 Console 驗證。
+- Batch 3 EC2＋SSM IaC 已完成本機 R3 TDD：AL2023 ARM64、`t4g.micro`、8 GiB encrypted gp3、CPU credits standard、IMDSv2-only、無 Key Pair／UserData／SSH，AppRole 只有 SSM core；targeted `13 passed`、Backend `257 passed, 8 skipped`，尚待使用者核准 AWS change envelope。
 
 ## Next
 
 ```text
-規劃並核准 EC2＋SSM bounded batch
-→ 建立 public app EC2、instance role／profile 與 SSM 管理路徑，不開 SSH
-→ 部署 runtime、執行 migration 並驗證 private RDS readiness
+核准 Batch 3 EC2＋SSM bounded change envelope
+→ 以 Console 建立並審查 3-resource change set，再 Execute
+→ 驗證 EC2 running／SSM managed node online／Session Manager success 與 no-SSH boundary
 ```
 
 本機 MVP 100% 不等於 Tier 0 AWS 已完成：真實 model／Guardrail、RDS readiness、TLS 與 AWS 驗證尚未執行。Residual risk：idempotency 仍是 process memory，不宣稱 multi-process exactly-once；release assets 尚未在 Linux VM／EC2 實機驗證。
