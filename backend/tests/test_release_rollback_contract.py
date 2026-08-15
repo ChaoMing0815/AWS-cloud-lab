@@ -33,10 +33,10 @@ def test_activation_migrates_and_checks_candidate_before_atomic_current_switch()
     activate = _read(ACTIVATE_SCRIPT)
 
     migrate_at = activate.index("co-story-migrate@")
-    candidate_at = activate.index("co-story-candidate@")
-    ready_before_switch = activate.index("/api/v1/ready")
-    switch_at = activate.index("mv -Tf")
-    restart_at = activate.index("systemctl restart co-story.service")
+    candidate_at = activate.index('candidate_unit="co-story-candidate@', migrate_at)
+    ready_before_switch = activate.index("/api/v1/ready", candidate_at)
+    switch_at = activate.index("mv -Tf", ready_before_switch)
+    restart_at = activate.index("systemctl restart co-story.service", switch_at)
     ready_after_restart = activate.rindex("/api/v1/ready")
     assert migrate_at < candidate_at < ready_before_switch < switch_at < restart_at < ready_after_restart
     assert "current.restore" in activate

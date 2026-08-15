@@ -61,13 +61,18 @@ def test_staging_installer_uses_non_root_service_and_internal_only_proxy() -> No
     assert "useradd --system" in script
     assert "co-story" in script
     assert "co-story.service" in script
-    assert "co-story-migrate@" not in script
+    assert 'systemctl start "co-story-migrate@' not in script
     assert "activate.sh" in script
     assert "systemctl enable" in script
+    assert "systemctl disable --now nginx.service" in script
+    assert "co-story-nginx-staging.service" in script
+    assert "previous_target" in script
+    assert "install-restore" in script
     assert "listen 127.0.0.1:8080;" in nginx
     assert "proxy_pass http://127.0.0.1:8000;" in nginx
     assert "listen 80" not in nginx
     assert "listen 443" not in nginx
+    assert "0.0.0.0" not in nginx
 
 
 def test_release_shell_assets_have_valid_bash_syntax() -> None:

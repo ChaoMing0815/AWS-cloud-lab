@@ -1,0 +1,19 @@
+[Unit]
+Description=Co-Story internal-only staging Nginx proxy
+After=network-online.target co-story.service
+Wants=network-online.target
+Requires=co-story.service
+
+[Service]
+Type=simple
+ExecStart=/usr/sbin/nginx -c /etc/nginx/co-story-staging.conf -g "daemon off;"
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target
