@@ -1,10 +1,10 @@
 # CURRENT：目前工作交接
 
-- 更新日期：2026-08-14
+- 更新日期：2026-08-15
 - Branch：`codex/session-lifecycle`
-- 最後全綠功能基準：`58fb058`（Tier 0 private RDS local contract）
+- 最後全綠功能基準：`7b01591`（RDS API engine version correction）
 - Regression：Backend `252 passed, 8 skipped`；Frontend `80 passed`（未受本批影響，沿用最近全綠基準）
-- AWS：IAM bootstrap 與 Tier 0 network 已在 Tokyo 部署；RDS change set 已建立但未 Execute；仍無 EC2／RDS／NAT／EIP；全程無 AWS CLI
+- AWS：IAM bootstrap 與 Tier 0 network 已在 Tokyo 部署；RDS 兩次建立均 rollback，仍無 EC2／RDS／NAT／EIP；全程無 AWS CLI
 
 ## Current
 
@@ -29,11 +29,13 @@
 - 實機發現 SG 空 egress list 會產生 EC2 default allow-all；已用 localhost sink 修正 App／DB SG。Red `117bf3b`、Green `a78da19`，stack `UPDATE_COMPLETE`，Backend `247 passed, 8 skipped`。
 - Tier 0 private RDS template 已完成本機 R3 TDD：PostgreSQL `18.3-R2`、Single-AZ `db.t4g.micro`、20 GiB gp2、private-only、RDS-managed secret、Extended Support disabled；Red `7d6cebd`、Green `58fb058`，AWS 尚未建立 RDS。
 - Batch 2 已核准；`tier0-rds-20260814` change set 為 `CREATE_COMPLETE`／`AVAILABLE`，只有 `Database` 與 `DbSubnetGroup` 兩筆 `Add`。2026-08-14 暫停於 Execute 前，因此尚未開始 RDS 計費。
+- 2026-08-15 第一次執行因三個 network parameters 留空而 rollback；第二次填入正確 IDs 後，發現 Console 版本描述 `18.3-R2` 不能直接作為 RDS API `EngineVersion`。IaC 已 test-first 修正為 `18.3`，RDS／network／IAM contracts `13 passed`；AWS 仍未建立 RDS。
 
 ## Next
 
 ```text
-2026-08-15 由 `ming-dev` 在 Tokyo 執行已核對完成的 `tier0-rds-20260814`
+等待第二個失敗 RDS stack `ROLLBACK_COMPLETE` 後刪除
+→ 使用修正後 `infra/cloudformation/tier0-rds.yaml` 與三個非空 network Outputs 建立新 change set
 → 等待 RDS available，驗證 private subnet／Public access No／DB SG／managed secret，再規劃 EC2＋SSM bounded batch
 ```
 
