@@ -82,3 +82,20 @@ def test_activation_and_rollback_bound_transient_readiness_retries() -> None:
         assert "readiness_attempts=30" in script
         assert "sleep 1" in script
         assert "readiness check failed" in script
+
+
+def test_activation_restores_only_an_existing_previous_release_target() -> None:
+    activate = _read(ACTIVATE_SCRIPT)
+
+    assert 'readlink -f "$ROOT/current" 2>/dev/null || true' in activate
+    assert activate.count('"$resolved_releases"/*') >= 2
+    assert '[ -d "$previous_candidate" ]' in activate
+    assert 'previous_target="$previous_candidate"' in activate
+
+
+def test_rollback_rejects_an_invalid_current_release_target() -> None:
+    rollback = _read(ROLLBACK_SCRIPT)
+
+    assert 'readlink -f "$ROOT/current" 2>/dev/null || true' in rollback
+    assert rollback.count('"$resolved_releases"/*') >= 2
+    assert 'invalid current release target' in rollback

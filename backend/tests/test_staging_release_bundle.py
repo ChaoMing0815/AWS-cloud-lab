@@ -85,6 +85,14 @@ def test_staging_installer_bounds_proxy_readiness_retries() -> None:
     assert "readiness check failed" in script
 
 
+def test_staging_installer_removes_only_an_unresolvable_current_symlink() -> None:
+    script = _read(INSTALL)
+
+    assert 'if [ -L "$root/current" ] && [ -z "$active_target" ]; then' in script
+    assert 'rm -f "$root/current"' in script
+    assert 'systemctl stop co-story.service || true' in script
+
+
 def test_release_shell_assets_have_valid_bash_syntax() -> None:
     for script in (BUILD, INSTALL):
         result = subprocess.run(
