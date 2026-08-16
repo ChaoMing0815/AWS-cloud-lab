@@ -66,14 +66,30 @@ if [ -e "$release_dir" ]; then
   exit 2
 fi
 install -d -m 0755 "$releases"
+resolved_releases="$(realpath -e "$releases")"
 stage="$(mktemp -d "$root/.stage.$release_id.XXXXXX")"
 success=0
-previous_target="$(readlink -f "$root/current" 2>/dev/null || true)"
+previous_target=""
+if [ -L "$root/current" ]; then
+  previous_candidate="$(readlink -f "$root/current" 2>/dev/null || true)"
+  case "$previous_candidate" in
+    "$resolved_releases"/*)
+      if [ -d "$previous_candidate" ]; then
+        previous_target="$previous_candidate"
+      fi
+      ;;
+  esac
+fi
 
 cleanup() {
   rm -rf "$stage"
   if [ "$success" -eq 0 ]; then
     active_target="$(readlink -f "$root/current" 2>/dev/null || true)"
+    if [ -L "$root/current" ] && [ -z "$active_target" ]; then
+      rm -f "$root/current"
+      systemctl stop co-story-nginx-staging.service || true
+      systemctl stop co-story.service || true
+    fi
     if [ "$active_target" = "$release_dir" ]; then
       if [ -n "$previous_target" ]; then
         restore_link="$root/.current.install-restore.$release_id"

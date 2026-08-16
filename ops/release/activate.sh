@@ -54,8 +54,15 @@ test -x "$resolved_release/.venv/bin/uvicorn"
 previous_target=""
 had_previous=0
 if [ -L "$ROOT/current" ]; then
-  previous_target="$(readlink -f "$ROOT/current")"
-  had_previous=1
+  previous_candidate="$(readlink -f "$ROOT/current" 2>/dev/null || true)"
+  case "$previous_candidate" in
+    "$resolved_releases"/*)
+      if [ -d "$previous_candidate" ]; then
+        previous_target="$previous_candidate"
+        had_previous=1
+      fi
+      ;;
+  esac
 fi
 candidate_active=0
 

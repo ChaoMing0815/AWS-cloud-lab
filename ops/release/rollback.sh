@@ -43,7 +43,19 @@ case "$resolved_release" in
 esac
 
 test -x "$resolved_release/.venv/bin/uvicorn"
-previous_target="$(readlink -f "$ROOT/current")"
+previous_target="$(readlink -f "$ROOT/current" 2>/dev/null || true)"
+case "$previous_target" in
+  "$resolved_releases"/*)
+    if [ ! -d "$previous_target" ]; then
+      printf '%s\n' 'invalid current release target' >&2
+      exit 2
+    fi
+    ;;
+  *)
+    printf '%s\n' 'invalid current release target' >&2
+    exit 2
+    ;;
+esac
 candidate_active=0
 
 cleanup_candidate() {
