@@ -21,16 +21,20 @@
 - 實機安裝除錯已回饋到 tests 與 release tooling：包含 binary psycopg、bounded readiness retry、安全的既有 DB role rotate、symlink target 驗證，以及 Nginx journal／runtime write path。
 - Guardrail `co-story-tier0-safety` 為 `Ready`：Standard filters、APAC cross-Region profile、EMAIL／PHONE Mask；尚未發布固定 version、Test 或執行真實 model invocation。
 - 目前 runtime **只在 EC2 loopback internal staging**，尚未公開提供 Web／TLS；不得宣稱 Tier 0 AWS 垂直切片完成。
+- 專案文件入口已收斂：根目錄 `README.md` 只保留產品、架構、執行方式與核心文件入口；完整文件索引位於 `docs/README.md`，證據保存規則位於 `docs/evidence/README.md`。
 
 ## Next
 
 ```text
 結束操作中的 SSM Session
+→ Console 唯讀確認 Guardrail draft／version 狀態與 Nova Lite 的精確 model／inference profile 識別
 → 發布並驗證固定 Guardrail version，建立 exact model／Guardrail AppRole policy
 → 規劃並審查 public Web＋TLS boundary，再啟用 production runtime
 → 驗證公開 Web、private RDS read/write、一次真實 Bedrock 故事生成
-→ 完成三玩家 AWS smoke test、service restart persistence、成本檢查與第一份報告
+→ 完成三玩家 AWS smoke test、成本檢查、證據收斂與第一份報告
 ```
+
+明日新對話的第一步：依 `operate-aws-final-project`、本文件與 `docs/architecture/tier0-aws-change-envelope.md`，從 **Batch 5 Guardrail 固定版本與 Bedrock bounded IAM** 接續；仍採 Console-first，每次只做一個可驗證小步驟。除非使用者另行核准新的 bounded batch，禁止 AWS CLI。
 
 ## Residual risks
 
