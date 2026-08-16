@@ -76,6 +76,15 @@ def test_staging_installer_uses_non_root_service_and_internal_only_proxy() -> No
     assert "0.0.0.0" not in nginx
 
 
+def test_staging_installer_bounds_proxy_readiness_retries() -> None:
+    script = _read(INSTALL)
+
+    assert "wait_for_readiness()" in script
+    assert "readiness_attempts=30" in script
+    assert "sleep 1" in script
+    assert "readiness check failed" in script
+
+
 def test_release_shell_assets_have_valid_bash_syntax() -> None:
     for script in (BUILD, INSTALL):
         result = subprocess.run(

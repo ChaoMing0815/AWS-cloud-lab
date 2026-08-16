@@ -65,3 +65,13 @@ def test_rollback_validates_candidate_without_migrating_or_downgrading_schema() 
     assert "psql" not in lowered
     assert "down" not in lowered
     assert "database_url" not in lowered
+
+
+def test_activation_and_rollback_bound_transient_readiness_retries() -> None:
+    for path in (ACTIVATE_SCRIPT, ROLLBACK_SCRIPT):
+        script = _read(path)
+
+        assert "wait_for_readiness()" in script
+        assert "readiness_attempts=30" in script
+        assert "sleep 1" in script
+        assert "readiness check failed" in script
