@@ -66,6 +66,7 @@ Resources:
   ArtifactReadPolicy:
     Type: AWS::IAM::ManagedPolicy
     Properties:
+      ManagedPolicyName: AWSFinalProjectArtifactRead
       Description: Lets the Co-Story instance list and read only short-lived release artifacts.
       Roles:
         - Ref: AppRoleName
