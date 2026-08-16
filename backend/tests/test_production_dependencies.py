@@ -26,6 +26,12 @@ def test_production_dependency_lock_pins_required_runtime_packages() -> None:
     assert REQUIRED_PACKAGES.issubset({_package_name(item) for item in requirements})
 
 
+def test_no_deps_install_explicitly_pins_psycopg_binary_wrapper() -> None:
+    requirements = _requirements()
+
+    assert "psycopg-binary==3.3.4" in requirements
+
+
 def test_production_dependency_lock_excludes_development_test_tools() -> None:
     requirements = _requirements()
 
