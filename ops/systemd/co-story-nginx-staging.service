@@ -6,7 +6,7 @@ Requires=co-story.service
 
 [Service]
 Type=simple
-ExecStart=/usr/sbin/nginx -c /etc/nginx/co-story-staging.conf -g "daemon off;"
+ExecStart=/usr/sbin/nginx -e stderr -c /etc/nginx/co-story-staging.conf -g "daemon off;"
 ExecReload=/bin/kill -HUP $MAINPID
 Restart=on-failure
 RestartSec=5
