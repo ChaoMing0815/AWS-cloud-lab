@@ -6,6 +6,7 @@ ROOT = Path(__file__).parents[2]
 BUILD = ROOT / "ops/release/build_bundle.sh"
 INSTALL = ROOT / "ops/release/install_staging.sh"
 STAGING_NGINX = ROOT / "ops/nginx/co-story-staging.conf"
+STAGING_NGINX_UNIT = ROOT / "ops/systemd/co-story-nginx-staging.service"
 
 
 def _read(path: Path) -> str:
@@ -58,6 +59,7 @@ def test_staging_installer_keeps_secret_values_out_of_commands_and_files() -> No
 def test_staging_installer_uses_non_root_service_and_internal_only_proxy() -> None:
     script = _read(INSTALL)
     nginx = _read(STAGING_NGINX)
+    nginx_unit = _read(STAGING_NGINX_UNIT)
 
     assert "useradd --system" in script
     assert "co-story" in script
@@ -74,6 +76,10 @@ def test_staging_installer_uses_non_root_service_and_internal_only_proxy() -> No
     assert "listen 80" not in nginx
     assert "listen 443" not in nginx
     assert "0.0.0.0" not in nginx
+    assert "access_log off;" in nginx
+    assert "/dev/stdout" not in nginx
+    assert "-e stderr" in nginx_unit
+    assert "ProtectSystem=strict" in nginx_unit
 
 
 def test_staging_installer_bounds_proxy_readiness_retries() -> None:
