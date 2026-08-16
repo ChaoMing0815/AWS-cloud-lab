@@ -14,8 +14,8 @@
 | VPC CIDR | `10.20.0.0/16` |
 | Public Subnet CIDR | `10.20.10.0/24` |
 | Private Subnet CIDR | `10.20.110.0/24`、`10.20.120.0/24` |
-| EC2 規格 | 待確認 |
-| 資料層規格 | 待確認 |
+| EC2 規格 | AL2023 ARM64 `t4g.micro`、8 GiB encrypted gp3、SSM、無 SSH |
+| 資料層規格 | PostgreSQL `18.3`、Single-AZ `db.t4g.micro`、20 GiB gp2、private-only、encrypted |
 
 ## 變更紀錄
 
@@ -65,6 +65,9 @@
 | 2026-08-14 | SG egress correction | Console 驗證發現 EC2 default allow-all egress；以 R3 TDD 與 CloudFormation localhost sink 修正 App／DB SG | Red `117bf3b`、Green `a78da19`；stack `UPDATE_COMPLETE`；final egress 截圖通過 | [IAM／Network 部署驗證](evidence/2026-08-14-tier0-network-deployment/validation.md) |
 | 2026-08-15 | Tier 0 private PostgreSQL | 在 Tokyo 以 CloudFormation 建立 1 個 private Single-AZ PostgreSQL RDS 與 DB subnet group；第一次因空白 network parameters、第二次因將 Console 版本描述誤作 API engine version 而 rollback，修正後第三次成功 | `co-story-tier0-rds` `CREATE_COMPLETE`；PostgreSQL `18.3`、`db.t4g.micro`、20 GiB gp2、encrypted、Internet access gateway disabled、RDS-managed secret；credits burn 上限 `US$25/month`；最晚 2026-09-08 清理 | [RDS IaC／部署驗證](evidence/2026-08-14-tier0-rds-iac/tdd-validation.md) |
 | 2026-08-15 | Tier 0 EC2＋SSM management plane | 在 Tokyo 建立 AL2023 ARM64 `t4g.micro`、8 GiB encrypted gp3、AppRole 與 instance profile；不含 Key Pair、UserData、secret 或 application deployment | `co-story-tier0-compute` `CREATE_COMPLETE`；EC2 checks passed；SSM managed node Online；Session Manager 實機驗證 `ssm-user`／`aarch64`／agent active；無 SSH／AWS CLI；credits burn 上限 `US$20/month`；最晚 2026-09-08 清理 | [EC2＋SSM IaC／部署驗證](evidence/2026-08-15-tier0-compute-iac/tdd-validation.md) |
+| 2026-08-16 | Tier 0 private artifacts＋runtime secrets | 建立 private short-lived artifact bucket、application DB secret、永久 exact-secret read policy 與暫時 master-secret bootstrap policy | artifacts／runtime-secrets stacks `CREATE_COMPLETE`；bundle 由 Console 上傳並在 SSM 內以 SHA-256 驗證；無 public S3、無 secret 明文 | [Internal staging 驗證](evidence/2026-08-16-tier0-internal-staging/validation.md) |
+| 2026-08-16 | Tier 0 internal staging runtime | 透過使用者逐批核准的 SSM shell 安裝 release、建立 restricted DB role、執行 migration，並啟動 FastAPI＋loopback Nginx；未開放 public Web | release `tier0-20260816-b028569`；兩個 services active；internal readiness HTTP `200`；Backend `290 passed, 8 skipped` | [Internal staging 驗證](evidence/2026-08-16-tier0-internal-staging/validation.md) |
+| 2026-08-16 | Migration bootstrap access cleanup | 以 CloudFormation update 將 `EnableMigrationBootstrapAccess` 改為 `false`，只刪除 temporary master-secret read policy | Change Set 只有 1 筆 `Remove`；stack `UPDATE_COMPLETE`；application DB secret 與永久 app read policy 保留 | [Internal staging 驗證](evidence/2026-08-16-tier0-internal-staging/validation.md) |
 
 ## AWS Budget Alarm
 
