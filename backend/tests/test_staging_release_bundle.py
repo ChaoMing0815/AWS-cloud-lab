@@ -78,7 +78,15 @@ def test_staging_installer_uses_non_root_service_and_internal_only_proxy() -> No
     assert "0.0.0.0" not in nginx
     assert "access_log off;" in nginx
     assert "/dev/stdout" not in nginx
+    assert "user nginx;" not in nginx
+    assert "pid /run/co-story-nginx-staging/nginx.pid;" in nginx
+    assert "client_body_temp_path /run/co-story-nginx-staging/client_temp;" in nginx
+    assert "proxy_temp_path /run/co-story-nginx-staging/proxy_temp;" in nginx
     assert "-e stderr" in nginx_unit
+    assert "User=nginx" in nginx_unit
+    assert "Group=nginx" in nginx_unit
+    assert "RuntimeDirectory=co-story-nginx-staging" in nginx_unit
+    assert "RuntimeDirectoryMode=0750" in nginx_unit
     assert "ProtectSystem=strict" in nginx_unit
 
 
