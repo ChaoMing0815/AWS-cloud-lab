@@ -69,6 +69,11 @@ def test_staging_installer_uses_non_root_service_and_internal_only_proxy() -> No
     assert "systemctl enable" in script
     assert "systemctl disable --now nginx.service" in script
     assert "co-story-nginx-staging.service" in script
+    assert (
+        "install -d -m 0750 -o nginx -g nginx /run/co-story-nginx-staging"
+        in script
+    )
+    assert "runuser -u nginx -- /usr/sbin/nginx -t" in script
     assert "previous_target" in script
     assert "install-restore" in script
     assert "listen 127.0.0.1:8080;" in nginx

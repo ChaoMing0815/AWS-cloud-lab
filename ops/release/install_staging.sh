@@ -161,7 +161,8 @@ CO_STORY_RDS_CA_PATH=/etc/pki/rds/rds-ca.pem \
 "$release_dir/ops/release/activate.sh" "$release_id" localhost
 systemctl enable co-story.service
 systemctl disable --now nginx.service >/dev/null 2>&1 || true
-nginx -t -c /etc/nginx/co-story-staging.conf
+install -d -m 0750 -o nginx -g nginx /run/co-story-nginx-staging
+runuser -u nginx -- /usr/sbin/nginx -t -c /etc/nginx/co-story-staging.conf
 systemctl enable --now co-story-nginx-staging.service
 wait_for_readiness http://127.0.0.1:8080/api/v1/ready localhost
 

@@ -6,6 +6,10 @@ Requires=co-story.service
 
 [Service]
 Type=simple
+User=nginx
+Group=nginx
+RuntimeDirectory=co-story-nginx-staging
+RuntimeDirectoryMode=0750
 ExecStart=/usr/sbin/nginx -e stderr -c /etc/nginx/co-story-staging.conf -g "daemon off;"
 ExecReload=/bin/kill -HUP $MAINPID
 Restart=on-failure
