@@ -71,20 +71,28 @@ def database_url(
 
 
 def provision_application_role(connection, password: str) -> None:
-    exists = connection.execute(
-        "SELECT 1 FROM pg_roles WHERE rolname = %s",
+    attributes = connection.execute(
+        "SELECT rolcanlogin, rolsuper, rolcreatedb, rolcreaterole, "
+        "rolreplication, rolbypassrls FROM pg_roles WHERE rolname = %s",
         (APP_USERNAME,),
     ).fetchone()
-    role_options = sql.SQL(
-        "LOGIN PASSWORD {} NOSUPERUSER NOCREATEDB NOCREATEROLE "
-        "NOREPLICATION NOBYPASSRLS"
-    ).format(sql.Literal(password))
-    if exists:
+    if attributes:
+        can_login, superuser, create_db, create_role, replication, bypass_rls = (
+            attributes
+        )
+        if not can_login or any(
+            (superuser, create_db, create_role, replication, bypass_rls)
+        ):
+            raise RuntimeError("application database role has unsafe attributes")
         connection.execute(
             sql.SQL("ALTER ROLE {} WITH ").format(sql.Identifier(APP_USERNAME))
-            + role_options
+            + sql.SQL("PASSWORD {}").format(sql.Literal(password))
         )
     else:
+        role_options = sql.SQL(
+            "LOGIN PASSWORD {} NOSUPERUSER NOCREATEDB NOCREATEROLE "
+            "NOREPLICATION NOBYPASSRLS"
+        ).format(sql.Literal(password))
         connection.execute(
             sql.SQL("CREATE ROLE {} WITH ").format(sql.Identifier(APP_USERNAME))
             + role_options
