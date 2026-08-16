@@ -48,6 +48,11 @@
 - systemd：application 與 staging Nginx services 均為 active。
 - Active symlink：解析至 `tier0-20260816-b028569` release directory。
 - Internal readiness：HTTP `200`。
+- Service restart persistence：
+  - 重啟前：同一 session 讀回測試房間，room match `true`、status `DRAFT`、version `1`。
+  - `co-story.service` restart 後：application／Nginx 均為 active，readiness HTTP `200`。
+  - 重啟後：room／status／version match 均為 `true`，證明 room 與 session 可由 PostgreSQL 還原。
+  - 收尾：測試房間以正式 API 刪除並回傳 HTTP `204`；cookie 與三份 JSON `/tmp` 檔案已清除。
 - CloudFormation cleanup：只移除 migration bootstrap policy，stack `UPDATE_COMPLETE`。
 
 ## 成本、安全與停止點
@@ -62,5 +67,5 @@
 
 - Public Web／TLS boundary 與正式對外 URL。
 - 固定 Guardrail version、exact Bedrock model policy 與真實故事生成。
-- AWS 三玩家核心流程 smoke test、service restart persistence 與最終成本檢查。
+- AWS 三玩家核心流程 smoke test 與最終成本檢查；service restart persistence 已完成。
 - Console／SSM 原始截圖若要入庫，仍須逐張去識別化並加入 screenshot index。
