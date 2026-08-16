@@ -79,6 +79,7 @@ def test_bucket_policy_denies_every_non_tls_request_to_exact_bucket_resources() 
 def test_instance_role_can_only_list_release_prefix_and_read_release_objects() -> None:
     policy = _template()["Resources"]["ArtifactReadPolicy"]["Properties"]
 
+    assert policy["ManagedPolicyName"] == "AWSFinalProjectArtifactRead"
     assert policy["Roles"] == [{"Ref": "AppRoleName"}]
     assert policy["PolicyDocument"]["Statement"] == [
         {
