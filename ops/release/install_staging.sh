@@ -1,6 +1,25 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+wait_for_readiness() {
+  readiness_url="${1:?readiness URL required}"
+  readiness_host="${2:?readiness host required}"
+  readiness_attempts=30
+  readiness_attempt=1
+  while [ "$readiness_attempt" -le "$readiness_attempts" ]; do
+    if curl --fail --silent --max-time 2 \
+      --header "Host: $readiness_host" "$readiness_url" >/dev/null; then
+      return 0
+    fi
+    if [ "$readiness_attempt" -lt "$readiness_attempts" ]; then
+      sleep 1
+    fi
+    readiness_attempt=$((readiness_attempt + 1))
+  done
+  printf '%s\n' "readiness check failed: $readiness_url" >&2
+  return 1
+}
+
 if [ "$(id -u)" -ne 0 ]; then
   printf '%s\n' 'installer must run as root' >&2
   exit 2
@@ -128,7 +147,7 @@ systemctl enable co-story.service
 systemctl disable --now nginx.service >/dev/null 2>&1 || true
 nginx -t -c /etc/nginx/co-story-staging.conf
 systemctl enable --now co-story-nginx-staging.service
-curl --fail --silent --show-error --max-time 10 http://127.0.0.1:8080/api/v1/ready >/dev/null
+wait_for_readiness http://127.0.0.1:8080/api/v1/ready localhost
 
 success=1
 printf '%s\n' 'staging release installed'
