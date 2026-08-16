@@ -40,8 +40,16 @@ class _Result:
 
 
 class _Connection:
-    def __init__(self, role_exists=False):
+    def __init__(self, role_exists=False, role_attributes=None):
         self.role_exists = role_exists
+        self.role_attributes = role_attributes or (
+            True,
+            False,
+            False,
+            False,
+            False,
+            False,
+        )
         self.statements = []
         self.raw_statements = []
 
@@ -56,7 +64,7 @@ class _Connection:
         rendered = sql.as_string() if hasattr(sql, "as_string") else str(sql)
         self.statements.append((rendered, params))
         if "FROM pg_roles" in rendered:
-            return _Result((1,) if self.role_exists else None)
+            return _Result(self.role_attributes if self.role_exists else None)
         return _Result()
 
 
@@ -127,17 +135,16 @@ def test_database_url_encodes_credentials_and_requires_full_rds_ca_verification(
     }
 
 
-@pytest.mark.parametrize("role_exists", [False, True])
-def test_role_bootstrap_is_rerunnable_and_never_interpolates_password(role_exists) -> None:
+def test_new_role_bootstrap_is_bounded_and_never_interpolates_password() -> None:
     module = _module()
-    connection = _Connection(role_exists=role_exists)
+    connection = _Connection(role_exists=False)
     password = "must-not-appear-in-sql"
 
     module.provision_application_role(connection, password)
 
     statements = [sql for sql, _ in connection.statements]
     assert any("FROM pg_roles" in sql for sql in statements)
-    assert any(("CREATE ROLE" if not role_exists else "ALTER ROLE") in sql for sql in statements)
+    assert any("CREATE ROLE" in sql for sql in statements)
     assert any('GRANT CONNECT ON DATABASE "co_story"' in sql for sql in statements)
     assert any('GRANT USAGE, CREATE ON SCHEMA public TO "co_story_app"' in sql for sql in statements)
     password_statements = [
@@ -154,6 +161,36 @@ def test_role_bootstrap_is_rerunnable_and_never_interpolates_password(role_exist
     assert any("NOCREATEROLE" in sql for sql in statements)
     assert any("NOREPLICATION" in sql for sql in statements)
     assert any("NOBYPASSRLS" in sql for sql in statements)
+
+
+def test_existing_bounded_role_rotates_only_its_password() -> None:
+    module = _module()
+    connection = _Connection(role_exists=True)
+
+    module.provision_application_role(connection, "rotated-secret")
+
+    alter_role = next(
+        sql for sql, _ in connection.statements if "ALTER ROLE" in sql
+    )
+    assert "PASSWORD" in alter_role
+    assert "SUPERUSER" not in alter_role
+    assert "CREATEDB" not in alter_role
+    assert "CREATEROLE" not in alter_role
+    assert "REPLICATION" not in alter_role
+    assert "BYPASSRLS" not in alter_role
+
+
+def test_existing_role_with_privilege_drift_fails_closed() -> None:
+    module = _module()
+    connection = _Connection(
+        role_exists=True,
+        role_attributes=(True, True, False, False, False, False),
+    )
+
+    with pytest.raises(RuntimeError, match="unsafe attributes"):
+        module.provision_application_role(connection, "rotated-secret")
+
+    assert not any("ALTER ROLE" in sql for sql, _ in connection.statements)
 
 
 def test_database_environment_is_atomically_written_with_bounded_permissions(tmp_path) -> None:
