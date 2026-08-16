@@ -43,6 +43,17 @@ def test_runtime_secret_template_has_one_generated_secret_and_two_bounded_polici
     ) == 2
 
 
+def test_runtime_managed_policy_names_match_project_iam_delegation_prefix() -> None:
+    resources = _template()["Resources"]
+
+    assert resources["AppDbSecretReadPolicy"]["Properties"]["ManagedPolicyName"] == (
+        "AWSFinalProjectAppDbSecretRead"
+    )
+    assert resources["MigrationBootstrapSecretReadPolicy"]["Properties"][
+        "ManagedPolicyName"
+    ] == "AWSFinalProjectMigrationBootstrapSecretRead"
+
+
 def test_application_database_secret_is_generated_without_plaintext_or_fixed_name() -> None:
     secret_resource = _template()["Resources"]["AppDbSecret"]
     secret = secret_resource["Properties"]
