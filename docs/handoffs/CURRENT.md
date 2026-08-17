@@ -1,7 +1,8 @@
 # CURRENT：目前工作交接
 
-- 更新日期：2026-08-16
-- Branch：`codex/session-lifecycle`
+- 更新日期：2026-08-17
+- Branch：`main`（已與 `origin/main` 同步）
+- Git checkpoint：PR `#1` 已合併；merge commit `0edbafc`（Tier 0 internal staging milestone）
 - 最後全綠功能基準：`b028569`（staging Nginx runtime write boundary）
 - Regression：Backend `290 passed, 8 skipped`（2026-08-16 重跑）；Frontend `80 passed`（未受本批影響，沿用最近全綠基準）
 - AWS：Tokyo `ap-northeast-1` 已有 IAM、network、private RDS、EC2＋SSM、private artifacts、runtime secrets 與 Guardrail；無 NAT／EIP／SSH
@@ -22,6 +23,7 @@
 - Guardrail `co-story-tier0-safety` 為 `Ready`：Standard filters、APAC cross-Region profile、EMAIL／PHONE Mask；尚未發布固定 version、Test 或執行真實 model invocation。
 - 目前 runtime **只在 EC2 loopback internal staging**，尚未公開提供 Web／TLS；不得宣稱 Tier 0 AWS 垂直切片完成。
 - 專案文件入口已收斂：根目錄 `README.md` 只保留產品、架構、執行方式與核心文件入口；完整文件索引位於 `docs/README.md`，證據保存規則位於 `docs/evidence/README.md`。
+- `codex/session-lifecycle` 已 push 並透過 PR `#1` 合併到 `main`；三個更早的 remote feature branches 與該 branch 均已被 `main` 包含，remote branch 指標清理屬可選 Git housekeeping，不阻塞 AWS 進度。
 
 ## Next
 
@@ -34,7 +36,7 @@
 → 完成三玩家 AWS smoke test、成本檢查、證據收斂與第一份報告
 ```
 
-明日新對話的第一步：依 `operate-aws-final-project`、本文件與 `docs/architecture/tier0-aws-change-envelope.md`，從 **Batch 5 Guardrail 固定版本與 Bedrock bounded IAM** 接續；仍採 Console-first，每次只做一個可驗證小步驟。除非使用者另行核准新的 bounded batch，禁止 AWS CLI。
+新對話的第一步：確認工作樹乾淨並從最新 `main` 建立新的短期 `codex/` branch；依 `operate-aws-final-project`、本文件與 `docs/architecture/tier0-aws-change-envelope.md`，從 **Batch 5 Guardrail 固定版本與 Bedrock bounded IAM** 接續。仍採 Console-first，每次只做一個可驗證小步驟；除非使用者另行核准新的 bounded batch，禁止 AWS CLI。
 
 ## Residual risks
 
