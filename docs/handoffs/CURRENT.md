@@ -23,28 +23,28 @@
 - Guardrail `co-story-tier0-safety` 為 `Ready`：Standard filters、APAC cross-Region profile、EMAIL／PHONE Mask；固定 version `1` 已發布。`co-story-tier0-compute` 已以單一 `AppRole Modify / Replacement=False` change set 更新為 exact Nova Lite＋Guardrail v1 policy，stack 為 `UPDATE_COMPLETE`。
 - AppRole Console inventory 保留 SSM、artifact 與 runtime-secret policies，沒有 Bedrock／Administrator Full Access；Policy Simulator 已驗證 exact Nova Lite＋Guardrail v1 為 `Allowed`、相同 model＋Guardrail v2 為 `Denied`。IAM Console 未顯示 Access Analyzer policy validation pane，因此未宣稱完成該項檢查；全程未使用 AWS CLI。
 - 目前 runtime **只在 EC2 loopback internal staging**，尚未公開提供 Web／TLS；不得宣稱 Tier 0 AWS 垂直切片完成。
-- 使用者決定後續維持 AWS Free plan／credits 與最低成本，現階段不購買網域。CloudFront 預設網域是待比較的 HTTPS 候選；尚未核准或建立 CloudFront／Route 53／ACM／ALB。
+- 使用者決定後續維持 AWS Free plan／credits 與最低成本，現階段不購買網域。2026-08-17 比較結果建議以既有 EC2＋Let's Encrypt short-lived IP certificate 完成端到端 HTTPS，新增 AWS resource 為 0；CloudFront pay-as-you-go default domain 保留為備選。Batch 6A 尚未核准，未建立 CloudFront／Route 53／ACM／ALB。
 - 專案文件入口已收斂：根目錄 `README.md` 只保留產品、架構、執行方式與核心文件入口；完整文件索引位於 `docs/README.md`，證據保存規則位於 `docs/evidence/README.md`。
 - `codex/session-lifecycle` 已 push 並透過 PR `#1` 合併到 `main`；三個更早的 remote feature branches 與該 branch 均已被 `main` 包含，remote branch 指標清理屬可選 Git housekeeping，不阻塞 AWS 進度。
 
 ## Next
 
 ```text
-以「無自有網域、Free plan／credits、最低成本」建立 public HTTPS boundary 比較與 bounded change envelope
-→ 決定 CloudFront 預設網域或其他不購買網域的 AWS 路徑
-→ 完成 R3 TDD、origin 邊界與 change set review，再啟用 production runtime
+取得 Batch 6A（Direct EC2＋Let's Encrypt IP certificate）明確核准
+→ 先完成 local R3 TDD、renewal／rollback 與 production packaging
+→ 依 Console-first＋SSM 小步驟申請 certificate 並啟用 production runtime
 → 驗證公開 Web、private RDS read/write、一次真實 Bedrock 故事生成
 → 完成三玩家 AWS smoke test、成本檢查、證據收斂與第一份報告
 ```
 
-新對話的第一步：確認 `codex/tier0-bedrock-guardrail` 工作樹與 Batch 5A commits，再依 `operate-aws-final-project`、本文件與 `docs/architecture/tier0-aws-change-envelope.md`，從 **public Web＋HTTPS 最低成本 boundary** 接續。仍採 Console-first，每次只做一個可驗證小步驟；除非使用者另行核准新的 bounded batch，禁止 AWS CLI。
+新對話的第一步：確認 `codex/tier0-bedrock-guardrail` 工作樹與 Batch 5A commits，再依 `operate-aws-final-project`、本文件與 `docs/architecture/tier0-aws-change-envelope.md`，從 **Batch 6A Direct EC2 public HTTPS 核准關卡** 接續。仍採 Console-first，每次只做一個可驗證小步驟；除非使用者明確核准 Batch 6A，禁止 production exposure／外部 CA 寫入；未核准新的 AWS CLI batch 前仍禁止 AWS CLI。
 
 ## Residual risks
 
 - 尚無 public Web／TLS boundary，也沒有對外可玩的 URL。
 - 尚未完成真實 Bedrock invocation 與 Guardrail 功能層 allow／block／PII mask 測試；目前只有 IAM allow／deny simulation，不能替代真實模型驗證。
 - IAM Access Analyzer basic policy validation 未在 Console 顯示；CloudFormation、R3 tests、安全 review 與正負 Policy Simulator 已通過，但此項仍記為未執行。
-- 尚無自有網域；Route 53 註冊不是免費項目且 domain registration 不能使用 AWS credits。CloudFront default domain 尚待成本、global data path、cache／cookie forwarding 與 origin 防繞過設計及另批核准。
+- 尚無自有網域；Route 53 註冊不是免費項目且 domain registration 不能使用 AWS credits。建議的 direct IP certificate 只有約 160 小時效期，必須證明自動續期；EC2 stop/start 若改變 public IP，URL、certificate 與 application allowlist 都需重建。CloudFront global path／HTTP origin trade-off 只作備選。
 - 尚未完成 AWS 三玩家核心流程與公開路徑 smoke test；EC2 service restart persistence 已通過。
 - Idempotency store 仍是 process memory，不宣稱 multi-process exactly-once。
 - EC2 與 RDS 持續運行會消耗 credits；artifact objects 依 7 日 lifecycle 自動到期，但 stack／bucket 不會自動刪除。
