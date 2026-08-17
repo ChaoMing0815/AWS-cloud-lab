@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Tier 0 Co-Story EC2 and SSM management plane only. Creates no SSH key, application secret, or runtime deployment.
+Description: Tier 0 Co-Story EC2 runtime with SSM and pinned Bedrock Guardrail access. Creates no SSH key or application secret.
 
 Parameters:
   PublicAppSubnetId:
@@ -11,6 +11,18 @@ Parameters:
   LatestAmiId:
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
     Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-arm64
+  BedrockModelId:
+    Type: String
+    Default: amazon.nova-lite-v1:0
+    AllowedValues:
+      - amazon.nova-lite-v1:0
+  BedrockGuardrailId:
+    Type: String
+    AllowedPattern: '^[a-z0-9]+$'
+  BedrockGuardrailVersion:
+    Type: String
+    Default: '1'
+    AllowedPattern: '^[1-9][0-9]*$'
 
 Resources:
   AppRole:
@@ -29,6 +41,40 @@ Resources:
             Action: sts:AssumeRole
       ManagedPolicyArns:
         - Fn::Sub: arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore
+      Policies:
+        - PolicyName: CoStoryTier0BedrockRuntime
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: AllowPinnedNovaLiteWithGuardrailV1
+                Effect: Allow
+                Action: bedrock:InvokeModel
+                Resource:
+                  Fn::Sub: arn:${AWS::Partition}:bedrock:${AWS::Region}::foundation-model/${BedrockModelId}
+                Condition:
+                  StringEquals:
+                    bedrock:GuardrailIdentifier:
+                      Fn::Sub: arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:guardrail/${BedrockGuardrailId}:${BedrockGuardrailVersion}
+              - Sid: DenyNovaLiteWithoutGuardrailV1
+                Effect: Deny
+                Action: bedrock:InvokeModel
+                Resource:
+                  Fn::Sub: arn:${AWS::Partition}:bedrock:${AWS::Region}::foundation-model/${BedrockModelId}
+                Condition:
+                  StringNotEquals:
+                    bedrock:GuardrailIdentifier:
+                      Fn::Sub: arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:guardrail/${BedrockGuardrailId}:${BedrockGuardrailVersion}
+              - Sid: ApplyPinnedGuardrailAcrossApacProfile
+                Effect: Allow
+                Action: bedrock:ApplyGuardrail
+                Resource:
+                  - Fn::Sub: arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:guardrail/${BedrockGuardrailId}
+                  - Fn::Sub: arn:${AWS::Partition}:bedrock:ap-south-1:${AWS::AccountId}:guardrail-profile/apac.guardrail.v1:0
+                  - Fn::Sub: arn:${AWS::Partition}:bedrock:ap-northeast-3:${AWS::AccountId}:guardrail-profile/apac.guardrail.v1:0
+                  - Fn::Sub: arn:${AWS::Partition}:bedrock:ap-northeast-2:${AWS::AccountId}:guardrail-profile/apac.guardrail.v1:0
+                  - Fn::Sub: arn:${AWS::Partition}:bedrock:ap-southeast-1:${AWS::AccountId}:guardrail-profile/apac.guardrail.v1:0
+                  - Fn::Sub: arn:${AWS::Partition}:bedrock:ap-southeast-2:${AWS::AccountId}:guardrail-profile/apac.guardrail.v1:0
+                  - Fn::Sub: arn:${AWS::Partition}:bedrock:ap-northeast-1:${AWS::AccountId}:guardrail-profile/apac.guardrail.v1:0
       Tags:
         - Key: Project
           Value: co-story
