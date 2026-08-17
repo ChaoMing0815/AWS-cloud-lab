@@ -1,6 +1,7 @@
 # CURRENT：目前工作交接
 
 - 更新日期：2026-08-17
+- 近期交付目標：2026-08-24 第一次報告前完成 Tier 0 AWS 公開試玩、去識別化證據與成本檢查；甘特圖 M3 `2026-08-20` 保留為內部提前完成目標。
 - Branch：`codex/tier0-bedrock-guardrail`（從同步後的 `main` 建立；尚未 push／merge）
 - Git checkpoint：Batch 5A functional tip `f63c488`；validation manifest `6ed5c0c`
 - 最後全綠功能基準：`f63c488`（固定 Nova Lite＋Guardrail v1 bounded runtime IAM）
@@ -24,6 +25,7 @@
 - AppRole Console inventory 保留 SSM、artifact 與 runtime-secret policies，沒有 Bedrock／Administrator Full Access；Policy Simulator 已驗證 exact Nova Lite＋Guardrail v1 為 `Allowed`、相同 model＋Guardrail v2 為 `Denied`。IAM Console 未顯示 Access Analyzer policy validation pane，因此未宣稱完成該項檢查；全程未使用 AWS CLI。
 - 目前 runtime **只在 EC2 loopback internal staging**，尚未公開提供 Web／TLS；不得宣稱 Tier 0 AWS 垂直切片完成。
 - 使用者決定後續維持 AWS Free plan／credits 與最低成本，現階段不購買網域。2026-08-17 比較結果建議以既有 EC2＋Let's Encrypt short-lived IP certificate 完成端到端 HTTPS，新增 AWS resource 為 0；CloudFront pay-as-you-go default domain 保留為備選。Batch 6A 尚未核准，未建立 CloudFront／Route 53／ACM／ALB。
+- 推進原則：甘特圖是先後與風險參考，不是速度上限。當日預定成果、驗證與必要文件均完成後，可提前推進下一個最小切片或做不擴張成本／權限／產品範圍的小幅優化；不得跳過 Tier gate、TDD、bounded batch、成本、安全或證據關卡。
 - 專案文件入口已收斂：根目錄 `README.md` 只保留產品、架構、執行方式與核心文件入口；完整文件索引位於 `docs/README.md`，證據保存規則位於 `docs/evidence/README.md`。
 - `codex/session-lifecycle` 已 push 並透過 PR `#1` 合併到 `main`；三個更早的 remote feature branches 與該 branch 均已被 `main` 包含，remote branch 指標清理屬可選 Git housekeeping，不阻塞 AWS 進度。
 
@@ -35,6 +37,8 @@
 → 依 Console-first＋SSM 小步驟申請 certificate 並啟用 production runtime
 → 驗證公開 Web、private RDS read/write、一次真實 Bedrock 故事生成
 → 完成三玩家 AWS smoke test、成本檢查、證據收斂與第一份報告
+→ 依清理計畫停止或刪除持續計費資源，保留程式碼、IaC 與去識別化證據
+→ 再進入 Tier 1 可觀測性最小切片
 ```
 
 新對話的第一步：確認 `codex/tier0-bedrock-guardrail` 工作樹與 Batch 5A commits，再依 `operate-aws-final-project`、本文件與 `docs/architecture/tier0-aws-change-envelope.md`，從 **Batch 6A Direct EC2 public HTTPS 核准關卡** 接續。仍採 Console-first，每次只做一個可驗證小步驟；除非使用者明確核准 Batch 6A，禁止 production exposure／外部 CA 寫入；未核准新的 AWS CLI batch 前仍禁止 AWS CLI。
