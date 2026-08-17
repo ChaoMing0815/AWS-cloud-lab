@@ -69,7 +69,7 @@ def test_bedrock_runtime_parameters_pin_model_and_numeric_guardrail_version() ->
     assert parameters["BedrockGuardrailVersion"] == {
         "Type": "String",
         "Default": "1",
-        "AllowedPattern": "^[1-9][0-9]*$",
+        "AllowedValues": ["1"],
     }
 
 
