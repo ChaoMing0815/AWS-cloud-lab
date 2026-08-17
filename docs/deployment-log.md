@@ -69,6 +69,7 @@
 | 2026-08-16 | Tier 0 internal staging runtime | 透過使用者逐批核准的 SSM shell 安裝 release、建立 restricted DB role、執行 migration，並啟動 FastAPI＋loopback Nginx；未開放 public Web | release `tier0-20260816-b028569`；兩個 services active；internal readiness HTTP `200`；Backend `290 passed, 8 skipped` | [Internal staging 驗證](evidence/2026-08-16-tier0-internal-staging/validation.md) |
 | 2026-08-16 | EC2 service restart persistence | 由 internal API 建立專用測試房間，重啟 FastAPI service，再以同一 session 讀回相同 room／status／version；完成後刪除測試資料與 session 暫存檔 | application／Nginx active；readiness HTTP `200`；room／status／version match 全為 `true`；cleanup HTTP `204` | [Internal staging 驗證](evidence/2026-08-16-tier0-internal-staging/validation.md) |
 | 2026-08-16 | Migration bootstrap access cleanup | 以 CloudFormation update 將 `EnableMigrationBootstrapAccess` 改為 `false`，只刪除 temporary master-secret read policy | Change Set 只有 1 筆 `Remove`；stack `UPDATE_COMPLETE`；application DB secret 與永久 app read policy 保留 | [Internal staging 驗證](evidence/2026-08-16-tier0-internal-staging/validation.md) |
+| 2026-08-17 | Tier 0 Guardrail v1＋bounded Bedrock runtime IAM | 發布既有 Guardrail 固定 version `1`，並以 CloudFormation 只修改既有 AppRole，限定 exact Nova Lite、Guardrail v1 與 APAC guardrail profiles；未 Test／Invoke model、未啟用 logging | Change Set 只有 `AppRole Modify / Replacement=False`；compute stack `UPDATE_COMPLETE`；Policy Simulator exact v1 `Allowed`、代表性 v2 `Denied`；Access Analyzer Console pane 未顯示，記為未執行；無新增固定費 resource | [Batch 5A R3 驗證](evidence/2026-08-17-tier0-bedrock-runtime-iam/tdd-validation.md) |
 
 ## AWS Budget Alarm
 

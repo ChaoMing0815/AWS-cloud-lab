@@ -110,19 +110,22 @@
 
 > 2026-08-16 結果：artifacts 與 runtime-secrets stacks 已建立；release `tier0-20260816-b028569` 已在 EC2 internal staging 啟用，FastAPI／Nginx services active，loopback readiness HTTP `200`。restricted DB role 與 migration 完成後，CloudFormation update 只移除 temporary master-secret policy，並為 `UPDATE_COMPLETE`。Backend regression `290 passed, 8 skipped`。公開 Web／TLS 與真實 Bedrock invocation 不在本批成果內；去識別化摘要見 [`2026-08-16-tier0-internal-staging`](../evidence/2026-08-16-tier0-internal-staging/validation.md)。
 
-## Batch 5：Bedrock Guardrail（暫停於建立完成）
+## Batch 5：Bedrock Guardrail＋bounded runtime IAM（已部署，尚未真實 invocation）
 
 | 項目 | 固定邊界 |
 | --- | --- |
-| Region／model | Tokyo `ap-northeast-1`；候選 model `amazon.nova-lite-v1:0`，Serverless／Standard；不得使用 Marketplace、Batch 或 Global inference。 |
+| Region／model | Tokyo `ap-northeast-1`；固定 model `amazon.nova-lite-v1:0`，Serverless／Standard；不得使用 Marketplace、Batch 或 Global inference。 |
 | Guardrail | `co-story-tier0-safety`；Standard tier、APAC cross-Region profile `apac.guardrail.v1:0`、default KMS。使用者已明確同意資料僅在 APAC geographic boundary 內跨區域處理。 |
 | Content | Hate High、Insults Medium、Sexual High、Violence Low、Misconduct Low，prompt／response Block；Prompt Attack High。只處理 Text。 |
 | Privacy | EMAIL／PHONE input／output 均 Mask；無 regex。Denied topics、Profanity、custom words、Grounding、Relevance 全部停用。 |
 | Price baseline | Nova Lite Standard：input `US$0.072／1M tokens`、output `US$0.288／1M tokens`；Guardrail 另按啟用政策的 text units 計費。 |
-| 尚未核准／執行 | 不 Test、不 Invoke model、不啟用 invocation logging、不發布／使用未驗證 version、不授予 AppRole Bedrock 權限。 |
+| 固定版本／IAM | Guardrail version `1`；既有 AppRole 只允許 exact Nova Lite `InvokeModel`，以 versioned Guardrail ARN condition fail closed，並只允許來源 Guardrail與 Tokyo profile 的六個 APAC destination `ApplyGuardrail` ARN；不授予串流、其他 model 或 Full Access。 |
+| 尚未執行 | 不 Test、不 Invoke model、不啟用 invocation logging；真實 allow／block／PII mask 與故事生成留待另批極小 token 預算驗證。 |
 | 停止條件 | 出現 Global profile、Marketplace subscription、Provisioned Throughput、未限定 model／Guardrail 的 `Resource: *`、明文 prompt logging 或單次測試無 token ceiling 時停止。 |
 
 > 2026-08-15 結果：Guardrail resource 建立完成且 status `Ready`；未進行任何 Test／model invocation，未發布或驗證固定 version，EC2 AppRole 仍無 Bedrock 權限。證據摘要見 [`2026-08-15-tier0-bedrock-guardrail`](../evidence/2026-08-15-tier0-bedrock-guardrail/validation.md)。
+
+> 2026-08-17 結果：使用者核准 Batch 5A 後發布固定 version `1`；`co-story-tier0-compute` change set 只有 `AppRole Modify / Replacement=False`，執行後為 `UPDATE_COMPLETE`。Policy Simulator 正面 exact v1 為 `Allowed`、代表性 v2 為 `Denied`；IAM Console 未顯示 Access Analyzer validation pane，因此該項誠實記為未執行。未 Test、未 Invoke model、未啟用 logging，無新增固定費資源。R3 證據見 [`2026-08-17-tier0-bedrock-runtime-iam`](../evidence/2026-08-17-tier0-bedrock-runtime-iam/tdd-validation.md)。
 
 ## 必填核准欄位
 

@@ -1,11 +1,11 @@
 # CURRENT：目前工作交接
 
 - 更新日期：2026-08-17
-- Branch：`main`（已與 `origin/main` 同步）
-- Git checkpoint：PR `#1` 已合併；merge commit `0edbafc`（Tier 0 internal staging milestone）
-- 最後全綠功能基準：`b028569`（staging Nginx runtime write boundary）
-- Regression：Backend `290 passed, 8 skipped`（2026-08-16 重跑）；Frontend `80 passed`（未受本批影響，沿用最近全綠基準）
-- AWS：Tokyo `ap-northeast-1` 已有 IAM、network、private RDS、EC2＋SSM、private artifacts、runtime secrets 與 Guardrail；無 NAT／EIP／SSH
+- Branch：`codex/tier0-bedrock-guardrail`（從同步後的 `main` 建立；尚未 push／merge）
+- Git checkpoint：Batch 5A functional tip `f63c488`；validation manifest `6ed5c0c`
+- 最後全綠功能基準：`f63c488`（固定 Nova Lite＋Guardrail v1 bounded runtime IAM）
+- Regression：Backend `292 passed, 8 skipped`（2026-08-17 重跑）；Frontend `80 passed`（未受本批影響，沿用最近全綠基準）
+- AWS：Tokyo `ap-northeast-1` 已有 IAM、network、private RDS、EC2＋SSM、private artifacts、runtime secrets、Guardrail v1 與 bounded Bedrock runtime IAM；無 NAT／EIP／SSH
 - 操作邊界：Console-first；曾在使用者逐批明確核准後，於 EC2 的 SSM Session 內執行 exact-prefix S3 download 與安裝指令。未修改 `~/.aws`、憑證或 Keychain。
 
 ## Current
@@ -20,28 +20,31 @@
 - Internal staging release `tier0-20260816-b028569` 已在 EC2 啟用：`co-story.service` 與 `co-story-nginx-staging.service` 均為 active，`/opt/co-story/current` 指向該 release，`http://127.0.0.1:8080/api/v1/ready` 回傳 HTTP `200`。
 - EC2 service restart persistence 已實機驗證：經正式 API 建立測試房間後，重啟 `co-story.service`，兩個 services 回到 active、readiness HTTP `200`，同一 session 讀回相同 room／status／version；測試房間以 API `204` 刪除，四個 `/tmp` session／JSON 暫存檔亦已清除。8/16 原訂 EC2／SSM／migration／restart persistence 成果完成。
 - 實機安裝除錯已回饋到 tests 與 release tooling：包含 binary psycopg、bounded readiness retry、安全的既有 DB role rotate、symlink target 驗證，以及 Nginx journal／runtime write path。
-- Guardrail `co-story-tier0-safety` 為 `Ready`：Standard filters、APAC cross-Region profile、EMAIL／PHONE Mask；尚未發布固定 version、Test 或執行真實 model invocation。
+- Guardrail `co-story-tier0-safety` 為 `Ready`：Standard filters、APAC cross-Region profile、EMAIL／PHONE Mask；固定 version `1` 已發布。`co-story-tier0-compute` 已以單一 `AppRole Modify / Replacement=False` change set 更新為 exact Nova Lite＋Guardrail v1 policy，stack 為 `UPDATE_COMPLETE`。
+- AppRole Console inventory 保留 SSM、artifact 與 runtime-secret policies，沒有 Bedrock／Administrator Full Access；Policy Simulator 已驗證 exact Nova Lite＋Guardrail v1 為 `Allowed`、相同 model＋Guardrail v2 為 `Denied`。IAM Console 未顯示 Access Analyzer policy validation pane，因此未宣稱完成該項檢查；全程未使用 AWS CLI。
 - 目前 runtime **只在 EC2 loopback internal staging**，尚未公開提供 Web／TLS；不得宣稱 Tier 0 AWS 垂直切片完成。
+- 使用者決定後續維持 AWS Free plan／credits 與最低成本，現階段不購買網域。CloudFront 預設網域是待比較的 HTTPS 候選；尚未核准或建立 CloudFront／Route 53／ACM／ALB。
 - 專案文件入口已收斂：根目錄 `README.md` 只保留產品、架構、執行方式與核心文件入口；完整文件索引位於 `docs/README.md`，證據保存規則位於 `docs/evidence/README.md`。
 - `codex/session-lifecycle` 已 push 並透過 PR `#1` 合併到 `main`；三個更早的 remote feature branches 與該 branch 均已被 `main` 包含，remote branch 指標清理屬可選 Git housekeeping，不阻塞 AWS 進度。
 
 ## Next
 
 ```text
-結束操作中的 SSM Session
-→ Console 唯讀確認 Guardrail draft／version 狀態與 Nova Lite 的精確 model／inference profile 識別
-→ 發布並驗證固定 Guardrail version，建立 exact model／Guardrail AppRole policy
-→ 規劃並審查 public Web＋TLS boundary，再啟用 production runtime
+以「無自有網域、Free plan／credits、最低成本」建立 public HTTPS boundary 比較與 bounded change envelope
+→ 決定 CloudFront 預設網域或其他不購買網域的 AWS 路徑
+→ 完成 R3 TDD、origin 邊界與 change set review，再啟用 production runtime
 → 驗證公開 Web、private RDS read/write、一次真實 Bedrock 故事生成
 → 完成三玩家 AWS smoke test、成本檢查、證據收斂與第一份報告
 ```
 
-新對話的第一步：確認工作樹乾淨並從最新 `main` 建立新的短期 `codex/` branch；依 `operate-aws-final-project`、本文件與 `docs/architecture/tier0-aws-change-envelope.md`，從 **Batch 5 Guardrail 固定版本與 Bedrock bounded IAM** 接續。仍採 Console-first，每次只做一個可驗證小步驟；除非使用者另行核准新的 bounded batch，禁止 AWS CLI。
+新對話的第一步：確認 `codex/tier0-bedrock-guardrail` 工作樹與 Batch 5A commits，再依 `operate-aws-final-project`、本文件與 `docs/architecture/tier0-aws-change-envelope.md`，從 **public Web＋HTTPS 最低成本 boundary** 接續。仍採 Console-first，每次只做一個可驗證小步驟；除非使用者另行核准新的 bounded batch，禁止 AWS CLI。
 
 ## Residual risks
 
 - 尚無 public Web／TLS boundary，也沒有對外可玩的 URL。
-- 尚未完成真實 Bedrock invocation、固定 Guardrail version 與 bounded allow／block／PII 測試。
+- 尚未完成真實 Bedrock invocation 與 Guardrail 功能層 allow／block／PII mask 測試；目前只有 IAM allow／deny simulation，不能替代真實模型驗證。
+- IAM Access Analyzer basic policy validation 未在 Console 顯示；CloudFormation、R3 tests、安全 review 與正負 Policy Simulator 已通過，但此項仍記為未執行。
+- 尚無自有網域；Route 53 註冊不是免費項目且 domain registration 不能使用 AWS credits。CloudFront default domain 尚待成本、global data path、cache／cookie forwarding 與 origin 防繞過設計及另批核准。
 - 尚未完成 AWS 三玩家核心流程與公開路徑 smoke test；EC2 service restart persistence 已通過。
 - Idempotency store 仍是 process memory，不宣稱 multi-process exactly-once。
 - EC2 與 RDS 持續運行會消耗 credits；artifact objects 依 7 日 lifecycle 自動到期，但 stack／bucket 不會自動刪除。

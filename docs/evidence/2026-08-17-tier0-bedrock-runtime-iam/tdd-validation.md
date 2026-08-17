@@ -10,6 +10,7 @@
 - Full regression：Backend `292 passed, 8 skipped`；無新增 skip。
 - Negative boundary：不授予串流、其他 model、DRAFT、其他 Guardrail、IAM 管理或服務級 Full Access。
 - Sensitivity：model ARN 改成 wildcard、Deny condition 反轉、移除任一 APAC destination，三者皆被 targeted test 攔截；mutation 已還原。
-- AWS validation：尚未執行；待 Console 建立並檢查 change set、Access Analyzer 與正負 IAM simulation。
+- AWS validation：Guardrail version `1` 已發布；compute change set 只有 `AppRole Modify / Replacement=False`，stack `UPDATE_COMPLETE`。Role inventory 無 Full Access；Policy Simulator 驗證 exact Nova Lite＋Guardrail v1 `Allowed`、Guardrail v2 `Denied`。
+- Access Analyzer：IAM Console 的 inline policy editor 未顯示 policy validation pane；遵守 Console-first 與未核准 AWS CLI 邊界，記為未執行，不以本機 review 冒充 Access Analyzer。
 - Rollback：CloudFormation 移除 inline policy；已發布版本停止使用，任何版本刪除另行核准。
-- Residual risk：Guardrail version `1` 尚未發布，template 尚未部署，尚未執行真實 Bedrock invocation。
+- Residual risk：尚未執行真實 Bedrock invocation、Guardrail allow／block／PII mask 功能測試與 Access Analyzer basic policy validation。
