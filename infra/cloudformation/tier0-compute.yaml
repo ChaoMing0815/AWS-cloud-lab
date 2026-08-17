@@ -22,7 +22,8 @@ Parameters:
   BedrockGuardrailVersion:
     Type: String
     Default: '1'
-    AllowedPattern: '^[1-9][0-9]*$'
+    AllowedValues:
+      - '1'
 
 Resources:
   AppRole:
