@@ -11,11 +11,11 @@
 | 演進內容 | Web／DB 分離、可觀測性、SSM、分層架構、CI/CD、微服務、RAG、MCP、Agentic AI |
 | 期末專題繳交日 | 2026-09-07 |
 | AWS Region | Asia Pacific (Tokyo) — `ap-northeast-1` |
-| VPC CIDR | 待確認 |
-| Public Subnet CIDR | 待確認 |
-| Private Subnet CIDR | 待確認 |
-| EC2 規格 | 待確認 |
-| 資料層規格 | 待確認 |
+| VPC CIDR | `10.20.0.0/16` |
+| Public Subnet CIDR | `10.20.10.0/24` |
+| Private Subnet CIDR | `10.20.110.0/24`、`10.20.120.0/24` |
+| EC2 規格 | AL2023 ARM64 `t4g.micro`、8 GiB encrypted gp3、SSM、無 SSH |
+| 資料層規格 | PostgreSQL `18.3`、Single-AZ `db.t4g.micro`、20 GiB gp2、private-only、encrypted |
 
 ## 變更紀錄
 
@@ -26,7 +26,7 @@
 | 2026-08-06 | IAM 前置 | 檢查 AWS CLI／Console 登入狀態；未取得憑證前停止 AWS 寫入 | CLI 無 profile／Region／AWS 環境憑證，Console 需登入 | [前置盤點](evidence/2026-08-06-skill-and-iam/aws-cli-preflight.md) |
 | 2026-08-07 | P0-1 | 驗證 Budget、Root MFA、Root Access Key、Organizations、Region 與 CloudTrail | Console 截圖及 CloudTrail Event history | [帳號安全前置驗證](evidence/2026-08-07-p0-1-account-security/inventory-summary.md) |
 | 2026-08-07 | IAM Identity Center 前置 | 確認尚未啟用，完成 organization instance 啟用前成本、安全、Region 與回復關卡；拒絕預選的 multi-Region KMS 計費方案 | Console 顯示 Tokyo 啟用頁及 KMS 成本警告；尚未執行 AWS 寫入 | [啟用前關卡](evidence/2026-08-07-identity-center/enable-preflight.md) |
-| 2026-08-07 | IAM Identity Center | 經使用者確認，以 Root 在 Tokyo 啟用單一區域 organization instance；使用 AWS owned key，無其他 Region | 去識別化 Dashboard 顯示 Identity Center directory 與主要 Region `ap-northeast-1` | [啟用結果](evidence/2026-08-07-identity-center/enable-result.md)／[截圖](screenshots/phase0-identity-center-enabled.png) |
+| 2026-08-07 | IAM Identity Center | 經使用者確認，以 Root 在 Tokyo 啟用單一區域 organization instance；使用 AWS owned key，無其他 Region | 舊帳號文字事故紀錄；相關截圖已於 2026-08-10 清除，不能作為目前環境證據 | [啟用結果](evidence/2026-08-07-identity-center/enable-result.md) |
 | 2026-08-07 | IAM Identity Center group | 建立空白 `AWSFinalProjectDevelopers` group；未建立任何 account／application assignment | Group 詳細畫面顯示成員數 `0` | [Group 建立結果](evidence/2026-08-07-identity-center/group-result.md) |
 | 2026-08-07 | Identity Center user | 建立 `ming_dev_finalproject`、加入 `AWSFinalProjectDevelopers` 並完成首次登入；Email 仍顯示未驗證、MFA 為 0 | 使用者已啟用且有 1 個作用中工作階段；待完成 Email／MFA | [User 狀態](evidence/2026-08-07-identity-center/user-result.md) |
 | 2026-08-07 | 成本治理 | 收到 Free plan 自動升級 Paid plan 通知；確認由建立 AWS Organization 觸發 | 對照 CloudTrail `CreateOrganization` 與 AWS Free Tier FAQ；原始通知含 account ID 不入庫 | [Account plan 變更](evidence/2026-08-07-p0-1-account-security/account-plan-change.md) |
@@ -47,6 +47,28 @@
 | 2026-08-09 | 回合上限與結局策略 | 以四組嚴格 Red／Green 循環完成 4／6／8 回合上限、正式百分比、提前完成、host-only `FINISH_NOW／CONTINUE`、自動結局敘事與前端結局控制 | 後端 `28 passed`、前端 `35 passed`；三項 mutation 敏感度測試；Browser Console 0 errors、無水平溢出；8765 已停止；未執行 AWS 寫入 | [嚴格 TDD 驗證](evidence/2026-08-09-ending-policy/tdd-validation.md) |
 | 2026-08-09 | Mock／HTTP 結局合約一致性 | Mock adapter 對齊目標點數、百分比、提前完成與最大回合自動結局；立即結局共用完成流程 | Red `3 failed`；Green 後端 `28 passed`、前端 `38 passed`；最大回合 operator mutation 正確失敗；未啟動伺服器或執行 AWS 寫入 | [TDD 驗證](evidence/2026-08-09-mock-ending-parity/tdd-validation.md) |
 | 2026-08-09 | 房間狀態 polling | 以串行 3 秒 polling 更新 canonical state；避免重疊 request，完成結局或停止時不再排程 | Red `4 failed`；Green 後端 `28 passed`、前端 `42 passed`；移除 in-flight guard 的 mutation 正確失敗；Browser 觀察多次 `/rooms/current` 200、Console 0 errors；8765 已停止；未執行 AWS 寫入 | [TDD 驗證](evidence/2026-08-09-room-polling/tdd-validation.md) |
+| 2026-08-09 | Web App 流程治理 | 依既有 MVP Spec 補足 Host／Player、Demo、角色轉移、期限與 LLM failure UX；建立輕量 source-of-truth、User Flow、Screen States、入口 Feature Spec 與本機 Test Plan | 文件權威與連結一致性檢查；本階段未修改 production code、未啟動服務、未執行 AWS 寫入 | [權威索引](product/source-of-truth.md)／[入口 Feature Spec](features/entry-and-room-join.md) |
+| 2026-08-09 | 正式 Landing 第一切片 | 以三組 Red／Green 建立正式根頁、隔離 `/demo`、補 FastAPI app shell route，並修正 Browser 發現的 hidden CSS 回歸 | Backend `29 passed`、Frontend `44 passed`；Browser 驗證 root／demo visibility、`/demo` 200、Console 0 errors；本機 server 已停止，未執行 AWS 寫入 | [TDD 驗證](evidence/2026-08-09-formal-entry/tdd-validation.md) |
+| 2026-08-09 | 房主建房 WP-1B | 建房時原子性建立 Host／Player 雙 session 與第一位玩家；Landing 串接 API 並導向 `/host/setup`；拒絕 client-supplied `player_id` | Backend `34 passed`、Frontend `46 passed`、sensitivity 通過；Browser 建房／deep refresh／`1 / 5`／Console 0 errors；未執行 AWS 寫入 | [TDD 驗證](evidence/2026-08-09-formal-entry/tdd-validation.md) |
+| 2026-08-09 | 房號加入 WP-1C | 以六碼 room code＋暱稱原子性加入 Lobby；建立 Player session；補 Lobby deep-link app shell | Backend `39 passed`、Frontend `51 passed`、sensitivity 通過；Browser 小寫房號加入、`2 / 5`、deep refresh、Console 0 errors；本機 server 已停止，未執行 AWS 寫入 | [TDD 驗證](evidence/2026-08-09-formal-entry/tdd-validation.md) |
+| 2026-08-10 | Session Continue 與正式路由 | 安全 session summary、首頁繼續入口、setup／lobby／play／ending mapping、Play／Ending deep link 與 HTML 404 | Backend `45 passed`、Frontend `56 passed`、兩項 sensitivity；Browser 有效／失效 session、deep routes、404、Demo 隔離與 Console 0 errors；server 已停止，未執行 AWS 寫入 | [TDD 驗證](evidence/2026-08-10-session-continue/tdd-validation.md) |
+| 2026-08-10 | 三玩家完整回合 E2E | 三個隔離 origin 完成角色、開始、行動、擲骰、星火、結算與 refresh；以 TDD 修正 canonical state 未同步 deep route | Backend `45 passed`、Frontend `58 passed`、route mutation sensitivity；三端 Round `02`、點數一致、Session 隔離、`/play` 一致、Console 0 errors；未執行 AWS 寫入 | [Browser／TDD 驗證](evidence/2026-08-10-three-player-browser-e2e/validation.md) |
+| 2026-08-10 | PostgreSQL restart persistence | 建立 ADR-0003、migration、PostgreSQL adapter、Memory／PostgreSQL 共用 contract 與 `DATABASE_URL` composition；修正 Demo room 重啟唯一鍵衝突 | Backend `56 passed`、Frontend `58 passed`；兩個 FastAPI application instance 還原 room 與 session；遺失 story entries mutation 正確失敗；臨時 DB 容器已移除；未執行 AWS 寫入 | [TDD 驗證](evidence/2026-08-10-postgres-persistence/tdd-validation.md) |
+| 2026-08-10 | LLM recovery 與 OS process restart | 建立 retryable failure taxonomy、自動／手動 retry、`RESOLUTION_FAILED` canonical-state 保護、host-only deterministic fallback API／UI；實際啟停兩個 Uvicorn processes | Backend `66 passed`、Frontend `60 passed`；attempt-limit mutation 正確失敗；完整 room 與 session 跨 OS process restart；臨時 DB 已移除；未呼叫真實 LLM／AWS | [TDD／restart 驗證](evidence/2026-08-10-llm-recovery/tdd-validation.md) |
+| 2026-08-10 | 新 AWS 帳號安全基線 | 在重新申請的 Free plan 帳號驗證每月 `US$1.00` Budget、Root MFA、Root Access Key 0、Free plan 與當月預估 `USD 0.00` | 去識別化 Console 截圖；未建立任何專題 workload | [新帳號基線](evidence/2026-08-10-new-account-baseline/validation.md) |
+| 2026-08-10 | 日常人員 IAM | 建立 Console-only IAM user `ming-dev` 與 `AWSFinalProjectDevelopers` group；啟用 MFA，Access／API／SSH keys 均為 0 | 群組有 1 位成員；連接 `ReadOnlyAccess`、`IAMUserChangePassword`、`AWSBillingReadOnlyAccess`；未授予 `AdministratorAccess` 或 `PowerUserAccess` | [新帳號基線](evidence/2026-08-10-new-account-baseline/validation.md) |
+| 2026-08-10 | Billing 委派唯讀 | Root 啟用 IAM user／role Billing access；`ming-dev` 可查看當月帳單與 Free plan 狀態 | 群組已連接 `AWSBillingReadOnlyAccess`；2026 年 8 月預估總計 `USD 0.00` | [群組政策](screenshots/phase0-ming-dev-group-policies.png)／[帳單證據](screenshots/phase0-ming-dev-billing-zero.png) |
+| 2026-08-10 | Polling 離線／reconnect UX | 暫時性 network／`5xx` 保留 canonical 畫面並採 3／5／10 秒 bounded backoff；恢復後回 3 秒；`401/403` 停止，`409` reload | Red `4 passed, 5 failed`；Green／還原 mutation 後 Frontend `65 passed`、Backend `59 passed, 7 skipped`；未執行 AWS 寫入 | [TDD 驗證](evidence/2026-08-10-polling-offline-reconnect/tdd-validation.md) |
+| 2026-08-10 | Tier 0 AWS 部署規劃 | 以 Model routing 完成服務、VPC／SG、EC2／RDS／Bedrock、IAM、TLS、成本、驗證與清理設計 | Proposed；尚待講師、帳號、Region、credits、估價與 IAM 關卡；未執行 AWS 寫入 | [Tier 0 部署規劃](architecture/tier0-aws-deployment-plan.md) |
+| 2026-08-14 | IAM bootstrap | 以 Root＋MFA 一次性建立 account protection deny 與 project-prefixed IAM delegation，並將 `PowerUserAccess` 附加至既有 developer group；隨即改回 `ming-dev` | `co-story-iam-bootstrap` `CREATE_COMPLETE`；group 6 policies；無 Access Key | [IAM／Network 部署驗證](evidence/2026-08-14-tier0-network-deployment/validation.md) |
+| 2026-08-14 | Tier 0 network | 在 Tokyo 建立 `10.20.0.0/16` VPC、1 public app subnet、2 private DB subnets、IGW、route tables 與 App／DB SG；不含 compute、database、NAT 或 EIP | 19 resources `CREATE_COMPLETE`；private route local-only；DB `5432` 只接受 App SG | [IAM／Network 部署驗證](evidence/2026-08-14-tier0-network-deployment/validation.md) |
+| 2026-08-14 | SG egress correction | Console 驗證發現 EC2 default allow-all egress；以 R3 TDD 與 CloudFormation localhost sink 修正 App／DB SG | Red `117bf3b`、Green `a78da19`；stack `UPDATE_COMPLETE`；final egress 截圖通過 | [IAM／Network 部署驗證](evidence/2026-08-14-tier0-network-deployment/validation.md) |
+| 2026-08-15 | Tier 0 private PostgreSQL | 在 Tokyo 以 CloudFormation 建立 1 個 private Single-AZ PostgreSQL RDS 與 DB subnet group；第一次因空白 network parameters、第二次因將 Console 版本描述誤作 API engine version 而 rollback，修正後第三次成功 | `co-story-tier0-rds` `CREATE_COMPLETE`；PostgreSQL `18.3`、`db.t4g.micro`、20 GiB gp2、encrypted、Internet access gateway disabled、RDS-managed secret；credits burn 上限 `US$25/month`；最晚 2026-09-08 清理 | [RDS IaC／部署驗證](evidence/2026-08-14-tier0-rds-iac/tdd-validation.md) |
+| 2026-08-15 | Tier 0 EC2＋SSM management plane | 在 Tokyo 建立 AL2023 ARM64 `t4g.micro`、8 GiB encrypted gp3、AppRole 與 instance profile；不含 Key Pair、UserData、secret 或 application deployment | `co-story-tier0-compute` `CREATE_COMPLETE`；EC2 checks passed；SSM managed node Online；Session Manager 實機驗證 `ssm-user`／`aarch64`／agent active；無 SSH／AWS CLI；credits burn 上限 `US$20/month`；最晚 2026-09-08 清理 | [EC2＋SSM IaC／部署驗證](evidence/2026-08-15-tier0-compute-iac/tdd-validation.md) |
+| 2026-08-16 | Tier 0 private artifacts＋runtime secrets | 建立 private short-lived artifact bucket、application DB secret、永久 exact-secret read policy 與暫時 master-secret bootstrap policy | artifacts／runtime-secrets stacks `CREATE_COMPLETE`；bundle 由 Console 上傳並在 SSM 內以 SHA-256 驗證；無 public S3、無 secret 明文 | [Internal staging 驗證](evidence/2026-08-16-tier0-internal-staging/validation.md) |
+| 2026-08-16 | Tier 0 internal staging runtime | 透過使用者逐批核准的 SSM shell 安裝 release、建立 restricted DB role、執行 migration，並啟動 FastAPI＋loopback Nginx；未開放 public Web | release `tier0-20260816-b028569`；兩個 services active；internal readiness HTTP `200`；Backend `290 passed, 8 skipped` | [Internal staging 驗證](evidence/2026-08-16-tier0-internal-staging/validation.md) |
+| 2026-08-16 | EC2 service restart persistence | 由 internal API 建立專用測試房間，重啟 FastAPI service，再以同一 session 讀回相同 room／status／version；完成後刪除測試資料與 session 暫存檔 | application／Nginx active；readiness HTTP `200`；room／status／version match 全為 `true`；cleanup HTTP `204` | [Internal staging 驗證](evidence/2026-08-16-tier0-internal-staging/validation.md) |
+| 2026-08-16 | Migration bootstrap access cleanup | 以 CloudFormation update 將 `EnableMigrationBootstrapAccess` 改為 `false`，只刪除 temporary master-secret read policy | Change Set 只有 1 筆 `Remove`；stack `UPDATE_COMPLETE`；application DB secret 與永久 app read policy 保留 | [Internal staging 驗證](evidence/2026-08-16-tier0-internal-staging/validation.md) |
 
 ## AWS Budget Alarm
 
@@ -54,17 +76,30 @@
 | --- | --- |
 | 是否已建立 | 已驗證，運作狀態正常 |
 | 預算金額 | 每月 `US$1.00` |
-| 目前支出 | `US$0.00`（2026-08-07 驗證） |
+| 目前支出 | `US$0.00`（2026-08-10 新帳號驗證） |
 | 通知設定 | 提醒閾值已確認；Email 位址未保存於證據 |
-| 截圖 | [phase0-zero-spend-budget-verified.png](screenshots/phase0-zero-spend-budget-verified.png) |
+| 截圖 | [phase0-new-account-budget.png](screenshots/phase0-new-account-budget.png) |
 
-## 2026-08-06：Agent Skill 與 IAM
+## 2026-08-10：新 AWS 帳號安全與 IAM 基線
+
+- 本節是目前後續部署候選帳號；下方 2026-08-06–07 的 Organization／Identity Center 紀錄只屬舊帳號歷史。
+- Billing Console 顯示 Free plan；當月預估 `USD 0.00`，每月 `US$1.00` Budget 正常。
+- Root 與 `ming-dev` 均已啟用 MFA；Root 與 `ming-dev` 沒有長期 Access Key。
+- `ming-dev` 是 Console-only 日常人員身分，位於 `AWSFinalProjectDevelopers`；2026-08-14 已附加 `PowerUserAccess` 與專題前綴 IAM delegation，並以 account protection explicit deny 限制高風險帳號操作。
+- Root 只用於一次性 IAM bootstrap，完成後已登出；一般專題資源由 MFA 的 `ming-dev` 操作，仍無長期 Access Key。
+- 2026-08-13 已補驗證 Credits、Organizations 缺席與 Tokyo Region；2026-08-14 已建立 IAM bootstrap 與 Tier 0 network，詳見最新變更紀錄。
+
+證據：[2026-08-10 新帳號安全與成本基線](evidence/2026-08-10-new-account-baseline/validation.md)
+
+## 歷史舊帳號：2026-08-06–07 Agent Skill、Organizations 與 IAM Identity Center
+
+> 本節帳號已因建立 AWS Organization 永久升級 Paid plan；不得把它的 Organization、Identity Center、principal、Budget 或 credits 狀態套用到 2026-08-10 新帳號。
 
 | 項目 | 狀態 | 證據／下一步 |
 | --- | --- | --- |
 | 專題 Agent Skill | 已建立並通過結構驗證 | [Skill 驗證](evidence/2026-08-06-skill-and-iam/skill-validation.md) |
 | AWS principal／account／Region | Root user；Organizations management account；Tokyo `ap-northeast-1` | 帳號 ID 未保存；[P0-1 證據](evidence/2026-08-07-p0-1-account-security/inventory-summary.md) |
-| IAM Identity Center | 已在 Tokyo 啟用單一區域 organization instance | [啟用結果](evidence/2026-08-07-identity-center/enable-result.md)／[截圖](screenshots/phase0-identity-center-enabled.png) |
+| IAM Identity Center | 舊帳號曾在 Tokyo 啟用單一區域 organization instance | [舊帳號啟用結果](evidence/2026-08-07-identity-center/enable-result.md)；相關截圖已清除 |
 | Root MFA／Budget／CloudTrail | 已由 Console 即時驗證 | [P0-1 證據](evidence/2026-08-07-p0-1-account-security/inventory-summary.md) |
 | Identity Center group | 已建立 `AWSFinalProjectDevelopers`；目前 0 位成員、無 assignment | [Group 建立結果](evidence/2026-08-07-identity-center/group-result.md) |
 | Identity Center user／permission set／assignment | 尚未建立 | [預定變更集](evidence/2026-08-06-skill-and-iam/proposed-iam-change-set.md) |

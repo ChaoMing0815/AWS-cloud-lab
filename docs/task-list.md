@@ -16,14 +16,22 @@
 
 - [x] 完成 LLM 多人故事遊戲 Research。
 - [x] 完成 15 項需求訪談並核准正式 MVP Spec。
+- [x] 完成 Web App 流程補充 Grill；只補足既有 Spec 未定義的 Host／Player、Demo、轉移碼、期限與 LLM failure UX。
+- [x] 建立輕量 source-of-truth、User Flow、Screen States、Feature Spec 與本機 MVP Test Plan。
 - [x] 暫定產品名稱為「共演計劃」，支援職場、日常、校園、科幻與奇幻等題材。
 - [x] 建立 Vanilla HTML／CSS／JavaScript 展示原型。
 - [x] 接受前端 Clean Architecture、`GameApi` port 與後端 API 安全邊界。
 - [ ] 確認 Vanilla JS＋FastAPI＋PostgreSQL 技術路線。
 - [x] 建立 ES modules、composition root 與 Domain／Application／Adapter／UI 目錄。
-- [x] 建立 `GameApi` contract、`MockGameApi` 與 create／join／submit use case tests。
+- [x] 建立 `GameApi` contract、`MockGameApi` 與原型 create／join／submit use case tests。
 - [x] 將既有原型 canonical state 從 `localStorage` 移到記憶體 Mock adapter。
-- [x] 將現有 DOM 邏輯拆成 UI page 與 presenter；components 可在 UI 複雜度增加時再抽取。
+- [x] 將原型 DOM 邏輯移入 UI page 與 presenter，完成第一階段分層。
+- [x] 正式 `/` 已顯示建立／加入 Landing，且不建立 Demo state 或啟動 room polling。
+- [ ] 建立正式 Landing／router，將 Lobby／Play／Ending 從大型 `GamePage` 逐步拆分。
+- [x] 將開發用 `BONUS7` Demo 隔離至 `/demo`；正式 `/` 不自動載入 Demo。
+- [x] 建房時原子性建立 Host session、房主 Player 與 Player session，房主計入 3–5 位玩家。
+- [x] 建立依 room code＋暱稱原子性加入的 API／adapter／UI 與拒絕案例。
+- [x] 建立有效 session 的「繼續目前遊戲」與 deep-link refresh。
 - [x] 建立 FastAPI skeleton、health endpoint 與同源靜態檔案服務。
 - [x] 建立 World／Room／Player／Character／DiceResult domain models。
 - [x] 建立至 `AWAITING_SPARK` 的 state machine 與 `2d6 + 屬性` deterministic engine。
@@ -47,8 +55,14 @@
 - [x] Host-only roll 使用 CSPRNG，並保存原始骰點、結果與待結算進度／危機。
 - [x] 完成無重疊的 room polling、完成結局停止與 timer 取消。
 - [ ] 完成 polling 離線重試、connection 狀態與前端錯誤提示。
+- [ ] 完成 Loading／Empty／Validation／Session expired／Version conflict 等共通 Screen States。
 - [x] 完成 room version 與 mutation idempotency 基礎邊界。
 - [x] 完成 Mock／HTTP adapter 的目標點數、提前完成與最大回合結局 contract tests。
+- [ ] 完成房主略過未提交 action 的正式 UI／API 行為。
+- [ ] 完成 10 分鐘一次性角色轉移碼、舊 session revoke 與負面測試。
+- [ ] 完成最後活動／結局後 7 天到期、房主永久刪除與 maintenance cleanup。
+- [ ] 完成世界草稿生成上限、保留輸入與手動輸入 fallback。
+- [ ] 完成回合 LLM 自動／手動 retry、deterministic fallback 與安全 telemetry。
 - [ ] 完成三個獨立 Browser session 的三玩家 E2E。
 
 ## C. Tier 0：AWS 可玩傳統架構

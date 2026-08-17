@@ -41,9 +41,7 @@
 
 ## 證據
 
-- [啟用前 Console 畫面](../../screenshots/phase0-identity-center-before-enable.png)
-- [multi-Region KMS 成本警告（已決定避免）](../../screenshots/phase0-identity-center-multi-region-cost-warning.png)
-- [單一區域最終設定審查](../../screenshots/phase0-identity-center-single-region-review.png)
+- 舊帳號相關 Console 截圖已於 2026-08-10 清除，避免與新帳號現況混淆；本文件只保留歷史文字紀錄。
 - [AWS：Enable IAM Identity Center](https://docs.aws.amazon.com/singlesignon/latest/userguide/enable-identity-center.html)
 - [AWS：IAM Identity Center FAQ](https://aws.amazon.com/iam/identity-center/faqs/)
 - [AWS：Using IAM Identity Center across multiple Regions](https://docs.aws.amazon.com/singlesignon/latest/userguide/multi-region-iam-identity-center.html)

@@ -10,6 +10,4 @@
 - 費用影響：無
 - 回復方式：在沒有 assignment 的情況下刪除 group
 
-原始驗證畫面中的 Group ID 已遮蔽，僅保存為內部稽核證據；後續新增成員後，以不含 Email／Group ID 的群組成員畫面作正式報告證據。
-
-[內部稽核截圖](../../screenshots/phase0-identity-center-group-created-internal.png)
+原始驗證畫面中的 Group ID 曾經遮蔽並保存，但舊帳號相關截圖已於 2026-08-10 清除。本文件只作事故歷史追溯；目前新帳號 IAM group 的證據另見 `docs/evidence/2026-08-10-new-account-baseline/validation.md`。

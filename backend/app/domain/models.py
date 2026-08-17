@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime
 
 
 @dataclass(slots=True)
@@ -28,6 +29,14 @@ class Character:
 
 
 @dataclass(slots=True)
+class TransferCode:
+    code_hash: str
+    issued_at: datetime
+    expires_at: datetime
+    consumed_at: datetime | None = None
+
+
+@dataclass(slots=True)
 class Player:
     id: str
     name: str
@@ -36,6 +45,8 @@ class Player:
     action_approach: str = ""
     session_hash: str = ""
     csrf_token: str = ""
+    session_expires_at: datetime | None = None
+    transfer_code: TransferCode | None = None
     character: Character | None = None
 
 
@@ -76,6 +87,9 @@ class Room:
     world: World
     host_session_hash: str = ""
     host_csrf_token: str = ""
+    host_player_id: str | None = None
+    expires_at: datetime | None = None
+    host_session_expires_at: datetime | None = None
     max_rounds: int = 6
     initial_player_count: int = 0
     progress_points: int = 0
@@ -83,6 +97,10 @@ class Room:
     ending_result: str | None = None
     ending_cost: str | None = None
     success_locked: bool = False
+    resolution_mode: str | None = None
+    resolution_failure_code: str | None = None
+    resolution_attempts: int = 0
+    world_generation_count: int = 0
     players: list[Player] = field(default_factory=list)
     entries: list[StoryEntry] = field(default_factory=list)
     dice_results: list[DiceResult] = field(default_factory=list)

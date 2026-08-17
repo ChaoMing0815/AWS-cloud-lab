@@ -2,6 +2,7 @@
 
 - 狀態：本機 memory vertical slice 已實作
 - 日期：2026-08-08
+- 補充決策日期：2026-08-09
 - AWS 寫入／費用：無
 
 ## 安全目標
@@ -25,7 +26,7 @@ OWASP 建議自訂 session ID 使用 CSPRNG、至少 128 bits，且不要把 ses
 
 Session token 由 server-only 隨機 HMAC secret 與本次 idempotency key 導出 256-bit opaque value；Room／Player 只保存 token hash。CSRF token 與 session 綁定，由 API response 的 `session.csrfToken` 提供給同源 JavaScript，僅保存於記憶體。
 
-本機 HTTP 必須使用 `Secure=False` 才能測試；部署至 HTTPS 時必須改成 `Secure=True`，並評估 `__Host-` cookie prefix、有效期限、撤銷與 server-side expiry。
+本機 HTTP 預設使用 `Secure=False`；設定 `CO_STORY_COOKIE_SECURE=true` 時，local room、Host 與 Player cookie 都會切換為 `Secure=True`。真實 HTTPS Browser 驗證、`__Host-` prefix、有效期限、撤銷與 server-side expiry 仍待完成。
 
 ## CSRF
 
@@ -40,7 +41,9 @@ X-CSRF-Token: <session-bound token>
 
 OWASP 建議 stateful 應用使用 synchronizer token，並以 custom request header 傳送；custom header 也會受到瀏覽器 same-origin policy 約束。`SameSite` 是額外防線，不單獨取代 CSRF token。[OWASP CSRF Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html)
 
-目前 create room／join room 是匿名 bootstrap mutation，不使用既有授權 cookie，因此要求 `Idempotency-Key`，但不要求 CSRF。未來 host-only mutation 必須使用 host session 與 host CSRF token。
+目前 create room／join room 是匿名 bootstrap mutation，不使用既有授權 cookie，因此要求 `Idempotency-Key`，但不要求 CSRF。Host-only world／start／roll／resolve／finish 已使用 host session 與 host CSRF token。
+
+目標正式入口會把建房改為原子性建立 Host session、房主的 Player 與 Player session；房主是 3–5 位玩家之一。跨裝置取回既有角色時，由房主產生有效 10 分鐘的一次性轉移碼，成功後撤銷舊 Player session。完整核准內容見[產品核准紀錄](../governance/approval-log.md)。
 
 ## Idempotency
 
@@ -71,9 +74,8 @@ Idempotency-Key: <client-generated UUID>
 
 ## 尚未完成
 
-- Host-only world／start／roll／resolve／finish authorization。
-- Session server-side expiry、revoke、reassign 與 logout。
-- Production HTTPS `Secure` cookie 與 reverse proxy trusted headers。
+- Session server-side expiry、revoke、reassign 與 logout；精確 contract 見 [Session lifecycle Feature Spec](../features/session-lifecycle-and-transfer.md)。
+- Production reverse proxy trusted headers 與真實 HTTPS Browser 驗證。
 - Origin／Fetch Metadata defense-in-depth policy。
 - PostgreSQL session／idempotency persistence 與 concurrent transaction test。
 - 正式跨裝置 reassign 與舊 session 失效測試。

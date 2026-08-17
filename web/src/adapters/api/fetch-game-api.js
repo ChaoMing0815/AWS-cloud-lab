@@ -1,6 +1,31 @@
 import { GameApi } from "../../application/ports/game-api.js";
 import { ApiError } from "./api-error.js";
 
+function validationMessage(detail) {
+  if (detail?.type === "string_too_short") {
+    return `至少需要 ${detail.ctx?.min_length} 個字元。`;
+  }
+  if (detail?.type === "string_too_long") {
+    return `最多 ${detail.ctx?.max_length} 個字元。`;
+  }
+  if (detail?.type === "missing") return "此欄位為必填。";
+  if (detail?.type === "literal_error") return "選項不正確。";
+  if (detail?.type === "greater_than_equal") {
+    return `不可小於 ${detail.ctx?.ge}。`;
+  }
+  return "輸入格式不正確。";
+}
+
+function fieldErrorsFromValidationDetail(detail) {
+  if (!Array.isArray(detail)) return {};
+  return Object.fromEntries(
+    detail.flatMap((item) => {
+      const field = item?.loc?.[0] === "body" ? item.loc.at(-1) : null;
+      return typeof field === "string" ? [[field, validationMessage(item)]] : [];
+    }),
+  );
+}
+
 export class FetchGameApi extends GameApi {
   constructor({ basePath = "/api/v1", fetchImpl, idempotencyKeyFactory } = {}) {
     super();
@@ -15,8 +40,16 @@ export class FetchGameApi extends GameApi {
     return this.room;
   }
 
-  async createRoom() {
-    this.room = await this.request("/rooms", { method: "POST", idempotent: true });
+  async loadCurrentSession() {
+    return this.request("/session/current");
+  }
+
+  async createRoom({ nickname }) {
+    this.room = await this.request("/rooms", {
+      method: "POST",
+      idempotent: true,
+      body: { nickname },
+    });
     return this.room;
   }
 
@@ -29,6 +62,18 @@ export class FetchGameApi extends GameApi {
         nickname,
         role,
         room_version: this.room.version,
+      },
+    });
+    return this.room;
+  }
+
+  async joinRoomByCode({ roomCode, nickname }) {
+    this.room = await this.request("/rooms:join", {
+      method: "POST",
+      idempotent: true,
+      body: {
+        room_code: roomCode,
+        nickname,
       },
     });
     return this.room;
@@ -49,6 +94,23 @@ export class FetchGameApi extends GameApi {
         tone: world.tone,
         custom_tone: world.customTone || null,
         max_rounds: world.maxRounds,
+        room_version: this.room.version,
+      },
+    });
+    return this.room;
+  }
+
+  async generateWorld({ keywords, tone, customTone, supplementalRequest }) {
+    this.requireRoom();
+    this.room = await this.request(`/rooms/${this.room.id}/world:generate`, {
+      method: "POST",
+      idempotent: true,
+      hostCsrfProtected: true,
+      body: {
+        keywords,
+        tone,
+        custom_tone: customTone,
+        supplemental_request: supplementalRequest,
         room_version: this.room.version,
       },
     });
@@ -143,6 +205,20 @@ export class FetchGameApi extends GameApi {
     return this.room;
   }
 
+  async fallbackRound() {
+    this.requireRoom();
+    this.room = await this.request(
+      `/rooms/${this.room.id}/rounds/${this.room.round}:fallback`,
+      {
+        method: "POST",
+        idempotent: true,
+        hostCsrfProtected: true,
+        body: { room_version: this.room.version },
+      },
+    );
+    return this.room;
+  }
+
   async finishGame({ decision }) {
     this.requireRoom();
     this.room = await this.request(`/rooms/${this.room.id}:finish`, {
@@ -155,6 +231,17 @@ export class FetchGameApi extends GameApi {
       },
     });
     return this.room;
+  }
+
+  async deleteRoom() {
+    this.requireRoom();
+    await this.request(`/rooms/${this.room.id}`, {
+      method: "DELETE",
+      idempotent: true,
+      hostCsrfProtected: true,
+      body: { room_version: this.room.version },
+    });
+    this.room = null;
   }
 
   requireRoom() {
@@ -196,6 +283,8 @@ export class FetchGameApi extends GameApi {
       body: body ? JSON.stringify(body) : undefined,
     });
 
+    if (response.status === 204 && response.ok) return undefined;
+
     let payload;
     try {
       payload = await response.json();
@@ -204,6 +293,15 @@ export class FetchGameApi extends GameApi {
     }
 
     if (!response.ok) {
+      const fieldErrors = fieldErrorsFromValidationDetail(payload?.detail);
+      if (response.status === 422 && Object.keys(fieldErrors).length > 0) {
+        throw new ApiError(
+          "REQUEST_VALIDATION_FAILED",
+          "請檢查標示的欄位。",
+          response.status,
+          fieldErrors,
+        );
+      }
       throw new ApiError(
         payload?.error?.code ?? "REQUEST_FAILED",
         payload?.error?.message ?? "API 操作失敗。",

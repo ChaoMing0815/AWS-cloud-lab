@@ -1,6 +1,6 @@
 # 共演計劃：Tier 0–5 AWS 架構
 
-本文件是規劃圖，不代表資源已部署。專題以同一個多人 AI 故事產品逐層完成 Tier 0–5；每一階段都必須保留 AWS 實作、驗證截圖、Demo 與部署紀錄。
+本文件同時呈現 Tier 0 目標拓撲與 Tier 1–5 演進規劃，不可單憑圖面判定資源已部署。Tier 0 目前已完成 private RDS、EC2／SSM 與 internal staging，public TLS Web 與真實 Bedrock integration 尚未完成；實際狀態以 [`CURRENT`](../handoffs/CURRENT.md) 與[部署紀錄](../deployment-log.md)為準。
 
 瀏覽器端的分層、API port、狀態與 AWS 安全邊界另見[前端 Clean Architecture](frontend-clean-architecture.md)。不論下方 AWS 拓撲如何演進，前端都只透過同源 API／BFF 存取後端，不直接持有 AWS credential 或呼叫 RDS、Bedrock、SQS 等服務。
 
@@ -32,7 +32,7 @@ flowchart TB
     B -.-> AWS
 ```
 
-驗收重點：網站可公開操作、資料庫位於 private subnet 且無 public access、只有 Web Security Group 可連 DB、完成一個多人回合並保存資料。PostgreSQL 是目前建議方案，仍需 ADR 與講師確認等價性。
+驗收重點：網站可公開操作、資料庫位於 private subnet 且無 public access、只有 Web Security Group 可連 DB、完成一個多人回合並保存資料。PostgreSQL 已由 ADR-0003 接受；仍需講師確認題卡等價性。精確 subnet、SG、IAM、部署前關卡與清理方案見 [Tier 0 AWS 部署規劃](tier0-aws-deployment-plan.md)。
 
 ## Tier 1：可觀測性與免 SSH 維運
 

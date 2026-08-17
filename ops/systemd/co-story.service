@@ -1,0 +1,22 @@
+[Unit]
+Description=Co-Story FastAPI service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=exec
+User=co-story
+Group=co-story
+WorkingDirectory=/opt/co-story/current/backend
+EnvironmentFile=/etc/co-story/runtime.env
+EnvironmentFile=/etc/co-story/database.env
+ExecStart=/opt/co-story/current/.venv/bin/uvicorn app.main:create_app --factory --host 127.0.0.1 --port 8000 --workers 1
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

@@ -5,11 +5,13 @@ Demo 與每日進度依本清單逐項驗收。檔案存在不代表完成；必
 ## 專案治理與帳號安全
 
 - [x] 已建立並驗證專題 Agent Skill。
-- [x] 已設定並驗證每月 `US$1.00` Budget；2026-08-07 當時支出 `US$0.00`。
+- [x] 新帳號已設定並驗證每月 `US$1.00` Budget；2026-08-10 當月預估 `USD 0.00`。
 - [x] Root MFA 已啟用，且沒有作用中的 Root Access Key。
 - [x] 已記錄誤建 AWS Organization 導致 Free plan／credits 失效的事件與矯正措施。
 - [x] 本專題禁止再建立／加入 AWS Organizations。
 - [x] 未建立長期 Access Key，未授予應用程式 `AdministratorAccess`。
+- [x] 新帳號已建立 Console-only `ming-dev`、啟用 MFA，並確認 Access／API／SSH keys 均為 0。
+- [x] `AWSFinalProjectDevelopers` 已連接 `ReadOnlyAccess`、`IAMUserChangePassword` 與 `AWSBillingReadOnlyAccess`；尚未授予 `PowerUserAccess`。
 - [ ] 最終部署帳號、account plan、credits、Budget、Region 與 principal 已確認。
 - [ ] 所有資源已有估價、owner、最大預算、停止與刪除方式。
 
@@ -19,6 +21,8 @@ Demo 與每日進度依本清單逐項驗收。檔案存在不代表完成；必
 - [x] 已逐頁檢查 `docs/inbox/專題.pptx` 共 53 張。
 - [x] 已確認 Tier 0–5 是同一主題的累積演進，不是互斥選題。
 - [x] 已完成 Research、15 項訪談與正式 MVP Spec。
+- [x] 已完成 Web App 補充 Grill，並確認沒有重問既有骰子、星火、角色、回合與結局規則。
+- [x] 已建立文件權威索引、目標 User Flow、Screen States、入口 Feature Spec 與本機 MVP Test Plan。
 - [x] 已建立題材中立的「共演計劃」展示原型。
 - [x] 已接受前端 Clean Architecture、`GameApi` port 與後端 API 安全邊界。
 - [x] 現有原型的第一個 vertical slice 已依 ADR-0002 遷移，遊戲 state 不再存於 `localStorage`。
@@ -35,10 +39,19 @@ Demo 與每日進度依本清單逐項驗收。檔案存在不代表完成；必
 - [x] 結局規則已通過 59／60、39／40、69／70 邊界與三項 mutation 敏感度測試。
 - [x] Mock／HTTP adapter 的目標點數、提前完成與最大回合結局合約已一致，並通過 mutation 敏感度測試。
 - [x] 房間狀態已使用無重疊的 3 秒 polling 同步；完成結局或停止時不再排程，並通過 Browser 驗證。
-- [ ] Session expiry／revoke／reassign 與 production Secure cookie 已完成。
+- [x] 正式 `/` 已與 `/demo` 分離；root 不載入 Demo room，Demo 不保存進度，Browser Console 0 errors。
+- [x] 正式 `/` 已提供建立／加入／繼續與次要 Demo 入口，不會自動載入 `BONUS7`。
+- [x] 房主建房時同時取得 Host／Player 身份並計入 3–5 位玩家。
+- [x] 玩家可用 room code＋暱稱加入任意可加入房間，且錯誤／滿員／已開始案例均被拒絕。
+- [x] Loading、Offline、Session expired、Version conflict 與 reconnect UX 已完成。
+- [x] Session expiry／revoke／reassign 與 production Secure cookie 設定合約已完成。
+- [x] PostgreSQL repository contract、migration、runtime composition 與 FastAPI application restart persistence 已完成。
+- [x] 三個獨立 browser contexts 正式單回合 E2E 已完成。
+- [x] LLM 自動／手動 retry、deterministic fallback 與正式 Uvicorn OS process restart 演練已完成。
+- [ ] 真實 Bedrock schema／Guardrail 驗證與 application container restart 演練已完成。
 - [ ] 講師已確認自製 FastAPI Web／private DB 的 Tier 0 等效檢核與 Tier 0–5 對映。
-- [ ] 已確認 FastAPI＋PostgreSQL 與正式 AWS adapter ADR。
-- [ ] 本機 MVP 已通過 Spec Definition of Done。
+- [x] 已以 ADR-0003 確認 FastAPI＋PostgreSQL 本機 MVP adapter；正式 AWS data service 仍須於部署前決定。
+- [x] 本機 MVP P0 已通過 Spec Definition of Done；真實 Bedrock／HTTPS／container 另屬 AWS 部署 gate。
 
 ## Tier 0：AWS 可玩 MVP
 

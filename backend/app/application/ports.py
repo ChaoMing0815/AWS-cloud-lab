@@ -2,9 +2,28 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Callable
+from datetime import datetime
 from typing import Any
 
 from app.domain.models import Room
+
+
+RETRYABLE_STORYTELLER_FAILURES = {
+    "TIMEOUT",
+    "THROTTLED",
+    "TRANSIENT_SERVICE_ERROR",
+    "SCHEMA_INVALID",
+}
+
+
+class StorytellerFailure(Exception):
+    def __init__(self, code: str) -> None:
+        super().__init__(code)
+        self.code = code
+
+    @property
+    def retryable(self) -> bool:
+        return self.code in RETRYABLE_STORYTELLER_FAILURES
 
 
 class RoomRepository(ABC):
@@ -12,10 +31,31 @@ class RoomRepository(ABC):
     def get(self, room_id: str) -> Room | None: ...
 
     @abstractmethod
+    def get_by_code(self, room_code: str) -> Room | None: ...
+
+    @abstractmethod
     def save(self, room: Room) -> None: ...
+
+    @abstractmethod
+    def mutate(self, room_id: str, operation: Callable[[Room | None], Any]) -> Any: ...
+
+    @abstractmethod
+    def delete(self, room_id: str, operation: Callable[[Room | None], Any]) -> Any: ...
+
+    @abstractmethod
+    def delete_expired_at_or_before(self, now: datetime) -> int: ...
 
 
 class Storyteller(ABC):
+    @abstractmethod
+    def generate_world(
+        self,
+        keywords: list[str],
+        tone: str,
+        custom_tone: str | None,
+        supplemental_request: str | None,
+    ) -> "World": ...
+
     @abstractmethod
     def resolve_round(self, room: Room) -> str: ...
 
@@ -42,3 +82,8 @@ class SessionTokenFactory(ABC):
 class DiceRoller(ABC):
     @abstractmethod
     def roll_d6(self) -> int: ...
+
+
+class Clock(ABC):
+    @abstractmethod
+    def now(self) -> datetime: ...

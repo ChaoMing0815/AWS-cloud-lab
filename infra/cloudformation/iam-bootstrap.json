@@ -1,0 +1,260 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "One-time IAM bootstrap for the Co-Story course project. Attaches account-risk denies and project-prefixed IAM delegation to the existing developer group. PowerUserAccess is attached separately in the Console.",
+  "Parameters": {
+    "DeveloperGroupName": {
+      "Type": "String",
+      "Default": "AWSFinalProjectDevelopers",
+      "AllowedPattern": "^[A-Za-z0-9+=,.@_-]{1,128}$"
+    }
+  },
+  "Resources": {
+    "AccountProtectionPolicy": {
+      "Type": "AWS::IAM::ManagedPolicy",
+      "Properties": {
+        "ManagedPolicyName": "AWSCourseAccountProtectionDeny",
+        "Description": "Blocks account-plan, organization, identity-center bootstrap, purchase commitments, and new long-term human credentials.",
+        "Groups": [
+          {
+            "Ref": "DeveloperGroupName"
+          }
+        ],
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Sid": "DenyOrganizationAndIdentityCenterBootstrap",
+              "Effect": "Deny",
+              "Action": [
+                "organizations:CreateOrganization",
+                "organizations:CreateAccount",
+                "organizations:InviteAccountToOrganization",
+                "organizations:AcceptHandshake",
+                "organizations:EnableAllFeatures",
+                "controltower:*",
+                "sso:CreateInstance",
+                "sso:DeleteInstance",
+                "freetier:UpgradeAccountPlan"
+              ],
+              "Resource": "*"
+            },
+            {
+              "Sid": "DenyPurchaseCommitments",
+              "Effect": "Deny",
+              "Action": [
+                "aws-marketplace:Subscribe",
+                "ec2:PurchaseReservedInstancesOffering",
+                "rds:PurchaseReservedDBInstancesOffering",
+                "savingsplans:CreateSavingsPlan"
+              ],
+              "Resource": "*"
+            },
+            {
+              "Sid": "DenyNewHumanIdentitiesAndLongTermKeys",
+              "Effect": "Deny",
+              "Action": [
+                "iam:CreateUser",
+                "iam:CreateAccessKey",
+                "iam:CreateLoginProfile"
+              ],
+              "Resource": "*"
+            }
+          ]
+        }
+      }
+    },
+    "ProjectIamDelegationPolicy": {
+      "Type": "AWS::IAM::ManagedPolicy",
+      "Properties": {
+        "ManagedPolicyName": "AWSFinalProjectIamDelegation",
+        "Description": "Lets the project developer manage AWSFinalProject-prefixed roles, policies, instance profiles, and the GitHub OIDC provider without managing IAM users or groups.",
+        "Groups": [
+          {
+            "Ref": "DeveloperGroupName"
+          }
+        ],
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Sid": "ReadIamForProjectSetup",
+              "Effect": "Allow",
+              "Action": [
+                "iam:GetRole",
+                "iam:GetRolePolicy",
+                "iam:GetPolicy",
+                "iam:GetPolicyVersion",
+                "iam:GetInstanceProfile",
+                "iam:GetOpenIDConnectProvider",
+                "iam:ListRoles",
+                "iam:ListRolePolicies",
+                "iam:ListAttachedRolePolicies",
+                "iam:ListRoleTags",
+                "iam:ListPolicies",
+                "iam:ListPolicyVersions",
+                "iam:ListInstanceProfiles",
+                "iam:ListInstanceProfilesForRole",
+                "iam:ListOpenIDConnectProviders"
+              ],
+              "Resource": "*"
+            },
+            {
+              "Sid": "CreateBoundedProjectRoles",
+              "Effect": "Allow",
+              "Action": "iam:CreateRole",
+              "Resource": {
+                "Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/AWSFinalProject*"
+              },
+              "Condition": {
+                "ArnEquals": {
+                  "iam:PermissionsBoundary": {
+                    "Fn::Sub": "arn:${AWS::Partition}:iam::aws:policy/PowerUserAccess"
+                  }
+                }
+              }
+            },
+            {
+              "Sid": "KeepProjectRoleBoundary",
+              "Effect": "Allow",
+              "Action": "iam:PutRolePermissionsBoundary",
+              "Resource": {
+                "Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/AWSFinalProject*"
+              },
+              "Condition": {
+                "ArnEquals": {
+                  "iam:PermissionsBoundary": {
+                    "Fn::Sub": "arn:${AWS::Partition}:iam::aws:policy/PowerUserAccess"
+                  }
+                }
+              }
+            },
+            {
+              "Sid": "ManageProjectRoles",
+              "Effect": "Allow",
+              "Action": [
+                "iam:DeleteRole",
+                "iam:UpdateAssumeRolePolicy",
+                "iam:UpdateRoleDescription",
+                "iam:TagRole",
+                "iam:UntagRole",
+                "iam:PutRolePolicy",
+                "iam:DeleteRolePolicy"
+              ],
+              "Resource": {
+                "Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/AWSFinalProject*"
+              }
+            },
+            {
+              "Sid": "AttachApprovedPoliciesToProjectRoles",
+              "Effect": "Allow",
+              "Action": [
+                "iam:AttachRolePolicy",
+                "iam:DetachRolePolicy"
+              ],
+              "Resource": {
+                "Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/AWSFinalProject*"
+              },
+              "Condition": {
+                "ArnLike": {
+                  "iam:PolicyARN": [
+                    {
+                      "Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/AWSFinalProject*"
+                    },
+                    {
+                      "Fn::Sub": "arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore"
+                    },
+                    {
+                      "Fn::Sub": "arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "Sid": "ManageProjectPolicies",
+              "Effect": "Allow",
+              "Action": [
+                "iam:CreatePolicy",
+                "iam:DeletePolicy",
+                "iam:CreatePolicyVersion",
+                "iam:DeletePolicyVersion",
+                "iam:SetDefaultPolicyVersion",
+                "iam:TagPolicy",
+                "iam:UntagPolicy"
+              ],
+              "Resource": {
+                "Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/AWSFinalProject*"
+              }
+            },
+            {
+              "Sid": "ManageProjectInstanceProfiles",
+              "Effect": "Allow",
+              "Action": [
+                "iam:CreateInstanceProfile",
+                "iam:DeleteInstanceProfile",
+                "iam:AddRoleToInstanceProfile",
+                "iam:RemoveRoleFromInstanceProfile",
+                "iam:TagInstanceProfile",
+                "iam:UntagInstanceProfile"
+              ],
+              "Resource": [
+                {
+                  "Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/AWSFinalProject*"
+                },
+                {
+                  "Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/AWSFinalProject*"
+                }
+              ]
+            },
+            {
+              "Sid": "PassOnlyProjectRolesToExpectedServices",
+              "Effect": "Allow",
+              "Action": "iam:PassRole",
+              "Resource": {
+                "Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/AWSFinalProject*"
+              },
+              "Condition": {
+                "StringEquals": {
+                  "iam:PassedToService": [
+                    "ec2.amazonaws.com",
+                    "ecs-tasks.amazonaws.com",
+                    "lambda.amazonaws.com",
+                    "cloudformation.amazonaws.com"
+                  ]
+                }
+              }
+            },
+            {
+              "Sid": "ManageOnlyGitHubActionsOidcProvider",
+              "Effect": "Allow",
+              "Action": [
+                "iam:CreateOpenIDConnectProvider",
+                "iam:DeleteOpenIDConnectProvider",
+                "iam:UpdateOpenIDConnectProviderThumbprint",
+                "iam:AddClientIDToOpenIDConnectProvider",
+                "iam:RemoveClientIDFromOpenIDConnectProvider",
+                "iam:TagOpenIDConnectProvider",
+                "iam:UntagOpenIDConnectProvider"
+              ],
+              "Resource": {
+                "Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com"
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "Outputs": {
+    "AccountProtectionPolicyArn": {
+      "Value": {
+        "Ref": "AccountProtectionPolicy"
+      }
+    },
+    "ProjectIamDelegationPolicyArn": {
+      "Value": {
+        "Ref": "ProjectIamDelegationPolicy"
+      }
+    }
+  }
+}

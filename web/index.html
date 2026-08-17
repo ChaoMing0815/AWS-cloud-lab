@@ -5,30 +5,107 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content="共演計劃，3–5 人回合制 AI 共創故事遊戲展示版" />
     <title>共演計劃｜多人 AI 故事遊戲</title>
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
     <div class="ambient ambient-one"></div>
     <div class="ambient ambient-two"></div>
 
     <header class="topbar">
-      <a class="brand" href="#" aria-label="共演計劃首頁">
+      <a class="brand" href="/" aria-label="共演計劃首頁">
         <span class="brand-mark">共</span>
         <span>
           <strong>共演計劃</strong>
           <small>CO-STORY PROJECT</small>
         </span>
       </a>
-      <div id="connectionStatus" class="connection"><span></span> 本機 Mock API 模式</div>
+      <div id="connectionStatus" class="connection"><span></span> 準備開始</div>
+      <a class="topbar-link" href="/rules">遊戲規則</a>
     </header>
 
-    <main class="game-shell">
+    <p id="serverRequiredNotice" role="alert" hidden>此頁面需由本機或正式 Web server 開啟，請使用專案提供的網址。</p>
+
+    <main id="landingPage" class="landing-shell">
+      <section class="landing-copy">
+        <div class="eyebrow">3–5 人 AI 共創故事</div>
+        <h1>每個選擇，都會成為<br />下一段共同故事。</h1>
+        <p>建立一個故事房間，邀請朋友自由創作角色與行動；規則負責判定後果，AI 故事主持人負責把眾人的選擇編成同一場冒險。</p>
+        <ul class="landing-features" aria-label="遊戲特色">
+          <li>3–5 位玩家共同遊玩</li>
+          <li>4／6／8 回合完成一局</li>
+          <li>不限定奇幻、職場或日常題材</li>
+        </ul>
+      </section>
+
+      <section class="entry-panel" aria-label="開始遊戲">
+        <form id="createGameForm" class="entry-form">
+          <div>
+            <div class="eyebrow">發起故事</div>
+            <h2>建立遊戲</h2>
+            <p>房主也是玩家之一，建立後先設定這次共同故事。</p>
+          </div>
+          <label for="hostNickname">你的暱稱</label>
+          <input id="hostNickname" name="nickname" maxlength="12" autocomplete="nickname" required />
+          <p id="createGameError" class="entry-error" role="alert" hidden></p>
+          <button id="createGameButton" class="primary-button" type="submit">建立故事房間</button>
+        </form>
+
+        <div class="entry-divider"><span>或</span></div>
+
+        <form id="joinGameForm" class="entry-form">
+          <div>
+            <div class="eyebrow">收到邀請</div>
+            <h2>加入遊戲</h2>
+            <p>輸入房主分享的六碼房間代碼。</p>
+          </div>
+          <label for="joinRoomCode">房間代碼</label>
+          <input id="joinRoomCode" name="roomCode" maxlength="6" autocomplete="off" required />
+          <label for="joinNickname">你的暱稱</label>
+          <input id="joinNickname" name="nickname" maxlength="12" autocomplete="nickname" required />
+          <p id="joinGameError" class="entry-error" role="alert" hidden></p>
+          <button id="joinGameButton" class="secondary-button" type="submit">加入故事房間</button>
+        </form>
+
+        <section id="continueGamePanel" class="entry-form" hidden>
+          <div>
+            <div class="eyebrow">返回故事</div>
+            <h2>繼續目前遊戲</h2>
+            <p id="currentGameSummary"></p>
+          </div>
+          <button id="continueGameButton" class="primary-button" type="button">繼續遊戲</button>
+        </section>
+
+        <p id="sessionNotice" class="entry-error" role="status" hidden></p>
+
+        <a class="demo-link" href="/demo">第一次遊玩？先體驗不保存進度的教學 Demo →</a>
+      </section>
+    </main>
+
+    <main id="rulesPage" class="landing-shell rules-shell" hidden>
+      <section class="landing-copy">
+        <div class="eyebrow">新手快速說明</div>
+        <h1>遊戲規則</h1>
+        <p>自由決定角色與行動；骰子、星火與進度決定結果，故事主持人只負責把既定結果寫成劇情。</p>
+        <a class="secondary-button rules-return" href="/">返回首頁</a>
+      </section>
+
+      <section class="entry-panel rules-content" aria-label="遊戲規則說明">
+        <section><div class="eyebrow">1. 開始遊戲</div><h2>3–5 人共演</h2><p>房主建立世界並分享六碼房號；所有玩家完成角色後，由房主開始遊戲。</p></section>
+        <section><div class="eyebrow">2. 回合怎麼進行</div><h2>各自行動，再共同結算</h2><p>每位玩家秘密提交行動與使用的屬性。行動收齊後，房主擲骰、玩家決定是否使用星火，最後由房主結算故事。</p></section>
+        <section><div class="eyebrow">3. 骰子與屬性</div><h2>2d6 + 屬性</h2><p>角色有勇氣、洞察、羈絆三項屬性；建立角色時各為 0–2，合計必須是 3。骰點加上選定屬性，決定成功、部分成功或失敗。</p></section>
+        <section><div class="eyebrow">4. 星火</div><h2>看見骰點後再決定</h2><p>每位角色開始時有 1 點星火。使用星火會讓本次總值 +1；失敗結算後可獲得星火，最多持有 3 點。</p></section>
+        <section><div class="eyebrow">5. 結局</div><h2>推進目標、控制危機</h2><p>成功會推進共同目標，失敗可能增加危機。達成目標或到達選定的回合上限後，故事會依結果與代價收束。</p></section>
+        <p class="muted">房主負責世界設定、開始、擲骰與結算；所有玩家都能建立角色、提交行動與決定自己的星火。</p>
+      </section>
+    </main>
+
+    <main id="gamePage" class="game-shell" hidden>
       <aside class="panel room-panel">
         <div class="eyebrow">故事房間</div>
         <div class="room-code-row">
           <div>
             <span class="muted">房間代碼</span>
-            <strong id="roomCode">BONUS7</strong>
+            <strong id="roomCode">------</strong>
           </div>
           <button id="newRoomButton" class="icon-button" title="建立新房間" aria-label="建立新房間">↻</button>
         </div>
@@ -48,15 +125,20 @@
             <span class="count-pill">DRAFT</span>
           </div>
           <label for="worldTitle">故事名稱</label>
-          <input id="worldTitle" maxlength="40" required />
+          <input id="worldTitle" maxlength="40" aria-describedby="worldTitleError" required />
+          <p id="worldTitleError" class="field-error" role="alert" hidden></p>
           <label for="worldPremiseInput">故事背景</label>
-          <textarea id="worldPremiseInput" minlength="50" maxlength="500" rows="4" required></textarea>
+          <textarea id="worldPremiseInput" minlength="50" maxlength="500" rows="4" aria-describedby="worldPremiseError" required></textarea>
+          <p id="worldPremiseError" class="field-error" role="alert" hidden></p>
           <label for="worldObjectiveInput">共同目標</label>
-          <textarea id="worldObjectiveInput" minlength="10" maxlength="200" rows="2" required></textarea>
+          <textarea id="worldObjectiveInput" minlength="10" maxlength="200" rows="2" aria-describedby="worldObjectiveError" required></textarea>
+          <p id="worldObjectiveError" class="field-error" role="alert" hidden></p>
           <label for="openingSceneInput">初始場景</label>
-          <textarea id="openingSceneInput" minlength="20" maxlength="400" rows="3" required></textarea>
+          <textarea id="openingSceneInput" minlength="20" maxlength="400" rows="3" aria-describedby="openingSceneError" required></textarea>
+          <p id="openingSceneError" class="field-error" role="alert" hidden></p>
           <label for="coreObstacleInput">核心阻礙</label>
-          <textarea id="coreObstacleInput" minlength="10" maxlength="200" rows="2" required></textarea>
+          <textarea id="coreObstacleInput" minlength="10" maxlength="200" rows="2" aria-describedby="coreObstacleError" required></textarea>
+          <p id="coreObstacleError" class="field-error" role="alert" hidden></p>
           <div class="join-row">
             <label>故事調性
               <select id="toneInput">
@@ -80,6 +162,14 @@
           </div>
           <label id="customToneLabel" for="customToneInput" hidden>自訂調性</label>
           <input id="customToneInput" maxlength="40" hidden />
+          <label for="worldKeywordsInput">生成關鍵字（3–5 個，以逗號分隔）</label>
+          <textarea id="worldKeywordsInput" maxlength="104" rows="2" placeholder="例如：夜班，便利商店，盤點"></textarea>
+          <label for="supplementalRequestInput">補充要求</label>
+          <textarea id="supplementalRequestInput" maxlength="200" rows="2" placeholder="可選，最多 200 字"></textarea>
+          <div class="button-row">
+            <button id="generateWorldButton" class="secondary-button" type="button">生成世界草稿</button>
+            <span id="worldGenerationRemaining" class="muted">剩餘 2 次生成</span>
+          </div>
           <button class="primary-button" type="submit">確認世界並開放加入</button>
         </form>
 
@@ -152,6 +242,11 @@
           <div class="eyebrow">最終結局</div>
           <h2 id="endingResultText">部分成功</h2>
           <p>代價評級：<strong id="endingCostText">明確代價</strong></p>
+          <div id="deleteRoomControls" class="host-form" hidden>
+            <strong>永久刪除房間</strong>
+            <p class="muted">僅房主可執行；會永久刪除所有資料，無法復原。</p>
+            <button id="deleteRoomButton" class="text-button" type="button" disabled>永久刪除房間</button>
+          </div>
         </section>
 
         <form id="actionForm" class="action-composer">
@@ -175,6 +270,7 @@
 
       <aside class="panel status-panel">
         <div class="eyebrow">本回合狀態</div>
+        <p id="pollingStatus" class="polling-status" role="status" aria-live="polite" hidden></p>
         <div class="objective">
           <span class="objective-label">共同目標</span>
           <h3 id="objectiveText">在尾牙抽獎前完成跨部門提案，爭取加碼年終獎金。</h3>
@@ -221,6 +317,15 @@
           <button id="skipAndResolveButton" class="secondary-button" type="button">略過等待者並結算</button>
         </div>
 
+        <div id="resolutionRecoveryControls" class="host-form" hidden>
+          <strong>故事生成需要房主處理</strong>
+          <p id="resolutionFailureText" class="muted">固定骰子與星火判定已保留，尚未提交進度、危機或故事。</p>
+          <div class="button-row">
+            <button id="retryResolutionButton" class="primary-button" type="button">手動重試一次</button>
+            <button id="fallbackRoundButton" class="secondary-button" type="button">使用系統備援敘事</button>
+          </div>
+        </div>
+
         <div id="completionControls" class="host-form" hidden>
           <strong>共同目標已完成</strong>
           <p class="muted">現在結束會產生完整成功結局；也可以鎖定成功並繼續尾聲探索。</p>
@@ -256,7 +361,13 @@
       <span>AWS 部署尚未執行</span>
     </footer>
 
-    <script src="runtime-config.js"></script>
-    <script type="module" src="src/composition/bootstrap.js"></script>
+    <script>
+      const serverRequiredNotice = document.getElementById("serverRequiredNotice");
+      if (globalThis.location.protocol === "file:") {
+        serverRequiredNotice.hidden = false;
+      }
+    </script>
+    <script src="/runtime-config.js"></script>
+    <script type="module" src="/src/composition/bootstrap.js"></script>
   </body>
 </html>

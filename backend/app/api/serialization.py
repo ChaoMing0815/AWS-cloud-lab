@@ -14,6 +14,7 @@ def room_response(room: Room, session: dict) -> dict:
         "roomCode": room.room_code,
         "status": room.status,
         "version": room.version,
+        "worldGenerationCount": room.world_generation_count,
         "round": room.round_number,
         "world": {
             "name": room.world.name,
@@ -77,6 +78,9 @@ def room_response(room: Room, session: dict) -> dict:
         "endingResult": room.ending_result,
         "endingCost": room.ending_cost,
         "successLocked": room.success_locked,
+        "resolutionMode": room.resolution_mode,
+        "resolutionFailureCode": room.resolution_failure_code,
+        "resolutionAttempts": room.resolution_attempts,
         "pendingProgress": sum(
             result.progress_delta
             for result in room.dice_results

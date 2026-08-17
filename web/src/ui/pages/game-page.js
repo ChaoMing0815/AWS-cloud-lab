@@ -2,6 +2,14 @@ import { toRoomViewModel } from "../../adapters/presenters/room-view-model.js";
 
 const byId = (id) => document.getElementById(id);
 
+const WORLD_FIELD_ERRORS = {
+  story_title: { inputId: "worldTitle", errorId: "worldTitleError" },
+  premise: { inputId: "worldPremiseInput", errorId: "worldPremiseError" },
+  objective: { inputId: "worldObjectiveInput", errorId: "worldObjectiveError" },
+  opening_scene: { inputId: "openingSceneInput", errorId: "openingSceneError" },
+  core_obstacle: { inputId: "coreObstacleInput", errorId: "coreObstacleError" },
+};
+
 function element(tagName, { className, text, title } = {}) {
   const node = document.createElement(tagName);
   if (className) node.className = className;
@@ -16,15 +24,20 @@ export class GamePage {
     createRoom,
     joinRoom,
     confirmWorld,
+    generateWorld,
     startGame,
     updateCharacter,
     submitAction,
     rollRound,
     decideSpark,
     resolveRound,
+    fallbackRound,
     finishGame,
+    deleteRoom,
+    apiMode = "mock",
     connectionLabel,
     persistenceLabel,
+    navigate = null,
     schedule = (callback, delay) => globalThis.setTimeout(callback, delay),
     cancelSchedule = (id) => globalThis.clearTimeout(id),
     pollingIntervalMs = 3000,
@@ -34,16 +47,21 @@ export class GamePage {
       createRoom,
       joinRoom,
       confirmWorld,
+      generateWorld,
       startGame,
       updateCharacter,
       submitAction,
       rollRound,
       decideSpark,
       resolveRound,
+      fallbackRound,
       finishGame,
+      deleteRoom,
     };
+    this.apiMode = apiMode;
     this.connectionLabel = connectionLabel;
     this.persistenceLabel = persistenceLabel;
+    this.navigate = navigate;
     this.schedule = schedule;
     this.cancelSchedule = cancelSchedule;
     this.pollingIntervalMs = pollingIntervalMs;
@@ -51,6 +69,8 @@ export class GamePage {
     this.pollTimer = null;
     this.pollInFlight = false;
     this.pollingStopped = false;
+    this.pollFailureCount = 0;
+    this.nextPollingDelayMs = pollingIntervalMs;
     this.busy = false;
   }
 
@@ -58,11 +78,11 @@ export class GamePage {
     byId("connectionStatus").lastChild.textContent = ` ${this.connectionLabel}`;
     byId("persistenceStatus").textContent = this.persistenceLabel;
     byId("newRoomButton").addEventListener("click", () => this.handleCreateRoom());
-    byId("resetButton").addEventListener("click", () => {
-      if (window.confirm("要清除目前 Mock 房間並建立新房間嗎？")) this.handleCreateRoom();
-    });
+    byId("resetButton").hidden = this.apiMode !== "mock";
+    byId("resetButton").addEventListener("click", () => this.handleResetRoom());
     byId("joinForm").addEventListener("submit", (event) => this.handleJoin(event));
     byId("worldForm").addEventListener("submit", (event) => this.handleConfirmWorld(event));
+    byId("generateWorldButton").addEventListener("click", (event) => this.handleGenerateWorld(event));
     byId("startGameButton").addEventListener("click", () => this.handleStartGame());
     byId("characterForm").addEventListener("submit", (event) => this.handleCharacter(event));
     ["courageInput", "insightInput", "bondInput"].forEach((id) => {
@@ -75,14 +95,19 @@ export class GamePage {
     byId("declineSparkButton").addEventListener("click", () => this.handleSpark("DECLINE"));
     byId("resolveRoundButton").addEventListener("click", () => this.handleResolve(false));
     byId("skipAndResolveButton").addEventListener("click", () => this.handleResolve(true));
+    byId("retryResolutionButton").addEventListener("click", () => this.handleResolve(false));
+    byId("fallbackRoundButton").addEventListener("click", () => this.handleFallback());
     byId("finishNowButton").addEventListener("click", () => this.handleFinish("FINISH_NOW"));
     byId("continueButton").addEventListener("click", () => this.handleFinish("CONTINUE"));
+    byId("deleteRoomButton").addEventListener("click", () => this.handleDeleteRoom());
     await this.run(() => this.useCases.loadRoom.execute());
     this.startPolling();
   }
 
   startPolling() {
     this.pollingStopped = false;
+    this.pollFailureCount = 0;
+    this.nextPollingDelayMs = this.pollingIntervalMs;
     this.schedulePolling();
   }
 
@@ -103,7 +128,7 @@ export class GamePage {
     this.pollTimer = this.schedule(() => {
       this.pollTimer = null;
       return this.pollOnce();
-    }, this.pollingIntervalMs);
+    }, this.nextPollingDelayMs);
   }
 
   async pollOnce() {
@@ -115,17 +140,119 @@ export class GamePage {
     ) return false;
     this.pollInFlight = true;
     try {
-      this.room = await this.useCases.loadRoom.execute();
-      this.render();
+      const room = await this.useCases.loadRoom.execute();
+      this.applyPolledRoom(room);
+      this.handlePollingSuccess();
       return true;
+    } catch (error) {
+      if (error?.status === 409) {
+        try {
+          const room = await this.useCases.loadRoom.execute();
+          this.applyPolledRoom(room);
+          this.resetPollingBackoff();
+          this.showPollingStatus("資料已更新，已重新載入。", "conflict-reloaded");
+          return true;
+        } catch (reloadError) {
+          error = reloadError;
+        }
+      }
+
+      if (error?.status === 401 || error?.status === 403) {
+        this.pollingStopped = true;
+        this.showPollingStatus(
+          "登入狀態已失效，請回首頁重新加入。",
+          "session-expired",
+        );
+        return false;
+      }
+
+      if (error?.status === undefined || error?.status >= 500) {
+        const retryDelayMs = this.advancePollingBackoff();
+        this.showPollingStatus(
+          `連線中斷，將在 ${retryDelayMs / 1000} 秒後重試。`,
+          "offline",
+        );
+        return false;
+      }
+
+      throw error;
     } finally {
       this.pollInFlight = false;
       this.schedulePolling();
     }
   }
 
+  applyPolledRoom(room) {
+    this.room = room;
+    this.syncRoute();
+    this.render();
+  }
+
+  handlePollingSuccess() {
+    const reconnected = this.pollFailureCount > 0;
+    this.resetPollingBackoff();
+    if (reconnected) {
+      this.showPollingStatus("已重新連線，資料已同步。", "reconnected");
+    } else {
+      this.showPollingStatus("");
+    }
+  }
+
+  advancePollingBackoff() {
+    const retryDelaysMs = [this.pollingIntervalMs, 5000, 10000];
+    const delayIndex = Math.min(this.pollFailureCount, retryDelaysMs.length - 1);
+    this.pollFailureCount += 1;
+    this.nextPollingDelayMs = retryDelaysMs[delayIndex];
+    return this.nextPollingDelayMs;
+  }
+
+  resetPollingBackoff() {
+    this.pollFailureCount = 0;
+    this.nextPollingDelayMs = this.pollingIntervalMs;
+  }
+
+  showPollingStatus(message, kind = "") {
+    const status = globalThis.document?.getElementById("pollingStatus");
+    if (!status) return;
+    status.hidden = !message;
+    status.textContent = message;
+    status.dataset.kind = kind;
+  }
+
   async handleCreateRoom() {
     await this.run(() => this.useCases.createRoom.execute(), "已建立新房間。");
+  }
+
+  async handleResetRoom() {
+    if (this.apiMode !== "mock") return false;
+    if (!globalThis.window.confirm("要清除目前 Mock 房間並建立新房間嗎？")) return false;
+    return this.handleCreateRoom();
+  }
+
+  async handleDeleteRoom() {
+    const canDelete = this.apiMode === "http"
+      && this.room?.status === "COMPLETED"
+      && this.room?.session?.isHost;
+    if (!canDelete) return false;
+    const confirmed = globalThis.window.confirm(
+      "此操作會永久刪除房間。僅房主可執行，且所有資料都無法復原。要繼續嗎？",
+    );
+    if (!confirmed) return false;
+    this.setBusy(true);
+    this.showFeedback("");
+    try {
+      await this.useCases.deleteRoom.execute();
+      this.room = null;
+      this.stopPolling();
+      this.showFeedback("房間已永久刪除。", "success");
+      if (this.navigate) this.navigate("/");
+      return true;
+    } catch (error) {
+      this.showFeedback(error.message || "刪除失敗，請稍後再試。", "error");
+      return false;
+    } finally {
+      this.setBusy(false);
+    }
   }
 
   async handleJoin(event) {
@@ -144,6 +271,7 @@ export class GamePage {
 
   async handleConfirmWorld(event) {
     event.preventDefault();
+    this.clearWorldFieldErrors();
     await this.run(
       () => this.useCases.confirmWorld.execute({
         storyTitle: byId("worldTitle").value,
@@ -156,7 +284,61 @@ export class GamePage {
         maxRounds: Number(byId("maxRoundsInput").value),
       }),
       "世界設定已確認，現在可以邀請玩家加入。",
+      { onError: (error) => this.showWorldFieldErrors(error.fieldErrors) },
     );
+  }
+
+  clearWorldFieldErrors() {
+    Object.values(WORLD_FIELD_ERRORS).forEach(({ inputId, errorId }) => {
+      const input = byId(inputId);
+      const error = byId(errorId);
+      input?.removeAttribute("aria-invalid");
+      if (error) {
+        error.hidden = true;
+        error.textContent = "";
+      }
+    });
+  }
+
+  showWorldFieldErrors(fieldErrors = {}) {
+    Object.entries(fieldErrors).forEach(([field, message]) => {
+      const target = WORLD_FIELD_ERRORS[field];
+      if (!target) return;
+      const input = byId(target.inputId);
+      const error = byId(target.errorId);
+      input?.setAttribute("aria-invalid", "true");
+      if (error) {
+        error.hidden = false;
+        error.textContent = message;
+      }
+    });
+  }
+
+  async handleGenerateWorld(event) {
+    event.preventDefault();
+    const completed = await this.run(
+      () => this.useCases.generateWorld.execute({
+        keywords: byId("worldKeywordsInput").value,
+        tone: byId("toneInput").value,
+        customTone: byId("customToneInput").value,
+        supplementalRequest: byId("supplementalRequestInput").value,
+      }),
+      "世界草稿已生成，請編輯後再確認。",
+    );
+    if (completed) this.applyGeneratedWorldDraft();
+  }
+
+  applyGeneratedWorldDraft() {
+    const world = this.room?.world;
+    if (!world) return;
+    byId("worldTitle").value = world.storyTitle ?? "";
+    byId("worldPremiseInput").value = world.premise ?? "";
+    byId("worldObjectiveInput").value = world.objective ?? "";
+    byId("openingSceneInput").value = world.openingScene ?? "";
+    byId("coreObstacleInput").value = world.coreObstacle ?? "";
+    byId("toneInput").value = world.tone ?? byId("toneInput").value;
+    byId("customToneInput").value = world.customTone ?? "";
+    byId("worldGenerationRemaining").textContent = `剩餘 ${Math.max(0, 2 - (this.room.worldGenerationCount ?? 0))} 次生成`;
   }
 
   async handleStartGame() {
@@ -208,6 +390,13 @@ export class GamePage {
     );
   }
 
+  async handleFallback() {
+    await this.run(
+      () => this.useCases.fallbackRound.execute(),
+      "已使用系統備援敘事完成本回合。",
+    );
+  }
+
   async handleFinish(decision) {
     const message = decision === "FINISH_NOW"
       ? "故事已完成。"
@@ -215,15 +404,17 @@ export class GamePage {
     await this.run(() => this.useCases.finishGame.execute({ decision }), message);
   }
 
-  async run(operation, successMessage = "") {
+  async run(operation, successMessage = "", { onError = null } = {}) {
     this.setBusy(true);
     this.showFeedback("");
     try {
       this.room = await operation();
+      this.syncRoute();
       this.render();
       this.showFeedback(successMessage, "success");
       return true;
     } catch (error) {
+      onError?.(error);
       this.showFeedback(error.message || "操作失敗，請稍後再試。", "error");
       return false;
     } finally {
@@ -232,9 +423,19 @@ export class GamePage {
     }
   }
 
+  syncRoute() {
+    if (!this.navigate || !this.room?.roomCode) return;
+    let route;
+    if (this.room.status === "DRAFT") route = "/host/setup";
+    else if (this.room.status === "LOBBY") route = `/room/${this.room.roomCode}/lobby`;
+    else if (this.room.status === "COMPLETED") route = `/room/${this.room.roomCode}/ending`;
+    else route = `/room/${this.room.roomCode}/play`;
+    this.navigate(route);
+  }
+
   setBusy(busy) {
     this.busy = busy;
-    document.querySelectorAll("button[type='submit'], #newRoomButton, #startGameButton, #rollRoundButton, #useSparkButton, #declineSparkButton, #resolveRoundButton, #skipAndResolveButton, #finishNowButton, #continueButton").forEach((button) => {
+    document.querySelectorAll("button[type='submit'], #newRoomButton, #startGameButton, #rollRoundButton, #useSparkButton, #declineSparkButton, #resolveRoundButton, #skipAndResolveButton, #retryResolutionButton, #fallbackRoundButton, #finishNowButton, #continueButton, #deleteRoomButton, #generateWorldButton").forEach((button) => {
       button.disabled = busy;
     });
   }
@@ -283,7 +484,12 @@ export class GamePage {
     byId("roundHostControls").hidden = !view.canRoll;
     byId("sparkControls").hidden = !view.canDecideSpark;
     byId("resolveRoundControls").hidden = !view.canResolve;
+    byId("resolutionRecoveryControls").hidden = !(view.canRetryResolution || view.canUseFallback);
+    byId("resolutionFailureText").textContent = `${view.resolutionFailureLabel}。固定骰子與星火判定已保留，尚未提交進度、危機或故事。`;
     byId("completionControls").hidden = !(view.canFinishNow || view.canContinue);
+    const canDeleteRoom = this.apiMode === "http" && view.isHost && view.status === "COMPLETED";
+    byId("deleteRoomControls").hidden = !canDeleteRoom;
+    byId("deleteRoomButton").disabled = !canDeleteRoom;
     if (view.currentDiceResult) {
       const improves = view.currentDiceResult.baseTotal === 6 || view.currentDiceResult.baseTotal === 9;
       byId("sparkHint").textContent = improves
@@ -308,6 +514,8 @@ export class GamePage {
     }
     if (view.canEditWorld) {
       byId("maxRoundsInput").value = String(view.maxRounds ?? 6);
+      byId("worldGenerationRemaining").textContent = `剩餘 ${Math.max(0, 2 - view.worldGenerationCount)} 次生成`;
+      byId("generateWorldButton").disabled = this.busy || view.worldGenerationCount >= 2;
       this.renderCustomTone();
     }
   }

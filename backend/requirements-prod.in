@@ -1,0 +1,5 @@
+# Tier 0 runtime 的直接依賴；版本在 requirements-prod.txt 完整鎖定。
+fastapi==0.141.1
+uvicorn[standard]==0.52.1
+psycopg[binary]==3.3.4
+boto3==1.43.69

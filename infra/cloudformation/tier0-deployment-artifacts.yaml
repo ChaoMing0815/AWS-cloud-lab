@@ -1,0 +1,98 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Tier 0 Co-Story short-lived private deployment artifacts for Console-first SSM delivery.
+
+Parameters:
+  AppRoleName:
+    Type: String
+    Default: AWSFinalProjectAppRole
+    AllowedPattern: '^AWSFinalProject[A-Za-z0-9+=,.@_-]+$'
+    Description: Existing EC2 application role created by co-story-tier0-compute.
+
+Resources:
+  ArtifactBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      LifecycleConfiguration:
+        Rules:
+          - Id: ExpireReleaseArtifacts
+            Status: Enabled
+            Prefix: releases/
+            ExpirationInDays: 7
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 1
+      Tags:
+        - Key: Name
+          Value: co-story-tier0-deployment-artifacts
+        - Key: Project
+          Value: co-story
+        - Key: Tier
+          Value: '0'
+
+  ArtifactBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket:
+        Ref: ArtifactBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:*'
+            Resource:
+              - Fn::GetAtt:
+                  - ArtifactBucket
+                  - Arn
+              - Fn::Sub: ${ArtifactBucket.Arn}/*
+            Condition:
+              Bool:
+                aws:SecureTransport: 'false'
+
+  ArtifactReadPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: AWSFinalProjectArtifactRead
+      Description: Lets the Co-Story instance list and read only short-lived release artifacts.
+      Roles:
+        - Ref: AppRoleName
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: ListReleasePrefix
+            Effect: Allow
+            Action: s3:ListBucket
+            Resource:
+              Fn::GetAtt:
+                - ArtifactBucket
+                - Arn
+            Condition:
+              StringLike:
+                s3:prefix:
+                  - releases/*
+          - Sid: ReadReleaseArtifacts
+            Effect: Allow
+            Action: s3:GetObject
+            Resource:
+              Fn::Sub: ${ArtifactBucket.Arn}/releases/*
+
+Outputs:
+  ArtifactBucketName:
+    Value:
+      Ref: ArtifactBucket
+  ArtifactReleasePrefix:
+    Value: releases/

@@ -246,3 +246,36 @@ test("Mock adapter 最終回合自動完成並輸出部分成功與顯著代價"
   assert.equal(resolved.endingCost, "SIGNIFICANT");
   assert.equal(resolved.entries.at(-1).type, "ending");
 });
+
+test("MockGameApi 提供 deterministic 世界草稿且最多生成兩次", async () => {
+  const api = new MockGameApi();
+  await api.createRoom();
+
+  assert.equal(typeof api.generateWorld, "function", "MockGameApi.generateWorld 尚未建立");
+  const first = await api.generateWorld({
+    keywords: ["夜班", "便利商店", "盤點"],
+    tone: "mystery",
+    customTone: null,
+    supplementalRequest: "讓玩家先編輯。",
+  });
+  const second = await api.generateWorld({
+    keywords: ["夜班", "便利商店", "盤點"],
+    tone: "mystery",
+    customTone: null,
+    supplementalRequest: "讓玩家先編輯。",
+  });
+
+  assert.equal(first.status, "DRAFT");
+  assert.equal(first.worldGenerationCount, 1);
+  assert.equal(first.world.storyTitle, "夜班便利商店盤點");
+  assert.equal(second.worldGenerationCount, 2);
+  await assert.rejects(
+    api.generateWorld({
+      keywords: ["夜班", "便利商店", "盤點"],
+      tone: "mystery",
+      customTone: null,
+      supplementalRequest: "讓玩家先編輯。",
+    }),
+    { code: "WORLD_GENERATION_LIMIT", status: 409 },
+  );
+});

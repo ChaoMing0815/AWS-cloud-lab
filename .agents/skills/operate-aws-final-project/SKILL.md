@@ -7,13 +7,14 @@ description: Safely plan, build, inspect, verify, and document the AWS final pro
 
 ## 核心流程
 
-1. 先讀取專案根目錄的 `AGENTS.md`、`README.md`、Project Brief、`docs/project-plan.md`、`docs/gantt.md`、`docs/checkpoints.md`，再讀取與任務直接相關的 ADR 與 handoff。
+1. 先讀取 `AGENTS.md`、`docs/product/source-of-truth.md` 與 `docs/handoffs/CURRENT.md`，再依任務路由讀取直接相關文件。只有全域規劃、課程對照、final review 或文件衝突調查，才載入 README、Project Brief、project plan、gantt 與 checkpoints 全集。同一 task 內不得重讀未變更文件。
 2. 以已接受的 ADR 為最新決策。若舊文件仍描述 WordPress，標示為待遷移內容，不得用它覆蓋多人 AI 文字 RPG 的決策。
-3. 執行任何 AWS 寫入前，先完成成本、安全、目前 principal、Region、資源與 IAM 唯讀盤點。使用 `scripts/aws-readonly-inventory.sh` 保存不含 secrets 的原始證據。
+3. 任何 AWS CLI（包含唯讀）都必須先取得使用者對 bounded change batch 的人工核准；不得因命令看似唯讀而自動執行。核准後先完成成本、安全、目前 principal、Region、資源與 IAM 唯讀盤點，使用 `scripts/aws-readonly-inventory.sh` 保存不含 secrets 的原始證據。
    - 涉及 AWS Organizations、Control Tower 或 IAM Identity Center organization instance 時，必須先驗證 Account plan 與 Credits。若為 Free plan，立即停止：建立／加入 Organization 會自動升級 Paid plan、使 Free Tier credits 立即失效且不能降級。列出不建立 Organization 的替代方案並取得使用者對此特定後果的明確確認，普通的「確認啟用」不算充分同意。
-4. 向使用者列出精確變更對象、權限邊界、費用風險與復原方式。帳務、Root、MFA、Email 驗證、權限擴張、外部傳輸或不可逆動作必須由使用者確認或操作。
+4. 每個 AWS change batch 只建立一次 change envelope：account、principal、Region／profile、精確資源、IAM 邊界、費用上限、驗證、rollback 與清理責任。相同 task 內只要 envelope 未擴張即可沿用；account／principal／Region、權限、成本級別、外部傳輸或不可逆性改變時才重新核准。
+   - 帳務、Root、MFA、Email 驗證、權限擴張、外部傳輸、production deploy 與不可逆動作必須明確列入人工核准，不得被一般 envelope 默認涵蓋。
 5. 先完成 Tier 0 可部署 MVP，再依序演進 CloudWatch、SSM、CI/CD、RAG 與 Agentic AI。只建立當前架構確實需要的 AWS 資源。
-6. 每一階段都執行正面與負面驗證，保存證據，並同步更新 `docs/deployment-log.md`、`docs/checkpoints.md`、截圖索引與相關架構文件。
+6. 每個 batch 結束時一次執行正面／負面驗證並保存 sanitized evidence；`deployment-log.md` 只記實際 AWS／環境 batch，`checkpoints.md` 與架構文件只在 milestone／Tier gate 改變時更新。
 
 ## 專題邊界
 
@@ -38,9 +39,9 @@ description: Safely plan, build, inspect, verify, and document the AWS final pro
 
 設計或驗證 Identity Center、permission set、application role、operator role 或 GitHub OIDC role 時，必須讀取 `references/iam-boundaries.md`。
 
-## AWS 變更關卡
+## AWS change envelope 關卡
 
-每次寫入前確認：
+每個 bounded batch 開始時確認：
 
 - 目前 principal、account ID、Region 與 SSO profile 已明確。
 - Budget 告警、當月成本、現有資源、CloudTrail／Event history 與 IAM 現況已有時間戳證據。
@@ -49,13 +50,13 @@ description: Safely plan, build, inspect, verify, and document the AWS final pro
 - 已檢查沒有長期 Access Key、萬用 `iam:PassRole`、應用程式管理員權限或未限定的 secret 讀取。
 - 已定義正面測試、負面測試、回復方式與清理責任。
 
-若任何一項未知，先停止 AWS 寫入並完成盤點或請使用者處理必要互動。
+若任何一項未知，先停止 batch 並完成盤點或請使用者處理必要互動。同一 task 中，若 account、principal、Region／profile、核准資源集合、權限邊界與成本級別均未改變，不為每個 AWS API call 重做完整盤點或核可；每個 command 只驗證與 envelope 的 delta。任何 envelope 擴張都必須重新人工核准。
 
 ## 證據與完成定義
 
-- 將 CLI 原始輸出保存到 `docs/evidence/<日期>-<階段>/`；檔名使用可理解的英文 kebab-case。
+- 每個 AWS batch 將必要且 sanitized 的 CLI 原始輸出保存到 `docs/evidence/<日期>-<階段>/`；不為每個 command 建立獨立 evidence。
 - 將 Console 畫面保存到 `docs/screenshots/`，避免包含 Email、account alias、Access Key ID、token 或其他敏感資訊。
-- 在部署紀錄寫下時間、principal 類型、Region、變更、驗證、證據路徑、費用影響與回復方式。
+- Batch 結束後在部署紀錄寫一次時間、principal 類型、Region、變更、驗證、證據路徑、費用影響與回復方式。本機 coding／TDD 不寫 deployment log。
 - 不因檔案存在就標示完成；只有 AWS 狀態與驗證證據一致時才勾選 checkpoint。
 - 驗證 IAM policy 語法與 Access Analyzer；在 CloudTrail 有足夠活動後依實際使用縮減權限。
 - 完成階段時，記錄未完成項目、阻塞原因與下一步。

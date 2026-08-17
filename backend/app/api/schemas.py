@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 Tone = Literal[
@@ -35,6 +35,27 @@ class ConfirmWorldRequest(BaseModel):
         return self
 
 
+class GenerateWorldRequest(BaseModel):
+    keywords: list[str] = Field(min_length=3, max_length=5)
+    tone: Tone
+    custom_tone: str | None = Field(default=None, max_length=40)
+    supplemental_request: str | None = Field(default=None, max_length=200)
+    room_version: int = Field(ge=1)
+
+    @model_validator(mode="after")
+    def validate_generation_request(self) -> "GenerateWorldRequest":
+        self.keywords = [keyword.strip() for keyword in self.keywords]
+        if any(not 1 <= len(keyword) <= 20 for keyword in self.keywords):
+            raise ValueError("關鍵字必須是 1–20 個字元。")
+        self.custom_tone = (self.custom_tone or "").strip() or None
+        if self.tone == "custom" and self.custom_tone is None:
+            raise ValueError("自訂調性不可空白。")
+        if self.tone != "custom" and self.custom_tone is not None:
+            raise ValueError("非自訂調性不可提供自訂調性。")
+        self.supplemental_request = (self.supplemental_request or "").strip() or None
+        return self
+
+
 class StartGameRequest(BaseModel):
     room_version: int = Field(ge=1)
 
@@ -56,6 +77,32 @@ class JoinRoomRequest(BaseModel):
     room_version: int = Field(ge=1)
 
 
+class IssueTransferCodeRequest(BaseModel):
+    room_version: int = Field(ge=1)
+
+
+class ReassignPlayerRequest(BaseModel):
+    transfer_code: str = Field(min_length=1, max_length=512)
+    room_version: int = Field(ge=1)
+
+
+class DeleteRoomRequest(BaseModel):
+    room_version: int = Field(ge=1)
+
+
+class CreateRoomRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    nickname: str = Field(min_length=1, max_length=12)
+
+
+class JoinRoomByCodeRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    room_code: str
+    nickname: str
+
+
 class SubmitActionRequest(BaseModel):
     text: str = Field(min_length=1, max_length=240)
     approach: Literal["courage", "insight", "bond"]
@@ -73,6 +120,10 @@ class SparkDecisionRequest(BaseModel):
 
 class ResolveRoundRequest(BaseModel):
     skip_pending_spark: bool = False
+    room_version: int = Field(ge=1)
+
+
+class FallbackRoundRequest(BaseModel):
     room_version: int = Field(ge=1)
 
 

@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from collections.abc import Callable
+from datetime import datetime
 from threading import RLock
+from typing import Any
 
 from app.application.ports import RoomRepository
 from app.domain.models import Room
@@ -17,6 +20,41 @@ class MemoryRoomRepository(RoomRepository):
             room = self._rooms.get(room_id)
             return deepcopy(room) if room else None
 
+    def get_by_code(self, room_code: str) -> Room | None:
+        with self._lock:
+            room = next(
+                (item for item in self._rooms.values() if item.room_code == room_code),
+                None,
+            )
+            return deepcopy(room) if room else None
+
     def save(self, room: Room) -> None:
         with self._lock:
             self._rooms[room.id] = deepcopy(room)
+
+    def mutate(self, room_id: str, operation: Callable[[Room | None], Any]) -> Any:
+        with self._lock:
+            room = deepcopy(self._rooms[room_id]) if room_id in self._rooms else None
+            result = operation(room)
+            if room is not None:
+                self._rooms[room.id] = deepcopy(room)
+            return deepcopy(result)
+
+    def delete(self, room_id: str, operation: Callable[[Room | None], Any]) -> Any:
+        with self._lock:
+            room = deepcopy(self._rooms[room_id]) if room_id in self._rooms else None
+            result = operation(room)
+            if room is not None:
+                del self._rooms[room_id]
+            return deepcopy(result)
+
+    def delete_expired_at_or_before(self, now: datetime) -> int:
+        with self._lock:
+            expired_room_ids = [
+                room.id
+                for room in self._rooms.values()
+                if room.expires_at is not None and room.expires_at <= now
+            ]
+            for room_id in expired_room_ids:
+                del self._rooms[room_id]
+            return len(expired_room_ids)

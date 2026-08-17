@@ -24,6 +24,29 @@ test("FetchGameApi 以同源 cookie 載入目前房間", async () => {
   assert.equal(request.options.credentials, "include");
 });
 
+test("FetchGameApi 以同源 cookie 讀取安全 session 摘要", async () => {
+  let request;
+  const summary = {
+    authenticated: true,
+    principalType: "player",
+    isHost: false,
+    room: { id: "room-1", roomCode: "ABCD23", status: "LOBBY" },
+    continueRoute: "/room/ABCD23/lobby",
+  };
+  const api = new FetchGameApi({
+    fetchImpl: async (url, options) => {
+      request = { url, options };
+      return jsonResponse(summary);
+    },
+  });
+
+  const observed = await api.loadCurrentSession();
+
+  assert.equal(request.url, "/api/v1/session/current");
+  assert.equal(request.options.credentials, "include");
+  assert.deepEqual(observed, summary);
+});
+
 test("FetchGameApi 加入房間時傳送已知 room version", async () => {
   const requests = [];
   const responses = [
@@ -60,7 +83,31 @@ test("FetchGameApi 將 structured API error 轉為 ApiError", async () => {
   });
 });
 
-test("FetchGameApi mutation 送出 Idempotency-Key", async () => {
+test("FetchGameApi 將 FastAPI 422 detail 轉為可標示欄位的錯誤", async () => {
+  const api = new FetchGameApi({
+    fetchImpl: async () => jsonResponse(
+      {
+        detail: [{
+          type: "string_too_short",
+          loc: ["body", "premise"],
+          msg: "String should have at least 50 characters",
+          ctx: { min_length: 50 },
+        }],
+      },
+      422,
+    ),
+  });
+
+  await assert.rejects(api.loadRoom(), (error) => {
+    assert.equal(error.code, "REQUEST_VALIDATION_FAILED");
+    assert.equal(error.status, 422);
+    assert.equal(error.message, "請檢查標示的欄位。");
+    assert.deepEqual(error.fieldErrors, { premise: "至少需要 50 個字元。" });
+    return true;
+  });
+});
+
+test("FetchGameApi 建立房間時送出房主暱稱與 Idempotency-Key", async () => {
   let request;
   const api = new FetchGameApi({
     idempotencyKeyFactory: () => "fixed-idempotency-key",
@@ -70,9 +117,31 @@ test("FetchGameApi mutation 送出 Idempotency-Key", async () => {
     },
   });
 
-  await api.createRoom();
+  await api.createRoom({ nickname: "昭銘" });
 
   assert.equal(request.options.headers["Idempotency-Key"], "fixed-idempotency-key");
+  assert.equal(request.options.body, JSON.stringify({ nickname: "昭銘" }));
+});
+
+test("FetchGameApi 不需目前房間即可用房號加入", async () => {
+  let request;
+  const api = new FetchGameApi({
+    idempotencyKeyFactory: () => "join-by-code-key",
+    fetchImpl: async (url, options) => {
+      request = { url, options };
+      return jsonResponse({ roomCode: "ABCD23", version: 4, players: [] }, 201);
+    },
+  });
+
+  const room = await api.joinRoomByCode({ roomCode: "ABCD23", nickname: "小明" });
+
+  assert.equal(request.url, "/api/v1/rooms:join");
+  assert.equal(request.options.headers["Idempotency-Key"], "join-by-code-key");
+  assert.deepEqual(JSON.parse(request.options.body), {
+    room_code: "ABCD23",
+    nickname: "小明",
+  });
+  assert.equal(room.roomCode, "ABCD23");
 });
 
 test("Submit action 傳送文字與行動方式並帶 player session 的 CSRF token", async () => {
@@ -172,6 +241,34 @@ test("星火決策與房主結算使用各自 CSRF 邊界", async () => {
     skip_pending_spark: true,
     room_version: 12,
   });
+});
+
+test("房主 fallback 使用鎖定回合版本與 host CSRF", async () => {
+  const requests = [];
+  const room = {
+    id: "room-fallback",
+    version: 15,
+    round: 4,
+    status: "RESOLUTION_FAILED",
+    players: [],
+    session: { isHost: true, hostCsrfToken: "host-fallback-csrf" },
+  };
+  const api = new FetchGameApi({
+    idempotencyKeyFactory: () => "fallback-key",
+    fetchImpl: async (url, options) => {
+      requests.push({ url, options });
+      return jsonResponse(room);
+    },
+  });
+  await api.loadRoom();
+
+  await api.fallbackRound();
+
+  const request = requests[1];
+  assert.equal(request.url, "/api/v1/rooms/room-fallback/rounds/4:fallback");
+  assert.equal(request.options.headers["X-CSRF-Token"], "host-fallback-csrf");
+  assert.equal(request.options.headers["Idempotency-Key"], "fallback-key");
+  assert.deepEqual(JSON.parse(request.options.body), { room_version: 15 });
 });
 
 test("房主確認世界與開始遊戲使用 host CSRF token", async () => {
@@ -276,4 +373,81 @@ test("房主結局選擇使用 finish endpoint 與 host CSRF", async () => {
     decision: "CONTINUE",
     room_version: 15,
   });
+});
+
+test("房主永久刪除房間時送出 version、host CSRF 與 Idempotency-Key", async () => {
+  const requests = [];
+  const room = {
+    id: "room-delete",
+    version: 16,
+    status: "COMPLETED",
+    session: { isHost: true, hostCsrfToken: "host-delete-csrf" },
+  };
+  const api = new FetchGameApi({
+    idempotencyKeyFactory: () => "delete-room-key",
+    fetchImpl: async (url, options) => {
+      requests.push({ url, options });
+      if (options.method === "DELETE") return new Response(null, { status: 204 });
+      return jsonResponse(room);
+    },
+  });
+  await api.loadRoom();
+
+  assert.equal(typeof api.deleteRoom, "function", "FetchGameApi.deleteRoom 尚未建立");
+  await api.deleteRoom();
+
+  const request = requests[1];
+  assert.equal(request.url, "/api/v1/rooms/room-delete");
+  assert.equal(request.options.method, "DELETE");
+  assert.equal(request.options.credentials, "include");
+  assert.equal(request.options.headers["X-CSRF-Token"], "host-delete-csrf");
+  assert.equal(request.options.headers["Idempotency-Key"], "delete-room-key");
+  assert.deepEqual(JSON.parse(request.options.body), { room_version: 16 });
+  assert.equal(api.room, null, "成功刪除後不應保留過期房間狀態");
+});
+
+test("FetchGameApi 生成世界草稿時帶 canonical version、host CSRF 與 Idempotency-Key", async () => {
+  const requests = [];
+  const draft = {
+    id: "room-world",
+    version: 2,
+    status: "DRAFT",
+    worldGenerationCount: 1,
+    session: { isHost: true, hostCsrfToken: "host-world-csrf" },
+  };
+  const api = new FetchGameApi({
+    idempotencyKeyFactory: () => "world-generation-key",
+    fetchImpl: async (url, options) => {
+      requests.push({ url, options });
+      return jsonResponse(draft);
+    },
+  });
+  api.room = {
+    id: "room-world",
+    version: 1,
+    status: "DRAFT",
+    session: { isHost: true, hostCsrfToken: "host-world-csrf" },
+  };
+
+  assert.equal(typeof api.generateWorld, "function", "FetchGameApi.generateWorld 尚未建立");
+  const room = await api.generateWorld({
+    keywords: ["夜班", "便利商店", "盤點"],
+    tone: "mystery",
+    customTone: null,
+    supplementalRequest: "讓玩家先編輯。",
+  });
+
+  const request = requests[0];
+  assert.equal(request.url, "/api/v1/rooms/room-world/world:generate");
+  assert.equal(request.options.method, "POST");
+  assert.equal(request.options.headers["X-CSRF-Token"], "host-world-csrf");
+  assert.equal(request.options.headers["Idempotency-Key"], "world-generation-key");
+  assert.deepEqual(JSON.parse(request.options.body), {
+    keywords: ["夜班", "便利商店", "盤點"],
+    tone: "mystery",
+    custom_tone: null,
+    supplemental_request: "讓玩家先編輯。",
+    room_version: 1,
+  });
+  assert.equal(room.worldGenerationCount, 1);
 });

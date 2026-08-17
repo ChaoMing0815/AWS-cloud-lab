@@ -1,7 +1,7 @@
 # 共演計劃：LLM／Amazon Bedrock 串接設計
 
-- 狀態：目標設計；目前程式使用 `MockStoryteller`
-- 查核日期：2026-08-08
+- 狀態：Recovery contract 已實作；正式 Bedrock adapter 待建立
+- 查核日期：2026-08-10
 - AWS 寫入：無
 
 ## 結論
@@ -11,6 +11,16 @@
 部署到 EC2／ECS 時，應用程式使用附加於 EC2 instance profile 或 ECS task 的 IAM role。AWS SDK 的 default credential provider chain 會取得並自動更新短期 role credential，因此**不需要在程式中填入 API key 或 Access Key**。[AWS SDK credential provider chain](https://docs.aws.amazon.com/sdkref/latest/guide/standardized-credentials.html)
 
 Amazon Bedrock 現在也提供 short-term 與 long-term API keys；官方將 long-term key 定位為探索用途，安全要求較高的應用應使用短期 credential。本專題不建立 Bedrock long-term API key。[Amazon Bedrock API keys](https://docs.aws.amazon.com/bedrock/latest/userguide/api-keys-reference.html)
+
+## 目前已實作的本機 recovery 邊界
+
+- `TIMEOUT`、`THROTTLED`、暫時性服務錯誤與 `SCHEMA_INVALID` 自動重試最多一次。
+- `CONTENT_REJECTED` 不自動重試。
+- 兩次失敗後保存 `RESOLUTION_FAILED`，不提交進度、危機、星火、action 清除或故事。
+- 房主可用同一份 DiceResult 手動 retry，或提交明確標示為非 AI 的 deterministic fallback。
+- API 與 UI 只顯示安全 failure classification 與 attempt count，不顯示底層 exception、prompt 或 credential。
+
+上述內容是 application recovery contract。真實 `BedrockStoryteller` 仍必須把 SDK timeout／throttling／5xx 與 output schema／Guardrail 結果轉成此 taxonomy，才能標示正式模型整合完成。
 
 ## 串接位置
 

@@ -1,0 +1,88 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Tier 0 Co-Story private PostgreSQL only. Creates a DB subnet group and one encrypted Single-AZ RDS instance.
+
+Parameters:
+  PrivateDbSubnetAId:
+    Type: AWS::EC2::Subnet::Id
+    Description: First private DB subnet from co-story-tier0-network.
+  PrivateDbSubnetBId:
+    Type: AWS::EC2::Subnet::Id
+    Description: Second private DB subnet from co-story-tier0-network.
+  DbSecurityGroupId:
+    Type: AWS::EC2::SecurityGroup::Id
+    Description: DB security group from co-story-tier0-network.
+
+Resources:
+  DbSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupName: co-story-tier0-private-db
+      DBSubnetGroupDescription: Co-Story Tier 0 private DB subnets in two Availability Zones
+      SubnetIds:
+        - Ref: PrivateDbSubnetAId
+        - Ref: PrivateDbSubnetBId
+      Tags:
+        - Key: Project
+          Value: co-story
+        - Key: Tier
+          Value: '0'
+
+  Database:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      DBInstanceIdentifier: co-story-tier0-postgres
+      DBName: co_story
+      Engine: postgres
+      EngineVersion: '18.3'
+      EngineLifecycleSupport: open-source-rds-extended-support-disabled
+      DBInstanceClass: db.t4g.micro
+      MultiAZ: false
+      AllocatedStorage: '20'
+      StorageType: gp2
+      StorageEncrypted: true
+      DBSubnetGroupName:
+        Ref: DbSubnetGroup
+      VPCSecurityGroups:
+        - Ref: DbSecurityGroupId
+      PubliclyAccessible: false
+      Port: 5432
+      MasterUsername: postgres
+      ManageMasterUserPassword: true
+      EnableIAMDatabaseAuthentication: false
+      BackupRetentionPeriod: 1
+      DeleteAutomatedBackups: true
+      CopyTagsToSnapshot: true
+      DeletionProtection: false
+      AutoMinorVersionUpgrade: true
+      EnablePerformanceInsights: true
+      PerformanceInsightsRetentionPeriod: 7
+      MonitoringInterval: 0
+      Tags:
+        - Key: Name
+          Value: co-story-tier0-postgres
+        - Key: Project
+          Value: co-story
+        - Key: Tier
+          Value: '0'
+
+Outputs:
+  DbInstanceIdentifier:
+    Value:
+      Ref: Database
+  DbEndpointAddress:
+    Value:
+      Fn::GetAtt:
+        - Database
+        - Endpoint.Address
+  DbEndpointPort:
+    Value:
+      Fn::GetAtt:
+        - Database
+        - Endpoint.Port
+  MasterSecretArn:
+    Value:
+      Fn::GetAtt:
+        - Database
+        - MasterUserSecret.SecretArn

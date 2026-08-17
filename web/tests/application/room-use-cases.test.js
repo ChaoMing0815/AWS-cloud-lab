@@ -16,18 +16,25 @@ try {
   FinishGame = undefined;
 }
 
-test("CreateRoom 只透過 GameApi port 建立房間", async () => {
+test("CreateRoom 正規化房主暱稱後只透過 GameApi port 建立房間", async () => {
   let calls = 0;
+  let command;
   const expected = { id: "room-1" };
   const gameApi = {
-    async createRoom() {
+    async createRoom(received) {
       calls += 1;
+      command = received;
       return expected;
     },
   };
 
-  assert.equal(await new CreateRoom(gameApi).execute(), expected);
+  assert.equal(await new CreateRoom(gameApi).execute({ nickname: "  昭銘  " }), expected);
   assert.equal(calls, 1);
+  assert.deepEqual(command, { nickname: "昭銘" });
+  assert.throws(
+    () => new CreateRoom(gameApi).execute({ nickname: "   " }),
+    { code: "INVALID_NICKNAME" },
+  );
 });
 
 test("JoinRoom 先正規化輸入再呼叫 GameApi port", async () => {

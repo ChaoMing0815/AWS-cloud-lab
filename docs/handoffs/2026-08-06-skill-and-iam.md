@@ -25,7 +25,7 @@
 - 選題決策已確定，不再以 WordPress 為主題。
 - 目前多份舊文件仍以 WordPress AIOps 為主，屬於待遷移狀態；不可將舊文件當成最新選題決策。
 - 工作樹已有使用者的未提交變更；不要 reset、checkout 或覆寫無關變更。
-- 早期 Budget 畫面 `docs/screenshots/phase0-zero-spend-budget.png` 含帳號識別資訊，已列入 `.gitignore`，不得提交；公開證據改用已裁切的 `phase0-zero-spend-budget-verified.png`。
+- 舊帳號 Budget 與 Organizations／Identity Center 相關截圖已於 2026-08-10 全部清除；只保留文字事故紀錄，不得作為目前帳號證據。
 - 未確認項目：AWS Region、帳號是單一帳號或 Organizations 成員帳號、IAM Identity Center 是否已啟用、目前使用者身分、既有 roles/policies、AWS CLI SSO 狀態。
 
 ## 任務執行原則

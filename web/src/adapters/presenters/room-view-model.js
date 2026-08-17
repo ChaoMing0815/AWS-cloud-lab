@@ -2,6 +2,13 @@ export function toRoomViewModel(room) {
   const completed = room.players.filter(({ action, hasSubmitted }) => hasSubmitted ?? Boolean(action)).length;
   const playerTotal = room.players.length;
   const readyTotal = room.players.filter((player) => player.characterReady).length;
+  const failureLabels = {
+    TIMEOUT: "故事生成逾時",
+    THROTTLED: "故事服務暫時忙碌",
+    TRANSIENT_SERVICE_ERROR: "故事服務暫時無法使用",
+    SCHEMA_INVALID: "故事格式驗證失敗",
+    CONTENT_REJECTED: "故事內容未通過安全檢查",
+  };
   return {
     roomCode: room.roomCode,
     roundLabel: String(room.round).padStart(2, "0"),
@@ -21,6 +28,8 @@ export function toRoomViewModel(room) {
             ? "骰點已揭曉，等待玩家決定是否使用星火。"
             : room.status === "RESOLVING"
               ? "星火決策已完成，等待房主結算回合。"
+              : room.status === "RESOLUTION_FAILED"
+                ? `${failureLabels[room.resolutionFailureCode] ?? "故事生成失敗"}，已嘗試 ${room.resolutionAttempts ?? 1} 次；等待房主重試或使用系統備援敘事。`
               : room.status === "COMPLETION_AVAILABLE"
                 ? "共同目標已完成，等待房主選擇結束或繼續探索。"
                 : room.status === "COMPLETED"
@@ -38,6 +47,7 @@ export function toRoomViewModel(room) {
     entries: room.entries,
     status: room.status,
     maxRounds: room.maxRounds,
+    worldGenerationCount: room.worldGenerationCount ?? 0,
     isHost: Boolean(room.session?.isHost),
     canEditWorld: Boolean(room.session?.isHost) && room.status === "DRAFT",
     canJoin: room.status === "LOBBY" && !room.session?.playerId,
@@ -52,6 +62,9 @@ export function toRoomViewModel(room) {
     canRoll: Boolean(room.session?.isHost) && room.status === "AWAITING_HOST",
     canResolve: Boolean(room.session?.isHost)
       && ["AWAITING_SPARK", "RESOLVING"].includes(room.status),
+    canRetryResolution: Boolean(room.session?.isHost) && room.status === "RESOLUTION_FAILED",
+    canUseFallback: Boolean(room.session?.isHost) && room.status === "RESOLUTION_FAILED",
+    resolutionFailureLabel: failureLabels[room.resolutionFailureCode] ?? "故事生成失敗",
     currentDiceResult: (room.diceResults ?? []).find(
       (result) => result.playerId === room.session?.playerId,
     ) ?? null,
