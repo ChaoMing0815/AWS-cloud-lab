@@ -3,9 +3,9 @@
 - 更新日期：2026-08-18
 - 近期交付目標：2026-08-24 第一次報告前完成 Tier 0 AWS 公開試玩、去識別化證據與成本檢查；甘特圖 M3 `2026-08-20` 保留為內部提前完成目標。
 - Branch：`codex/tier0-bedrock-guardrail`（從同步後的 `main` 建立；尚未 push／merge）
-- Git checkpoint：公開模式 release update 修正 `27bebe2`；世界生成 schema／cache 修正 `d9c8f4e`
-- 最後全綠功能基準：`27bebe2`（公開模式更新保留 active edge，edge 驗證失敗時恢復上一版）
-- Regression：Backend `306 passed, 8 skipped`；Frontend `80 passed`（2026-08-18 重跑）
+- Git checkpoint：installer umask 修正 `a1160bc`；Bedrock `guardContent`／query 強化 `63d46c3`
+- 最後全綠功能基準：`a1160bc`（user-controlled prompt tagging＋公開模式 release update 自行固定 service-readable umask）
+- Regression：Backend `308 passed, 8 skipped`；Frontend `80 passed`（2026-08-18 重跑）
 - AWS：Tokyo `ap-northeast-1` 已有 IAM、network、private RDS、EC2＋SSM、private artifacts、runtime secrets、Guardrail v1 與 bounded Bedrock runtime IAM；無 NAT／EIP／SSH
 - 操作邊界：Console-first；曾在使用者逐批明確核准後，於 EC2 的 SSM Session 內執行 exact-prefix S3 download 與安裝指令。未修改 `~/.aws`、憑證或 Keychain。
 
@@ -30,7 +30,7 @@
 - Batch 7.1／7.1R 已完成並關閉：只沿用既有 private S3／SSM，不新增 resource、IAM、RDS／TLS／DNS 變更或模型 invocation。Batch 7.2 隨後核准並完成一次公開 HTTPS 真實世界生成：Nova Lite 回傳符合 schema 的繁體中文草稿，五個 canonical 欄位自動填入、無錯誤，生成次數由 canonical `2` 變為 `1`。先前失敗呼叫未持久化扣次，重新載入後恢復為 `2`，證明交易 rollback 邊界有效。
 - Batch 8A 三玩家公開單回合 smoke 已完成：三個獨立 Browser sessions 加入同房、建立角色、同步三個 action、擲骰與各自星火決策；房主以 exactly 1 次真實 Nova Lite 敘事結算後進入第 2 回合，正式進度 `4（13%）`、危機 `2（7%）`、AI 敘事與三個 sessions 同步。三個頁面重新整理後完整讀回狀態，private RDS refresh gate 通過。重新整理時短暫閃回 Landing 是待改善的 loading-shell 視覺問題，不是資料遺失。
 - Batch 8A 後 Cost Explorer 唯讀檢查顯示 Total、Amazon Bedrock、EC2、RDS 與其他服務目前均為 `0`；帳務可能延遲入帳，後續成本證據須保留此限制，不將即時 `0` 解讀為永久零成本。
-- Prompt Attack filter 雖已設為 High，但目前 Converse request 尚未以 `guardContent` 標示 user-controlled prompt；依 AWS 規則不得宣稱 prompt injection 防護已充分啟用。第一輪 smoke 後、首次公開展示前安排小型 TDD hardening：加入 `guardContent`／query qualifier、benign 與 injection 代表性測試，不變更模型、IAM 或 Guardrail version。
+- 目前 AWS active release `tier0-20260818-27bebe2` 的 Converse request 尚未以 `guardContent` 標示 user-controlled prompt，因此仍不得宣稱 Prompt Attack filter 已充分啟用。本機 TDD 強化 `63d46c3` 已將世界生成、回合與結局的 structured user input 統一包為 `guardContent`／query；installer `a1160bc` 亦在 root check 後固定 `umask 0022`。新 release `tier0-20260818-a1160bc` 已建立並通過 checksum，尚未上傳／部署／做真實 prompt-attack smoke；不變更模型、IAM 或 Guardrail version。
 - 推進原則：甘特圖是先後與風險參考，不是速度上限。當日預定成果、驗證與必要文件均完成後，可提前推進下一個最小切片或做不擴張成本／權限／產品範圍的小幅優化；不得跳過 Tier gate、TDD、bounded batch、成本、安全或證據關卡。
 - 專案文件入口已收斂：根目錄 `README.md` 只保留產品、架構、執行方式與核心文件入口；完整文件索引位於 `docs/README.md`，證據保存規則位於 `docs/evidence/README.md`。
 - `codex/session-lifecycle` 已 push 並透過 PR `#1` 合併到 `main`；三個更早的 remote feature branches 與該 branch 均已被 `main` 包含，remote branch 指標清理屬可選 Git housekeeping，不阻塞 AWS 進度。
@@ -45,6 +45,7 @@ Batch 6A／6A.1 public HTTPS 與正負 boundary 已完成
 → Batch 7.2 真實世界生成已成功，尚餘 1 次但不得為重複驗證而使用
 → Batch 8A 公開 HTTPS 三玩家單回合、真實 storyteller 與 private RDS refresh 已完成
 → Batch 後 Cost Explorer 目前全為 0；完成去識別化證據與第一份報告
+→ 部署 `tier0-20260818-a1160bc`，再以 bounded benign／synthetic prompt-attack smoke 驗證既有 High filter
 → 依清理計畫停止或刪除持續計費資源，保留程式碼、IaC 與去識別化證據
 → 再進入 Tier 1 可觀測性最小切片
 ```
@@ -55,7 +56,7 @@ Batch 6A／6A.1 public HTTPS 與正負 boundary 已完成
 
 - Public Web／TLS、真實世界生成、三玩家公開單回合、真實 storyteller、private RDS refresh 與 Batch 後 Cost Explorer 檢查均完成；尚待去識別化 evidence。進行中的 smoke room 依 SSOT 最後活動後 7 天到期；目前永久刪除 UI 只在結局後提供，不為清理而額外執行五回合模型呼叫。
 - Page bootstrap 在 canonical session 載入前會短暫顯示 Landing，狀態隨後正確恢復；列入第一輪 smoke 後 UI backlog，不阻塞 Tier 0。
-- Release updater 尚未在 script 內固定安全的安裝 `umask`；本次以 root subshell `umask 022` 成功部署，下一個 release 前須以 TDD 將此不變量寫入 installer，避免 caller shell 設定再次造成 service EXEC permission failure。
+- AWS active release 仍是 `tier0-20260818-27bebe2`；本機下一版已修正 installer `umask` 並加入 `guardContent`，但部署與真實 Prompt Attack smoke 尚待新的 bounded batch 核准。
 - IAM Access Analyzer basic policy validation 未在 Console 顯示；CloudFormation、R3 tests、安全 review 與正負 Policy Simulator 已通過，但此項仍記為未執行。
 - 尚無自有網域；Route 53 註冊不是免費項目且 domain registration 不能使用 AWS credits。建議的 direct IP certificate 只有約 160 小時效期，必須證明自動續期；EC2 stop/start 若改變 public IP，URL、certificate 與 application allowlist 都需重建。CloudFront global path／HTTP origin trade-off 只作備選。
 - 尚未完成 AWS 三玩家核心流程與公開路徑 smoke test；EC2 service restart persistence 已通過。
