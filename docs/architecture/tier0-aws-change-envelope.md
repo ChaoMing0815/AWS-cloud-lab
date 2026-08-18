@@ -163,6 +163,20 @@ Batch 6A 的核准文字必須明確為「核准 Batch 6A」，並視為同意�
 
 2026-08-18 使用者已明確回覆「核准 Batch 6A」。執行仍須從 Console 唯讀 preflight 開始、每次只進行一個可驗證小步驟；本核准不包含任何 AWS CLI。
 
+## Batch 6A.1：Exact-release S3 read＋internal activation（Proposed；尚未核准）
+
+| 項目 | 固定邊界 |
+| --- | --- |
+| 目的 | 透過 Console 開啟既有 SSM Session，只將已上傳的修正版 release 安裝到既有 EC2，先恢復 internal staging readiness；本批不申請 certificate、不開放 production HTTPS。 |
+| AWS CLI | 僅在 EC2 的 SSM shell 內執行 2 次 exact-object `aws s3 cp`：`releases/tier0-20260818-7b89e60/co-story.tar.gz` 與同 prefix 的 `co-story.tar.gz.sha256`。禁止 recursive／sync／list／put／delete、其他 prefix、其他 bucket 或本機 AWS CLI。 |
+| Integrity | 下載後先以 SHA-256 驗證 archive；installer 必須由已驗證 archive 的 `co-story/ops/release/install_release_update.sh` member 取出，不執行 S3 中獨立上傳的 installer。 |
+| Host／DB | 新增 `/opt/co-story/releases/tier0-20260818-7b89e60` 與獨立 virtualenv，沿用既有 `root:co-story:640` database environment；只以既有 application DB role 執行 migration。禁止讀取 RDS master secret、重新開啟 bootstrap policy或輸出 DSN。 |
+| External／cost | Python dependencies 可能向既有 package index 下載；不新增 AWS resource、固定月費、IAM policy、secret、DB、EIP、NAT、ALB 或 CloudFront，只有少量 S3 GET／data transfer 與既有 runtime 費用。 |
+| Success | checksum `OK`；installer 回報 internal staging verified；`/opt/co-story/current` 指向 exact release；application 與 staging Nginx active；loopback readiness HTTP `200`。 |
+| Rollback／停止 | checksum／download／dependency／migration／candidate readiness 任一失敗即停止；installer 保留先前 active symlink，未啟用的新 release 會清除。不得接續 certificate 或 public exposure，直到本批結果確認。 |
+
+本批只補足 Batch 6A 明文未包含的 bounded AWS CLI read。核准文字必須為「核准 Batch 6A.1」；一般「繼續」或既有 Batch 6A 核准不能代替。
+
 ## 必填核准欄位
 
 - Batch：必須指名本文件中一個仍為 Proposed 的 bounded batch；一般「開始 AWS」或「繼續」不能代替。
