@@ -163,7 +163,7 @@ Batch 6A 的核准文字必須明確為「核准 Batch 6A」，並視為同意�
 
 2026-08-18 使用者已明確回覆「核准 Batch 6A」。執行仍須從 Console 唯讀 preflight 開始、每次只進行一個可驗證小步驟；本核准不包含任何 AWS CLI。
 
-## Batch 6A.1：Exact-release S3 read＋internal activation（Proposed；尚未核准）
+## Batch 6A.1：Exact-release S3 read＋internal activation（Approved 2026-08-18；尚未執行）
 
 | 項目 | 固定邊界 |
 | --- | --- |
@@ -176,6 +176,8 @@ Batch 6A 的核准文字必須明確為「核准 Batch 6A」，並視為同意�
 | Rollback／停止 | checksum／download／dependency／migration／candidate readiness 任一失敗即停止；installer 保留先前 active symlink，未啟用的新 release 會清除。不得接續 certificate 或 public exposure，直到本批結果確認。 |
 
 本批只補足 Batch 6A 明文未包含的 bounded AWS CLI read。核准文字必須為「核准 Batch 6A.1」；一般「繼續」或既有 Batch 6A 核准不能代替。
+
+2026-08-18 使用者已明確回覆「核准 Batch 6A.1」。
 
 ## 必填核准欄位
 
