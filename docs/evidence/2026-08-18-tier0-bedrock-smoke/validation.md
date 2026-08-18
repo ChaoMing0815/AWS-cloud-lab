@@ -23,6 +23,7 @@
   line 含 client IP 與 room UUID，未收入證據。
 - 本機已以 TDD 修正 Nova JSON schema 指示、固定 `temperature=0`、接受只有 JSON
   code fence 的合法輸出，並對 HTML／JavaScript 回應加入 `Cache-Control: no-store`；
-  修正版 `tier0-20260818-d9c8f4e` 尚未部署，最後一次世界生成額度保留。
+  修正版 `tier0-20260818-d9c8f4e` 尚未部署，最後一次世界生成額度保留。使用者已
+  核准只沿用既有 private S3／SSM 的 Batch 7.1 修正版部署。
 - 三個獨立 Browser session 加入同房、建立角色並完成一個完整回合。
 - 真實 storyteller 結算、private RDS refresh、smoke room cleanup 與 Batch 後成本檢查。

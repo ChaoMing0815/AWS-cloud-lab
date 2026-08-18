@@ -27,6 +27,8 @@
 - 使用者決定後續維持 AWS Free plan／credits 與最低成本，現階段不購買網域。既有 EC2＋Let's Encrypt short-lived IP certificate 路徑已完成，新增 AWS resource 為 0；未建立 CloudFront／Route 53／ACM／ALB。
 - Batch 6A／6A.1 已完成並關閉；release `tier0-20260818-7b89e60` 通過 checksum、internal activation、可信任 public HTTPS 與正負 boundary。Batch 7 已核准並完成 exactly 3 次 SDK `ApplyGuardrail`：benign allow、harmful block、synthetic EMAIL／PHONE mask 全符合；content／sensitive 各 3 units，估算 `US$0.00075`。首次真實世界生成已送達 Nova Lite 並產生 input／output token metrics，但應用因模型 JSON 草稿不合 schema 回傳 `503`；生成額度剩 1 次，不得在修正版部署前重試。
 - 本機 TDD 修正 commit `d9c8f4e` 已完成：明確提供 Nova 欄位／長度 schema、固定 `temperature=0`、安全接受純 JSON code fence，並令 HTML／JavaScript 回應 `Cache-Control: no-store`。Backend regression 全綠、Frontend `80 passed`；release `tier0-20260818-d9c8f4e` 已建立並通過 checksum，尚未上傳或部署。
+- 使用者已核准 Batch 7.1：只以既有 private S3／SSM 部署 `tier0-20260818-d9c8f4e`，不新增 resource、IAM、RDS／TLS／DNS 變更或模型 invocation；部署完成前不得使用最後一次世界生成額度。
+- Prompt Attack filter 雖已設為 High，但目前 Converse request 尚未以 `guardContent` 標示 user-controlled prompt；依 AWS 規則不得宣稱 prompt injection 防護已充分啟用。第一輪 smoke 後、首次公開展示前安排小型 TDD hardening：加入 `guardContent`／query qualifier、benign 與 injection 代表性測試，不變更模型、IAM 或 Guardrail version。
 - 推進原則：甘特圖是先後與風險參考，不是速度上限。當日預定成果、驗證與必要文件均完成後，可提前推進下一個最小切片或做不擴張成本／權限／產品範圍的小幅優化；不得跳過 Tier gate、TDD、bounded batch、成本、安全或證據關卡。
 - 專案文件入口已收斂：根目錄 `README.md` 只保留產品、架構、執行方式與核心文件入口；完整文件索引位於 `docs/README.md`，證據保存規則位於 `docs/evidence/README.md`。
 - `codex/session-lifecycle` 已 push 並透過 PR `#1` 合併到 `main`；三個更早的 remote feature branches 與該 branch 均已被 `main` 包含，remote branch 指標清理屬可選 Git housekeeping，不阻塞 AWS 進度。
