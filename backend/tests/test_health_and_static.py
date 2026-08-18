@@ -23,6 +23,15 @@ def test_fastapi_serves_same_origin_frontend() -> None:
     assert "共演計劃" in response.text
     assert 'href="/styles.css"' in response.text
     assert 'src="/src/composition/bootstrap.js"' in response.text
+    assert response.headers["Cache-Control"] == "no-store"
+
+
+def test_frontend_module_is_not_reused_across_release_updates() -> None:
+    with TestClient(create_app()) as client:
+        response = client.get("/src/composition/bootstrap.js")
+
+    assert response.status_code == 200
+    assert response.headers["Cache-Control"] == "no-store"
 
 
 def test_fastapi_serves_app_shell_for_demo_route() -> None:

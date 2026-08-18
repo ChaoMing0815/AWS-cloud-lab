@@ -148,6 +148,7 @@ def test_generate_world_uses_injected_converse_client_with_bounded_tokens_guardr
     request = client.calls[0]
     assert request["modelId"] == "anthropic.claude-test-v1"
     assert request["inferenceConfig"]["maxTokens"] == MAX_BEDROCK_TOKENS
+    assert request["inferenceConfig"]["temperature"] == 0
     assert request["guardrailConfig"] == {
         "guardrailIdentifier": "gr-story-safety",
         "guardrailVersion": "7",
@@ -172,6 +173,23 @@ def test_generate_world_uses_injected_converse_client_with_bounded_tokens_guardr
         "suggested_round_limit",
     ):
         assert field in instructions
+    assert "premise must contain 50-500 characters" in instructions
+    assert "opening_scene must contain 20-400 characters" in instructions
+    assert "Do not use Markdown code fences" in instructions
+
+
+def test_generate_world_accepts_nova_json_code_fence_without_relaxing_schema() -> None:
+    payload = json.dumps(expected_world_payload(), ensure_ascii=False)
+    client = FakeBedrockClient(converse_response(f"```json\n{payload}\n```"))
+
+    generated = adapter(client).generate_world(
+        keywords=["夜班", "便利商店", "盤點"],
+        tone="mystery",
+        custom_tone=None,
+        supplemental_request=None,
+    )
+
+    assert generated == expected_world()
 
 
 @pytest.mark.parametrize("invalid_max_tokens", [0, -1, MAX_BEDROCK_TOKENS + 1])

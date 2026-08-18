@@ -144,8 +144,7 @@ def create_app(dice_roller=None, room_repository=None, storyteller=None, clock=N
         if production:
             response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
             response.headers["Content-Security-Policy"] = "default-src 'self'; frame-ancestors 'none'"
-        if request.url.path.startswith("/api/"):
-            response.headers["Cache-Control"] = "no-store"
+        response.headers["Cache-Control"] = "no-store"
         response.headers["X-Request-ID"] = request_id
         REQUEST_LOGGER.info(
             json.dumps(

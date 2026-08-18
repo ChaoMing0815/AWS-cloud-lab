@@ -20,8 +20,15 @@ _TONES = {
     "custom",
 }
 _WORLD_SYSTEM = (
-    "Return only a JSON WorldDraft with these fields: title, premise, objective, "
-    "opening_scene, core_obstacle, tone, custom_tone, suggested_round_limit."
+    "Return exactly one valid JSON object in Traditional Chinese. "
+    "Do not add a preamble and Do not use Markdown code fences. "
+    "The required fields and constraints are: title must contain 1-40 characters; "
+    "premise must contain 50-500 characters; objective must contain 10-200 characters; "
+    "opening_scene must contain 20-400 characters; core_obstacle must contain 10-200 "
+    "characters; tone must exactly equal the requested tone; custom_tone must exactly "
+    "equal the requested custom tone, or null when the requested tone is not custom; "
+    "suggested_round_limit must be the integer 4, 6, or 8. "
+    "Do not add any other fields or change canonical game state."
 )
 _NARRATIVE_SYSTEM = "Return only bounded narrative text; never change canonical game results."
 
@@ -124,7 +131,7 @@ class BedrockStoryteller(Storyteller):
                         "content": [{"text": json.dumps(prompt, ensure_ascii=False)}],
                     }
                 ],
-                inferenceConfig={"maxTokens": self._max_tokens},
+                inferenceConfig={"maxTokens": self._max_tokens, "temperature": 0},
                 guardrailConfig={
                     "guardrailIdentifier": self._guardrail_id,
                     "guardrailVersion": self._guardrail_version,
@@ -151,7 +158,7 @@ class BedrockStoryteller(Storyteller):
 
 def _world_from_draft(text: str, requested_tone: str, requested_custom_tone: str | None) -> World:
     try:
-        draft = json.loads(text)
+        draft = json.loads(_unwrap_json_code_fence(text))
     except (TypeError, ValueError):
         raise StorytellerFailure("SCHEMA_INVALID") from None
     if not isinstance(draft, dict):
@@ -196,6 +203,16 @@ def _world_from_draft(text: str, requested_tone: str, requested_custom_tone: str
         tone=tone,
         custom_tone=custom_tone,
     )
+
+
+def _unwrap_json_code_fence(text: str) -> str:
+    stripped = text.strip()
+    if not stripped.startswith("```"):
+        return stripped
+    lines = stripped.splitlines()
+    if len(lines) < 3 or lines[0].lower() not in {"```", "```json"} or lines[-1] != "```":
+        raise ValueError("json code fence")
+    return "\n".join(lines[1:-1]).strip()
 
 
 def _bounded_text(value: object, minimum: int, maximum: int) -> str:
