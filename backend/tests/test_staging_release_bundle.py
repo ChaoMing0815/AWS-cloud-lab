@@ -175,3 +175,13 @@ def test_release_update_restores_previous_release_when_edge_verification_fails()
     assert "systemctl restart co-story.service" in script
     assert "if ! verify_active_edge; then" in script
     assert "restore_previous_release" in script
+
+
+def test_release_update_sets_service_readable_umask_before_building_the_release() -> None:
+    script = _read(UPDATE_INSTALL)
+
+    root_check_at = script.index('if [ "$(id -u)" -ne 0 ]; then')
+    umask_at = script.index("umask 0022", root_check_at)
+    stage_at = script.index('stage="$(mktemp -d', umask_at)
+    venv_at = script.index('python3.13 -m venv', stage_at)
+    assert root_check_at < umask_at < stage_at < venv_at

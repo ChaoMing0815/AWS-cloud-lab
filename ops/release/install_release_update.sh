@@ -25,6 +25,10 @@ if [ "$(id -u)" -ne 0 ]; then
   exit 2
 fi
 
+# The release is executed by the unprivileged co-story service account. Do not
+# inherit a caller's restrictive umask when creating its virtual environment.
+umask 0022
+
 release_id="${1:?release id required}"
 case "$release_id" in
   *[!A-Za-z0-9._-]* | '')
