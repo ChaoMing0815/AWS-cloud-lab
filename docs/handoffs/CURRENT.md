@@ -1,11 +1,11 @@
 # CURRENT：目前工作交接
 
-- 更新日期：2026-08-17
+- 更新日期：2026-08-18
 - 近期交付目標：2026-08-24 第一次報告前完成 Tier 0 AWS 公開試玩、去識別化證據與成本檢查；甘特圖 M3 `2026-08-20` 保留為內部提前完成目標。
 - Branch：`codex/tier0-bedrock-guardrail`（從同步後的 `main` 建立；尚未 push／merge）
-- Git checkpoint：Batch 5A functional tip `f63c488`；validation manifest `6ed5c0c`
-- 最後全綠功能基準：`f63c488`（固定 Nova Lite＋Guardrail v1 bounded runtime IAM）
-- Regression：Backend `292 passed, 8 skipped`（2026-08-17 重跑）；Frontend `80 passed`（未受本批影響，沿用最近全綠基準）
+- Git checkpoint：Batch 6A local deployment-readiness tip `334cdd4`；Batch 5A AWS validation manifest `6ed5c0c`
+- 最後全綠功能基準：`334cdd4`（Direct EC2 IP HTTPS／ACME renewal／rollback packaging；尚未部署）
+- Regression：Backend `300 passed, 8 skipped`；Frontend `80 passed`（2026-08-18 重跑）
 - AWS：Tokyo `ap-northeast-1` 已有 IAM、network、private RDS、EC2＋SSM、private artifacts、runtime secrets、Guardrail v1 與 bounded Bedrock runtime IAM；無 NAT／EIP／SSH
 - 操作邊界：Console-first；曾在使用者逐批明確核准後，於 EC2 的 SSM Session 內執行 exact-prefix S3 download 與安裝指令。未修改 `~/.aws`、憑證或 Keychain。
 
@@ -25,6 +25,7 @@
 - AppRole Console inventory 保留 SSM、artifact 與 runtime-secret policies，沒有 Bedrock／Administrator Full Access；Policy Simulator 已驗證 exact Nova Lite＋Guardrail v1 為 `Allowed`、相同 model＋Guardrail v2 為 `Denied`。IAM Console 未顯示 Access Analyzer policy validation pane，因此未宣稱完成該項檢查；全程未使用 AWS CLI。
 - 目前 runtime **只在 EC2 loopback internal staging**，尚未公開提供 Web／TLS；不得宣稱 Tier 0 AWS 垂直切片完成。
 - 使用者決定後續維持 AWS Free plan／credits 與最低成本，現階段不購買網域。2026-08-17 比較結果建議以既有 EC2＋Let's Encrypt short-lived IP certificate 完成端到端 HTTPS，新增 AWS resource 為 0；CloudFront pay-as-you-go default domain 保留為備選。Batch 6A 尚未核准，未建立 CloudFront／Route 53／ACM／ALB。
+- Batch 6A 本機 R3 gate 已完成：ACME-only HTTP bootstrap、固定 IP HTTPS Nginx、Certbot `5.4.0`、12 小時 renewal timer、production env 與驗證後 rollback assets 全綠；兩個 safety mutations 皆被攔截。local release `tier0-20260818-334cdd4` 已建立且 checksum `OK`，尚未上傳或部署。
 - 推進原則：甘特圖是先後與風險參考，不是速度上限。當日預定成果、驗證與必要文件均完成後，可提前推進下一個最小切片或做不擴張成本／權限／產品範圍的小幅優化；不得跳過 Tier gate、TDD、bounded batch、成本、安全或證據關卡。
 - 專案文件入口已收斂：根目錄 `README.md` 只保留產品、架構、執行方式與核心文件入口；完整文件索引位於 `docs/README.md`，證據保存規則位於 `docs/evidence/README.md`。
 - `codex/session-lifecycle` 已 push 並透過 PR `#1` 合併到 `main`；三個更早的 remote feature branches 與該 branch 均已被 `main` 包含，remote branch 指標清理屬可選 Git housekeeping，不阻塞 AWS 進度。
@@ -33,8 +34,8 @@
 
 ```text
 取得 Batch 6A（Direct EC2＋Let's Encrypt IP certificate）明確核准
-→ 先完成 local R3 TDD、renewal／rollback 與 production packaging
-→ 依 Console-first＋SSM 小步驟申請 certificate 並啟用 production runtime
+→ Console 唯讀確認當前 public IPv4、EC2／SSM、Budget／credits 與無新增資源異常
+→ 依 Console-first＋SSM 小步驟上傳全綠 release、申請 certificate 並啟用 production runtime
 → 驗證公開 Web、private RDS read/write、一次真實 Bedrock 故事生成
 → 完成三玩家 AWS smoke test、成本檢查、證據收斂與第一份報告
 → 依清理計畫停止或刪除持續計費資源，保留程式碼、IaC 與去識別化證據
