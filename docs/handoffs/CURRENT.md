@@ -27,7 +27,7 @@
 - 使用者決定後續維持 AWS Free plan／credits 與最低成本，現階段不購買網域。既有 EC2＋Let's Encrypt short-lived IP certificate 路徑已完成，新增 AWS resource 為 0；未建立 CloudFront／Route 53／ACM／ALB。
 - Batch 6A／6A.1 已完成並關閉；release `tier0-20260818-7b89e60` 通過 checksum、internal activation、可信任 public HTTPS 與正負 boundary。Batch 7 已核准並完成 exactly 3 次 SDK `ApplyGuardrail`：benign allow、harmful block、synthetic EMAIL／PHONE mask 全符合；content／sensitive 各 3 units，估算 `US$0.00075`。首次真實世界生成已送達 Nova Lite 並產生 input／output token metrics，但應用因模型 JSON 草稿不合 schema 回傳 `503`；生成額度剩 1 次，不得在修正版部署前重試。
 - 世界生成 schema／cache 修正 `d9c8f4e` 已包含在正式 release。首次更新因舊 installer 以 `localhost` 驗證 public runtime 而失敗並乾淨回滾；TDD 修正 `27bebe2` 會保留 active public／staging edge 並在 edge 失敗時恢復上一版。第一次安裝 `27bebe2` 又因下載步驟留下的 caller `umask 0077` 令新 venv 無法由 `co-story` 執行，仍在切換前乾淨回滾；隔離 root subshell 使用 `umask 022` 後部署成功。兩次失敗均未中斷舊版公開服務。
-- Batch 7.1／7.1R 已完成並關閉：只沿用既有 private S3／SSM，不新增 resource、IAM、RDS／TLS／DNS 變更或模型 invocation。最後一次世界生成額度仍保留，必須在新的 bounded smoke batch 核准後才可使用。
+- Batch 7.1／7.1R 已完成並關閉：只沿用既有 private S3／SSM，不新增 resource、IAM、RDS／TLS／DNS 變更或模型 invocation。Batch 7.2 隨後核准並完成一次公開 HTTPS 真實世界生成：Nova Lite 回傳符合 schema 的繁體中文草稿，五個 canonical 欄位自動填入、無錯誤，生成次數由 canonical `2` 變為 `1`。先前失敗呼叫未持久化扣次，重新載入後恢復為 `2`，證明交易 rollback 邊界有效。
 - Prompt Attack filter 雖已設為 High，但目前 Converse request 尚未以 `guardContent` 標示 user-controlled prompt；依 AWS 規則不得宣稱 prompt injection 防護已充分啟用。第一輪 smoke 後、首次公開展示前安排小型 TDD hardening：加入 `guardContent`／query qualifier、benign 與 injection 代表性測試，不變更模型、IAM 或 Guardrail version。
 - 推進原則：甘特圖是先後與風險參考，不是速度上限。當日預定成果、驗證與必要文件均完成後，可提前推進下一個最小切片或做不擴張成本／權限／產品範圍的小幅優化；不得跳過 Tier gate、TDD、bounded batch、成本、安全或證據關卡。
 - 專案文件入口已收斂：根目錄 `README.md` 只保留產品、架構、執行方式與核心文件入口；完整文件索引位於 `docs/README.md`，證據保存規則位於 `docs/evidence/README.md`。
@@ -40,7 +40,7 @@ Batch 6A／6A.1 public HTTPS 與正負 boundary 已完成
 → Batch 7 已明確核准
 → SSM 內以既有 SDK exactly 3 次 ApplyGuardrail 驗證 allow／block／synthetic PII mask
 → `tier0-20260818-27bebe2` 已部署並通過 HTTPS／cache release gate
-→ 核准 bounded 真實世界生成 smoke，使用最後 1 次房間生成額度
+→ Batch 7.2 真實世界生成已成功，尚餘 1 次但不得為重複驗證而使用
 → 公開 HTTPS 完成一次世界生成與三玩家完整單回合
 → 驗證 private RDS refresh、真實 storyteller、成本、證據與第一份報告
 → 依清理計畫停止或刪除持續計費資源，保留程式碼、IaC 與去識別化證據
@@ -51,7 +51,7 @@ Batch 6A／6A.1 public HTTPS 與正負 boundary 已完成
 
 ## Residual risks
 
-- Public Web／TLS boundary 與 schema／cache 修正版部署已完成；首次真實 Bedrock 世界生成曾產生 token 但 schema 驗證失敗，修正版尚未做真實生成驗證，最後一次生成額度必須等新 batch 核准。
+- Public Web／TLS boundary、schema／cache 修正版部署與真實世界生成已完成；尚未完成三玩家公開單回合、真實 storyteller 回合結算、private RDS refresh 與 smoke room cleanup。
 - Release updater 尚未在 script 內固定安全的安裝 `umask`；本次以 root subshell `umask 022` 成功部署，下一個 release 前須以 TDD 將此不變量寫入 installer，避免 caller shell 設定再次造成 service EXEC permission failure。
 - IAM Access Analyzer basic policy validation 未在 Console 顯示；CloudFormation、R3 tests、安全 review 與正負 Policy Simulator 已通過，但此項仍記為未執行。
 - 尚無自有網域；Route 53 註冊不是免費項目且 domain registration 不能使用 AWS credits。建議的 direct IP certificate 只有約 160 小時效期，必須證明自動續期；EC2 stop/start 若改變 public IP，URL、certificate 與 application allowlist 都需重建。CloudFront global path／HTTP origin trade-off 只作備選。

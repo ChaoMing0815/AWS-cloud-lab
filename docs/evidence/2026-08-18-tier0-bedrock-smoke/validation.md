@@ -28,13 +28,21 @@
 - 最終狀態：`current` 指向 `tier0-20260818-27bebe2`；App／Public Nginx active、
   Staging Nginx inactive、公開 readiness HTTP `200`、首頁 `Cache-Control: no-store`。
 
-## 尚待驗證
+## 真實世界生成結果
 
 - 公開 HTTPS 首次真實世界生成已送達 Nova Lite，CloudWatch 出現該 ModelId 的
   `Invocations`、`InputTokenCount` 與 `OutputTokenCount`，沒有 client／server error
-  metric；應用 API 回傳 `503`，生成次數由 2 減為 1，但草稿未保存。原始 access
-  line 含 client IP 與 room UUID，未收入證據。
-- 本機 Nova JSON schema／cache 修正版已部署，但尚未使用最後一次世界生成額度
-  驗證真實模型輸出；必須先取得新的 bounded smoke batch 核准。
+  metric；應用 API 回傳 `503`，UI 暫時顯示生成次數由 2 減為 1，但草稿與扣次
+  均未持久化，canonical reload 後恢復為 2。原始 access line 含 client IP 與
+  room UUID，未收入證據。
+- Batch 7.2 已核准並以公開 HTTPS 執行 exactly 1 次真實世界生成：Nova Lite
+  回傳符合 schema 的繁體中文草稿，五個 canonical 世界欄位自動填入，UI 無錯誤。
+  canonical 生成次數由 `2` 變為 `1`；先前失敗呼叫未持久化扣次，重新載入後
+  恢復為 `2`，因此不再沿用「最後一次額度」的舊判讀。剩餘 1 次不作重複驗證。
+- 使用者提供的原始畫面含公開 IP 與房間代碼，未直接收入 repo；本節只保存
+  去識別化文字結論。
+
+## 尚待驗證
+
 - 三個獨立 Browser session 加入同房、建立角色並完成一個完整回合。
 - 真實 storyteller 結算、private RDS refresh、smoke room cleanup 與 Batch 後成本檢查。
