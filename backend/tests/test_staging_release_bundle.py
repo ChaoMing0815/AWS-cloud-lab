@@ -151,3 +151,27 @@ def test_release_update_verifies_archive_and_preserves_rollback_boundary() -> No
     assert 'active_target="$(readlink -f "$root/current"' in script
     assert 'if [ "$active_target" != "$release_dir" ]; then' in script
     assert 'rm -rf "$release_dir"' in script
+
+
+def test_release_update_preserves_the_active_public_or_staging_edge_mode() -> None:
+    script = _read(UPDATE_INSTALL)
+
+    assert "systemctl is-active --quiet co-story-nginx-public.service" in script
+    assert "/etc/co-story/runtime.env" in script
+    assert "CO_STORY_ALLOWED_HOSTS=" in script
+    assert 'activate.sh" "$release_id" "$health_host"' in script
+    assert "systemctl restart co-story-nginx-public.service" in script
+    assert 'wait_for_readiness "https://$health_host/api/v1/ready" "$health_host"' in script
+    assert "systemctl restart co-story-nginx-staging.service" in script
+    assert 'wait_for_readiness http://127.0.0.1:8080/api/v1/ready localhost' in script
+
+
+def test_release_update_restores_previous_release_when_edge_verification_fails() -> None:
+    script = _read(UPDATE_INSTALL)
+
+    assert "restore_previous_release()" in script
+    assert 'ln -s "$previous_target" "$restore_link"' in script
+    assert 'mv -Tf "$restore_link" "$root/current"' in script
+    assert "systemctl restart co-story.service" in script
+    assert "if ! verify_active_edge; then" in script
+    assert "restore_previous_release" in script

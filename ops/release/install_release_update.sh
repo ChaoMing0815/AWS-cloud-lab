@@ -3,10 +3,11 @@ set -euo pipefail
 
 wait_for_readiness() {
   readiness_url="${1:?readiness URL required}"
+  readiness_host="${2:?readiness host required}"
   readiness_attempts=30
   readiness_attempt=1
   while [ "$readiness_attempt" -le "$readiness_attempts" ]; do
-    if curl --fail --silent --max-time 2 --header 'Host: localhost' \
+    if curl --fail --silent --max-time 2 --header "Host: $readiness_host" \
       "$readiness_url" >/dev/null; then
       return 0
     fi
@@ -46,6 +47,32 @@ if [ "$(stat -c '%U:%G:%a' "$database_environment")" != 'root:co-story:640' ]; t
   exit 2
 fi
 
+runtime_environment=/etc/co-story/runtime.env
+edge_mode=''
+health_host=''
+if systemctl is-active --quiet co-story-nginx-public.service; then
+  edge_mode=public
+  test -s "$runtime_environment"
+  if [ "$(stat -c '%U:%G:%a' "$runtime_environment")" != 'root:co-story:640' ]; then
+    printf '%s\n' 'protected runtime environment has unexpected ownership or mode' >&2
+    exit 2
+  fi
+  allowed_hosts="$(sed -n 's/^CO_STORY_ALLOWED_HOSTS=//p' "$runtime_environment")"
+  health_host="${allowed_hosts%%,*}"
+  case "$health_host" in
+    *[!A-Za-z0-9.-]* | '')
+      printf '%s\n' 'runtime environment has invalid allowed host' >&2
+      exit 2
+      ;;
+  esac
+elif systemctl is-active --quiet co-story-nginx-staging.service; then
+  edge_mode=staging
+  health_host=localhost
+else
+  printf '%s\n' 'no active co-story edge service found' >&2
+  exit 2
+fi
+
 root=/opt/co-story
 releases="$root/releases"
 resolved_releases="$(realpath -e "$releases")"
@@ -79,6 +106,29 @@ cleanup() {
 }
 trap cleanup EXIT
 
+restore_previous_release() {
+  restore_link="$root/.current.restore.$release_id"
+  rm -f "$restore_link"
+  ln -s "$previous_target" "$restore_link"
+  mv -Tf "$restore_link" "$root/current"
+  systemctl restart co-story.service || true
+  if [ "$edge_mode" = public ]; then
+    systemctl restart co-story-nginx-public.service || true
+  else
+    systemctl restart co-story-nginx-staging.service || true
+  fi
+}
+
+verify_active_edge() {
+  if [ "$edge_mode" = public ]; then
+    systemctl restart co-story-nginx-public.service
+    wait_for_readiness "https://$health_host/api/v1/ready" "$health_host"
+  else
+    systemctl restart co-story-nginx-staging.service
+    wait_for_readiness http://127.0.0.1:8080/api/v1/ready localhost
+  fi
+}
+
 tar -xzf "$archive" -C "$stage"
 test -d "$stage/co-story/backend"
 mv "$stage/co-story" "$release_dir"
@@ -95,13 +145,18 @@ install -m 0644 "$release_dir/ops/systemd/co-story-migrate@.service" \
   /etc/systemd/system/co-story-migrate@.service
 install -m 0644 "$release_dir/ops/systemd/co-story-nginx-staging.service" \
   /etc/systemd/system/co-story-nginx-staging.service
+install -m 0644 "$release_dir/ops/systemd/co-story-nginx-public.service" \
+  /etc/systemd/system/co-story-nginx-public.service
 install -m 0644 "$release_dir/ops/nginx/co-story-staging.conf" \
   /etc/nginx/co-story-staging.conf
 systemctl daemon-reload
 
-"$release_dir/ops/release/activate.sh" "$release_id" localhost
-systemctl restart co-story-nginx-staging.service
-wait_for_readiness http://127.0.0.1:8080/api/v1/ready
+"$release_dir/ops/release/activate.sh" "$release_id" "$health_host"
+if ! verify_active_edge; then
+  restore_previous_release
+  printf '%s\n' "release update failed $edge_mode edge verification; previous release restored" >&2
+  exit 1
+fi
 
 success=1
-printf '%s\n' 'release update installed; internal staging verified'
+printf '%s\n' "release update installed; $edge_mode edge verified"
