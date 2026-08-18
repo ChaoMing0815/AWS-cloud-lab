@@ -16,7 +16,7 @@ validate_public_ipv4() {
     [ "$octet" -ge 0 ] 2>/dev/null || return 1
     [ "$octet" -le 255 ] || return 1
   done
-  python3.13 -c \
+  python3 -c \
     'import ipaddress,sys; address=ipaddress.ip_address(sys.argv[1]); raise SystemExit(0 if address.version == 4 and address.is_global else 1)' \
     "$candidate"
 }

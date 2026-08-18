@@ -25,7 +25,7 @@ if [ "$(id -u)" -ne 0 ]; then
 fi
 
 public_ip="${1:?public IPv4 required}"
-if ! python3.13 -c \
+if ! python3 -c \
   'import ipaddress,sys; address=ipaddress.ip_address(sys.argv[1]); raise SystemExit(0 if address.version == 4 and address.is_global else 1)' \
   "$public_ip"; then
   printf '%s\n' 'invalid public IPv4' >&2

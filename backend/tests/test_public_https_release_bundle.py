@@ -99,6 +99,28 @@ def test_public_https_enablement_is_pinned_bounded_and_fail_closed() -> None:
     assert "DATABASE_URL=" not in script
 
 
+def test_public_https_rejects_non_global_or_malformed_ipv4_before_external_work() -> None:
+    script = _read(ENABLE)
+    validation_contract = script.split("\nrender_nginx_config()", maxsplit=1)[0]
+    command = f'{validation_contract}\nvalidate_public_ipv4 "$1"'
+
+    for candidate, expected in (
+        ("8.8.8.8", 0),
+        ("10.20.10.5", 1),
+        ("127.0.0.1", 1),
+        ("192.0.2.10", 1),
+        ("999.1.1.1", 1),
+        ("not-an-ip", 1),
+    ):
+        result = subprocess.run(
+            ["bash", "-c", command, "validate-public-ip", candidate],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert result.returncode == expected, candidate
+
+
 def test_public_https_rollback_restores_verified_internal_staging_before_cert_cleanup() -> None:
     script = _read(DISABLE)
 
