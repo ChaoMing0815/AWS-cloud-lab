@@ -24,7 +24,7 @@
 - Guardrail `co-story-tier0-safety` 為 `Ready`：Standard filters、APAC cross-Region profile、EMAIL／PHONE Mask；固定 version `1` 已發布。`co-story-tier0-compute` 已以單一 `AppRole Modify / Replacement=False` change set 更新為 exact Nova Lite＋Guardrail v1 policy，stack 為 `UPDATE_COMPLETE`。
 - AppRole Console inventory 保留 SSM、artifact 與 runtime-secret policies，沒有 Bedrock／Administrator Full Access；Policy Simulator 已驗證 exact Nova Lite＋Guardrail v1 為 `Allowed`、相同 model＋Guardrail v2 為 `Denied`。IAM Console 未顯示 Access Analyzer policy validation pane，因此未宣稱完成該項檢查；全程未使用 AWS CLI。
 - 目前 runtime **只在 EC2 loopback internal staging**，尚未公開提供 Web／TLS；不得宣稱 Tier 0 AWS 垂直切片完成。
-- 使用者決定後續維持 AWS Free plan／credits 與最低成本，現階段不購買網域。2026-08-17 比較結果建議以既有 EC2＋Let's Encrypt short-lived IP certificate 完成端到端 HTTPS，新增 AWS resource 為 0；CloudFront pay-as-you-go default domain 保留為備選。Batch 6A 尚未核准，未建立 CloudFront／Route 53／ACM／ALB。
+- 使用者決定後續維持 AWS Free plan／credits 與最低成本，現階段不購買網域。2026-08-17 比較結果建議以既有 EC2＋Let's Encrypt short-lived IP certificate 完成端到端 HTTPS，新增 AWS resource 為 0；CloudFront pay-as-you-go default domain 保留為備選。Batch 6A 已於 2026-08-18 明確核准但尚未執行，未建立 CloudFront／Route 53／ACM／ALB。
 - Batch 6A 本機 R3 gate 已完成：ACME-only HTTP bootstrap、固定 IP HTTPS Nginx、Certbot `5.4.0`、12 小時 renewal timer、production env 與驗證後 rollback assets 全綠；兩個 safety mutations 皆被攔截。local release `tier0-20260818-334cdd4` 已建立且 checksum `OK`，尚未上傳或部署。
 - 推進原則：甘特圖是先後與風險參考，不是速度上限。當日預定成果、驗證與必要文件均完成後，可提前推進下一個最小切片或做不擴張成本／權限／產品範圍的小幅優化；不得跳過 Tier gate、TDD、bounded batch、成本、安全或證據關卡。
 - 專案文件入口已收斂：根目錄 `README.md` 只保留產品、架構、執行方式與核心文件入口；完整文件索引位於 `docs/README.md`，證據保存規則位於 `docs/evidence/README.md`。
@@ -33,7 +33,7 @@
 ## Next
 
 ```text
-取得 Batch 6A（Direct EC2＋Let's Encrypt IP certificate）明確核准
+Batch 6A（Direct EC2＋Let's Encrypt IP certificate）已明確核准
 → Console 唯讀確認當前 public IPv4、EC2／SSM、Budget／credits 與無新增資源異常
 → 依 Console-first＋SSM 小步驟上傳全綠 release、申請 certificate 並啟用 production runtime
 → 驗證公開 Web、private RDS read/write、一次真實 Bedrock 故事生成
@@ -42,7 +42,7 @@
 → 再進入 Tier 1 可觀測性最小切片
 ```
 
-新對話的第一步：確認 `codex/tier0-bedrock-guardrail` 工作樹與 Batch 5A commits，再依 `operate-aws-final-project`、本文件與 `docs/architecture/tier0-aws-change-envelope.md`，從 **Batch 6A Direct EC2 public HTTPS 核准關卡** 接續。仍採 Console-first，每次只做一個可驗證小步驟；除非使用者明確核准 Batch 6A，禁止 production exposure／外部 CA 寫入；未核准新的 AWS CLI batch 前仍禁止 AWS CLI。
+新對話的第一步：確認 `codex/tier0-bedrock-guardrail` 工作樹與 Batch 5A commits，再依 `operate-aws-final-project`、本文件與 `docs/architecture/tier0-aws-change-envelope.md`，從 **Batch 6A Console 唯讀 preflight** 接續。Batch 6A 已於 2026-08-18 核准；仍採 Console-first，每次只做一個可驗證小步驟，且未核准新的 AWS CLI batch 前仍禁止 AWS CLI。
 
 ## Residual risks
 

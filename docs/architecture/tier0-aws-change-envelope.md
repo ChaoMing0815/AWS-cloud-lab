@@ -141,7 +141,7 @@
 
 官方依據：CloudFront default hostname 可由 AWS 提供 viewer certificate，且 pay-as-you-go Always Free 包含每月 1 TB data transfer out 與 1,000 萬 HTTP(S) requests；但 Free Tier account 不可啟用新的 Flat-Rate Plans。ALB 的 HTTPS listener 必須有與使用名稱匹配的 certificate，AWS 也明載 default ALB DNS name 不能用來取得 `*.amazonaws.com` 公開 certificate。Let's Encrypt 自 2026 年起正式提供約 160 小時的 IP address certificates，Certbot `5.4+` 支援 webroot 取得與續期。來源：[CloudFront HTTPS](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/using-https-viewers-to-cloudfront.html)、[CloudFront pay-as-you-go pricing](https://aws.amazon.com/cloudfront/pricing/pay-as-you-go/)、[Flat-Rate account restriction](https://docs.aws.amazon.com/PricingPlanManager/latest/UserGuide/pricingplanmanager-ug.pdf)、[ALB certificate requirement](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/https-listener-certificates.html)、[ALB default DNS limitation](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-troubleshooting.html)、[Let's Encrypt IP certificates](https://letsencrypt.org/2026/03/11/shorter-certs-certbot/)。
 
-## Batch 6A：Direct EC2 public HTTPS（Proposed；尚未核准）
+## Batch 6A：Direct EC2 public HTTPS（Approved 2026-08-18；尚未執行）
 
 | 項目 | 固定邊界 |
 | --- | --- |
@@ -160,6 +160,8 @@
 | 後續另批 | 真實 Bedrock allow／block／PII mask、一次故事 invocation、三玩家完整回合、CloudWatch logs／metrics 與 checkpoints 更新均不含於本批。 |
 
 Batch 6A 的核准文字必須明確為「核准 Batch 6A」，並視為同意：production public exposure、Let's Encrypt 外部 CA、public IP certificate／CT metadata，以及上述短期憑證自動續期責任。一般「繼續」不算本批 AWS／外部寫入授權。
+
+2026-08-18 使用者已明確回覆「核准 Batch 6A」。執行仍須從 Console 唯讀 preflight 開始、每次只進行一個可驗證小步驟；本核准不包含任何 AWS CLI。
 
 ## 必填核准欄位
 
