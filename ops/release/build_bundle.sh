@@ -30,6 +30,8 @@ temporary_tar="$artifact_dir/co-story.tar"
 git archive --format=tar --prefix=co-story/ -o "$temporary_tar" HEAD backend web ops
 gzip -n "$temporary_tar"
 install -m 0755 "$ROOT/ops/release/install_staging.sh" "$artifact_dir/install_staging.sh"
+install -m 0755 "$ROOT/ops/release/install_release_update.sh" \
+  "$artifact_dir/install_release_update.sh"
 
 checksum="$(shasum -a 256 "$archive" | awk '{print $1}')"
 printf '%s  %s\n' "$checksum" "$(basename "$archive")" > "$artifact_dir/co-story.tar.gz.sha256"
