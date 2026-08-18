@@ -128,7 +128,16 @@ class BedrockStoryteller(Storyteller):
                 messages=[
                     {
                         "role": "user",
-                        "content": [{"text": json.dumps(prompt, ensure_ascii=False)}],
+                        "content": [
+                            {
+                                "guardContent": {
+                                    "text": {
+                                        "text": json.dumps(prompt, ensure_ascii=False),
+                                        "qualifiers": ["query"],
+                                    }
+                                }
+                            }
+                        ],
                     }
                 ],
                 inferenceConfig={"maxTokens": self._max_tokens, "temperature": 0},
