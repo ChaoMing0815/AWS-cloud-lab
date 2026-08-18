@@ -63,19 +63,19 @@
 - [ ] 完成最後活動／結局後 7 天到期、房主永久刪除與 maintenance cleanup。
 - [ ] 完成世界草稿生成上限、保留輸入與手動輸入 fallback。
 - [ ] 完成回合 LLM 自動／手動 retry、deterministic fallback 與安全 telemetry。
-- [ ] 完成三個獨立 Browser session 的三玩家 E2E。
-- [ ] 第一輪 AWS smoke 後改善世界生成 UX：關鍵字明確接受 `、`、`，`、`,` 三種常見分隔符並更新提示；生成中的 loading／失敗訊息與剩餘次數顯示在按鈕附近；移除部署環境的舊本機原型文案。
+- [x] 完成三個獨立 Browser session 的三玩家 E2E。
+- [ ] 第一輪 AWS smoke 後改善世界生成 UX：關鍵字明確接受 `、`、`，`、`,` 三種常見分隔符並更新提示；生成中的 loading／失敗訊息與剩餘次數顯示在按鈕附近；canonical session 載入時不要短暫閃回 Landing；移除部署環境的舊本機原型文案。
 
 ## C. Tier 0：AWS 可玩傳統架構
 
 - [ ] 請講師確認自製 FastAPI＋private PostgreSQL 可作 Web／DB 分離等效實作。
-- [ ] 建立 VPC、public subnet、private DB subnets、route table 與 IGW。
-- [ ] 建立 App SG 與 DB SG；DB port 來源只允許 App SG。
-- [ ] 建立 private PostgreSQL／RDS 與 app database。
-- [ ] 建立最小權限 EC2 app role；不含管理員或服務 Full Access。
-- [ ] 建立單台小型 EC2、Nginx、FastAPI；不開 public SSH。
-- [ ] 建立 Bedrock adapter並限制 model、token、timeout 與 retry。
-- [ ] 驗證 3 位玩家完成一回合、refresh 後資料存在。
+- [x] 建立 VPC、public subnet、private DB subnets、route table 與 IGW。
+- [x] 建立 App SG 與 DB SG；DB port 來源只允許 App SG。
+- [x] 建立 private PostgreSQL／RDS 與 app database。
+- [x] 建立最小權限 EC2 app role；不含管理員或服務 Full Access。
+- [x] 建立單台小型 EC2、Nginx、FastAPI；不開 public SSH。
+- [x] 建立 Bedrock adapter並限制 model、token、timeout 與 retry。
+- [x] 驗證 3 位玩家完成一回合、refresh 後資料存在。
 - [ ] 驗證 DB 外網連線失敗、未知 principal 無法呼叫 Bedrock。
 - [ ] 保存公開 URL、VPC、subnet、SG、DB、IAM 與遊戲成功證據。
 
