@@ -1,0 +1,14 @@
+[Unit]
+Description=Renew Co-Story short-lived public IP certificate
+After=network-online.target co-story-nginx-public.service
+Wants=network-online.target
+Requires=co-story-nginx-public.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/co-story/current/ops/release/renew_public_certificate.sh
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/etc/letsencrypt /var/lib/letsencrypt /var/log/letsencrypt /var/lib/co-story/acme /run/co-story-nginx-public

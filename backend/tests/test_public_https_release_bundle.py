@@ -25,7 +25,9 @@ def test_public_nginx_serves_only_acme_over_http_and_proxies_https_to_loopback()
     assert "location ^~ /.well-known/acme-challenge/" in config
     assert "root /var/lib/co-story/acme;" in config
     assert "try_files $uri =404;" in config
-    assert "return 301 https://$host$request_uri;" in config
+    assert "server_name __PUBLIC_IP__;" in config
+    assert "return 301 https://$server_name$request_uri;" in config
+    assert "https://$host" not in config
     assert "listen 443 ssl default_server;" in config
     assert "include /etc/nginx/co-story-tls.conf;" in config
     assert "proxy_pass http://127.0.0.1:8000;" in config
@@ -75,6 +77,13 @@ def test_public_https_enablement_is_pinned_bounded_and_fail_closed() -> None:
     assert "--webroot-path /var/lib/co-story/acme" in script
     assert '--ip-address "$public_ip"' in script
     assert "--register-unsafely-without-email" in script
+    assert "renew --dry-run --non-interactive" in script
+    assert "openssl x509" in script
+    assert "IP Address:$public_ip" in script
+    assert "-checkend 86400" in script
+    assert "ipaddress.ip_address" in script
+    assert "address.is_global" in script
+    assert "__PUBLIC_IP__" in script
     assert "CO_STORY_ENV=production" in script
     assert "CO_STORY_COOKIE_SECURE=true" in script
     assert 'CO_STORY_ALLOWED_HOSTS=$public_ip' in script
