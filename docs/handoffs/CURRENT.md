@@ -25,7 +25,8 @@
 - AppRole Console inventory 保留 SSM、artifact 與 runtime-secret policies，沒有 Bedrock／Administrator Full Access；Policy Simulator 已驗證 exact Nova Lite＋Guardrail v1 為 `Allowed`、相同 model＋Guardrail v2 為 `Denied`。IAM Console 未顯示 Access Analyzer policy validation pane，因此未宣稱完成該項檢查；全程未使用 AWS CLI。
 - Batch 6A 已完成：Let's Encrypt short-lived IP certificate、production runtime、public Nginx 與 renewal timer active；Browser 無 certificate warning、landing page 可見、HTTP→HTTPS，public `8000/8080` 不可達，bad Host／Origin 與 security headers 均符合。尚未完成真實 Bedrock／三玩家 smoke，因此仍不得宣稱 Tier 0 AWS 垂直切片完成。
 - 使用者決定後續維持 AWS Free plan／credits 與最低成本，現階段不購買網域。既有 EC2＋Let's Encrypt short-lived IP certificate 路徑已完成，新增 AWS resource 為 0；未建立 CloudFront／Route 53／ACM／ALB。
-- Batch 6A／6A.1 已完成並關閉；修正版 release `tier0-20260818-7b89e60` 通過 checksum、internal activation、可信任 public HTTPS 與正負 boundary。Batch 7 已核准並完成 exactly 3 次 SDK `ApplyGuardrail`：benign allow、harmful block、synthetic EMAIL／PHONE mask 全符合；content／sensitive 各 3 units，估算 `US$0.00075`。尚未執行真實模型 invocation；不含 AWS CLI。
+- Batch 6A／6A.1 已完成並關閉；release `tier0-20260818-7b89e60` 通過 checksum、internal activation、可信任 public HTTPS 與正負 boundary。Batch 7 已核准並完成 exactly 3 次 SDK `ApplyGuardrail`：benign allow、harmful block、synthetic EMAIL／PHONE mask 全符合；content／sensitive 各 3 units，估算 `US$0.00075`。首次真實世界生成已送達 Nova Lite 並產生 input／output token metrics，但應用因模型 JSON 草稿不合 schema 回傳 `503`；生成額度剩 1 次，不得在修正版部署前重試。
+- 本機 TDD 修正 commit `d9c8f4e` 已完成：明確提供 Nova 欄位／長度 schema、固定 `temperature=0`、安全接受純 JSON code fence，並令 HTML／JavaScript 回應 `Cache-Control: no-store`。Backend regression 全綠、Frontend `80 passed`；release `tier0-20260818-d9c8f4e` 已建立並通過 checksum，尚未上傳或部署。
 - 推進原則：甘特圖是先後與風險參考，不是速度上限。當日預定成果、驗證與必要文件均完成後，可提前推進下一個最小切片或做不擴張成本／權限／產品範圍的小幅優化；不得跳過 Tier gate、TDD、bounded batch、成本、安全或證據關卡。
 - 專案文件入口已收斂：根目錄 `README.md` 只保留產品、架構、執行方式與核心文件入口；完整文件索引位於 `docs/README.md`，證據保存規則位於 `docs/evidence/README.md`。
 - `codex/session-lifecycle` 已 push 並透過 PR `#1` 合併到 `main`；三個更早的 remote feature branches 與該 branch 均已被 `main` 包含，remote branch 指標清理屬可選 Git housekeeping，不阻塞 AWS 進度。
@@ -36,6 +37,7 @@
 Batch 6A／6A.1 public HTTPS 與正負 boundary 已完成
 → Batch 7 已明確核准
 → SSM 內以既有 SDK exactly 3 次 ApplyGuardrail 驗證 allow／block／synthetic PII mask
+→ 部署 `tier0-20260818-d9c8f4e` 修正首次世界生成的 schema／cache failure
 → 公開 HTTPS 完成一次世界生成與三玩家完整單回合
 → 驗證 private RDS refresh、真實 storyteller、成本、證據與第一份報告
 → 依清理計畫停止或刪除持續計費資源，保留程式碼、IaC 與去識別化證據
@@ -46,8 +48,7 @@ Batch 6A／6A.1 public HTTPS 與正負 boundary 已完成
 
 ## Residual risks
 
-- 尚無 public Web／TLS boundary，也沒有對外可玩的 URL。
-- 尚未完成真實 Bedrock invocation 與 Guardrail 功能層 allow／block／PII mask 測試；目前只有 IAM allow／deny simulation，不能替代真實模型驗證。
+- Public Web／TLS boundary 已完成；首次真實 Bedrock 世界生成呼叫成功產生 token，但草稿 schema 驗證失敗，修正版尚待部署，最後一次生成額度必須保留。
 - IAM Access Analyzer basic policy validation 未在 Console 顯示；CloudFormation、R3 tests、安全 review 與正負 Policy Simulator 已通過，但此項仍記為未執行。
 - 尚無自有網域；Route 53 註冊不是免費項目且 domain registration 不能使用 AWS credits。建議的 direct IP certificate 只有約 160 小時效期，必須證明自動續期；EC2 stop/start 若改變 public IP，URL、certificate 與 application allowlist 都需重建。CloudFront global path／HTTP origin trade-off 只作備選。
 - 尚未完成 AWS 三玩家核心流程與公開路徑 smoke test；EC2 service restart persistence 已通過。
