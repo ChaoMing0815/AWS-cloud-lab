@@ -25,7 +25,7 @@
 - AppRole Console inventory 保留 SSM、artifact 與 runtime-secret policies，沒有 Bedrock／Administrator Full Access；Policy Simulator 已驗證 exact Nova Lite＋Guardrail v1 為 `Allowed`、相同 model＋Guardrail v2 為 `Denied`。IAM Console 未顯示 Access Analyzer policy validation pane，因此未宣稱完成該項檢查；全程未使用 AWS CLI。
 - Batch 6A 已完成：Let's Encrypt short-lived IP certificate、production runtime、public Nginx 與 renewal timer active；Browser 無 certificate warning、landing page 可見、HTTP→HTTPS，public `8000/8080` 不可達，bad Host／Origin 與 security headers 均符合。尚未完成真實 Bedrock／三玩家 smoke，因此仍不得宣稱 Tier 0 AWS 垂直切片完成。
 - 使用者決定後續維持 AWS Free plan／credits 與最低成本，現階段不購買網域。既有 EC2＋Let's Encrypt short-lived IP certificate 路徑已完成，新增 AWS resource 為 0；未建立 CloudFront／Route 53／ACM／ALB。
-- Batch 6A／6A.1 已完成並關閉；修正版 release `tier0-20260818-7b89e60` 通過 checksum、internal activation、可信任 public HTTPS 與正負 boundary。下一個 bounded change 是尚未核准的 Batch 7 真實 Guardrail＋三玩家 Bedrock smoke。
+- Batch 6A／6A.1 已完成並關閉；修正版 release `tier0-20260818-7b89e60` 通過 checksum、internal activation、可信任 public HTTPS 與正負 boundary。Batch 7 真實 Guardrail＋三玩家 Bedrock smoke 已於 2026-08-18 核准但尚未執行；不含 AWS CLI。
 - 推進原則：甘特圖是先後與風險參考，不是速度上限。當日預定成果、驗證與必要文件均完成後，可提前推進下一個最小切片或做不擴張成本／權限／產品範圍的小幅優化；不得跳過 Tier gate、TDD、bounded batch、成本、安全或證據關卡。
 - 專案文件入口已收斂：根目錄 `README.md` 只保留產品、架構、執行方式與核心文件入口；完整文件索引位於 `docs/README.md`，證據保存規則位於 `docs/evidence/README.md`。
 - `codex/session-lifecycle` 已 push 並透過 PR `#1` 合併到 `main`；三個更早的 remote feature branches 與該 branch 均已被 `main` 包含，remote branch 指標清理屬可選 Git housekeeping，不阻塞 AWS 進度。
@@ -34,7 +34,7 @@
 
 ```text
 Batch 6A／6A.1 public HTTPS 與正負 boundary 已完成
-→ 取得 Batch 7 明確核准
+→ Batch 7 已明確核准
 → Console 驗證 Guardrail allow／block／synthetic PII mask
 → 公開 HTTPS 完成一次世界生成與三玩家完整單回合
 → 驗證 private RDS refresh、真實 storyteller、成本、證據與第一份報告

@@ -183,7 +183,7 @@ Batch 6A 的核准文字必須明確為「核准 Batch 6A」，並視為同意�
 
 > 2026-08-18 結果：兩次 exact-object S3 read 成功，archive checksum `OK`；已驗證 archive 內的 update installer 沿用既有 protected DB environment，將 `tier0-20260818-7b89e60` 啟用為 current release。Application／staging Nginx 均為 active，loopback readiness HTTP `200`；未讀 master secret、未新增 AWS resource／IAM／固定費用，尚未申請 certificate 或公開網站。
 
-## Batch 7：真實 Guardrail＋三玩家 Bedrock smoke（Proposed；尚未核准）
+## Batch 7：真實 Guardrail＋三玩家 Bedrock smoke（Approved 2026-08-18；尚未執行）
 
 | 項目 | 固定邊界 |
 | --- | --- |
@@ -197,6 +197,8 @@ Batch 6A 的核准文字必須明確為「核准 Batch 6A」，並視為同意�
 | Stop／cleanup | Access denied、model subscription／條款、非 APAC routing、Guardrail 未介入／未 mask、schema invalid、fallback、超過 3 次 invocation、成本疑慮或任何真實 PII 均停止。證據完成後由房主刪除 smoke room，不保留 session cookie／room code／public IP 原圖。 |
 
 本批核准文字必須為「核准 Batch 7」，並視為同意上述最多 3 次 Nova Lite invocation、3 次 Guardrail synthetic evaluation、APAC processing 與 `US$0.05` 硬上限。一般「繼續」或 Batch 6A 核准不能代替。
+
+2026-08-18 使用者已明確回覆「核准 Batch 7」。仍採 Console／Browser-first、每次只執行一個可驗證功能步驟；不包含 AWS CLI。
 
 價格與計費依據：[Amazon Bedrock pricing](https://aws.amazon.com/bedrock/pricing/)、[Guardrail 計費方式](https://docs.aws.amazon.com/bedrock/latest/userguide/guardrails-how.html)、[Nova Lite model card](https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-amazon-nova-lite.html)。Guardrail 在 input 被阻擋時仍收 guardrail evaluation 費，但不收 foundation model inference 費。
 
