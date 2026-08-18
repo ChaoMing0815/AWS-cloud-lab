@@ -5,6 +5,7 @@ from pathlib import Path
 ROOT = Path(__file__).parents[2]
 BUILD = ROOT / "ops/release/build_bundle.sh"
 INSTALL = ROOT / "ops/release/install_staging.sh"
+UPDATE_INSTALL = ROOT / "ops/release/install_release_update.sh"
 STAGING_NGINX = ROOT / "ops/nginx/co-story-staging.conf"
 STAGING_NGINX_UNIT = ROOT / "ops/systemd/co-story-nginx-staging.service"
 
@@ -24,6 +25,7 @@ def test_bundle_builder_archives_only_committed_head_with_checksum_and_installer
     assert "shasum -a 256" in script
     assert "co-story.tar.gz.sha256" in script
     assert "install_staging.sh" in script
+    assert "install_release_update.sh" in script
     assert "set -x" not in script
     assert "DATABASE_URL" not in script
 
@@ -113,7 +115,7 @@ def test_staging_installer_removes_only_an_unresolvable_current_symlink() -> Non
 
 
 def test_release_shell_assets_have_valid_bash_syntax() -> None:
-    for script in (BUILD, INSTALL):
+    for script in (BUILD, INSTALL, UPDATE_INSTALL):
         result = subprocess.run(
             ["bash", "-n", script],
             capture_output=True,
@@ -121,3 +123,31 @@ def test_release_shell_assets_have_valid_bash_syntax() -> None:
             check=False,
         )
         assert result.returncode == 0, result.stderr
+
+
+def test_release_update_reuses_protected_database_environment_without_bootstrap() -> None:
+    script = _read(UPDATE_INSTALL)
+
+    assert "/etc/co-story/database.env" in script
+    assert "root:co-story:640" in script
+    assert "bootstrap_database.py" not in script
+    assert "MASTER_SECRET" not in script
+    assert "APP_DB_SECRET" not in script
+    assert "get-secret-value" not in script
+    assert "DATABASE_URL=" not in script
+    assert "set -x" not in script
+
+
+def test_release_update_verifies_archive_and_preserves_rollback_boundary() -> None:
+    script = _read(UPDATE_INSTALL)
+
+    checksum_at = script.index("sha256sum -c")
+    extract_at = script.index("tar -xzf")
+    package_at = script.index("python3.13 -m venv")
+    activate_at = script.index('activate.sh" "$release_id"')
+    assert checksum_at < extract_at < package_at < activate_at
+    assert 'resolved_releases="$(realpath -e "$releases")"' in script
+    assert 'previous_target="$(readlink -f "$root/current"' in script
+    assert 'active_target="$(readlink -f "$root/current"' in script
+    assert 'if [ "$active_target" != "$release_dir" ]; then' in script
+    assert 'rm -rf "$release_dir"' in script
