@@ -141,7 +141,7 @@
 
 官方依據：CloudFront default hostname 可由 AWS 提供 viewer certificate，且 pay-as-you-go Always Free 包含每月 1 TB data transfer out 與 1,000 萬 HTTP(S) requests；但 Free Tier account 不可啟用新的 Flat-Rate Plans。ALB 的 HTTPS listener 必須有與使用名稱匹配的 certificate，AWS 也明載 default ALB DNS name 不能用來取得 `*.amazonaws.com` 公開 certificate。Let's Encrypt 自 2026 年起正式提供約 160 小時的 IP address certificates，Certbot `5.4+` 支援 webroot 取得與續期。來源：[CloudFront HTTPS](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/using-https-viewers-to-cloudfront.html)、[CloudFront pay-as-you-go pricing](https://aws.amazon.com/cloudfront/pricing/pay-as-you-go/)、[Flat-Rate account restriction](https://docs.aws.amazon.com/PricingPlanManager/latest/UserGuide/pricingplanmanager-ug.pdf)、[ALB certificate requirement](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/https-listener-certificates.html)、[ALB default DNS limitation](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-troubleshooting.html)、[Let's Encrypt IP certificates](https://letsencrypt.org/2026/03/11/shorter-certs-certbot/)。
 
-## Batch 6A：Direct EC2 public HTTPS（Approved 2026-08-18；尚未執行）
+## Batch 6A：Direct EC2 public HTTPS（Completed 2026-08-18）
 
 | 項目 | 固定邊界 |
 | --- | --- |
@@ -163,7 +163,7 @@ Batch 6A 的核准文字必須明確為「核准 Batch 6A」，並視為同意�
 
 2026-08-18 使用者已明確回覆「核准 Batch 6A」。執行仍須從 Console 唯讀 preflight 開始、每次只進行一個可驗證小步驟；本核准不包含任何 AWS CLI。
 
-> 2026-08-18 server-side activation：production IP certificate、public Nginx、application 與 renewal timer 均為 active，EC2 內 HTTPS readiness HTTP `200`。尚待外部 Browser 與負面 boundary 驗證，Batch 6A 尚未關閉。
+> 2026-08-18 結果：production IP certificate、public Nginx、application 與 renewal timer 均為 active；Browser 無 certificate warning、landing page 可見且 HTTP→HTTPS。Public `8000/8080` 不可達；bad Host `400`、bad Origin `403`、security headers present。未新增 AWS resource／IAM／固定費用，Batch 6A 完成。
 
 ## Batch 6A.1：Exact-release S3 read＋internal activation（Completed 2026-08-18）
 
@@ -182,6 +182,23 @@ Batch 6A 的核准文字必須明確為「核准 Batch 6A」，並視為同意�
 2026-08-18 使用者已明確回覆「核准 Batch 6A.1」。
 
 > 2026-08-18 結果：兩次 exact-object S3 read 成功，archive checksum `OK`；已驗證 archive 內的 update installer 沿用既有 protected DB environment，將 `tier0-20260818-7b89e60` 啟用為 current release。Application／staging Nginx 均為 active，loopback readiness HTTP `200`；未讀 master secret、未新增 AWS resource／IAM／固定費用，尚未申請 certificate 或公開網站。
+
+## Batch 7：真實 Guardrail＋三玩家 Bedrock smoke（Proposed；尚未核准）
+
+| 項目 | 固定邊界 |
+| --- | --- |
+| 目的 | 先以 Bedrock Guardrail Test Console 驗證 1 個 benign allow、1 個 harmful block、1 個 synthetic EMAIL／PHONE mask，再以公開 HTTPS 網站完成 3 位玩家、1 次世界生成與 1 個完整回合。 |
+| Model／Guardrail | 固定 `amazon.nova-lite-v1:0`、Standard、Guardrail `co-story-tier0-safety` version `1`、APAC geographic profile；runtime 單次 output ceiling `800` tokens。不使用其他 model、streaming、Marketplace、Provisioned Throughput、Batch 或 Global inference。 |
+| Invocation ceiling | 世界生成只按一次；回合結算只按一次。正常最多 2 次 model invocation；既有 transient retry 最多令總數達 3。任何錯誤不得人工重試；不得進入第二回合或結局 generation。 |
+| Test data／privacy | 只用虛構世界、合成暱稱／角色／行動；PII mask case 只用明確標示為假的 example email／phone。禁止真實姓名、Email、電話、學員／客戶資料、secret、token 或識別碼。已接受資料只在 APAC geographic boundary 內跨區域處理。 |
+| Pricing ceiling | 官方 Standard baseline：Nova Lite input `US$0.072/1M tokens`、output `US$0.288/1M tokens`；Guardrails content filter `US$0.15/1,000 text units`、sensitive information `US$0.10/1,000 text units`，每 text unit 最多 1,000 characters。預期本批遠低於 `US$0.01`，硬停止上限 `US$0.05`。 |
+| Logging／resources | 不啟用 invocation logging，不建立 CloudWatch log group、S3 destination、IAM、model access subscription、resource 或固定費用；不執行 AWS CLI。 |
+| Success | Guardrail allow／block／PII mask 三案例符合；三個 Browser session 進入同房、世界確認、角色完成、三個 action 送出、1 回合由真實 storyteller 結算且進入下一回合；private RDS 狀態可刷新讀回。 |
+| Stop／cleanup | Access denied、model subscription／條款、非 APAC routing、Guardrail 未介入／未 mask、schema invalid、fallback、超過 3 次 invocation、成本疑慮或任何真實 PII 均停止。證據完成後由房主刪除 smoke room，不保留 session cookie／room code／public IP 原圖。 |
+
+本批核准文字必須為「核准 Batch 7」，並視為同意上述最多 3 次 Nova Lite invocation、3 次 Guardrail synthetic evaluation、APAC processing 與 `US$0.05` 硬上限。一般「繼續」或 Batch 6A 核准不能代替。
+
+價格與計費依據：[Amazon Bedrock pricing](https://aws.amazon.com/bedrock/pricing/)、[Guardrail 計費方式](https://docs.aws.amazon.com/bedrock/latest/userguide/guardrails-how.html)、[Nova Lite model card](https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-amazon-nova-lite.html)。Guardrail 在 input 被阻擋時仍收 guardrail evaluation 費，但不收 foundation model inference 費。
 
 ## 必填核准欄位
 

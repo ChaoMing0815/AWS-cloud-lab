@@ -37,3 +37,12 @@
 - EC2 內以 current public IPv4 對 loopback resolve 的 HTTPS readiness 回傳 HTTP `200`。
 - Runtime 已切換 production、Secure cookie、固定 current public IPv4 allowed host／origin、Nova Lite 與 Guardrail version `1`；尚未執行真實模型 invocation。
 - 未新增 Route 53、ACM、CloudFront、ALB、EIP、NAT、IAM 或固定月費 resource。尚待外部 Browser certificate／homepage 與負面 port／host／origin 驗證。
+
+## Batch 6A 外部與負面驗證
+
+- 一般 Browser 對 public IPv4 開啟 landing page，沒有 certificate warning；Co-Story landing page 可見。
+- 明確輸入 HTTP 後自動 redirect 至 HTTPS，landing page 維持可見。
+- Public `8000` 與 `8080` 均無法連線；`22` 由未變更的 CloudFormation／Security Group boundary 保持未開放。
+- Production live HTTP `200`；錯誤 Host HTTP `400`；錯誤 Origin 的 unsafe request HTTP `403`；HSTS、CSP、`nosniff` 與 same-origin referrer policy 均存在。
+- 使用者提供的原始 Browser 截圖含完整 public IPv4，只作即時驗證，不直接入庫；正式 evidence 須先遮罩網址列。
+- Batch 6A 全部正面／負面 gate 通過，可於 2026-08-18 關閉。
