@@ -35,7 +35,7 @@
 ```text
 Batch 6A／6A.1 public HTTPS 與正負 boundary 已完成
 → Batch 7 已明確核准
-→ Console 驗證 Guardrail allow／block／synthetic PII mask
+→ SSM 內以既有 SDK exactly 3 次 ApplyGuardrail 驗證 allow／block／synthetic PII mask
 → 公開 HTTPS 完成一次世界生成與三玩家完整單回合
 → 驗證 private RDS refresh、真實 storyteller、成本、證據與第一份報告
 → 依清理計畫停止或刪除持續計費資源，保留程式碼、IaC 與去識別化證據

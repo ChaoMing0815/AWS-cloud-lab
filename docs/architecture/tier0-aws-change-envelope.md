@@ -187,12 +187,12 @@ Batch 6A 的核准文字必須明確為「核准 Batch 6A」，並視為同意�
 
 | 項目 | 固定邊界 |
 | --- | --- |
-| 目的 | 先以 Bedrock Guardrail Test Console 驗證 1 個 benign allow、1 個 harmful block、1 個 synthetic EMAIL／PHONE mask，再以公開 HTTPS 網站完成 3 位玩家、1 次世界生成與 1 個完整回合。 |
+| 目的 | 先從 Console 開啟的 SSM Session，以既有 application SDK 執行 exactly 3 次 `ApplyGuardrail`，驗證 1 個 benign allow、1 個 harmful block、1 個 synthetic EMAIL／PHONE mask；再以公開 HTTPS 網站完成 3 位玩家、1 次世界生成與 1 個完整回合。`ApplyGuardrail` 不呼叫 foundation model。 |
 | Model／Guardrail | 固定 `amazon.nova-lite-v1:0`、Standard、Guardrail `co-story-tier0-safety` version `1`、APAC geographic profile；runtime 單次 output ceiling `800` tokens。不使用其他 model、streaming、Marketplace、Provisioned Throughput、Batch 或 Global inference。 |
 | Invocation ceiling | 世界生成只按一次；回合結算只按一次。正常最多 2 次 model invocation；既有 transient retry 最多令總數達 3。任何錯誤不得人工重試；不得進入第二回合或結局 generation。 |
 | Test data／privacy | 只用虛構世界、合成暱稱／角色／行動；PII mask case 只用明確標示為假的 example email／phone。禁止真實姓名、Email、電話、學員／客戶資料、secret、token 或識別碼。已接受資料只在 APAC geographic boundary 內跨區域處理。 |
 | Pricing ceiling | 官方 Standard baseline：Nova Lite input `US$0.072/1M tokens`、output `US$0.288/1M tokens`；Guardrails content filter `US$0.15/1,000 text units`、sensitive information `US$0.10/1,000 text units`，每 text unit 最多 1,000 characters。預期本批遠低於 `US$0.01`，硬停止上限 `US$0.05`。 |
-| Logging／resources | 不啟用 invocation logging，不建立 CloudWatch log group、S3 destination、IAM、model access subscription、resource 或固定費用；不執行 AWS CLI。 |
+| Logging／resources | 不啟用 invocation logging，不建立 CloudWatch log group、S3 destination、IAM、model access subscription、resource 或固定費用；不執行 AWS CLI。Guardrail evaluation 只可由 `/opt/co-story/current/.venv` 的既有 SDK 與 instance role 發出，不安裝工具或建立 credential。 |
 | Success | Guardrail allow／block／PII mask 三案例符合；三個 Browser session 進入同房、世界確認、角色完成、三個 action 送出、1 回合由真實 storyteller 結算且進入下一回合；private RDS 狀態可刷新讀回。 |
 | Stop／cleanup | Access denied、model subscription／條款、非 APAC routing、Guardrail 未介入／未 mask、schema invalid、fallback、超過 3 次 invocation、成本疑慮或任何真實 PII 均停止。證據完成後由房主刪除 smoke room，不保留 session cookie／room code／public IP 原圖。 |
 
