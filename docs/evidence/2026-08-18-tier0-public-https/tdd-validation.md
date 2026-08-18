@@ -21,3 +21,11 @@
 - 受影響 release／HTTPS／rollback suite：`23 passed`；shell syntax 通過。
 - 代表性 sensitivity：暫時注入 `MASTER_SECRET` 字樣後，安全測試如預期失敗；移除 mutation 後重新全綠。
 - 完整 Backend regression 的既有全綠基準仍為 `300 passed, 8 skipped`。本次誤用未安裝專案依賴的系統 Python 時只在 collection 階段回報缺少 `fastapi`／`psycopg`，不列為程式 regression 結果。
+
+## Batch 6A.1 AWS 結果
+
+- 使用者於 2026-08-18 明確核准 Batch 6A.1；只在 Console 開啟的 SSM Session 執行兩次 exact-object `aws s3 cp`，讀取 archive 與 checksum，沒有 list／recursive／sync／put／delete。
+- `co-story.tar.gz: OK`；installer 由已驗證 archive 取出，未執行 S3 中的獨立 installer object。
+- `release update installed; internal staging verified`。
+- `/opt/co-story/current` 指向 `tier0-20260818-7b89e60`；application 與 staging Nginx 均為 `active`；loopback readiness HTTP `200`。
+- 未重新開啟 migration bootstrap policy、未讀 master secret、未新增 AWS resource 或固定費用。尚未申請 certificate 或公開網站。

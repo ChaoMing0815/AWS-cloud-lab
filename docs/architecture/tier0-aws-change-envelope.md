@@ -163,7 +163,7 @@ Batch 6A 的核准文字必須明確為「核准 Batch 6A」，並視為同意�
 
 2026-08-18 使用者已明確回覆「核准 Batch 6A」。執行仍須從 Console 唯讀 preflight 開始、每次只進行一個可驗證小步驟；本核准不包含任何 AWS CLI。
 
-## Batch 6A.1：Exact-release S3 read＋internal activation（Approved 2026-08-18；尚未執行）
+## Batch 6A.1：Exact-release S3 read＋internal activation（Completed 2026-08-18）
 
 | 項目 | 固定邊界 |
 | --- | --- |
@@ -178,6 +178,8 @@ Batch 6A 的核准文字必須明確為「核准 Batch 6A」，並視為同意�
 本批只補足 Batch 6A 明文未包含的 bounded AWS CLI read。核准文字必須為「核准 Batch 6A.1」；一般「繼續」或既有 Batch 6A 核准不能代替。
 
 2026-08-18 使用者已明確回覆「核准 Batch 6A.1」。
+
+> 2026-08-18 結果：兩次 exact-object S3 read 成功，archive checksum `OK`；已驗證 archive 內的 update installer 沿用既有 protected DB environment，將 `tier0-20260818-7b89e60` 啟用為 current release。Application／staging Nginx 均為 active，loopback readiness HTTP `200`；未讀 master secret、未新增 AWS resource／IAM／固定費用，尚未申請 certificate 或公開網站。
 
 ## 必填核准欄位
 
