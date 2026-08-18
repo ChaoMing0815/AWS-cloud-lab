@@ -163,6 +163,8 @@ Batch 6A 的核准文字必須明確為「核准 Batch 6A」，並視為同意�
 
 2026-08-18 使用者已明確回覆「核准 Batch 6A」。執行仍須從 Console 唯讀 preflight 開始、每次只進行一個可驗證小步驟；本核准不包含任何 AWS CLI。
 
+> 2026-08-18 server-side activation：production IP certificate、public Nginx、application 與 renewal timer 均為 active，EC2 內 HTTPS readiness HTTP `200`。尚待外部 Browser 與負面 boundary 驗證，Batch 6A 尚未關閉。
+
 ## Batch 6A.1：Exact-release S3 read＋internal activation（Completed 2026-08-18）
 
 | 項目 | 固定邊界 |

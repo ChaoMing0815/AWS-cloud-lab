@@ -29,3 +29,11 @@
 - `release update installed; internal staging verified`。
 - `/opt/co-story/current` 指向 `tier0-20260818-7b89e60`；application 與 staging Nginx 均為 `active`；loopback readiness HTTP `200`。
 - 未重新開啟 migration bootstrap policy、未讀 master secret、未新增 AWS resource 或固定費用。尚未申請 certificate 或公開網站。
+
+## Batch 6A AWS activation 結果
+
+- Enable script 完成 Let's Encrypt staging／production short-lived IP certificate、certificate SAN／expiry check 與 renewal dry-run，回報 `public HTTPS enabled`。
+- `co-story.service`、`co-story-nginx-public.service` 與 `co-story-certbot-renew.timer` 均為 `active`。
+- EC2 內以 current public IPv4 對 loopback resolve 的 HTTPS readiness 回傳 HTTP `200`。
+- Runtime 已切換 production、Secure cookie、固定 current public IPv4 allowed host／origin、Nova Lite 與 Guardrail version `1`；尚未執行真實模型 invocation。
+- 未新增 Route 53、ACM、CloudFront、ALB、EIP、NAT、IAM 或固定月費 resource。尚待外部 Browser certificate／homepage 與負面 port／host／origin 驗證。
