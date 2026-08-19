@@ -13,4 +13,8 @@
 - Loading shell Red commit：`816b817`；Green：`f9d4155`。canonical deep route 載入期間不再先顯示 Landing。
 - 驗證：targeted Frontend `7 passed` 與 loading shell `8 passed`；Frontend full `83 passed`；targeted Backend `2 passed`；Backend full `308 passed, 8 skipped`；`node --check` 與 `git diff --check` 通過。
 - 安全記錄不得包含 prompt、room／player identifier、原始 AWS／provider error、stack trace、ARN、IP、secret 或 credential。
-- 殘餘：上述 UI 與安全記錄仍只在本機 branch，須先部署新 release，再以 Browser 驗證；之後才可申請 exactly 1 次 synthetic prompt-injection smoke。
+- Batch 9B 已部署 `tier0-20260819-2de0424`：exact S3 objects `2`、checksum `OK`；application／public Nginx／renew timer active、staging inactive、HTTPS `200`、`Cache-Control: no-store`。
+- 零模型 Browser gate 通過：新 AWS runtime 文案存在、舊 local 文案不存在、canonical loading status 可見且無 Landing flash、private PostgreSQL 標示與 session restore 正常、近端關鍵字 validation error 正常且生成次數不變。
+- Batch 9C exactly 1 次 synthetic prompt-injection request：Browser 顯示安全通用錯誤、world fields 未變、剩餘次數由 `2` 變 `1`；安全 log 僅輸出 `SCHEMA_INVALID`，HTTP 為 `503`。
+- 結論：Batch 9C 不是 `CONTENT_REJECTED`／Guardrail intervention，Prompt Attack smoke 未通過；不得以模型 schema failure 宣稱安全控制有效，且未重試。
+- 殘餘：需以 application-layer bounded rejection 補上明確注入前置防線；此防線只能作 defense-in-depth，不能宣稱能偵測所有 prompt injection。
