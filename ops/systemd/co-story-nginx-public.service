@@ -1,0 +1,25 @@
+[Unit]
+Description=Co-Story public HTTPS Nginx proxy
+After=network-online.target co-story.service
+Wants=network-online.target
+Requires=co-story.service
+
+[Service]
+Type=simple
+RuntimeDirectory=co-story-nginx-public
+RuntimeDirectoryMode=0750
+ExecStartPre=/usr/bin/install -d -m 0750 -o nginx -g nginx /run/co-story-nginx-public/client_temp /run/co-story-nginx-public/proxy_temp
+ExecStartPre=/usr/sbin/nginx -t -c /etc/nginx/co-story-public.conf
+ExecStart=/usr/sbin/nginx -e stderr -c /etc/nginx/co-story-public.conf -g "daemon off;"
+ExecReload=/usr/sbin/nginx -t -c /etc/nginx/co-story-public.conf
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/run/co-story-nginx-public
+
+[Install]
+WantedBy=multi-user.target

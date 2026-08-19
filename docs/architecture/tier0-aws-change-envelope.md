@@ -110,25 +110,102 @@
 
 > 2026-08-16 結果：artifacts 與 runtime-secrets stacks 已建立；release `tier0-20260816-b028569` 已在 EC2 internal staging 啟用，FastAPI／Nginx services active，loopback readiness HTTP `200`。restricted DB role 與 migration 完成後，CloudFormation update 只移除 temporary master-secret policy，並為 `UPDATE_COMPLETE`。Backend regression `290 passed, 8 skipped`。公開 Web／TLS 與真實 Bedrock invocation 不在本批成果內；去識別化摘要見 [`2026-08-16-tier0-internal-staging`](../evidence/2026-08-16-tier0-internal-staging/validation.md)。
 
-## Batch 5：Bedrock Guardrail（暫停於建立完成）
+## Batch 5：Bedrock Guardrail＋bounded runtime IAM（已部署，尚未真實 invocation）
 
 | 項目 | 固定邊界 |
 | --- | --- |
-| Region／model | Tokyo `ap-northeast-1`；候選 model `amazon.nova-lite-v1:0`，Serverless／Standard；不得使用 Marketplace、Batch 或 Global inference。 |
+| Region／model | Tokyo `ap-northeast-1`；固定 model `amazon.nova-lite-v1:0`，Serverless／Standard；不得使用 Marketplace、Batch 或 Global inference。 |
 | Guardrail | `co-story-tier0-safety`；Standard tier、APAC cross-Region profile `apac.guardrail.v1:0`、default KMS。使用者已明確同意資料僅在 APAC geographic boundary 內跨區域處理。 |
 | Content | Hate High、Insults Medium、Sexual High、Violence Low、Misconduct Low，prompt／response Block；Prompt Attack High。只處理 Text。 |
 | Privacy | EMAIL／PHONE input／output 均 Mask；無 regex。Denied topics、Profanity、custom words、Grounding、Relevance 全部停用。 |
 | Price baseline | Nova Lite Standard：input `US$0.072／1M tokens`、output `US$0.288／1M tokens`；Guardrail 另按啟用政策的 text units 計費。 |
-| 尚未核准／執行 | 不 Test、不 Invoke model、不啟用 invocation logging、不發布／使用未驗證 version、不授予 AppRole Bedrock 權限。 |
+| 固定版本／IAM | Guardrail version `1`；既有 AppRole 只允許 exact Nova Lite `InvokeModel`，以 versioned Guardrail ARN condition fail closed，並只允許來源 Guardrail與 Tokyo profile 的六個 APAC destination `ApplyGuardrail` ARN；不授予串流、其他 model 或 Full Access。 |
+| 尚未執行 | 不 Test、不 Invoke model、不啟用 invocation logging；真實 allow／block／PII mask 與故事生成留待另批極小 token 預算驗證。 |
 | 停止條件 | 出現 Global profile、Marketplace subscription、Provisioned Throughput、未限定 model／Guardrail 的 `Resource: *`、明文 prompt logging 或單次測試無 token ceiling 時停止。 |
 
 > 2026-08-15 結果：Guardrail resource 建立完成且 status `Ready`；未進行任何 Test／model invocation，未發布或驗證固定 version，EC2 AppRole 仍無 Bedrock 權限。證據摘要見 [`2026-08-15-tier0-bedrock-guardrail`](../evidence/2026-08-15-tier0-bedrock-guardrail/validation.md)。
 
+> 2026-08-17 結果：使用者核准 Batch 5A 後發布固定 version `1`；`co-story-tier0-compute` change set 只有 `AppRole Modify / Replacement=False`，執行後為 `UPDATE_COMPLETE`。Policy Simulator 正面 exact v1 為 `Allowed`、代表性 v2 為 `Denied`；IAM Console 未顯示 Access Analyzer validation pane，因此該項誠實記為未執行。未 Test、未 Invoke model、未啟用 logging，無新增固定費資源。R3 證據見 [`2026-08-17-tier0-bedrock-runtime-iam`](../evidence/2026-08-17-tier0-bedrock-runtime-iam/tdd-validation.md)。
+
+## 無自有網域的 public HTTPS 路徑比較（2026-08-17）
+
+此比較屬 M3「Tier 0 AWS 可玩」原定關鍵路徑，不是額外功能。目標是在不購買網域、不新增不必要常駐費用的前提下，讓既有 EC2 上的同源 Nginx＋FastAPI 可由瀏覽器以可信任 HTTPS 操作。
+
+| 路徑 | 新增費用／資源 | 優點 | 主要代價 | 結論 |
+| --- | --- | --- | --- | --- |
+| **A. Direct EC2＋Let's Encrypt IP certificate** | 不新增 AWS resource；沿用已計入成本的 EC2、EBS 與 public IPv4。Let's Encrypt 憑證免費。 | 符合原定單 EC2／Nginx 架構；browser 到 origin 端到端 TLS；不經 global edge；不需 Route 53、ACM 或 ALB。 | IP certificate 約 160 小時有效，必須自動續期；EC2 stop/start 導致 public IP 改變時需重發憑證並更新 allowlist；憑證及 IP 會進入公開 Certificate Transparency 生態。 | **建議的最低成本 Tier 0 路徑**；需以 Batch 6A 明確核准外部 CA 與 production exposure。 |
+| B. CloudFront pay-as-you-go＋default `cloudfront.net` certificate | 課程流量預期落在 Always Free 的 1 TB／月與 1,000 萬 requests／月內；新增 1 distribution，但不是零風險硬上限。 | AWS 提供穩定的 HTTPS hostname 與 certificate，不需自行續期。 | viewer request 經 CloudFront global data path；既有無網域 EC2 origin 只能先用 HTTP，否則 origin certificate hostname 無法匹配；還需動態 request forwarding、cache disabled 與 origin 防繞過設計。Free Tier account **不可**使用 CloudFront Flat-Rate Free plan，只能用 pay-as-you-go Free Tier。 | 備選；只有使用者不接受短期 IP certificate 維運，且明確接受 global path 與 HTTP origin trade-off 時另開 Batch 6B。 |
+| C. ALB＋ACM | 新增 ALB 固定／LCU 費用，且至少需要兩個 public subnets。 | 標準 managed load balancer。 | ALB default AWS hostname 不能取得匹配的公開 certificate；無自有網域仍無法得到可信任 HTTPS，且超出單 EC2 Tier 0 最小架構。 | 排除。 |
+| D. App Runner default URL | 另建 App Runner compute／deployment 與 VPC connectivity。 | AWS 提供預設 HTTPS URL。 | 重複既有 EC2 runtime、擴張架構與費用，偏離已接受的 Tier 0 monolith。 | 排除。 |
+| E. Self-signed certificate／純 HTTP | 無新增服務。 | 操作簡單。 | 瀏覽器警告或無傳輸加密，不能驗證 `Secure` cookie，也不符合 public HTTPS gate。 | 排除。 |
+
+官方依據：CloudFront default hostname 可由 AWS 提供 viewer certificate，且 pay-as-you-go Always Free 包含每月 1 TB data transfer out 與 1,000 萬 HTTP(S) requests；但 Free Tier account 不可啟用新的 Flat-Rate Plans。ALB 的 HTTPS listener 必須有與使用名稱匹配的 certificate，AWS 也明載 default ALB DNS name 不能用來取得 `*.amazonaws.com` 公開 certificate。Let's Encrypt 自 2026 年起正式提供約 160 小時的 IP address certificates，Certbot `5.4+` 支援 webroot 取得與續期。來源：[CloudFront HTTPS](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/using-https-viewers-to-cloudfront.html)、[CloudFront pay-as-you-go pricing](https://aws.amazon.com/cloudfront/pricing/pay-as-you-go/)、[Flat-Rate account restriction](https://docs.aws.amazon.com/PricingPlanManager/latest/UserGuide/pricingplanmanager-ug.pdf)、[ALB certificate requirement](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/https-listener-certificates.html)、[ALB default DNS limitation](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-troubleshooting.html)、[Let's Encrypt IP certificates](https://letsencrypt.org/2026/03/11/shorter-certs-certbot/)。
+
+## Batch 6A：Direct EC2 public HTTPS（Completed 2026-08-18）
+
+| 項目 | 固定邊界 |
+| --- | --- |
+| Account／principal／Region | 沿用已驗證的 Free plan account、MFA `ming-dev` 與 Tokyo `ap-northeast-1`；Console-first，不執行 AWS CLI。 |
+| AWS resources | 不建立 Route 53、ACM、CloudFront、ALB、EIP、NAT、WAF、Lambda@Edge、App Runner、額外 subnet／instance／SG 或 log destination；沿用既有 public EC2、public IPv4 與 App SG。 |
+| 外部服務與揭露 | 明確允許 EC2 透過 ACME 向 Let's Encrypt 申請該次 public IPv4 的 short-lived certificate；public IP 與 certificate metadata 可能出現在公開 Certificate Transparency／CA 紀錄。不得傳送 application secret、session cookie、DB endpoint 或 AWS credential。 |
+| Local R3 TDD | 先以 Red／Green／Refactor 建立 IP-host production Nginx、ACME webroot、renewal／reload、Secure cookie、exact allowed host／origin、rollback 與 packaging assertions；targeted、受影響 suite、完整 Backend regression 與代表性 mutation 全綠後才可部署。 |
+| Ingress | `443/tcp` 對 Internet 提供 Nginx HTTPS；`80/tcp` 只允許 `/.well-known/acme-challenge/` 並將其他 request redirect 至同一 IP 的 HTTPS。維持 `22`、`8000` 與 staging `8080` 不對外。Uvicorn 仍只 listen `127.0.0.1:8000`、單 worker。 |
+| Runtime boundary | `CO_STORY_ENV=production`、`CO_STORY_COOKIE_SECURE=true`；allowed host 固定為當前 public IPv4，allowed origin 固定為 `https://<current-public-ip>`。Nginx private key 只允許 root／Nginx 必要讀取，不進 Git、artifact、shell history 或截圖。 |
+| Certificate lifecycle | Certbot 必須為支援 IP certificate 的 `5.4+`；使用 `shortlived` profile＋webroot，啟用 systemd timer，成功 renewal 後才 reload Nginx。部署驗證包含 production issuance、certificate hostname／expiry 與一次 renewal dry-run；不得依人工每六天續期。 |
+| 費用上限 | 新增 AWS 固定費 resource 為 `0`；既有 EC2／EBS／RDS／Secrets Manager／public IPv4 持續消耗 credits。CA certificate 為免費；若 Console 或安裝流程顯示任何訂閱、固定月費或新 AWS resource，立即停止。 |
+| 正面驗證 | Browser 對 `https://<public-ip>/` 無 certificate warning；HTTP 轉 HTTPS；`/api/v1/live` 與 `/api/v1/ready` 成功；production Secure／HttpOnly／SameSite cookie 與 security headers 可見；renew timer active。 |
+| 負面驗證 | `22`、`8000`、public `8080` 連線失敗；錯誤 Host／Origin 的 unsafe API request 被拒；HTTP 非 ACME path 不提供 application body；certificate／private key 不出現在 repo、logs、process args 或 evidence。 |
+| 停止條件 | public IPv4 與預期不符或在過程中改變、Certbot 版本不足、CA／CT 揭露超出本列、無法自動續期、browser warning、Nginx config test 失敗、任何非 `80/443` ingress、需 EIP／domain／付費服務、或 change scope 超出本表。 |
+| Rollback | 停止 public Nginx 與 renewal timer，恢復已驗證的 loopback staging unit／config；移除 host-local certificate material前先確認 staging readiness。AWS resource 不刪除；若 ingress 曾改動則只恢復既有 network stack 定義。 |
+| 後續另批 | 真實 Bedrock allow／block／PII mask、一次故事 invocation、三玩家完整回合、CloudWatch logs／metrics 與 checkpoints 更新均不含於本批。 |
+
+Batch 6A 的核准文字必須明確為「核准 Batch 6A」，並視為同意：production public exposure、Let's Encrypt 外部 CA、public IP certificate／CT metadata，以及上述短期憑證自動續期責任。一般「繼續」不算本批 AWS／外部寫入授權。
+
+2026-08-18 使用者已明確回覆「核准 Batch 6A」。執行仍須從 Console 唯讀 preflight 開始、每次只進行一個可驗證小步驟；本核准不包含任何 AWS CLI。
+
+> 2026-08-18 結果：production IP certificate、public Nginx、application 與 renewal timer 均為 active；Browser 無 certificate warning、landing page 可見且 HTTP→HTTPS。Public `8000/8080` 不可達；bad Host `400`、bad Origin `403`、security headers present。未新增 AWS resource／IAM／固定費用，Batch 6A 完成。
+
+## Batch 6A.1：Exact-release S3 read＋internal activation（Completed 2026-08-18）
+
+| 項目 | 固定邊界 |
+| --- | --- |
+| 目的 | 透過 Console 開啟既有 SSM Session，只將已上傳的修正版 release 安裝到既有 EC2，先恢復 internal staging readiness；本批不申請 certificate、不開放 production HTTPS。 |
+| AWS CLI | 僅在 EC2 的 SSM shell 內執行 2 次 exact-object `aws s3 cp`：`releases/tier0-20260818-7b89e60/co-story.tar.gz` 與同 prefix 的 `co-story.tar.gz.sha256`。禁止 recursive／sync／list／put／delete、其他 prefix、其他 bucket 或本機 AWS CLI。 |
+| Integrity | 下載後先以 SHA-256 驗證 archive；installer 必須由已驗證 archive 的 `co-story/ops/release/install_release_update.sh` member 取出，不執行 S3 中獨立上傳的 installer。 |
+| Host／DB | 新增 `/opt/co-story/releases/tier0-20260818-7b89e60` 與獨立 virtualenv，沿用既有 `root:co-story:640` database environment；只以既有 application DB role 執行 migration。禁止讀取 RDS master secret、重新開啟 bootstrap policy或輸出 DSN。 |
+| External／cost | Python dependencies 可能向既有 package index 下載；不新增 AWS resource、固定月費、IAM policy、secret、DB、EIP、NAT、ALB 或 CloudFront，只有少量 S3 GET／data transfer 與既有 runtime 費用。 |
+| Success | checksum `OK`；installer 回報 internal staging verified；`/opt/co-story/current` 指向 exact release；application 與 staging Nginx active；loopback readiness HTTP `200`。 |
+| Rollback／停止 | checksum／download／dependency／migration／candidate readiness 任一失敗即停止；installer 保留先前 active symlink，未啟用的新 release 會清除。不得接續 certificate 或 public exposure，直到本批結果確認。 |
+
+本批只補足 Batch 6A 明文未包含的 bounded AWS CLI read。核准文字必須為「核准 Batch 6A.1」；一般「繼續」或既有 Batch 6A 核准不能代替。
+
+2026-08-18 使用者已明確回覆「核准 Batch 6A.1」。
+
+> 2026-08-18 結果：兩次 exact-object S3 read 成功，archive checksum `OK`；已驗證 archive 內的 update installer 沿用既有 protected DB environment，將 `tier0-20260818-7b89e60` 啟用為 current release。Application／staging Nginx 均為 active，loopback readiness HTTP `200`；未讀 master secret、未新增 AWS resource／IAM／固定費用，尚未申請 certificate 或公開網站。
+
+## Batch 7：真實 Guardrail＋三玩家 Bedrock smoke（Approved 2026-08-18；尚未執行）
+
+| 項目 | 固定邊界 |
+| --- | --- |
+| 目的 | 先從 Console 開啟的 SSM Session，以既有 application SDK 執行 exactly 3 次 `ApplyGuardrail`，驗證 1 個 benign allow、1 個 harmful block、1 個 synthetic EMAIL／PHONE mask；再以公開 HTTPS 網站完成 3 位玩家、1 次世界生成與 1 個完整回合。`ApplyGuardrail` 不呼叫 foundation model。 |
+| Model／Guardrail | 固定 `amazon.nova-lite-v1:0`、Standard、Guardrail `co-story-tier0-safety` version `1`、APAC geographic profile；runtime 單次 output ceiling `800` tokens。不使用其他 model、streaming、Marketplace、Provisioned Throughput、Batch 或 Global inference。 |
+| Invocation ceiling | 世界生成只按一次；回合結算只按一次。正常最多 2 次 model invocation；既有 transient retry 最多令總數達 3。任何錯誤不得人工重試；不得進入第二回合或結局 generation。 |
+| Test data／privacy | 只用虛構世界、合成暱稱／角色／行動；PII mask case 只用明確標示為假的 example email／phone。禁止真實姓名、Email、電話、學員／客戶資料、secret、token 或識別碼。已接受資料只在 APAC geographic boundary 內跨區域處理。 |
+| Pricing ceiling | 官方 Standard baseline：Nova Lite input `US$0.072/1M tokens`、output `US$0.288/1M tokens`；Guardrails content filter `US$0.15/1,000 text units`、sensitive information `US$0.10/1,000 text units`，每 text unit 最多 1,000 characters。預期本批遠低於 `US$0.01`，硬停止上限 `US$0.05`。 |
+| Logging／resources | 不啟用 invocation logging，不建立 CloudWatch log group、S3 destination、IAM、model access subscription、resource 或固定費用；不執行 AWS CLI。Guardrail evaluation 只可由 `/opt/co-story/current/.venv` 的既有 SDK 與 instance role 發出，不安裝工具或建立 credential。 |
+| Success | Guardrail allow／block／PII mask 三案例符合；三個 Browser session 進入同房、世界確認、角色完成、三個 action 送出、1 回合由真實 storyteller 結算且進入下一回合；private RDS 狀態可刷新讀回。 |
+| Stop／cleanup | Access denied、model subscription／條款、非 APAC routing、Guardrail 未介入／未 mask、schema invalid、fallback、超過 3 次 invocation、成本疑慮或任何真實 PII 均停止。證據完成後由房主刪除 smoke room，不保留 session cookie／room code／public IP 原圖。 |
+
+本批核准文字必須為「核准 Batch 7」，並視為同意上述最多 3 次 Nova Lite invocation、3 次 Guardrail synthetic evaluation、APAC processing 與 `US$0.05` 硬上限。一般「繼續」或 Batch 6A 核准不能代替。
+
+2026-08-18 使用者已明確回覆「核准 Batch 7」。仍採 Console／Browser-first、每次只執行一個可驗證功能步驟；不包含 AWS CLI。
+
+價格與計費依據：[Amazon Bedrock pricing](https://aws.amazon.com/bedrock/pricing/)、[Guardrail 計費方式](https://docs.aws.amazon.com/bedrock/latest/userguide/guardrails-how.html)、[Nova Lite model card](https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-amazon-nova-lite.html)。Guardrail 在 input 被阻擋時仍收 guardrail evaluation 費，但不收 foundation model inference 費。
+
 ## 必填核准欄位
 
-- Batch：`0 唯讀盤點` 或 `1 network CloudFormation`（不得以一般「開始 AWS」同意代替）。
-- 帳號：新帳號，帳號 ID 僅在受控證據中遮罩保存。
-- Region：待 Batch 0 盤點確認；建議依 Bedrock／RDS 可用性選單一 Region。
-- 最大成本與停止日期：待使用者在 Pricing Calculator estimate 後填入。
-- 執行者與 principal：待 Batch 0 確認，僅用 MFA／短期憑證；禁止長期 Access Key。
-- 清理責任：使用者確認；network batch 失敗或不再使用時刪除該 stack，且確認無殘留 NAT／EIP／endpoint。
+- Batch：必須指名本文件中一個仍為 Proposed 的 bounded batch；一般「開始 AWS」或「繼續」不能代替。
+- 帳號／Region：沿用已驗證的專題 Free plan account 與 Tokyo `ap-northeast-1`；account ID 只可遮罩保存。
+- 最大成本與停止日期：不得超過該 batch 表列成本；既有計費資源最晚 2026-09-08 清理或另行核准延長。
+- 執行者與 principal：只使用已驗證的 MFA Console principal；禁止長期 Access Key。AWS CLI 必須另有明確 bounded batch 核准。
+- 清理責任：使用者負責依 batch rollback／清理列確認資源、host material 與任何衍生物均已移除；不可只看 stack 名稱判定清理完成。

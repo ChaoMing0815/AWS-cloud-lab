@@ -5,6 +5,7 @@ from pathlib import Path
 ROOT = Path(__file__).parents[2]
 BUILD = ROOT / "ops/release/build_bundle.sh"
 INSTALL = ROOT / "ops/release/install_staging.sh"
+UPDATE_INSTALL = ROOT / "ops/release/install_release_update.sh"
 STAGING_NGINX = ROOT / "ops/nginx/co-story-staging.conf"
 STAGING_NGINX_UNIT = ROOT / "ops/systemd/co-story-nginx-staging.service"
 
@@ -24,6 +25,7 @@ def test_bundle_builder_archives_only_committed_head_with_checksum_and_installer
     assert "shasum -a 256" in script
     assert "co-story.tar.gz.sha256" in script
     assert "install_staging.sh" in script
+    assert "install_release_update.sh" in script
     assert "set -x" not in script
     assert "DATABASE_URL" not in script
 
@@ -113,7 +115,7 @@ def test_staging_installer_removes_only_an_unresolvable_current_symlink() -> Non
 
 
 def test_release_shell_assets_have_valid_bash_syntax() -> None:
-    for script in (BUILD, INSTALL):
+    for script in (BUILD, INSTALL, UPDATE_INSTALL):
         result = subprocess.run(
             ["bash", "-n", script],
             capture_output=True,
@@ -121,3 +123,65 @@ def test_release_shell_assets_have_valid_bash_syntax() -> None:
             check=False,
         )
         assert result.returncode == 0, result.stderr
+
+
+def test_release_update_reuses_protected_database_environment_without_bootstrap() -> None:
+    script = _read(UPDATE_INSTALL)
+
+    assert "/etc/co-story/database.env" in script
+    assert "root:co-story:640" in script
+    assert "bootstrap_database.py" not in script
+    assert "MASTER_SECRET" not in script
+    assert "APP_DB_SECRET" not in script
+    assert "get-secret-value" not in script
+    assert "DATABASE_URL=" not in script
+    assert "set -x" not in script
+
+
+def test_release_update_verifies_archive_and_preserves_rollback_boundary() -> None:
+    script = _read(UPDATE_INSTALL)
+
+    checksum_at = script.index("sha256sum -c")
+    extract_at = script.index("tar -xzf")
+    package_at = script.index("python3.13 -m venv")
+    activate_at = script.index('activate.sh" "$release_id"')
+    assert checksum_at < extract_at < package_at < activate_at
+    assert 'resolved_releases="$(realpath -e "$releases")"' in script
+    assert 'previous_target="$(readlink -f "$root/current"' in script
+    assert 'active_target="$(readlink -f "$root/current"' in script
+    assert 'if [ "$active_target" != "$release_dir" ]; then' in script
+    assert 'rm -rf "$release_dir"' in script
+
+
+def test_release_update_preserves_the_active_public_or_staging_edge_mode() -> None:
+    script = _read(UPDATE_INSTALL)
+
+    assert "systemctl is-active --quiet co-story-nginx-public.service" in script
+    assert "/etc/co-story/runtime.env" in script
+    assert "CO_STORY_ALLOWED_HOSTS=" in script
+    assert 'activate.sh" "$release_id" "$health_host"' in script
+    assert "systemctl restart co-story-nginx-public.service" in script
+    assert 'wait_for_readiness "https://$health_host/api/v1/ready" "$health_host"' in script
+    assert "systemctl restart co-story-nginx-staging.service" in script
+    assert 'wait_for_readiness http://127.0.0.1:8080/api/v1/ready localhost' in script
+
+
+def test_release_update_restores_previous_release_when_edge_verification_fails() -> None:
+    script = _read(UPDATE_INSTALL)
+
+    assert "restore_previous_release()" in script
+    assert 'ln -s "$previous_target" "$restore_link"' in script
+    assert 'mv -Tf "$restore_link" "$root/current"' in script
+    assert "systemctl restart co-story.service" in script
+    assert "if ! verify_active_edge; then" in script
+    assert "restore_previous_release" in script
+
+
+def test_release_update_sets_service_readable_umask_before_building_the_release() -> None:
+    script = _read(UPDATE_INSTALL)
+
+    root_check_at = script.index('if [ "$(id -u)" -ne 0 ]; then')
+    umask_at = script.index("umask 0022", root_check_at)
+    stage_at = script.index('stage="$(mktemp -d', umask_at)
+    venv_at = script.index('python3.13 -m venv', stage_at)
+    assert root_check_at < umask_at < stage_at < venv_at
