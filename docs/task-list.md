@@ -75,6 +75,7 @@
 - [x] 建立最小權限 EC2 app role；不含管理員或服務 Full Access。
 - [x] 建立單台小型 EC2、Nginx、FastAPI；不開 public SSH。
 - [x] 建立 Bedrock adapter並限制 model、token、timeout 與 retry。
+- [ ] 部署 application-layer 明確 Prompt Injection 前置拒絕；本機 Red `a3f12a8`／Green `6f872b2` 與 full regression 已通過，待零模型 AWS Browser 驗證。
 - [x] 驗證 3 位玩家完成一回合、refresh 後資料存在。
 - [ ] 驗證 DB 外網連線失敗、未知 principal 無法呼叫 Bedrock。
 - [ ] 保存公開 URL、VPC、subnet、SG、DB、IAM 與遊戲成功證據。

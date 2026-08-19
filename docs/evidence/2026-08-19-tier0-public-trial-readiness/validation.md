@@ -17,4 +17,6 @@
 - 零模型 Browser gate 通過：新 AWS runtime 文案存在、舊 local 文案不存在、canonical loading status 可見且無 Landing flash、private PostgreSQL 標示與 session restore 正常、近端關鍵字 validation error 正常且生成次數不變。
 - Batch 9C exactly 1 次 synthetic prompt-injection request：Browser 顯示安全通用錯誤、world fields 未變、剩餘次數由 `2` 變 `1`；安全 log 僅輸出 `SCHEMA_INVALID`，HTTP 為 `503`。
 - 結論：Batch 9C 不是 `CONTENT_REJECTED`／Guardrail intervention，Prompt Attack smoke 未通過；不得以模型 schema failure 宣稱安全控制有效，且未重試。
-- 殘餘：需以 application-layer bounded rejection 補上明確注入前置防線；此防線只能作 defense-in-depth，不能宣稱能偵測所有 prompt injection。
+- Application-layer 防線 Red `a3f12a8`：英文與中文代表性注入均錯誤得到 `200`，證明測試能捕捉缺少的行為。
+- Green `6f872b2`：兩種明確 override／system-prompt extraction 均在 Storyteller 前回安全 `422`，不呼叫模型、不扣生成次數、不回顯輸入；普通「忽略風雨」故事語句仍回 `200`。Targeted `3 passed`、affected suites `56 passed`、Backend full `311 passed, 8 skipped`。
+- 殘餘：application-layer bounded rejection 尚待新 release 部署；它只能作 defense-in-depth，不能宣稱能偵測所有 Prompt Injection。
