@@ -65,6 +65,9 @@ button:disabled, textarea:disabled, input:disabled, select:disabled { cursor: no
 .topbar-link { color: var(--muted); font-size: .78rem; text-decoration: none; }
 .topbar-link:hover, .topbar-link:focus-visible { color: var(--gold); }
 
+#appLoadingStatus { display: grid; min-height: calc(100vh - 150px); margin: 0; place-items: center; color: var(--muted); }
+#appLoadingStatus[hidden] { display: none; }
+
 .landing-shell {
   position: relative;
   display: grid;

@@ -21,7 +21,20 @@ import { LandingPage } from "../ui/pages/landing-page.js";
 
 globalThis.addEventListener("popstate", () => globalThis.location.reload());
 
-function mountGamePage({ forceMock = false } = {}) {
+const SURFACE_IDS = ["landingPage", "gamePage", "rulesPage"];
+
+function showLoading() {
+  SURFACE_IDS.forEach((id) => { document.getElementById(id).hidden = true; });
+  document.getElementById("appLoadingStatus").hidden = false;
+}
+
+function showSurface(surfaceId) {
+  SURFACE_IDS.forEach((id) => { document.getElementById(id).hidden = id !== surfaceId; });
+  document.getElementById("appLoadingStatus").hidden = true;
+}
+
+async function mountGamePage({ forceMock = false } = {}) {
+  showLoading();
   const config = globalThis.CO_STORY_CONFIG ?? { apiMode: "mock", apiBasePath: "/api/v1" };
   const apiMode = forceMock ? "mock" : config.apiMode;
   const gameApi = apiMode === "http"
@@ -54,35 +67,35 @@ function mountGamePage({ forceMock = false } = {}) {
     },
   });
 
-  document.getElementById("landingPage").hidden = true;
-  document.getElementById("gamePage").hidden = false;
-  page.mount();
+  await page.mount();
+  showSurface("gamePage");
 }
 
-const path = globalThis.location?.pathname ?? "/";
-const formalRoomPath = /^\/room\/[A-HJ-NP-Z2-9]{6}/;
-const formalGameSuffixes = ["/lobby", "/play", "/ending"];
-if (path === "/demo") mountGamePage({ forceMock: true });
-else if (path === "/host/setup") mountGamePage();
-else if (path === "/rules") {
-  document.getElementById("landingPage").hidden = true;
-  document.getElementById("gamePage").hidden = true;
-  document.getElementById("rulesPage").hidden = false;
+async function bootstrap() {
+  const path = globalThis.location?.pathname ?? "/";
+  const formalRoomPath = /^\/room\/[A-HJ-NP-Z2-9]{6}/;
+  const formalGameSuffixes = ["/lobby", "/play", "/ending"];
+  if (path === "/demo") await mountGamePage({ forceMock: true });
+  else if (path === "/host/setup") await mountGamePage();
+  else if (path === "/rules") showSurface("rulesPage");
+  else if (formalRoomPath.test(path) && formalGameSuffixes.some((suffix) => path.endsWith(suffix))) {
+    await mountGamePage();
+  }
+  else if (path === "/") {
+    const config = globalThis.CO_STORY_CONFIG ?? { apiBasePath: "/api/v1" };
+    const gameApi = new FetchGameApi({ basePath: config.apiBasePath });
+    const landing = new LandingPage({
+      createRoom: new CreateRoom(gameApi),
+      joinRoomByCode: new JoinRoomByCode(gameApi),
+      loadCurrentSession: new LoadCurrentSession(gameApi),
+      navigate(route) {
+        globalThis.history.pushState({}, "", route);
+        void mountGamePage();
+      },
+    });
+    landing.mount();
+    showSurface("landingPage");
+  }
 }
-else if (formalRoomPath.test(path) && formalGameSuffixes.some((suffix) => path.endsWith(suffix))) {
-  mountGamePage();
-}
-else if (path === "/") {
-  const config = globalThis.CO_STORY_CONFIG ?? { apiBasePath: "/api/v1" };
-  const gameApi = new FetchGameApi({ basePath: config.apiBasePath });
-  const landing = new LandingPage({
-    createRoom: new CreateRoom(gameApi),
-    joinRoomByCode: new JoinRoomByCode(gameApi),
-    loadCurrentSession: new LoadCurrentSession(gameApi),
-    navigate(route) {
-      globalThis.history.pushState({}, "", route);
-      mountGamePage();
-    },
-  });
-  landing.mount();
-}
+
+void bootstrap();
