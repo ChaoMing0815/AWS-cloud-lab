@@ -16,7 +16,7 @@ AWS 雲端工程師培訓期末專題。3–5 位玩家在同一房間建立角�
 - Private S3 deployment artifacts、Secrets Manager application secret 與短期 lifecycle 已建立。
 - Amazon Bedrock Nova Lite 已完成真實世界草稿與三玩家回合敘事；固定 Guardrail v1、bounded IAM 與 application-layer 明確 Prompt Injection 前置拒絕已部署。
 
-公開網址含目前 EC2 public IP，只私下提供受測者，不寫入 repository。試玩方式與回饋項目見 [`docs/qa/public-trial-guide.md`](docs/qa/public-trial-guide.md)，最新狀態以 [`docs/handoffs/CURRENT.md`](docs/handoffs/CURRENT.md) 為準。
+公開網址含目前 EC2 public IP，只私下提供受測者，不寫入 repository。外部 E2E 驗證方式與 AWS 證據項目見 [`docs/qa/public-trial-guide.md`](docs/qa/public-trial-guide.md)，最新狀態以 [`docs/handoffs/CURRENT.md`](docs/handoffs/CURRENT.md) 為準。
 
 ## Tier 0 目前架構
 
