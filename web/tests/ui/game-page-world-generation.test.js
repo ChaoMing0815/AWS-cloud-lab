@@ -113,3 +113,55 @@ test("GamePage 確認世界的 422 會標示對應欄位並保留可編輯草稿
     globalThis.document = originalDocument;
   }
 });
+
+test("GamePage 在生成按鈕旁顯示 pending 與安全錯誤且保留既有草稿", async () => {
+  const originalDocument = globalThis.document;
+  const feedback = { hidden: true, textContent: "", dataset: {} };
+  const globalFeedback = { hidden: true, textContent: "", dataset: {} };
+  const nodes = new Map([
+    ["worldKeywordsInput", { value: "雨夜，山村，風車" }],
+    ["toneInput", { value: "light_comedy" }],
+    ["customToneInput", { value: "" }],
+    ["supplementalRequestInput", { value: "只使用原創虛構設定。" }],
+    ["worldGenerationFeedback", feedback],
+    ["feedback", globalFeedback],
+  ]);
+  globalThis.document = { getElementById: (id) => nodes.get(id) };
+  try {
+    let rejectGeneration;
+    const generation = new Promise((_, reject) => { rejectGeneration = reject; });
+    const draftRoom = {
+      status: "DRAFT",
+      version: 2,
+      worldGenerationCount: 1,
+      world: { storyTitle: "既有草稿" },
+      session: { isHost: true },
+    };
+    const page = new GamePage({
+      generateWorld: { execute: () => generation },
+    });
+    page.room = draftRoom;
+    page.setBusy = () => {};
+    page.syncRoute = () => {};
+    page.render = () => {};
+
+    const pending = page.handleGenerateWorld({ preventDefault() {} });
+    assert.equal(feedback.hidden, false);
+    assert.equal(feedback.textContent, "正在生成世界草稿…");
+    assert.equal(feedback.dataset.kind, "pending");
+
+    rejectGeneration(new ApiError(
+      "WORLD_GENERATION_UNAVAILABLE",
+      "世界生成暫時無法完成。",
+      503,
+    ));
+    await pending;
+
+    assert.equal(page.room, draftRoom);
+    assert.equal(feedback.hidden, false);
+    assert.equal(feedback.textContent, "世界生成暫時無法完成。");
+    assert.equal(feedback.dataset.kind, "error");
+  } finally {
+    globalThis.document = originalDocument;
+  }
+});

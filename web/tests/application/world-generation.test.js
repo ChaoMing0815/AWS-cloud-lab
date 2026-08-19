@@ -20,7 +20,7 @@ test("GenerateWorld 正規化關鍵字並只透過 GameApi port 生成草稿", a
   };
 
   const result = await new GenerateWorld(gameApi).execute({
-    keywords: " 夜班, 便利商店，盤點 ",
+    keywords: " 夜班、便利商店，盤點 ",
     tone: "mystery",
     customTone: " ",
     supplementalRequest: " 讓玩家先編輯。 ",

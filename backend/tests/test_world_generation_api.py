@@ -1,4 +1,5 @@
 from copy import deepcopy
+import json
 
 import pytest
 from fastapi.testclient import TestClient
@@ -193,10 +194,11 @@ def test_world_generation_allows_only_two_actual_storyteller_invocations() -> No
     ],
 )
 def test_world_generation_failure_consumes_attempt_and_replay_does_not_leak_or_reinvoke(
-    failure, expected_status
+    failure, expected_status, caplog
 ) -> None:
     storyteller = WorldGenerationStoryteller(failure)
     app = create_app(storyteller=storyteller)
+    caplog.set_level("WARNING", logger="co_story.storyteller")
     with TestClient(app) as client:
         room = create_room(client, "world-generation-failure-create")
         first = generate_world(client, room, "world-generation-failure")
@@ -210,6 +212,15 @@ def test_world_generation_failure_consumes_attempt_and_replay_does_not_leak_or_r
     assert len(storyteller.calls) == 1
     stored = app.state.room_service.repository.get(room["id"])
     assert stored.world_generation_count == 1
+    events = [
+        json.loads(record.message)
+        for record in caplog.records
+        if record.name == "co_story.storyteller"
+    ]
+    assert events == [
+        {"operation": "generate_world", "failure_code": failure.code}
+    ]
+    assert "請讓玩家能編輯後再確認" not in caplog.text
 
 
 def test_non_host_cannot_generate_world_or_invoke_storyteller() -> None:
