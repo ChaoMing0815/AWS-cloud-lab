@@ -2,9 +2,9 @@
 
 - 更新日期：2026-08-19
 - 近期目標：2026-08-24 第一次報告前完成 Tier 0 AWS 公開試玩、去識別化證據、同學／友人試玩與成本檢查。
-- Branch：`codex/tier0-public-trial-ui`，由已同步的 `main` merge commit `3c5db99` 建立；尚未 push／PR。
-- 本機功能 checkpoint：公開試玩 UX／安全失敗記錄 `d2b76ba`；canonical route loading shell `f9d4155`；明確 Prompt Injection 前置拒絕 `6f872b2`。
-- Regression：Backend `311 passed, 8 skipped`；Frontend `83 passed`（2026-08-19）。
+- Branch：`codex/tier0-public-trial-ui`，由已同步的 `main` merge commit `3c5db99` 建立；已 push，GitHub PR #4 尚未合併。
+- 本機功能 checkpoint：公開試玩 UX／安全失敗記錄 `d2b76ba`；canonical route loading shell `f9d4155`；明確 Prompt Injection 前置拒絕 `6f872b2`；widow／orphan 排版規則 `18fcd21`；首頁公開試玩安全提示 `62b4e02`。
+- Regression：Backend `311 passed, 8 skipped`；Frontend `85 passed`（2026-08-19）。
 - AWS active release：`tier0-20260819-ee128da`。
 - 操作邊界：Console-first；未經新的 bounded batch 核准不得執行 AWS CLI。使用者操作 AWS Console／SSM，Agent 只提供單一可驗證步驟。
 
@@ -20,6 +20,8 @@
 - 該版本的本機 Red commits 為 `66ee7b5`、`8c9bde0`、`816b817`；Green commits 為 `d2b76ba`、`f9d4155`。世界生成按鈕旁顯示 loading／安全錯誤、關鍵字接受 `、`／`，`／`,`、範例文字泛用化，後端只記 allowlist failure code，不記 prompt、room、player、AWS 原始錯誤或 secret。
 - Batch 9C exactly 1 次 synthetic prompt-injection 世界生成已完成：Browser 顯示安全的「世界生成暫時無法完成」、world fields 未變、生成剩餘次數由 `2` 變 `1`；正規化 log 為 `SCHEMA_INVALID`、HTTP `503`。這不是 `CONTENT_REJECTED` 或 Guardrail intervention，證明既有 Prompt Attack filter 對代表性測試不足以單獨依賴；禁止重試。
 - Application-layer 明確注入前置拒絕已依嚴格 TDD 完成並部署：Red `a3f12a8`、Green `6f872b2`，active release `tier0-20260819-ee128da`。Batch 9D Browser 驗證英文 override＋system-prompt extraction 在 Storyteller 前回安全 `422`，生成剩餘次數維持 `1`、world fields 不變、`STORYTELLER_FAILURE_LOGS=0`；普通「忽略風雨」故事語句仍通過。此 bounded detector 只是 defense-in-depth，不宣稱能偵測所有 Prompt Injection。
+- 同學／友人試玩操作、Likert 回饋、自由文字問題、停止條件與去識別化證據規則已整理於 `docs/qa/public-trial-guide.md`。
+- 尚未部署的本機 UI 收尾已依 TDD 完成：標題與段落使用 responsive `balance`／`pretty` wrapping，列印樣式避免單行跨頁；首頁移除硬編換行並加入「使用暱稱、勿輸入個資／機密」提示。Red commits 為 `a3337b0`、`bf8b193`；Green commits 為 `18fcd21`、`62b4e02`。
 - Batch 8A 後 Cost Explorer 的 Total、Bedrock、EC2、RDS 與其他服務當時均顯示 `0`；帳務可能延遲，不能解讀為永久零成本。Credits 尚餘 `US$137.40`，最近到期日 2027-09-08。
 
 ## Next
@@ -32,7 +34,7 @@ Batch 9B release 與零模型 Browser gate已完成
 → 依清理計畫停止或刪除持續計費資源，再進入 Tier 1
 ```
 
-下一步是規劃同學／友人公開試玩與必要 UI 收尾；任何後續 S3 讀取、部署或 Bedrock 呼叫仍必須使用新的明確 bounded batch。
+下一步是先完成 PR #4 review／merge，再為尚未部署的試玩安全提示與排版收尾執行 Browser visual gate；若要部署到 AWS，必須建立新的明確 bounded batch。任何後續 S3 讀取、部署或 Bedrock 呼叫也都不得沿用舊核准。
 
 ## Residual risks
 
