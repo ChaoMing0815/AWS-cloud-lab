@@ -7,7 +7,7 @@ export class GenerateWorld {
 
   async execute({ keywords, tone, customTone = "", supplementalRequest = "" }) {
     const normalizedKeywords = String(keywords ?? "")
-      .split(/[，,]/)
+      .split(/[、，,]/)
       .map((keyword) => keyword.trim())
       .filter(Boolean);
     if (

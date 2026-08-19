@@ -43,9 +43,9 @@ function mountGamePage({ forceMock = false } = {}) {
     finishGame: new FinishGame(gameApi),
     deleteRoom: new DeleteRoom(gameApi),
     apiMode,
-    connectionLabel: apiMode === "http" ? "本機 FastAPI 模式" : "教學 Demo · 不保存進度",
+    connectionLabel: apiMode === "http" ? "AWS 公開試玩" : "教學 Demo · 不保存進度",
     persistenceLabel: apiMode === "http"
-      ? "本機原型 · 遊戲資料由 FastAPI memory repository 管理"
+      ? "AWS Tier 0 · 遊戲資料儲存於 private PostgreSQL"
       : "教學 Demo · 資料只存在本頁記憶體，重新進入即重設",
     navigate: forceMock ? null : (route) => {
       if (globalThis.location.pathname !== route) {

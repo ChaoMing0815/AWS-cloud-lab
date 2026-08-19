@@ -324,6 +324,10 @@ export class GamePage {
         supplementalRequest: byId("supplementalRequestInput").value,
       }),
       "世界草稿已生成，請編輯後再確認。",
+      {
+        feedbackId: "worldGenerationFeedback",
+        pendingMessage: "正在生成世界草稿…",
+      },
     );
     if (completed) this.applyGeneratedWorldDraft();
   }
@@ -404,18 +408,22 @@ export class GamePage {
     await this.run(() => this.useCases.finishGame.execute({ decision }), message);
   }
 
-  async run(operation, successMessage = "", { onError = null } = {}) {
+  async run(
+    operation,
+    successMessage = "",
+    { onError = null, feedbackId = "feedback", pendingMessage = "" } = {},
+  ) {
     this.setBusy(true);
-    this.showFeedback("");
+    this.showFeedback(pendingMessage, pendingMessage ? "pending" : "", feedbackId);
     try {
       this.room = await operation();
       this.syncRoute();
       this.render();
-      this.showFeedback(successMessage, "success");
+      this.showFeedback(successMessage, "success", feedbackId);
       return true;
     } catch (error) {
       onError?.(error);
-      this.showFeedback(error.message || "操作失敗，請稍後再試。", "error");
+      this.showFeedback(error.message || "操作失敗，請稍後再試。", "error", feedbackId);
       return false;
     } finally {
       this.setBusy(false);
@@ -440,8 +448,9 @@ export class GamePage {
     });
   }
 
-  showFeedback(message, kind = "") {
-    const feedback = byId("feedback");
+  showFeedback(message, kind = "", feedbackId = "feedback") {
+    const feedback = byId(feedbackId);
+    if (!feedback) return;
     feedback.hidden = !message;
     feedback.textContent = message;
     feedback.dataset.kind = kind;

@@ -162,7 +162,7 @@
           </div>
           <label id="customToneLabel" for="customToneInput" hidden>自訂調性</label>
           <input id="customToneInput" maxlength="40" hidden />
-          <label for="worldKeywordsInput">生成關鍵字（3–5 個，以逗號分隔）</label>
+          <label for="worldKeywordsInput">生成關鍵字（3–5 個，以頓號或逗號分隔）</label>
           <textarea id="worldKeywordsInput" maxlength="104" rows="2" placeholder="例如：夜班，便利商店，盤點"></textarea>
           <label for="supplementalRequestInput">補充要求</label>
           <textarea id="supplementalRequestInput" maxlength="200" rows="2" placeholder="可選，最多 200 字"></textarea>
@@ -170,6 +170,7 @@
             <button id="generateWorldButton" class="secondary-button" type="button">生成世界草稿</button>
             <span id="worldGenerationRemaining" class="muted">剩餘 2 次生成</span>
           </div>
+          <p id="worldGenerationFeedback" class="feedback" role="status" aria-live="assertive" hidden></p>
           <button class="primary-button" type="submit">確認世界並開放加入</button>
         </form>
 
@@ -260,7 +261,7 @@
               <option value="bond">羈絆</option>
             </select>
           </div>
-          <textarea id="actionInput" maxlength="240" rows="3" placeholder="描述你的行動，例如：我提議把三個部門的資料整合成一頁，直接向總經理爭取加碼……" required></textarea>
+          <textarea id="actionInput" maxlength="240" rows="3" placeholder="描述角色想做什麼、如何做，以及希望達成的效果。例如：我先觀察現場線索，再和隊友分工處理最危險的部分。" required></textarea>
           <div class="composer-footer">
             <span><strong id="actionCount">0</strong> 位玩家已提交本回合行動</span>
             <button class="primary-button" type="submit">提交行動 <span>→</span></button>
@@ -357,8 +358,8 @@
     </main>
 
     <footer>
-      <span id="persistenceStatus">本機原型 · 正在確認資料來源</span>
-      <span>AWS 部署尚未執行</span>
+      <span id="persistenceStatus">正在確認資料來源</span>
+      <span>AWS Tier 0 公開試玩｜AI 敘事由 Amazon Bedrock 生成</span>
     </footer>
 
     <script>

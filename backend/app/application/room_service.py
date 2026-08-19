@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import hmac
+import json
+import logging
 import secrets
 import string
 from datetime import datetime, timedelta
@@ -29,6 +31,16 @@ from app.domain.errors import DomainError
 from app.domain.models import Character, DiceResult, Player, Room, StoryEntry, TransferCode, World
 
 ROOM_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+STORYTELLER_LOGGER = logging.getLogger("co_story.storyteller")
+STORYTELLER_FAILURE_CODES = {
+    "AUTHORIZATION_ERROR",
+    "CONTENT_REJECTED",
+    "INVALID_MODEL",
+    "SCHEMA_INVALID",
+    "THROTTLED",
+    "TIMEOUT",
+    "TRANSIENT_SERVICE_ERROR",
+}
 TRANSFER_CODE_ISSUE_STATUSES = {
     "DRAFT",
     "LOBBY",
@@ -315,6 +327,20 @@ class RoomService:
                     keywords, tone, custom_tone, supplemental_request
                 )
             except StorytellerFailure as failure:
+                failure_code = (
+                    failure.code
+                    if failure.code in STORYTELLER_FAILURE_CODES
+                    else "UNKNOWN"
+                )
+                STORYTELLER_LOGGER.warning(
+                    json.dumps(
+                        {
+                            "operation": "generate_world",
+                            "failure_code": failure_code,
+                        },
+                        separators=(",", ":"),
+                    )
+                )
                 return {"room": current, "failure": failure.code}
 
             current.world = generated
