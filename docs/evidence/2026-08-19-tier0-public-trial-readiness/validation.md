@@ -19,4 +19,7 @@
 - 結論：Batch 9C 不是 `CONTENT_REJECTED`／Guardrail intervention，Prompt Attack smoke 未通過；不得以模型 schema failure 宣稱安全控制有效，且未重試。
 - Application-layer 防線 Red `a3f12a8`：英文與中文代表性注入均錯誤得到 `200`，證明測試能捕捉缺少的行為。
 - Green `6f872b2`：兩種明確 override／system-prompt extraction 均在 Storyteller 前回安全 `422`，不呼叫模型、不扣生成次數、不回顯輸入；普通「忽略風雨」故事語句仍回 `200`。Targeted `3 passed`、affected suites `56 passed`、Backend full `311 passed, 8 skipped`。
-- 殘餘：application-layer bounded rejection 尚待新 release 部署；它只能作 defense-in-depth，不能宣稱能偵測所有 Prompt Injection。
+- Batch 9D 已部署 `tier0-20260819-ee128da`：exact S3 objects `2`、checksum `OK`；application／public Nginx／renew timer active、staging inactive、HTTPS `200`、`Cache-Control: no-store`。
+- 零 Bedrock rejection gate：相同代表性英文注入在 API 前回 `422`，Browser 顯示完整安全訊息，生成剩餘次數維持 `1`、world fields 維持空白，`STORYTELLER_FAILURE_LOGS=0`。
+- 去識別化 Browser 證據：[明確 Prompt Injection 在 API 前被拒絕](batch9d-explicit-prompt-injection-rejected.png)。截圖只保留 synthetic test input、剩餘次數與安全訊息，不含 account／resource／session identifier。
+- 結論：第一次展示已有 Guardrail＋application-layer bounded rejection 的 defense-in-depth；仍不得宣稱能偵測所有 Prompt Injection。

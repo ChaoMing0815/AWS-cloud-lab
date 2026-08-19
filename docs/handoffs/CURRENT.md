@@ -5,7 +5,7 @@
 - Branch：`codex/tier0-public-trial-ui`，由已同步的 `main` merge commit `3c5db99` 建立；尚未 push／PR。
 - 本機功能 checkpoint：公開試玩 UX／安全失敗記錄 `d2b76ba`；canonical route loading shell `f9d4155`；明確 Prompt Injection 前置拒絕 `6f872b2`。
 - Regression：Backend `311 passed, 8 skipped`；Frontend `83 passed`（2026-08-19）。
-- AWS active release：`tier0-20260819-2de0424`。
+- AWS active release：`tier0-20260819-ee128da`。
 - 操作邊界：Console-first；未經新的 bounded batch 核准不得執行 AWS CLI。使用者操作 AWS Console／SSM，Agent 只提供單一可驗證步驟。
 
 ## Current
@@ -19,7 +19,7 @@
 - Batch 9B 已部署 `tier0-20260819-2de0424`：exact S3 objects `2`、checksum `OK`；application／public Nginx／renew timer active、staging inactive、HTTPS readiness `200`、首頁 `Cache-Control: no-store`。Browser 已驗證 AWS runtime 文案、private PostgreSQL 標示、canonical loading shell、session restore 與近端 validation error；未呼叫 Bedrock。
 - 該版本的本機 Red commits 為 `66ee7b5`、`8c9bde0`、`816b817`；Green commits 為 `d2b76ba`、`f9d4155`。世界生成按鈕旁顯示 loading／安全錯誤、關鍵字接受 `、`／`，`／`,`、範例文字泛用化，後端只記 allowlist failure code，不記 prompt、room、player、AWS 原始錯誤或 secret。
 - Batch 9C exactly 1 次 synthetic prompt-injection 世界生成已完成：Browser 顯示安全的「世界生成暫時無法完成」、world fields 未變、生成剩餘次數由 `2` 變 `1`；正規化 log 為 `SCHEMA_INVALID`、HTTP `503`。這不是 `CONTENT_REJECTED` 或 Guardrail intervention，證明既有 Prompt Attack filter 對代表性測試不足以單獨依賴；禁止重試。
-- 本機已以嚴格 TDD 加入 application-layer 明確注入前置拒絕：Red `a3f12a8`、Green `6f872b2`。英文／中文 override＋system-prompt extraction 會在 Storyteller 前回安全 `422`，不扣生成次數、不呼叫模型、不回顯輸入；普通「忽略風雨」故事語句仍通過。此 bounded detector 只是 defense-in-depth，不宣稱能偵測所有 Prompt Injection，尚待新 release 部署。
+- Application-layer 明確注入前置拒絕已依嚴格 TDD 完成並部署：Red `a3f12a8`、Green `6f872b2`，active release `tier0-20260819-ee128da`。Batch 9D Browser 驗證英文 override＋system-prompt extraction 在 Storyteller 前回安全 `422`，生成剩餘次數維持 `1`、world fields 不變、`STORYTELLER_FAILURE_LOGS=0`；普通「忽略風雨」故事語句仍通過。此 bounded detector 只是 defense-in-depth，不宣稱能偵測所有 Prompt Injection。
 - Batch 8A 後 Cost Explorer 的 Total、Bedrock、EC2、RDS 與其他服務當時均顯示 `0`；帳務可能延遲，不能解讀為永久零成本。Credits 尚餘 `US$137.40`，最近到期日 2027-09-08。
 
 ## Next
@@ -27,13 +27,12 @@
 ```text
 Batch 9B release 與零模型 Browser gate已完成
 → Batch 9C exactly 1 次 synthetic prompt-injection smoke 回 SCHEMA_INVALID／503，未通過
-→ application-layer 明確注入拒絕已完成本機 TDD
-→ 建立新 release，取得 bounded deploy approval 後以零 Bedrock 呼叫驗證 API rejection 與次數不扣除
+→ Batch 9D 已部署 application-layer 明確注入拒絕，零 Bedrock rejection gate 通過
 → 完成同學／友人三玩家試玩、去識別化證據與報告素材
 → 依清理計畫停止或刪除持續計費資源，再進入 Tier 1
 ```
 
-下一步是建立純本機 release；任何後續 S3 讀取、部署或 Bedrock 呼叫仍必須使用新的明確 bounded batch。
+下一步是規劃同學／友人公開試玩與必要 UI 收尾；任何後續 S3 讀取、部署或 Bedrock 呼叫仍必須使用新的明確 bounded batch。
 
 ## Residual risks
 
