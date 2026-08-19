@@ -64,7 +64,7 @@
 - [ ] 完成世界草稿生成上限、保留輸入與手動輸入 fallback。
 - [ ] 完成回合 LLM 自動／手動 retry、deterministic fallback 與安全 telemetry。
 - [x] 完成三個獨立 Browser session 的三玩家 E2E。
-- [ ] 第一輪 AWS smoke 後改善世界生成 UX：關鍵字明確接受 `、`、`，`、`,` 三種常見分隔符並更新提示；生成中的 loading／失敗訊息與剩餘次數顯示在按鈕附近；canonical session 載入時不要短暫閃回 Landing；移除部署環境的舊本機原型文案。
+- [ ] 第一輪 AWS smoke 後改善世界生成 UX：本機嚴格 TDD 已完成關鍵字 `、`／`，`／`,`、按鈕附近 loading／安全失敗訊息、canonical loading shell、泛用行動範例與 AWS runtime 文案（`d2b76ba`、`f9d4155`）；尚待新的 bounded batch 部署與 Browser 驗證後勾選。
 
 ## C. Tier 0：AWS 可玩傳統架構
 
