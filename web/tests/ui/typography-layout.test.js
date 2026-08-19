@@ -5,12 +5,14 @@ import { readFile } from "node:fs/promises";
 
 test("responsive typography 避免標題與正文留下孤立短行", async () => {
   const css = await readFile(new URL("../../styles.css", import.meta.url), "utf8");
+  const html = await readFile(new URL("../../index.html", import.meta.url), "utf8");
 
   assert.match(
     css,
     /h1,\s*h2,\s*h3,\s*\.section-heading\s*\{[^}]*text-wrap:\s*balance/s,
   );
   assert.match(css, /p,\s*li\s*\{[^}]*text-wrap:\s*pretty/s);
+  assert.doesNotMatch(html, /<h1>[^<]*<br\s*\/?\s*>/i);
 });
 
 

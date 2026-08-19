@@ -15,6 +15,9 @@ test("無 session 的根頁提供正式建立、加入與次要 Demo 入口，�
   assert.match(html, /id=["']continueGameButton["']/, "缺少繼續遊戲按鈕");
   assert.match(html, /id=["']sessionNotice["']/, "缺少 session 狀態訊息");
   assert.match(html, /href=["']\/demo["']/, "缺少次要教學 Demo 入口");
+  assert.match(html, /id=["']trialSafetyNotice["']/, "缺少公開試玩安全提醒");
+  assert.match(html, /使用暱稱/);
+  assert.match(html, /勿輸入.*個人資料.*機密/);
   assert.doesNotMatch(html, /BONUS7/, "正式根頁不可硬編碼 Demo 房間");
 });
 
