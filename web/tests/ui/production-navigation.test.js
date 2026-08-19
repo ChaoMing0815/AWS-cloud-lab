@@ -41,6 +41,20 @@ test("browser back／forward 的 popstate 會重新依 server canonical route �
   );
 });
 
+test("deep route 在 canonical room 載入完成前只顯示安全 loading shell", async () => {
+  const html = await readFile(new URL("../../index.html", import.meta.url), "utf8");
+  const bootstrap = await readFile(
+    new URL("../../src/composition/bootstrap.js", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(html, /id=["']appLoadingStatus["'][^>]*role=["']status["']/);
+  assert.match(html, /id=["']landingPage["'][^>]*hidden/);
+  assert.match(bootstrap, /async function mountGamePage/);
+  assert.match(bootstrap, /await page\.mount\(\)[\s\S]*showSurface\(["']gamePage["']\)/);
+  assert.match(bootstrap, /showLoading\(\)[\s\S]*await page\.mount\(\)/);
+});
+
 test("遊戲規則頁有獨立路徑、返回首頁與核心規則摘要", async () => {
   const html = await readFile(new URL("../../index.html", import.meta.url), "utf8");
   const bootstrap = await readFile(
