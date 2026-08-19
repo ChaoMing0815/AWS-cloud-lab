@@ -194,12 +194,30 @@ def test_world_generation_rejects_explicit_prompt_injection_before_consuming_att
         )
 
     assert response.status_code == 422
-    assert response.json()["detail"] == "輸入包含疑似提示注入指令，請改寫故事要求。"
+    assert response.json()["error"] == {
+        "code": "PROMPT_INJECTION_REJECTED",
+        "message": "輸入包含疑似提示注入指令，請改寫故事要求。",
+    }
     assert malicious_request not in response.text
     assert storyteller.calls == []
     stored = app.state.room_service.repository.get(room["id"])
     assert stored.world_generation_count == 0
     assert stored.version == room["version"]
+
+
+def test_world_generation_does_not_reject_ordinary_story_instruction_language() -> None:
+    storyteller = WorldGenerationStoryteller()
+    with TestClient(create_app(storyteller=storyteller)) as client:
+        room = create_room(client, "world-generation-benign-instruction-create")
+        response = generate_world(
+            client,
+            room,
+            "world-generation-benign-instruction",
+            supplemental_request="故事裡有一張寫著『忽略風雨』的指令紙條，請保留這項線索。",
+        )
+
+    assert response.status_code == 200
+    assert len(storyteller.calls) == 1
 
 
 def test_world_generation_allows_only_two_actual_storyteller_invocations() -> None:

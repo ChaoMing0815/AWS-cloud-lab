@@ -17,6 +17,7 @@ from app.application.ports import (
     Storyteller,
     StorytellerFailure,
 )
+from app.application.input_safety import contains_explicit_prompt_injection
 from app.application.rules import (
     apply_spark,
     classify_result,
@@ -318,6 +319,16 @@ class RoomService:
                 raise DomainError("WORLD_ALREADY_CONFIRMED", "世界設定已確認。", 409)
             if current.world_generation_count >= 2:
                 raise DomainError("WORLD_GENERATION_LIMIT", "世界生成次數已達上限。", 409)
+            if contains_explicit_prompt_injection(
+                *keywords,
+                custom_tone,
+                supplemental_request,
+            ):
+                raise DomainError(
+                    "PROMPT_INJECTION_REJECTED",
+                    "輸入包含疑似提示注入指令，請改寫故事要求。",
+                    422,
+                )
 
             current.world_generation_count += 1
             current.version += 1
