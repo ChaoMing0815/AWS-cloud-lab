@@ -77,6 +77,7 @@
 - [x] 建立 Bedrock adapter並限制 model、token、timeout 與 retry。
 - [x] 部署 application-layer 明確 Prompt Injection 前置拒絕；Red `a3f12a8`／Green `6f872b2`，Batch 9D 以 API `422`、次數不扣除與零 Storyteller failure event 通過 AWS Browser 驗證。
 - [x] 驗證 3 位玩家完成一回合、refresh 後資料存在。
+- [x] 完成四玩家四回合外部公開試玩；Bedrock 六次呼叫、private RDS connection、EC2 低負載、HTTP 無 `5xx` 與刪房成功均有 sanitized evidence。
 - [ ] 驗證 DB 外網連線失敗、未知 principal 無法呼叫 Bedrock。
 - [ ] 保存公開 URL、VPC、subnet、SG、DB、IAM 與遊戲成功證據。
 
