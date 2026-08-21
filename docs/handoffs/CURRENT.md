@@ -1,10 +1,10 @@
 # CURRENT：目前工作交接
 
 - 更新日期：2026-08-21
-- 近期目標：2026-08-24 第一次報告前完成 Tier 0 AWS 公開試玩收尾、去識別化報告證據、試玩發現的安全／生命週期修正與延遲成本檢查。
-- Branch：`codex/tier0-public-trial-ui`，由已同步的 `main` merge commit `3c5db99` 建立；已 push，GitHub PR #4 尚未合併。
+- 近期目標：第一次進度報告書面稿與簡報已完成本機初稿；接續處理 Tier 0 公開試玩發現、PR #4 review／merge、延遲成本檢查與報告後資源清理。
+- Branch：`codex/tier0-public-trial-ui`，本機與遠端在本次 push 後一致；CI／報告交付 tip 為 `bf12650`，本文件狀態 commit 另計。GitHub PR #4 尚未合併。
 - 本機功能 checkpoint：公開試玩 UX／安全失敗記錄 `d2b76ba`；canonical route loading shell `f9d4155`；明確 Prompt Injection 前置拒絕 `6f872b2`；widow／orphan 排版規則 `18fcd21`；首頁公開試玩安全提示 `62b4e02`。
-- Regression：Backend `311 passed, 8 skipped`；Frontend `85 passed`（2026-08-19）。
+- Regression：Backend `313 passed, 8 skipped`；Frontend `85 passed`（2026-08-21，本機 CI foundation Green gate）。
 - AWS active release：`tier0-20260819-ee128da`。
 - 操作邊界：Console-first；未經新的 bounded batch 核准不得執行 AWS CLI。使用者操作 AWS Console／SSM，Agent 只提供單一可驗證步驟。
 
@@ -28,6 +28,10 @@
 - 公開試玩發現：iPhone Safari 需頻繁手動更新、世界生成前回合數會回預設值、角色儲存後曾顯示原始 JavaScript exception、刪房後各頁未立即導頁，以及回合敘事偏向逐句整合而非深入演繹。前三類 state／error 與刪房 lifecycle 是正式修正候選；敘事品質列為 post-MVP Prompt 優化。
 - 8/20 backend metrics／sanitized logs 已入 `docs/evidence/2026-08-20-tier0-four-player-trial/`。六張受測者原圖含 public IP、暱稱、通知或 Browser 資訊，未直接入庫；先以去識別化文字紀錄，報告圖待裁切／遮罩。
 - Batch 8A 後 Cost Explorer 的 Total、Bedrock、EC2、RDS 與其他服務當時均顯示 `0`；帳務可能延遲，不能解讀為永久零成本。Credits 尚餘 `US$137.40`，最近到期日 2027-09-08。
+- 第一次進度書面報告初稿已產出至 `docs/reports/2026-08-24-first-progress-report.docx`。內容已納入 Tier 0–5 選題思路、商業價值、前後端與 AWS 架構、Web／DB 分離、公私 subnet、重啟後 RDS persistence、CloudFormation、成本管控、Prompt Injection 防護邊界、實際遊玩畫面與後續演進；中文字體、標題尺寸、段落間距及單行跨頁已調整。
+- 第一次進度簡報已產出至 `docs/presentations/2026-08-24-first-progress-presentation.pptx`，共 13 頁並附逐頁繁體中文講稿。投影片以簡短文字、實際遊玩畫面與圖解呈現，另加入前端／後端責任及各自與 AWS 的串接方式；架構連線改用直角路徑，避免斜線穿越區塊。已通過投影片 overflow、逐頁視覺與 PowerPoint 壓縮檔完整性檢查。
+- 第一次進度報告、簡報與三張可重用架構圖已在 `bf12650` commit 並 push；Office 檔經壓縮結構與敏感字串 pre-push audit。報告產生／修復腳本因含本機限定路徑未入庫，已保留在 `/private/tmp/co-story-report-scripts-20260821`；`.gitignore` 已排除 `~$*` Office 鎖定檔。
+- GitHub CI foundation 已依嚴格 TDD 完成本機 Red `832d6bf` 與 Green `a8763df`：`.github/workflows/ci.yml` 在 pull request 與 `main` push 執行獨立 Backend／Frontend jobs，固定 Python `3.13`、Node `24` 與唯讀 `contents: read`；明確不授予 OIDC、AWS、ECR 或部署能力。Contract targeted tests `2 passed`，本機 Backend `313 passed, 8 skipped`、Frontend `85 passed`。兩個 commits 已 push；GitHub Actions run `32478705788` 實際通過，`backend-tests` 約 25 秒、`frontend-tests` 約 9 秒。PR checks 已成立，branch protection required checks 尚未設定。
 
 ## Next
 
@@ -36,12 +40,14 @@ Batch 9B release 與零模型 Browser gate已完成
 → Batch 9C exactly 1 次 synthetic prompt-injection smoke 回 SCHEMA_INVALID／503，未通過
 → Batch 9D 已部署 application-layer 明確注入拒絕，零 Bedrock rejection gate 通過
 → 四玩家四回合外部試玩與 backend evidence 已完成
+→ 第一次進度書面報告與 13 頁簡報已完成、通過 audit 並 push
+→ 純 CI foundation 已完成本機 Red／Green、完整 regression 與 GitHub-hosted runner 驗證
 → 修正公開 JavaScript exception、刪房導頁／polling lifecycle，並重現 Safari sync／回合選擇問題
 → 製作去識別化報告截圖、完成延遲成本檢查與 PR #4 review／merge
 → 第一次報告後依清理計畫停止或刪除持續計費資源，再進入 Tier 1
 ```
 
-下一步先以嚴格 TDD 修正公開試玩暴露的原始 JavaScript exception 與刪房後未導頁／持續 polling；Safari sync 與回合選擇回復預設值先做 bounded reproduction。完成 Browser gate、PR #4 review／merge 與延遲成本檢查後，再決定是否建立新的部署 batch。任何後續 S3 讀取、部署或 Bedrock 呼叫都不得沿用舊核准。
+下一個開發起點維持不變：先依嚴格 TDD 重現並修正公開試玩暴露的原始 JavaScript exception，再處理刪房後未導頁／持續 polling；Safari sync 與回合選擇回復預設值只先做 bounded reproduction。開始 coding 前依路由讀取 `docs/testing-strategy.md`、相關前端程式與最小必要 Feature Spec，不重讀整個 `docs/`。完成 Browser gate、PR #4 review／merge 與延遲成本檢查後，再決定是否建立新的部署 batch。任何後續 S3 讀取、部署或 Bedrock 呼叫都不得沿用舊核准。
 
 ## Residual risks
 
