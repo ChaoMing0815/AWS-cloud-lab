@@ -2,7 +2,7 @@
 
 - 更新日期：2026-08-21
 - 近期目標：第一次進度報告書面稿與簡報已完成本機初稿；接續處理 Tier 0 公開試玩發現、PR #4 review／merge、延遲成本檢查與報告後資源清理。
-- Branch：`codex/tier0-public-trial-ui`，本機角色錯誤安全化 tip 為 `49aa5dc`、遠端為 `44faa71`；本文件狀態 commit 另計。GitHub PR #4 尚未合併。
+- Branch：`codex/tier0-public-trial-ui`，角色錯誤安全化交付 tip `c155d4e` 已 push；本文件狀態 commit 另計。GitHub PR #4 尚未合併。
 - 本機功能 checkpoint：公開試玩 UX／安全失敗記錄 `d2b76ba`；canonical route loading shell `f9d4155`；明確 Prompt Injection 前置拒絕 `6f872b2`；widow／orphan 排版規則 `18fcd21`；首頁公開試玩安全提示 `62b4e02`。
 - Regression：Backend `313 passed, 8 skipped`；Frontend `88 passed`（2026-08-21，角色錯誤安全化 Green gate）。
 - AWS active release：`tier0-20260819-ee128da`。
@@ -32,7 +32,7 @@
 - 第一次進度簡報已產出至 `docs/presentations/2026-08-24-first-progress-presentation.pptx`，共 13 頁並附逐頁繁體中文講稿。投影片以簡短文字、實際遊玩畫面與圖解呈現，另加入前端／後端責任及各自與 AWS 的串接方式；架構連線改用直角路徑，避免斜線穿越區塊。已通過投影片 overflow、逐頁視覺與 PowerPoint 壓縮檔完整性檢查。
 - 第一次進度報告、簡報與三張可重用架構圖已在 `bf12650` commit 並 push；Office 檔經壓縮結構與敏感字串 pre-push audit。報告產生／修復腳本因含本機限定路徑未入庫，已保留在 `/private/tmp/co-story-report-scripts-20260821`；`.gitignore` 已排除 `~$*` Office 鎖定檔。
 - GitHub CI foundation 已依嚴格 TDD 完成本機 Red `832d6bf` 與 Green `a8763df`：`.github/workflows/ci.yml` 在 pull request 與 `main` push 執行獨立 Backend／Frontend jobs，固定 Python `3.13`、Node `24` 與唯讀 `contents: read`；明確不授予 OIDC、AWS、ECR 或部署能力。Contract targeted tests `2 passed`，本機 Backend `313 passed, 8 skipped`、Frontend `85 passed`。兩個 commits 已 push；GitHub Actions run `32478705788` 實際通過，`backend-tests` 約 25 秒、`frontend-tests` 約 9 秒。PR checks 已成立，branch protection required checks 尚未設定。
-- 角色儲存原始 JavaScript exception 已完成本機 R2 TDD：Red `6d3c8fe` 精確證明未知 `TypeError.message` 會外露；Green `49aa5dc` 只允許 `ApiError`／`DomainError` 的 `publicMessage` 顯示，未知錯誤改為「角色儲存失敗，請重新整理後再試。」並保留輸入、canonical room、解除 busy。Targeted `3 passed`、Frontend `88 passed`，代表性 sensitivity 可抓回直接顯示原文的 mutation。驗證見 `docs/evidence/2026-08-21-character-error-safety/validation.md`；尚未 push／部署。
+- 角色儲存原始 JavaScript exception 已完成 R2 TDD：Red `6d3c8fe` 精確證明未知 `TypeError.message` 會外露；Green `49aa5dc` 只允許 `ApiError`／`DomainError` 的 `publicMessage` 顯示，未知錯誤改為「角色儲存失敗，請重新整理後再試。」並保留輸入、canonical room、解除 busy。Targeted `3 passed`、Frontend `88 passed`，代表性 sensitivity 可抓回直接顯示原文的 mutation；GitHub Actions run `32496325155` 的 `backend-tests` 與 `frontend-tests` 均通過。驗證見 `docs/evidence/2026-08-21-character-error-safety/validation.md`；尚未部署。
 
 ## Next
 
@@ -43,7 +43,7 @@ Batch 9B release 與零模型 Browser gate已完成
 → 四玩家四回合外部試玩與 backend evidence 已完成
 → 第一次進度書面報告與 13 頁簡報已完成、通過 audit 並 push
 → 純 CI foundation 已完成本機 Red／Green、完整 regression 與 GitHub-hosted runner 驗證
-→ 公開 JavaScript exception 已完成本機 R2 TDD；尚未 push／部署
+→ 公開 JavaScript exception 已完成 R2 TDD、push 與 GitHub CI；尚未部署
 → 修正刪房後其他分頁收到 `404` 時的導頁／polling lifecycle，再重現 Safari sync／回合選擇問題
 → 製作去識別化報告截圖、完成延遲成本檢查與 PR #4 review／merge
 → 第一次報告後依清理計畫停止或刪除持續計費資源，再進入 Tier 1
@@ -58,7 +58,7 @@ Batch 9B release 與零模型 Browser gate已完成
 - Direct IP certificate 約 160 小時效期；必須保留 renewal timer 驗證。EC2 stop/start 若 public IP 改變，URL、certificate 與 allowlist 都需重建。
 - Idempotency store 仍是 process memory，不宣稱 multi-process exactly-once。
 - iPhone Safari 未穩定取得即時 canonical state，需要手動重新整理；mobile sync 尚未達 Desktop Chrome 等價。
-- 角色儲存原始 JavaScript exception 已在本機 `49aa5dc` 修正，但尚未 push／部署；AWS active release 仍不得宣稱已具備此防線。
+- 角色儲存原始 JavaScript exception 已在 `49aa5dc` 修正並通過 GitHub CI，但尚未部署；AWS active release 仍不得宣稱已具備此防線。
 - 成功刪房後原 room tabs 未立即導頁並持續 polling，造成大量預期外 `404`；刪除本身已由 `204` 與時序證明成功。
 - EC2 與 RDS 持續運行會消耗 credits；artifact objects 依 7 日 lifecycle 到期，但 stack／bucket不會自動刪除。
 - 原始截圖位於 macOS TemporaryItems／Downloads 時不算正式 evidence；入庫前須去除 account ID、ARN、IP、instance／subnet／SG ID、endpoint、secret ARN、bucket suffix、通知與不必要的 Browser 資訊。
