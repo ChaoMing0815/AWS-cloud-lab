@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { ApiError } from "../../src/adapters/api/api-error.js";
+import { DomainError } from "../../src/domain/domain-error.js";
 import { GamePage } from "../../src/ui/pages/game-page.js";
 
 
@@ -80,5 +81,16 @@ test("角色儲存仍顯示已正規化的 ApiError 訊息", async () => {
   const shownError = result.feedback.find(({ kind }) => kind === "error");
 
   assert.equal(shownError.message, "只有等待中的房間可以編輯角色。");
+  assert.equal(result.page.room, result.canonicalRoom);
+});
+
+
+test("角色儲存仍顯示可修正的 DomainError 訊息", async () => {
+  const result = await saveCharacterWith(
+    new DomainError("INVALID_ATTRIBUTE_TOTAL", "三項屬性總和必須等於 3。"),
+  );
+  const shownError = result.feedback.find(({ kind }) => kind === "error");
+
+  assert.equal(shownError.message, "三項屬性總和必須等於 3。");
   assert.equal(result.page.room, result.canonicalRoom);
 });

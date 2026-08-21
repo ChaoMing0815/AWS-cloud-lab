@@ -5,5 +5,6 @@ export class ApiError extends Error {
     this.code = code;
     this.status = status;
     this.fieldErrors = fieldErrors;
+    this.publicMessage = message;
   }
 }

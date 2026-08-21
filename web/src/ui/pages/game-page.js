@@ -18,6 +18,12 @@ function element(tagName, { className, text, title } = {}) {
   return node;
 }
 
+function publicErrorMessage(error, fallback) {
+  return typeof error?.publicMessage === "string" && error.publicMessage.trim()
+    ? error.publicMessage
+    : fallback;
+}
+
 export class GamePage {
   constructor({
     loadRoom,
@@ -362,6 +368,7 @@ export class GamePage {
         bond: byId("bondInput").value,
       }),
       "角色已儲存。",
+      { errorMessage: "角色儲存失敗，請重新整理後再試。" },
     );
   }
 
@@ -411,7 +418,12 @@ export class GamePage {
   async run(
     operation,
     successMessage = "",
-    { onError = null, feedbackId = "feedback", pendingMessage = "" } = {},
+    {
+      onError = null,
+      feedbackId = "feedback",
+      pendingMessage = "",
+      errorMessage = "操作失敗，請稍後再試。",
+    } = {},
   ) {
     this.setBusy(true);
     this.showFeedback(pendingMessage, pendingMessage ? "pending" : "", feedbackId);
@@ -423,7 +435,7 @@ export class GamePage {
       return true;
     } catch (error) {
       onError?.(error);
-      this.showFeedback(error.message || "操作失敗，請稍後再試。", "error", feedbackId);
+      this.showFeedback(publicErrorMessage(error, errorMessage), "error", feedbackId);
       return false;
     } finally {
       this.setBusy(false);
