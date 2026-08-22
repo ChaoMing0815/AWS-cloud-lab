@@ -61,6 +61,79 @@ test("GamePage 生成 canonical world draft 後留在 DRAFT 並回填可編輯�
   }
 });
 
+test("GamePage 成功生成有效世界草稿後清除先前的 422 欄位錯誤", async () => {
+  const originalDocument = globalThis.document;
+  const invalidInput = (value = "") => ({
+    value,
+    attributes: { "aria-invalid": "true" },
+    removeAttribute(name) { delete this.attributes[name]; },
+  });
+  const worldFieldIds = [
+    "worldTitle",
+    "worldPremiseInput",
+    "worldObjectiveInput",
+    "openingSceneInput",
+    "coreObstacleInput",
+  ];
+  const worldErrorIds = [
+    "worldTitleError",
+    "worldPremiseError",
+    "worldObjectiveError",
+    "openingSceneError",
+    "coreObstacleError",
+  ];
+  const nodes = new Map([
+    ["worldKeywordsInput", { value: "雨夜，山村，風車" }],
+    ["toneInput", { value: "mystery" }],
+    ["customToneInput", { value: "" }],
+    ["supplementalRequestInput", { value: "" }],
+    ["maxRoundsInput", { value: "8" }],
+    ["worldGenerationRemaining", { textContent: "" }],
+    ...worldFieldIds.map((id) => [id, invalidInput("舊值")]),
+    ...worldErrorIds.map((id) => [id, {
+      hidden: false,
+      textContent: "先前的欄位錯誤。",
+    }]),
+  ]);
+  globalThis.document = { getElementById: (id) => nodes.get(id) };
+  try {
+    const canonicalDraft = {
+      status: "DRAFT",
+      version: 2,
+      maxRounds: 6,
+      worldGenerationCount: 1,
+      world: {
+        storyTitle: "雨夜山村的風車之謎",
+        premise: "一場雨夜讓山村的古老風車重新轉動，眾人必須找出隱藏多年的運作秘密。",
+        objective: "查明風車重新運轉的原因。",
+        openingScene: "細雨中，沉寂多年的葉片發出第一聲轉動聲響。",
+        coreObstacle: "村民拒絕談論封閉風車的往事。",
+        tone: "mystery",
+      },
+    };
+    const page = new GamePage({
+      generateWorld: { async execute() { return canonicalDraft; } },
+    });
+    page.room = { status: "DRAFT", version: 1, maxRounds: 6, session: { isHost: true } };
+    page.setBusy = () => {};
+    page.showFeedback = () => {};
+    page.syncRoute = () => {};
+    page.render = () => {};
+
+    await page.handleGenerateWorld({ preventDefault() {} });
+
+    worldFieldIds.forEach((id) => {
+      assert.equal(nodes.get(id).attributes["aria-invalid"], undefined);
+    });
+    worldErrorIds.forEach((id) => {
+      assert.equal(nodes.get(id).hidden, true);
+      assert.equal(nodes.get(id).textContent, "");
+    });
+  } finally {
+    globalThis.document = originalDocument;
+  }
+});
+
 test("GamePage 生成世界草稿後保留房主尚未確認的回合上限", async () => {
   const originalDocument = globalThis.document;
   const nodes = new Map([
