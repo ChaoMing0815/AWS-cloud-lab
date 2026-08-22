@@ -12,16 +12,18 @@ def _template() -> dict:
     return yaml.safe_load(TEMPLATE.read_text(encoding="utf-8"))
 
 
-def test_template_contains_only_one_log_group_and_one_bounded_policy() -> None:
+def test_template_contains_only_the_bounded_observability_resources() -> None:
     template = _template()
     resources = template["Resources"]
 
     assert template["AWSTemplateFormatVersion"] == "2010-09-09"
     assert {resource["Type"] for resource in resources.values()} == {
         "AWS::Logs::LogGroup",
+        "AWS::Logs::MetricFilter",
         "AWS::IAM::ManagedPolicy",
+        "AWS::CloudWatch::Alarm",
     }
-    assert len(resources) == 2
+    assert len(resources) == 4
 
 
 def test_application_log_group_is_fixed_short_lived_and_deletable() -> None:
@@ -101,6 +103,49 @@ def test_app_policy_writes_only_the_single_instance_log_stream() -> None:
     ]
 
 
+def test_metric_filter_counts_only_json_request_5xx_without_dimensions() -> None:
+    resource = _template()["Resources"]["Application5xxMetricFilter"]
+
+    assert resource["DeletionPolicy"] == "Delete"
+    assert resource["UpdateReplacePolicy"] == "Delete"
+    assert resource["Properties"] == {
+        "FilterName": "co-story-tier1-application-5xx",
+        "FilterPattern": "{ $.status >= 500 }",
+        "LogGroupName": {"Ref": "ApplicationLogGroup"},
+        "MetricTransformations": [
+            {
+                "DefaultValue": 0,
+                "MetricName": "Application5xx",
+                "MetricNamespace": "CoStory/Tier1",
+                "MetricValue": "1",
+                "Unit": "Count",
+            }
+        ],
+    }
+
+
+def test_alarm_triggers_on_one_5xx_in_one_minute_without_actions() -> None:
+    resource = _template()["Resources"]["Application5xxAlarm"]
+
+    assert resource["DeletionPolicy"] == "Delete"
+    assert resource["UpdateReplacePolicy"] == "Delete"
+    assert resource["Properties"] == {
+        "ActionsEnabled": False,
+        "AlarmDescription": "Co-Story application emitted at least one 5xx in one minute.",
+        "AlarmName": "co-story-tier1-application-5xx",
+        "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+        "DatapointsToAlarm": 1,
+        "EvaluationPeriods": 1,
+        "MetricName": "Application5xx",
+        "Namespace": "CoStory/Tier1",
+        "Period": 60,
+        "Statistic": "Sum",
+        "Threshold": 1,
+        "TreatMissingData": "notBreaching",
+        "Unit": "Count",
+    }
+
+
 def test_template_grants_no_log_group_management_or_unrelated_services() -> None:
     template = _template()
     rendered = TEMPLATE.read_text(encoding="utf-8")
@@ -111,13 +156,7 @@ def test_template_grants_no_log_group_management_or_unrelated_services() -> None
     assert "Resource: '*'" not in rendered
     assert 'Resource: "*"' not in rendered
     assert all(
-        not resource["Type"].startswith(
-            (
-                "AWS::CloudWatch::",
-                "AWS::SNS::",
-                "AWS::SSM::",
-            )
-        )
+        not resource["Type"].startswith(("AWS::SNS::", "AWS::SSM::", "AWS::Lambda::"))
         for resource in template["Resources"].values()
     )
 
