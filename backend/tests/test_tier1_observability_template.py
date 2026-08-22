@@ -77,6 +77,12 @@ def test_app_policy_writes_only_the_single_instance_log_stream() -> None:
         )
     }
 
+    assert set(policy) == {
+        "ManagedPolicyName",
+        "Description",
+        "Roles",
+        "PolicyDocument",
+    }
     assert policy["ManagedPolicyName"] == "AWSFinalProjectTier1ApplicationLogWrite"
     assert policy["Roles"] == [{"Ref": "AppRoleName"}]
     assert policy["PolicyDocument"]["Statement"] == [
