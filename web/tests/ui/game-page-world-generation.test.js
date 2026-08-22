@@ -4,6 +4,8 @@ import assert from "node:assert/strict";
 import { GamePage } from "../../src/ui/pages/game-page.js";
 import { ApiError } from "../../src/adapters/api/api-error.js";
 
+const editableInput = (value = "") => ({ value, removeAttribute() {} });
+
 test("GamePage 生成 canonical world draft 後留在 DRAFT 並回填可編輯欄位與剩餘次數", async () => {
   const originalDocument = globalThis.document;
   const nodes = new Map([
@@ -11,11 +13,11 @@ test("GamePage 生成 canonical world draft 後留在 DRAFT 並回填可編輯�
     ["toneInput", { value: "mystery" }],
     ["customToneInput", { value: "" }],
     ["supplementalRequestInput", { value: " 讓玩家先編輯。 " }],
-    ["worldTitle", { value: "" }],
-    ["worldPremiseInput", { value: "" }],
-    ["worldObjectiveInput", { value: "" }],
-    ["openingSceneInput", { value: "" }],
-    ["coreObstacleInput", { value: "" }],
+    ["worldTitle", editableInput()],
+    ["worldPremiseInput", editableInput()],
+    ["worldObjectiveInput", editableInput()],
+    ["openingSceneInput", editableInput()],
+    ["coreObstacleInput", editableInput()],
     ["worldGenerationRemaining", { textContent: "" }],
   ]);
   globalThis.document = { getElementById: (id) => nodes.get(id) };
@@ -142,11 +144,11 @@ test("GamePage 生成世界草稿後保留房主尚未確認的回合上限", as
     ["customToneInput", { value: "" }],
     ["supplementalRequestInput", { value: "" }],
     ["maxRoundsInput", { value: "8" }],
-    ["worldTitle", { value: "" }],
-    ["worldPremiseInput", { value: "" }],
-    ["worldObjectiveInput", { value: "" }],
-    ["openingSceneInput", { value: "" }],
-    ["coreObstacleInput", { value: "" }],
+    ["worldTitle", editableInput()],
+    ["worldPremiseInput", editableInput()],
+    ["worldObjectiveInput", editableInput()],
+    ["openingSceneInput", editableInput()],
+    ["coreObstacleInput", editableInput()],
     ["worldGenerationRemaining", { textContent: "" }],
   ]);
   globalThis.document = { getElementById: (id) => nodes.get(id) };
