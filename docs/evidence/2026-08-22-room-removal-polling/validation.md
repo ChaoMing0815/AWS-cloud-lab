@@ -11,5 +11,6 @@
 - Boundary：其他 `404` 不會被誤判為房間已刪除；`401`／`403`、`409` 與 bounded backoff 維持既有行為。
 - Regression guard：房主主動永久刪房既有 stop／navigate 行為仍通過。
 - Sensitivity：暫時停用 `ROOM_NOT_FOUND` guard 後 targeted test 如預期失敗；mutation 已還原並重跑全綠。
+- GitHub CI：push 後 run `32542655388` 的 `backend-tests` 與 `frontend-tests` 均通過。
 - Browser／AWS：本 slice 未部署、未呼叫 AWS；實際多分頁 Browser gate 留到下一個 release gate。
 - Rollback／residual risk：可回復 `f97a059`；AWS active release 尚未包含本修正。

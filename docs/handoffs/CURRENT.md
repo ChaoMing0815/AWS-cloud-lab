@@ -2,7 +2,7 @@
 
 - 更新日期：2026-08-22
 - 近期目標：第一次進度報告書面稿與簡報已完成本機初稿；接續處理 Tier 0 公開試玩發現、PR #4 review／merge、延遲成本檢查與報告後資源清理。
-- Branch：`codex/tier0-public-trial-ui`，遠端 tip `5bb1a85`；本機已新增刪房 polling lifecycle Red `a2b192d`、Green `f97a059`，尚未 push。GitHub PR #4 尚未合併。
+- Branch：`codex/tier0-public-trial-ui`，刪房 polling lifecycle 交付 tip `bfe3ce0` 已 push；本文件狀態 commit 另計。GitHub PR #4 尚未合併。
 - 本機功能 checkpoint：公開試玩 UX／安全失敗記錄 `d2b76ba`；canonical route loading shell `f9d4155`；明確 Prompt Injection 前置拒絕 `6f872b2`；widow／orphan 排版規則 `18fcd21`；首頁公開試玩安全提示 `62b4e02`。
 - Regression：Backend `313 passed, 8 skipped`；Frontend `90 passed`（2026-08-22，刪房 polling lifecycle Green gate）。
 - AWS active release：`tier0-20260819-ee128da`。
@@ -33,7 +33,7 @@
 - 第一次進度報告、簡報與三張可重用架構圖已在 `bf12650` commit 並 push；Office 檔經壓縮結構與敏感字串 pre-push audit。報告產生／修復腳本因含本機限定路徑未入庫，已保留在 `/private/tmp/co-story-report-scripts-20260821`；`.gitignore` 已排除 `~$*` Office 鎖定檔。
 - GitHub CI foundation 已依嚴格 TDD 完成本機 Red `832d6bf` 與 Green `a8763df`：`.github/workflows/ci.yml` 在 pull request 與 `main` push 執行獨立 Backend／Frontend jobs，固定 Python `3.13`、Node `24` 與唯讀 `contents: read`；明確不授予 OIDC、AWS、ECR 或部署能力。Contract targeted tests `2 passed`，本機 Backend `313 passed, 8 skipped`、Frontend `85 passed`。兩個 commits 已 push；GitHub Actions run `32478705788` 實際通過，`backend-tests` 約 25 秒、`frontend-tests` 約 9 秒。PR checks 已成立，branch protection required checks 尚未設定。
 - 角色儲存原始 JavaScript exception 已完成 R2 TDD：Red `6d3c8fe` 精確證明未知 `TypeError.message` 會外露；Green `49aa5dc` 只允許 `ApiError`／`DomainError` 的 `publicMessage` 顯示，未知錯誤改為「角色儲存失敗，請重新整理後再試。」並保留輸入、canonical room、解除 busy。Targeted `3 passed`、Frontend `88 passed`，代表性 sensitivity 可抓回直接顯示原文的 mutation；GitHub Actions run `32496325155` 的 `backend-tests` 與 `frontend-tests` 均通過。驗證見 `docs/evidence/2026-08-21-character-error-safety/validation.md`；尚未部署。
-- 刪房後舊分頁 polling lifecycle 已完成 R2 TDD：Red `a2b192d` 證明 `404 ROOM_NOT_FOUND` 仍會向外拋出；Green `f97a059` 在第一個精準錯誤後清除舊 room、停止排程並只導回首頁一次。Affected `15 passed`、Frontend `90 passed`；其他 `404` 與房主主動刪房行為未退化，代表性 sensitivity 可抓到 guard 失效。驗證見 `docs/evidence/2026-08-22-room-removal-polling/validation.md`；尚未 push、部署或執行 Browser gate。
+- 刪房後舊分頁 polling lifecycle 已完成 R2 TDD：Red `a2b192d` 證明 `404 ROOM_NOT_FOUND` 仍會向外拋出；Green `f97a059` 在第一個精準錯誤後清除舊 room、停止排程並只導回首頁一次。Affected `15 passed`、Frontend `90 passed`；其他 `404` 與房主主動刪房行為未退化，代表性 sensitivity 可抓到 guard 失效。交付 tip `bfe3ce0` 已 push，GitHub Actions run `32542655388` 的 Backend／Frontend jobs 均通過；驗證見 `docs/evidence/2026-08-22-room-removal-polling/validation.md`。尚未部署或執行 Browser gate。
 
 ## Next
 
@@ -45,13 +45,13 @@ Batch 9B release 與零模型 Browser gate已完成
 → 第一次進度書面報告與 13 頁簡報已完成、通過 audit 並 push
 → 純 CI foundation 已完成本機 Red／Green、完整 regression 與 GitHub-hosted runner 驗證
 → 公開 JavaScript exception 已完成 R2 TDD、push 與 GitHub CI；尚未部署
-→ 刪房後其他分頁的 `404` 導頁／polling lifecycle 已完成本機 R2 TDD；尚待 push、CI 與 release Browser gate
+→ 刪房後其他分頁的 `404` 導頁／polling lifecycle 已完成 R2 TDD、push 與 GitHub CI；尚待 release Browser gate
 → bounded reproduction Safari sync／回合選擇問題
 → 製作去識別化報告截圖、完成延遲成本檢查與 PR #4 review／merge
 → 第一次報告後依清理計畫停止或刪除持續計費資源，再進入 Tier 1
 ```
 
-下一個開發起點：先將刪房 polling lifecycle commits push 並確認 GitHub CI；之後對 Safari sync 做 bounded reproduction，再重現世界生成前回合選擇回復預設值。完成 release Browser gate、PR #4 review／merge 與延遲成本檢查後，再決定是否建立新的部署 batch。任何後續 S3 讀取、部署或 Bedrock 呼叫都不得沿用舊核准。
+下一個開發起點：先更新 PR #4 過期的測試與交付摘要，再依使用者核准合併；之後對 Safari sync 做 bounded reproduction，再重現世界生成前回合選擇回復預設值。完成 release Browser gate 與延遲成本檢查後，再決定是否建立新的部署 batch。任何後續 S3 讀取、部署或 Bedrock 呼叫都不得沿用舊核准。
 
 ## Residual risks
 
@@ -61,6 +61,6 @@ Batch 9B release 與零模型 Browser gate已完成
 - Idempotency store 仍是 process memory，不宣稱 multi-process exactly-once。
 - iPhone Safari 未穩定取得即時 canonical state，需要手動重新整理；mobile sync 尚未達 Desktop Chrome 等價。
 - 角色儲存原始 JavaScript exception 已在 `49aa5dc` 修正並通過 GitHub CI，但尚未部署；AWS active release 仍不得宣稱已具備此防線。
-- 成功刪房後舊分頁持續 polling 已在本機 `f97a059` 修正並通過 Frontend regression，但尚未 push、CI、部署或以 AWS 多分頁重驗。
+- 成功刪房後舊分頁持續 polling 已在 `f97a059` 修正並通過 GitHub CI，但尚未部署或以 AWS 多分頁重驗。
 - EC2 與 RDS 持續運行會消耗 credits；artifact objects 依 7 日 lifecycle 到期，但 stack／bucket不會自動刪除。
 - 原始截圖位於 macOS TemporaryItems／Downloads 時不算正式 evidence；入庫前須去除 account ID、ARN、IP、instance／subnet／SG ID、endpoint、secret ARN、bucket suffix、通知與不必要的 Browser 資訊。
