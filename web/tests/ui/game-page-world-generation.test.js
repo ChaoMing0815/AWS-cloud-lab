@@ -131,7 +131,7 @@ test("GamePage 確認世界的 422 會標示對應欄位並保留可編輯草稿
     ["coreObstacleInput", input("備份硬碟被鎖在倉庫。")],
     ["toneInput", input("mystery")],
     ["customToneInput", input("")],
-    ["maxRoundsInput", input("6")],
+    ["maxRoundsInput", input("8")],
     ["worldTitleError", { hidden: true, textContent: "" }],
     ["worldPremiseError", { hidden: true, textContent: "" }],
     ["worldObjectiveError", { hidden: true, textContent: "" }],
@@ -140,7 +140,12 @@ test("GamePage 確認世界的 422 會標示對應欄位並保留可編輯草稿
   ]);
   globalThis.document = { getElementById: (id) => nodes.get(id) };
   try {
-    const draftRoom = { status: "DRAFT", version: 2, session: { isHost: true } };
+    const draftRoom = {
+      status: "DRAFT",
+      version: 2,
+      maxRounds: 6,
+      session: { isHost: true },
+    };
     const page = new GamePage({
       confirmWorld: {
         async execute() {
@@ -154,7 +159,9 @@ test("GamePage 確認世界的 422 會標示對應欄位並保留可編輯草稿
     page.setBusy = () => {};
     page.showFeedback = () => {};
     page.syncRoute = () => {};
-    page.render = () => {};
+    page.render = () => {
+      nodes.get("maxRoundsInput").value = String(page.room.maxRounds ?? 6);
+    };
 
     await page.handleConfirmWorld({ preventDefault() {} });
 
@@ -163,6 +170,11 @@ test("GamePage 確認世界的 422 會標示對應欄位並保留可編輯草稿
     assert.equal(nodes.get("worldPremiseError").hidden, false);
     assert.equal(nodes.get("worldPremiseError").textContent, "至少需要 50 個字元。");
     assert.equal(nodes.get("worldTitleError").hidden, true);
+    assert.equal(
+      nodes.get("maxRoundsInput").value,
+      "8",
+      "欄位驗證失敗不可覆寫房主尚未確認的 8 回合選擇",
+    );
   } finally {
     globalThis.document = originalDocument;
   }

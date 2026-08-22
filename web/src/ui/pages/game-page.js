@@ -289,7 +289,9 @@ export class GamePage {
   async handleConfirmWorld(event) {
     event.preventDefault();
     this.clearWorldFieldErrors();
-    await this.run(
+    const maxRoundsInput = byId("maxRoundsInput");
+    const selectedMaxRounds = maxRoundsInput?.value;
+    const completed = await this.run(
       () => this.useCases.confirmWorld.execute({
         storyTitle: byId("worldTitle").value,
         premise: byId("worldPremiseInput").value,
@@ -303,6 +305,7 @@ export class GamePage {
       "世界設定已確認，現在可以邀請玩家加入。",
       { onError: (error) => this.showWorldFieldErrors(error.fieldErrors) },
     );
+    if (!completed && maxRoundsInput) maxRoundsInput.value = selectedMaxRounds;
   }
 
   clearWorldFieldErrors() {
