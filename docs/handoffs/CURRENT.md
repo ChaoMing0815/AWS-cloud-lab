@@ -2,9 +2,9 @@
 
 - 更新日期：2026-08-22
 - 近期目標：完成 Tier 0 公開試玩剩餘 bounded reproduction，同時暫停非必要 AWS compute 以節省 credits；之後依甘特圖縮減原則進入 Tier 1 最小可驗證切片。
-- Branch：`codex/tier0-post-trial-stabilization`，由最新 `main` merge commit `d94e47b` 建立；回合上限保留 Green `8a27aa4`、Tier 1 安全 file sink Green `66cf913`、CloudWatch Agent contract Green `b347abe`、Tier 1 observability IaC Green `2250bd3`、5xx alarm Green `fc96f12`，本文件狀態 commit 另計，尚未 push。
+- Branch：`codex/tier0-post-trial-stabilization`，由最新 `main` merge commit `d94e47b` 建立；回合上限保留 Green `8a27aa4`、Tier 1 安全 file sink Green `66cf913`、CloudWatch Agent contract Green `b347abe`、Tier 1 observability IaC Green `2250bd3`、5xx alarm Green `fc96f12`、世界未開放提示 `afe63bd`，已 push 並建立 PR #5。
 - 本機功能 checkpoint：公開試玩 UX／安全失敗記錄 `d2b76ba`；canonical route loading shell `f9d4155`；明確 Prompt Injection 前置拒絕 `6f872b2`；widow／orphan 排版規則 `18fcd21`；首頁公開試玩安全提示 `62b4e02`。
-- Regression：Backend `325 passed, 8 skipped`；Frontend `91 passed`（2026-08-22，Tier 1 5xx alarm Green gate）。
+- Regression：Backend `325 passed, 8 skipped`；Frontend `92 passed`（2026-08-22，世界未開放提示 Green gate）。
 - AWS active release：`tier0-20260819-ee128da`。
 - 操作邊界：Console-first；未經新的 bounded batch 核准不得執行 AWS CLI。使用者操作 AWS Console／SSM，Agent 只提供單一可驗證步驟。
 
@@ -35,8 +35,9 @@
 - 角色儲存原始 JavaScript exception 已完成 R2 TDD：Red `6d3c8fe` 精確證明未知 `TypeError.message` 會外露；Green `49aa5dc` 只允許 `ApiError`／`DomainError` 的 `publicMessage` 顯示，未知錯誤改為「角色儲存失敗，請重新整理後再試。」並保留輸入、canonical room、解除 busy。Targeted `3 passed`、Frontend `88 passed`，代表性 sensitivity 可抓回直接顯示原文的 mutation；GitHub Actions run `32496325155` 的 `backend-tests` 與 `frontend-tests` 均通過。驗證見 `docs/evidence/2026-08-21-character-error-safety/validation.md`；尚未部署。
 - 刪房後舊分頁 polling lifecycle 已完成 R2 TDD：Red `a2b192d` 證明 `404 ROOM_NOT_FOUND` 仍會向外拋出；Green `f97a059` 在第一個精準錯誤後清除舊 room、停止排程並只導回首頁一次。Affected `15 passed`、Frontend `90 passed`；其他 `404` 與房主主動刪房行為未退化，代表性 sensitivity 可抓到 guard 失效。交付 tip `bfe3ce0` 已 push，GitHub Actions run `32542655388` 的 Backend／Frontend jobs 均通過；驗證見 `docs/evidence/2026-08-22-room-removal-polling/validation.md`。尚未部署或執行 Browser gate。
 - PR #4 已更新 metadata 並以 merge commit `d94e47b` 合併至 `main`；合併後 GitHub Actions run `32544076633` 的 Backend／Frontend jobs 均通過。合併沒有部署權限，AWS active release 未改變。
+- 世界尚未開放的 join `409` 已完成 R1 TDD：Red 精確證明原始「只有等待中的房間可以加入玩家」不具體；Green `afe63bd` 將 `409 + ROOM_NOT_JOINABLE` 映射為「房主尚未開放世界，請稍後再試。」。Landing Page `8 passed`、Frontend `92 passed`；PR #5 已建立，GitHub Actions run `32553658881` 的 Backend／Frontend jobs 均通過，merge state `CLEAN`。
 - 甘特圖 M4 原訂 8/25 完成 Tier 1–2，目前已落後；後續依縮減原則先交付每層一個可驗證案例，不以擴張 AWS 常駐資源追回時程。
-- 世界生成前回合上限回復預設 `6` 已完成 R2 TDD：Red `28f0127` 重現房主選 `8` 後生成草稿變回 `6`；Green `8a27aa4` 只保留尚未確認的表單選項，不提前寫入 canonical state。Affected `21 passed`、Frontend `91 passed`，代表性 sensitivity 可抓回退化；驗證見 `docs/evidence/2026-08-22-round-limit-preservation/validation.md`。尚未 push、部署或執行 Browser gate。
+- 世界生成前回合上限回復預設 `6` 已完成 R2 TDD：Red `28f0127` 重現房主選 `8` 後生成草稿變回 `6`；Green `8a27aa4` 只保留尚未確認的表單選項，不提前寫入 canonical state。Affected `21 passed`、Frontend `91 passed`，代表性 sensitivity 可抓回退化；驗證見 `docs/evidence/2026-08-22-round-limit-preservation/validation.md`。已隨 PR #5 push，尚未部署或執行 Browser gate。
 - 節費操作由使用者透過 AWS Console 進行；2026-08-22 private PostgreSQL RDS 已確認為 `Stopped`。DB instance hours 已暫停，storage／backup 仍計費，最晚約 2026-08-29 自動啟動；驗證見 `docs/evidence/2026-08-22-rds-temporary-stop/validation.md`。Agent 未執行 AWS CLI 或其他 AWS 寫入。
 - Tier 1 repo-local gap analysis 已完成；第一個 R3 TDD slice 亦已完成：Red `8f5aea8`／`3e33e5f`、Green `66cf913`。設定 `CO_STORY_APPLICATION_LOG_PATH` 後，只接受 request／Storyteller 精確 allowlist schema，排除 query、raw access line 與 forged extra field；檔案為 `0640`、1 MiB rotation、最多兩份 backup 並拒絕 symlink target。Targeted `4 passed`、Backend `315 passed, 8 skipped`，三類 safety sensitivity 皆有效；驗證見 `docs/evidence/2026-08-22-tier1-safe-log-file/validation.md`。尚未部署，也未建立 CloudWatch／IAM／alarm／SSM AWS 資源。
 - Tier 1 CloudWatch Agent repo-local contract 已完成：Red `0c166c8`／`7f5da34`、Green `b347abe`。Agent config 只讀 `/var/log/co-story/application.jsonl` 並指向固定 `/co-story/tier1/application`／`{instance_id}`；排除 system／auth／Nginx／wildcard source 與 metrics，candidate 使用獨立未收集的 JSONL。Affected `31 passed`、Backend `317 passed, 8 skipped`，三類 sensitivity 皆有效；驗證見 `docs/evidence/2026-08-22-tier1-cloudwatch-agent-contract/validation.md`。尚未安裝 Agent 或建立任何 AWS resource。
@@ -57,11 +58,12 @@ Batch 9B release 與零模型 Browser gate已完成
 → PR #4 已合併，合併後 main CI 全綠
 → private PostgreSQL RDS 已停止；世界生成前回合選擇已完成本機 R2 TDD，再於短時 AWS window 重現 Safari sync
 → Tier 1 安全 JSONL、Agent collection、Log Group／最小 IAM、5xx metric／alarm contract 已完成本機 R3 TDD；AWS deploy／SSM 尚未開始
+→ 世界尚未開放的 join `409` 明確玩家提示已完成 TDD、push，PR #5 CI 全綠
 → 製作去識別化報告截圖、完成延遲成本檢查
 → 第一次報告後依清理計畫停止或刪除持續計費資源，再進入 Tier 1
 ```
 
-下一個開發起點：回到 Tier 0 stabilization，依嚴格 TDD 將「世界尚未開放」的 join `409` 映射為明確玩家提示，避免無法理解地重複嘗試；之後 push／PR／CI，再安排短時啟動 RDS 的 stabilization release 與 Safari bounded reproduction。Tier 1 Agent 安裝、SSM document 與 incident AWS gate 必須另開 bounded batch。
+下一個開發起點：安排短時啟動 RDS 的 stabilization release，先以 Desktop Browser 驗證角色錯誤安全化、刪房導頁／polling、回合上限與世界未開放提示，再進行 Safari bounded reproduction。Tier 1 Agent 安裝、SSM document 與 incident AWS gate 必須另開 bounded batch。
 
 ## Residual risks
 
