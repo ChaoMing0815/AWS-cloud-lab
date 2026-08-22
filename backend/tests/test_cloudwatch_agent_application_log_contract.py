@@ -6,6 +6,7 @@ ROOT = Path(__file__).parents[2]
 AGENT_CONFIG = ROOT / "ops/cloudwatch/amazon-cloudwatch-agent.json"
 RUNTIME_ENV_EXAMPLE = ROOT / "ops/runtime/co-story.env.example"
 SYSTEMD_UNIT = ROOT / "ops/systemd/co-story.service"
+CANDIDATE_SYSTEMD_UNIT = ROOT / "ops/systemd/co-story-candidate@.service"
 
 
 def test_cloudwatch_agent_collects_only_the_safe_application_jsonl() -> None:
@@ -40,6 +41,7 @@ def test_cloudwatch_agent_collects_only_the_safe_application_jsonl() -> None:
 def test_runtime_produces_the_exact_file_collected_by_the_agent() -> None:
     environment = RUNTIME_ENV_EXAMPLE.read_text(encoding="utf-8")
     unit = SYSTEMD_UNIT.read_text(encoding="utf-8")
+    candidate_unit = CANDIDATE_SYSTEMD_UNIT.read_text(encoding="utf-8")
 
     assert (
         "CO_STORY_APPLICATION_LOG_PATH=/var/log/co-story/application.jsonl"
@@ -48,3 +50,9 @@ def test_runtime_produces_the_exact_file_collected_by_the_agent() -> None:
     assert "LogsDirectory=co-story" in unit
     assert "LogsDirectoryMode=0750" in unit
     assert "Environment=CO_STORY_APPLICATION_LOG_PATH" not in unit
+    assert "LogsDirectory=co-story" in candidate_unit
+    assert "LogsDirectoryMode=0750" in candidate_unit
+    assert (
+        "Environment=CO_STORY_APPLICATION_LOG_PATH="
+        "/var/log/co-story/candidate.jsonl" in candidate_unit
+    )
