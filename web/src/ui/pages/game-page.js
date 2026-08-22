@@ -333,6 +333,8 @@ export class GamePage {
 
   async handleGenerateWorld(event) {
     event.preventDefault();
+    const maxRoundsInput = byId("maxRoundsInput");
+    const selectedMaxRounds = maxRoundsInput?.value;
     const completed = await this.run(
       () => this.useCases.generateWorld.execute({
         keywords: byId("worldKeywordsInput").value,
@@ -346,7 +348,10 @@ export class GamePage {
         pendingMessage: "正在生成世界草稿…",
       },
     );
-    if (completed) this.applyGeneratedWorldDraft();
+    if (completed) {
+      this.applyGeneratedWorldDraft();
+      if (maxRoundsInput) maxRoundsInput.value = selectedMaxRounds;
+    }
   }
 
   applyGeneratedWorldDraft() {
