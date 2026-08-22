@@ -2,9 +2,9 @@
 
 - 更新日期：2026-08-22
 - 近期目標：完成 Tier 0 公開試玩剩餘 bounded reproduction，同時暫停非必要 AWS compute 以節省 credits；之後依甘特圖縮減原則進入 Tier 1 最小可驗證切片。
-- Branch：`codex/tier0-post-trial-stabilization`，由最新 `main` merge commit `d94e47b` 建立；回合上限保留 Green `8a27aa4`、Tier 1 安全 file sink Green `66cf913`、CloudWatch Agent contract Green `b347abe`、Tier 1 observability IaC Green `2250bd3`、5xx alarm Green `fc96f12`、世界未開放提示 `afe63bd`，已 push 並建立 PR #5。
+- Branch：`codex/tier0-post-trial-stabilization`，由最新 `main` merge commit `d94e47b` 建立；回合上限保留 Green `8a27aa4`、Tier 1 安全 file sink Green `66cf913`、CloudWatch Agent contract Green `b347abe`、Tier 1 observability IaC Green `2250bd3`、5xx alarm Green `fc96f12`、世界未開放提示 `afe63bd`、confirm `422` form-state Green `9ff0506`，已建立 PR #5。
 - 本機功能 checkpoint：公開試玩 UX／安全失敗記錄 `d2b76ba`；canonical route loading shell `f9d4155`；明確 Prompt Injection 前置拒絕 `6f872b2`；widow／orphan 排版規則 `18fcd21`；首頁公開試玩安全提示 `62b4e02`。
-- Regression：Backend `325 passed, 8 skipped`；Frontend `92 passed`（2026-08-22，世界未開放提示 Green gate）。
+- Regression：Backend `325 passed, 8 skipped`；Frontend `92 passed`（2026-08-22，confirm `422` form-state Green gate）。
 - AWS active release：`tier0-20260822-8bb6bfc`。
 - 操作邊界：Console-first；未經新的 bounded batch 核准不得執行 AWS CLI。使用者操作 AWS Console／SSM，Agent 只提供單一可驗證步驟。
 
@@ -37,7 +37,7 @@
 - PR #4 已更新 metadata 並以 merge commit `d94e47b` 合併至 `main`；合併後 GitHub Actions run `32544076633` 的 Backend／Frontend jobs 均通過。合併沒有部署權限，AWS active release 未改變。
 - 世界尚未開放的 join `409` 已完成 R1 TDD：Red 精確證明原始「只有等待中的房間可以加入玩家」不具體；Green `afe63bd` 將 `409 + ROOM_NOT_JOINABLE` 映射為「房主尚未開放世界，請稍後再試。」。Landing Page `8 passed`、Frontend `92 passed`；PR #5 已建立，GitHub Actions run `32553658881` 的 Backend／Frontend jobs 均通過，merge state `CLEAN`。
 - 甘特圖 M4 原訂 8/25 完成 Tier 1–2，目前已落後；後續依縮減原則先交付每層一個可驗證案例，不以擴張 AWS 常駐資源追回時程。
-- 世界生成前回合上限回復預設 `6` 已完成 R2 TDD：Red `28f0127` 重現房主選 `8` 後生成草稿變回 `6`；Green `8a27aa4` 只保留尚未確認的表單選項，不提前寫入 canonical state。Affected `21 passed`、Frontend `91 passed`，代表性 sensitivity 可抓回退化；已隨 Batch 10A 部署。零模型 Browser gate 未點擊世界生成；另發現 confirm `422` 後回合上限仍從 `8` 回到 `6`，需獨立 TDD。
+- 世界生成前回合上限回復預設 `6` 已完成 R2 TDD：Red `28f0127` 重現房主選 `8` 後生成草稿變回 `6`；Green `8a27aa4` 只保留尚未確認的表單選項，不提前寫入 canonical state，已隨 Batch 10A 部署。Batch 10A 另發現 confirm `422` 後回合上限從 `8` 回到 `6`；後續 Green `9ff0506` 只在確認失敗時恢復送出前選項，Targeted `1 passed`、Affected `4 passed`、Frontend `92 passed`，尚未部署。
 - 節費操作由使用者透過 AWS Console 進行；2026-08-22 private PostgreSQL RDS 曾停止後為 Batch 10A 啟動，目前維持運行。因近期仍會頻繁使用，專題採「預估超過 48 小時不使用才停止」的操作門檻；這不是 AWS 規則。停止期間不計 DB instance hours，但 storage／backup 仍計費，且最長 7 天會自動啟動。
 - Batch 10A 已部署 `tier0-20260822-8bb6bfc`：exact S3 objects `2`、checksum `OK`；application／public edge／renewal timer active、staging inactive、readiness／HTTPS `200`、首頁 `no-store`，previous release 保留 `tier0-20260819-ee128da`。世界未開放提示、角色儲存與 iPhone Safari 雙向同步均通過；Desktop → Safari 延遲小於 10 秒，雙方 refresh 後 RDS persistence 正常；未呼叫 Bedrock。完整證據見 `docs/evidence/2026-08-22-tier0-stabilization-release/validation.md`。
 - Tier 1 repo-local gap analysis 已完成；第一個 R3 TDD slice 亦已完成：Red `8f5aea8`／`3e33e5f`、Green `66cf913`。設定 `CO_STORY_APPLICATION_LOG_PATH` 後，只接受 request／Storyteller 精確 allowlist schema，排除 query、raw access line 與 forged extra field；檔案為 `0640`、1 MiB rotation、最多兩份 backup 並拒絕 symlink target。Targeted `4 passed`、Backend `315 passed, 8 skipped`，三類 safety sensitivity 皆有效；驗證見 `docs/evidence/2026-08-22-tier1-safe-log-file/validation.md`。尚未部署，也未建立 CloudWatch／IAM／alarm／SSM AWS 資源。
@@ -64,7 +64,7 @@ Batch 9B release 與零模型 Browser gate已完成
 → 第一次報告後依清理計畫停止或刪除持續計費資源，再進入 Tier 1
 ```
 
-下一個開發起點：依嚴格 TDD 修正 confirm `422` 後回合上限從 `8` 回到 `6`；完成後再評估 PR #5 merge。生成後選項的 AWS Browser gate 若要呼叫 Bedrock，必須另開 exactly-one-call bounded batch；Tier 1 Agent 安裝、SSM document 與 incident AWS gate亦須另開 bounded batch。
+下一個開發起點：完成 `9ff0506` metadata、push 與 PR #5 CI，然後評估 PR #5 review／merge。生成後選項的 AWS Browser gate 若要呼叫 Bedrock，必須另開 exactly-one-call bounded batch；Tier 1 Agent 安裝、SSM document 與 incident AWS gate 亦須另開 bounded batch。
 
 ## Residual risks
 
@@ -73,7 +73,7 @@ Batch 9B release 與零模型 Browser gate已完成
 - Direct IP certificate 約 160 小時效期；必須保留 renewal timer 驗證。EC2 stop/start 若 public IP 改變，URL、certificate 與 allowlist 都需重建。
 - Idempotency store 仍是 process memory，不宣稱 multi-process exactly-once。
 - iPhone Safari 在 Batch 10A 的 Lobby 雙向同步小於 10 秒且 refresh 後正常；先前公開試玩的不穩定現象未取得可重現根因，仍需在下一次完整多人遊戲觀察長時間 polling／visibility 行為。
-- 角色儲存安全化已部署並通過 Browser gate；新 finding 是 confirm `422` 後回合上限仍會回到 `6`。
+- 角色儲存安全化已部署並通過 Browser gate；confirm `422` 後回合上限重設已在 `9ff0506` 修正，但 AWS active release 尚未包含此 commit。
 - 成功刪房後舊分頁 polling 修正已部署，但尚未以 `COMPLETED` 房間執行 AWS 多分頁重驗。
 - EC2 與 RDS 最近一次已知狀態均為運行中。RDS 會持續產生 DB instance hours；若預估超過 48 小時不使用則手動停止。EC2 若 stop/start 會更換 public IP，使目前 IP certificate 與 allowlist 都需重建；artifact objects 依 7 日 lifecycle 到期，但 stack／bucket不會自動刪除。
 - 原始截圖位於 macOS TemporaryItems／Downloads 時不算正式 evidence；入庫前須去除 account ID、ARN、IP、instance／subnet／SG ID、endpoint、secret ARN、bucket suffix、通知與不必要的 Browser 資訊。

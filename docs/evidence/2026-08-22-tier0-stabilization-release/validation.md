@@ -28,7 +28,7 @@
 
 ## Findings 與未執行項目
 
-- 新 finding：房主先選 `8` 回合，再因故事背景不足 `50` 字收到 `422` 時，文字欄位仍保留，但回合上限回到 `6`。這是 confirm error-path form state 問題，與已修正的世界生成成功後保留選項屬相鄰但不同的 TDD slice。
+- 新 finding：房主先選 `8` 回合，再因故事背景不足 `50` 字收到 `422` 時，文字欄位仍保留，但回合上限回到 `6`。這是 confirm error-path form state 問題，與已修正的世界生成成功後保留選項屬相鄰但不同的 TDD slice；後續已以 Green `9ff0506` 完成本機修正，尚未重新部署。
 - 成功確認世界前再次選擇 `8` 可正常送出；本批為零模型 gate，未點擊「生成世界草稿」，所以沒有宣稱 AWS runtime 已驗證生成成功後的回合選項保留。
 - 測試房停在 `LOBBY`；正式產品只允許房主刪除 `COMPLETED` 房間，因此本批未繞過產品規則直接刪 DB，也沒有完成多分頁刪房 polling AWS E2E。匿名測試資料留待 retention cleanup。
 
@@ -40,6 +40,6 @@
 
 ## 下一步
 
-1. 依嚴格 TDD 修正 confirm `422` 後回合上限回到 `6`。
+1. 將 confirm `422` form-state Green `9ff0506` 納入 PR #5 CI gate。
 2. PR #5 review／merge 前決定是否需要另開 exactly one Bedrock call 的生成後 Browser gate。
 3. 下一次有已完成測試房時，再驗證刪房後其他分頁停止 polling 與導回首頁。
