@@ -1,0 +1,122 @@
+from pathlib import Path
+
+import yaml
+
+
+ROOT = Path(__file__).parents[2]
+TEMPLATE = ROOT / "infra/cloudformation/tier1-observability.yaml"
+
+
+def _template() -> dict:
+    assert TEMPLATE.is_file(), "Tier 1 observability CloudFormation template 尚未建立"
+    return yaml.safe_load(TEMPLATE.read_text(encoding="utf-8"))
+
+
+def test_template_contains_only_one_log_group_and_one_bounded_policy() -> None:
+    template = _template()
+    resources = template["Resources"]
+
+    assert template["AWSTemplateFormatVersion"] == "2010-09-09"
+    assert {resource["Type"] for resource in resources.values()} == {
+        "AWS::Logs::LogGroup",
+        "AWS::IAM::ManagedPolicy",
+    }
+    assert len(resources) == 2
+
+
+def test_application_log_group_is_fixed_short_lived_and_deletable() -> None:
+    resource = _template()["Resources"]["ApplicationLogGroup"]
+
+    assert resource["DeletionPolicy"] == "Delete"
+    assert resource["UpdateReplacePolicy"] == "Delete"
+    assert resource["Properties"] == {
+        "LogGroupName": "/co-story/tier1/application",
+        "LogGroupClass": "STANDARD",
+        "RetentionInDays": 7,
+        "Tags": [
+            {"Key": "Name", "Value": "co-story-tier1-application"},
+            {"Key": "Project", "Value": "co-story"},
+            {"Key": "Tier", "Value": "1"},
+        ],
+    }
+
+
+def test_parameters_bind_policy_to_the_existing_app_role_and_instance() -> None:
+    parameters = _template()["Parameters"]
+
+    assert parameters == {
+        "AppRoleName": {
+            "Type": "String",
+            "Default": "AWSFinalProjectAppRole",
+            "AllowedPattern": "^AWSFinalProject[A-Za-z0-9+=,.@_-]+$",
+            "Description": (
+                "Existing EC2 application role created by co-story-tier0-compute."
+            ),
+        },
+        "AppInstanceId": {
+            "Type": "AWS::EC2::Instance::Id",
+            "Description": (
+                "Existing application instance created by co-story-tier0-compute."
+            ),
+        },
+    }
+
+
+def test_app_policy_writes_only_the_single_instance_log_stream() -> None:
+    policy = _template()["Resources"]["ApplicationLogWritePolicy"]["Properties"]
+    group_arn = {
+        "Fn::Sub": (
+            "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:"
+            "log-group:/co-story/tier1/application"
+        )
+    }
+    stream_arn = {
+        "Fn::Sub": (
+            "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:"
+            "log-group:/co-story/tier1/application:log-stream:${AppInstanceId}"
+        )
+    }
+
+    assert policy["ManagedPolicyName"] == "AWSFinalProjectTier1ApplicationLogWrite"
+    assert policy["Roles"] == [{"Ref": "AppRoleName"}]
+    assert policy["PolicyDocument"]["Statement"] == [
+        {
+            "Sid": "DescribeApplicationLogStreams",
+            "Effect": "Allow",
+            "Action": "logs:DescribeLogStreams",
+            "Resource": group_arn,
+        },
+        {
+            "Sid": "WriteSingleInstanceApplicationLogStream",
+            "Effect": "Allow",
+            "Action": ["logs:CreateLogStream", "logs:PutLogEvents"],
+            "Resource": stream_arn,
+        },
+    ]
+
+
+def test_template_grants_no_log_group_management_or_unrelated_services() -> None:
+    template = _template()
+    rendered = TEMPLATE.read_text(encoding="utf-8")
+
+    assert "logs:CreateLogGroup" not in rendered
+    assert "logs:PutRetentionPolicy" not in rendered
+    assert "CloudWatchAgentServerPolicy" not in rendered
+    assert "Resource: '*'" not in rendered
+    assert 'Resource: "*"' not in rendered
+    assert all(
+        not resource["Type"].startswith(
+            (
+                "AWS::CloudWatch::",
+                "AWS::SNS::",
+                "AWS::SSM::",
+            )
+        )
+        for resource in template["Resources"].values()
+    )
+
+
+def test_template_outputs_only_the_fixed_log_group_name() -> None:
+    assert _template()["Outputs"] == {
+        "ApplicationLogGroupName": {"Value": {"Ref": "ApplicationLogGroup"}}
+    }
