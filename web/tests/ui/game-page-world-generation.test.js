@@ -180,6 +180,32 @@ test("GamePage 確認世界的 422 會標示對應欄位並保留可編輯草稿
   }
 });
 
+test("GamePage 的 DRAFT polling 不覆寫房主尚未確認的回合上限", () => {
+  const originalDocument = globalThis.document;
+  const maxRoundsInput = { value: "8" };
+  globalThis.document = {
+    getElementById: (id) => (id === "maxRoundsInput" ? maxRoundsInput : undefined),
+  };
+  try {
+    const page = new GamePage({});
+    page.room = { status: "DRAFT", maxRounds: 6 };
+    page.syncRoute = () => {};
+    page.render = () => {
+      maxRoundsInput.value = String(page.room.maxRounds ?? 6);
+    };
+
+    page.applyPolledRoom({ status: "DRAFT", maxRounds: 6 });
+
+    assert.equal(
+      maxRoundsInput.value,
+      "8",
+      "polling 不可覆寫房主尚未確認的 8 回合選擇",
+    );
+  } finally {
+    globalThis.document = originalDocument;
+  }
+});
+
 test("GamePage 在生成按鈕旁顯示 pending 與安全錯誤且保留既有草稿", async () => {
   const originalDocument = globalThis.document;
   const feedback = { hidden: true, textContent: "", dataset: {} };
