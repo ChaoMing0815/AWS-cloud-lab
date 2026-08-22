@@ -1,6 +1,6 @@
 # Tier 1 最小可觀測性與 SSM Gap Analysis
 
-- 狀態：Proposed；僅完成 repo-local 分析，未核准或執行 AWS change batch。
+- 狀態：In progress；安全 JSONL file sink 已完成 repo-local TDD，尚未核准或執行 AWS change batch。
 - 日期：2026-08-22。
 - 目標：依甘特圖縮減原則，交付一條安全 application log→metric→alarm，以及一個受限 SSM Run Command 檢查流程。
 
@@ -20,7 +20,7 @@
 
 ## 建議的第一個嚴格 TDD 切片
 
-1. 建立安全的 production JSONL file sink，只接收 `co_story.request` 與 `co_story.storyteller`；不收自由輸入或 Uvicorn raw access log，並限制本機檔案大小／rotation。
+1. **已完成：**建立安全的 production JSONL file sink，只接收 `co_story.request` 與 `co_story.storyteller`；不收自由輸入或 Uvicorn raw access log，並限制本機檔案大小／rotation。驗證見 `docs/evidence/2026-08-22-tier1-safe-log-file/validation.md`。
 2. 建立 CloudWatch Agent file collection config，僅讀取該 JSONL file，送到固定 `/co-story/tier1/application` Log Group；retention `7` 天。
 3. AppRole 只新增該 log group／stream 的 `logs:CreateLogStream`、`logs:DescribeLogStreams`、`logs:PutLogEvents`；不授予 `CloudWatchAgentServerPolicy` 全域權限。
 4. 建立 JSON filter `{ $.status >= 500 }`、單一 `Application5xx` metric 與 `>= 1 / 1 minute` alarm；第一批不加入 SNS Email、Lambda 或自動修復。
