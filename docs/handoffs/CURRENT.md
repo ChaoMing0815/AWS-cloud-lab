@@ -1,8 +1,8 @@
 # CURRENT：目前工作交接
 
 - 更新日期：2026-08-22
-- 近期目標：第一次進度報告書面稿與簡報已完成本機初稿；接續處理 Tier 0 公開試玩發現、PR #4 review／merge、延遲成本檢查與報告後資源清理。
-- Branch：`codex/tier0-public-trial-ui`，刪房 polling lifecycle 交付 tip `bfe3ce0` 已 push；本文件狀態 commit 另計。GitHub PR #4 尚未合併。
+- 近期目標：完成 Tier 0 公開試玩剩餘 bounded reproduction，同時暫停非必要 AWS compute 以節省 credits；之後依甘特圖縮減原則進入 Tier 1 最小可驗證切片。
+- Branch：`codex/tier0-post-trial-stabilization`，由最新 `main` merge commit `d94e47b` 建立；尚未 push。
 - 本機功能 checkpoint：公開試玩 UX／安全失敗記錄 `d2b76ba`；canonical route loading shell `f9d4155`；明確 Prompt Injection 前置拒絕 `6f872b2`；widow／orphan 排版規則 `18fcd21`；首頁公開試玩安全提示 `62b4e02`。
 - Regression：Backend `313 passed, 8 skipped`；Frontend `90 passed`（2026-08-22，刪房 polling lifecycle Green gate）。
 - AWS active release：`tier0-20260819-ee128da`。
@@ -34,6 +34,8 @@
 - GitHub CI foundation 已依嚴格 TDD 完成本機 Red `832d6bf` 與 Green `a8763df`：`.github/workflows/ci.yml` 在 pull request 與 `main` push 執行獨立 Backend／Frontend jobs，固定 Python `3.13`、Node `24` 與唯讀 `contents: read`；明確不授予 OIDC、AWS、ECR 或部署能力。Contract targeted tests `2 passed`，本機 Backend `313 passed, 8 skipped`、Frontend `85 passed`。兩個 commits 已 push；GitHub Actions run `32478705788` 實際通過，`backend-tests` 約 25 秒、`frontend-tests` 約 9 秒。PR checks 已成立，branch protection required checks 尚未設定。
 - 角色儲存原始 JavaScript exception 已完成 R2 TDD：Red `6d3c8fe` 精確證明未知 `TypeError.message` 會外露；Green `49aa5dc` 只允許 `ApiError`／`DomainError` 的 `publicMessage` 顯示，未知錯誤改為「角色儲存失敗，請重新整理後再試。」並保留輸入、canonical room、解除 busy。Targeted `3 passed`、Frontend `88 passed`，代表性 sensitivity 可抓回直接顯示原文的 mutation；GitHub Actions run `32496325155` 的 `backend-tests` 與 `frontend-tests` 均通過。驗證見 `docs/evidence/2026-08-21-character-error-safety/validation.md`；尚未部署。
 - 刪房後舊分頁 polling lifecycle 已完成 R2 TDD：Red `a2b192d` 證明 `404 ROOM_NOT_FOUND` 仍會向外拋出；Green `f97a059` 在第一個精準錯誤後清除舊 room、停止排程並只導回首頁一次。Affected `15 passed`、Frontend `90 passed`；其他 `404` 與房主主動刪房行為未退化，代表性 sensitivity 可抓到 guard 失效。交付 tip `bfe3ce0` 已 push，GitHub Actions run `32542655388` 的 Backend／Frontend jobs 均通過；驗證見 `docs/evidence/2026-08-22-room-removal-polling/validation.md`。尚未部署或執行 Browser gate。
+- PR #4 已更新 metadata 並以 merge commit `d94e47b` 合併至 `main`；合併後 GitHub Actions run `32544076633` 的 Backend／Frontend jobs 均通過。合併沒有部署權限，AWS active release 未改變。
+- 甘特圖 M4 原訂 8/25 完成 Tier 1–2，目前已落後；後續依縮減原則先交付每層一個可驗證案例，不以擴張 AWS 常駐資源追回時程。
 
 ## Next
 
@@ -46,12 +48,13 @@ Batch 9B release 與零模型 Browser gate已完成
 → 純 CI foundation 已完成本機 Red／Green、完整 regression 與 GitHub-hosted runner 驗證
 → 公開 JavaScript exception 已完成 R2 TDD、push 與 GitHub CI；尚未部署
 → 刪房後其他分頁的 `404` 導頁／polling lifecycle 已完成 R2 TDD、push 與 GitHub CI；尚待 release Browser gate
-→ bounded reproduction Safari sync／回合選擇問題
-→ 製作去識別化報告截圖、完成延遲成本檢查與 PR #4 review／merge
+→ PR #4 已合併，合併後 main CI 全綠
+→ 暫停非必要 AWS compute；先在本機重現世界生成前回合選擇回到預設值，再於短時 AWS window 重現 Safari sync
+→ 製作去識別化報告截圖、完成延遲成本檢查
 → 第一次報告後依清理計畫停止或刪除持續計費資源，再進入 Tier 1
 ```
 
-下一個開發起點：先更新 PR #4 過期的測試與交付摘要，再依使用者核准合併；之後對 Safari sync 做 bounded reproduction，再重現世界生成前回合選擇回復預設值。完成 release Browser gate 與延遲成本檢查後，再決定是否建立新的部署 batch。任何後續 S3 讀取、部署或 Bedrock 呼叫都不得沿用舊核准。
+下一個開發起點：使用者先在 AWS Console 暫停 private PostgreSQL RDS 並回報 `Stopped`；不執行 AWS CLI。接著依嚴格 TDD 在本機重現世界生成前已選回合上限回復預設 `6` 的問題；Safari sync 留到下一個經核准的短時 AWS release window。任何後續 S3 讀取、部署或 Bedrock 呼叫都不得沿用舊核准。
 
 ## Residual risks
 
@@ -62,5 +65,5 @@ Batch 9B release 與零模型 Browser gate已完成
 - iPhone Safari 未穩定取得即時 canonical state，需要手動重新整理；mobile sync 尚未達 Desktop Chrome 等價。
 - 角色儲存原始 JavaScript exception 已在 `49aa5dc` 修正並通過 GitHub CI，但尚未部署；AWS active release 仍不得宣稱已具備此防線。
 - 成功刪房後舊分頁持續 polling 已在 `f97a059` 修正並通過 GitHub CI，但尚未部署或以 AWS 多分頁重驗。
-- EC2 與 RDS 持續運行會消耗 credits；artifact objects 依 7 日 lifecycle 到期，但 stack／bucket不會自動刪除。
+- EC2 與 RDS 最近一次已知狀態仍為運行中並消耗 credits；RDS 暫停等待使用者 Console 證據。RDS 停止後 storage／backup 仍計費且 7 天後自動啟動；EC2 若 stop/start 會更換 public IP，使目前 IP certificate 與 allowlist 失效。artifact objects 依 7 日 lifecycle 到期，但 stack／bucket不會自動刪除。
 - 原始截圖位於 macOS TemporaryItems／Downloads 時不算正式 evidence；入庫前須去除 account ID、ARN、IP、instance／subnet／SG ID、endpoint、secret ARN、bucket suffix、通知與不必要的 Browser 資訊。
