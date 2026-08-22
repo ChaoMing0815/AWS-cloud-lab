@@ -2,9 +2,9 @@
 
 - 更新日期：2026-08-22
 - 近期目標：完成 Tier 0 公開試玩剩餘 bounded reproduction，同時暫停非必要 AWS compute 以節省 credits；之後依甘特圖縮減原則進入 Tier 1 最小可驗證切片。
-- Branch：`codex/tier0-post-trial-stabilization`，由最新 `main` merge commit `d94e47b` 建立；回合上限保留 Green `8a27aa4`、Tier 1 安全 file sink Green `66cf913`，本文件狀態 commit 另計，尚未 push。
+- Branch：`codex/tier0-post-trial-stabilization`，由最新 `main` merge commit `d94e47b` 建立；回合上限保留 Green `8a27aa4`、Tier 1 安全 file sink Green `66cf913`、CloudWatch Agent contract Green `b347abe`，本文件狀態 commit 另計，尚未 push。
 - 本機功能 checkpoint：公開試玩 UX／安全失敗記錄 `d2b76ba`；canonical route loading shell `f9d4155`；明確 Prompt Injection 前置拒絕 `6f872b2`；widow／orphan 排版規則 `18fcd21`；首頁公開試玩安全提示 `62b4e02`。
-- Regression：Backend `315 passed, 8 skipped`；Frontend `91 passed`（2026-08-22，Tier 1 安全 file sink Green gate）。
+- Regression：Backend `317 passed, 8 skipped`；Frontend `91 passed`（2026-08-22，Tier 1 CloudWatch Agent contract Green gate）。
 - AWS active release：`tier0-20260819-ee128da`。
 - 操作邊界：Console-first；未經新的 bounded batch 核准不得執行 AWS CLI。使用者操作 AWS Console／SSM，Agent 只提供單一可驗證步驟。
 
@@ -39,6 +39,7 @@
 - 世界生成前回合上限回復預設 `6` 已完成 R2 TDD：Red `28f0127` 重現房主選 `8` 後生成草稿變回 `6`；Green `8a27aa4` 只保留尚未確認的表單選項，不提前寫入 canonical state。Affected `21 passed`、Frontend `91 passed`，代表性 sensitivity 可抓回退化；驗證見 `docs/evidence/2026-08-22-round-limit-preservation/validation.md`。尚未 push、部署或執行 Browser gate。
 - 節費操作由使用者透過 AWS Console 進行；2026-08-22 private PostgreSQL RDS 已確認為 `Stopped`。DB instance hours 已暫停，storage／backup 仍計費，最晚約 2026-08-29 自動啟動；驗證見 `docs/evidence/2026-08-22-rds-temporary-stop/validation.md`。Agent 未執行 AWS CLI 或其他 AWS 寫入。
 - Tier 1 repo-local gap analysis 已完成；第一個 R3 TDD slice 亦已完成：Red `8f5aea8`／`3e33e5f`、Green `66cf913`。設定 `CO_STORY_APPLICATION_LOG_PATH` 後，只接受 request／Storyteller 精確 allowlist schema，排除 query、raw access line 與 forged extra field；檔案為 `0640`、1 MiB rotation、最多兩份 backup 並拒絕 symlink target。Targeted `4 passed`、Backend `315 passed, 8 skipped`，三類 safety sensitivity 皆有效；驗證見 `docs/evidence/2026-08-22-tier1-safe-log-file/validation.md`。尚未部署，也未建立 CloudWatch／IAM／alarm／SSM AWS 資源。
+- Tier 1 CloudWatch Agent repo-local contract 已完成：Red `0c166c8`／`7f5da34`、Green `b347abe`。Agent config 只讀 `/var/log/co-story/application.jsonl` 並指向固定 `/co-story/tier1/application`／`{instance_id}`；排除 system／auth／Nginx／wildcard source 與 metrics，candidate 使用獨立未收集的 JSONL。Affected `31 passed`、Backend `317 passed, 8 skipped`，三類 sensitivity 皆有效；驗證見 `docs/evidence/2026-08-22-tier1-cloudwatch-agent-contract/validation.md`。尚未安裝 Agent 或建立任何 AWS resource。
 
 ## Next
 
@@ -53,12 +54,12 @@ Batch 9B release 與零模型 Browser gate已完成
 → 刪房後其他分頁的 `404` 導頁／polling lifecycle 已完成 R2 TDD、push 與 GitHub CI；尚待 release Browser gate
 → PR #4 已合併，合併後 main CI 全綠
 → private PostgreSQL RDS 已停止；世界生成前回合選擇已完成本機 R2 TDD，再於短時 AWS window 重現 Safari sync
-→ Tier 1 安全 application JSONL file sink 已完成本機 R3 TDD；CloudWatch／IAM／alarm／SSM 尚未開始
+→ Tier 1 安全 application JSONL file sink 與 Agent collection contract 已完成本機 R3 TDD；AWS Log Group／IAM／alarm／SSM 尚未開始
 → 製作去識別化報告截圖、完成延遲成本檢查
 → 第一次報告後依清理計畫停止或刪除持續計費資源，再進入 Tier 1
 ```
 
-下一個開發起點：依嚴格 TDD 建立 CloudWatch Agent file-collection config 的 repo-local contract，只讀取既有安全 JSONL path 並指向固定 log group／stream；此步不先建立 AWS resource 或擴張 IAM。Log Group／7 天 retention、最小權限 IAM、alarm、SSM document 與 incident AWS gate 必須逐段完成估價與另開 bounded batch。Safari sync 留到下一個經核准的短時 AWS release window。
+下一個開發起點：依嚴格 TDD 建立 Tier 1 CloudFormation repo-local contract，預先定義固定 Log Group、7 天 retention 與只允許該 group／stream 的最小 logs write policy；先不 deploy。Agent 安裝、alarm、SSM document 與 incident AWS gate 必須逐段完成估價與另開 bounded batch。Safari sync 留到下一個經核准的短時 AWS release window。
 
 ## Residual risks
 

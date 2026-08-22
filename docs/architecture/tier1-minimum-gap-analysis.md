@@ -21,7 +21,7 @@
 ## 建議的第一個嚴格 TDD 切片
 
 1. **已完成：**建立安全的 production JSONL file sink，只接收 `co_story.request` 與 `co_story.storyteller`；不收自由輸入或 Uvicorn raw access log，並限制本機檔案大小／rotation。驗證見 `docs/evidence/2026-08-22-tier1-safe-log-file/validation.md`。
-2. 建立 CloudWatch Agent file collection config，僅讀取該 JSONL file，送到固定 `/co-story/tier1/application` Log Group；retention `7` 天。
+2. **repo-local contract 已完成：**CloudWatch Agent config 僅讀取該 JSONL file，送到固定 `/co-story/tier1/application` Log Group；active／candidate log 已隔離。Agent 安裝、Log Group 與 retention `7` 天仍待 AWS batch。驗證見 `docs/evidence/2026-08-22-tier1-cloudwatch-agent-contract/validation.md`。
 3. AppRole 只新增該 log group／stream 的 `logs:CreateLogStream`、`logs:DescribeLogStreams`、`logs:PutLogEvents`；不授予 `CloudWatchAgentServerPolicy` 全域權限。
 4. 建立 JSON filter `{ $.status >= 500 }`、單一 `Application5xx` metric 與 `>= 1 / 1 minute` alarm；第一批不加入 SNS Email、Lambda 或自動修復。
 5. 建立沒有自由文字 command parameter 的 `CoStoryHealthCheck` SSM document，只執行 service active、loopback live／ready；target 限定既有 `Project=co-story`、`Tier=0` instance。
