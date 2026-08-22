@@ -1,0 +1,50 @@
+import json
+from pathlib import Path
+
+
+ROOT = Path(__file__).parents[2]
+AGENT_CONFIG = ROOT / "ops/cloudwatch/amazon-cloudwatch-agent.json"
+RUNTIME_ENV_EXAMPLE = ROOT / "ops/runtime/co-story.env.example"
+SYSTEMD_UNIT = ROOT / "ops/systemd/co-story.service"
+
+
+def test_cloudwatch_agent_collects_only_the_safe_application_jsonl() -> None:
+    assert AGENT_CONFIG.is_file(), "CloudWatch Agent application log config 尚未建立"
+    config = json.loads(AGENT_CONFIG.read_text(encoding="utf-8"))
+
+    collect_list = config["logs"]["logs_collected"]["files"]["collect_list"]
+    assert collect_list == [
+        {
+            "file_path": "/var/log/co-story/application.jsonl",
+            "log_group_name": "/co-story/tier1/application",
+            "log_stream_name": "{instance_id}",
+            "encoding": "utf-8",
+            "timezone": "UTC",
+        }
+    ]
+    assert "metrics" not in config
+
+    rendered = json.dumps(config, sort_keys=True).lower()
+    for forbidden_source in (
+        "/var/log/messages",
+        "/var/log/secure",
+        "auth.log",
+        "nginx",
+        "access.log",
+        "error.log",
+        "*",
+    ):
+        assert forbidden_source not in rendered
+
+
+def test_runtime_produces_the_exact_file_collected_by_the_agent() -> None:
+    environment = RUNTIME_ENV_EXAMPLE.read_text(encoding="utf-8")
+    unit = SYSTEMD_UNIT.read_text(encoding="utf-8")
+
+    assert (
+        "CO_STORY_APPLICATION_LOG_PATH=/var/log/co-story/application.jsonl"
+        in environment
+    )
+    assert "LogsDirectory=co-story" in unit
+    assert "LogsDirectoryMode=0750" in unit
+    assert "Environment=CO_STORY_APPLICATION_LOG_PATH" not in unit
