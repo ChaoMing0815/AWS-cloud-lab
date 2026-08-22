@@ -1,3 +1,10 @@
+function joinErrorMessage(error) {
+  if (error?.status === 409 && error?.code === "ROOM_NOT_JOINABLE") {
+    return "房主尚未開放世界，請稍後再試。";
+  }
+  return error?.message ?? "加入房間失敗，請稍後再試。";
+}
+
 export class LandingPage {
   constructor({ createRoom, joinRoomByCode, loadCurrentSession, documentRef = document, navigate }) {
     this.createRoom = createRoom;
@@ -61,7 +68,7 @@ export class LandingPage {
       });
       this.navigate(`/room/${room.roomCode}/lobby`);
     } catch (caught) {
-      error.textContent = caught?.message ?? "加入房間失敗，請稍後再試。";
+      error.textContent = joinErrorMessage(caught);
       error.hidden = false;
     } finally {
       this.busy = false;

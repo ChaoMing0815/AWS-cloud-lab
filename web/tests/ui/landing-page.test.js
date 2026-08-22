@@ -171,6 +171,34 @@ test("LandingPage 加入失敗時留在首頁並顯示錯誤", async () => {
   assert.equal(documentRef.elements.joinGameError.textContent, "找不到此房間。");
 });
 
+test("LandingPage 將世界尚未開放的 409 顯示為明確玩家提示", async () => {
+  const documentRef = fakeDocument();
+  const routes = [];
+  const page = new LandingPage({
+    createRoom: { async execute() {} },
+    joinRoomByCode: {
+      async execute() {
+        const error = new Error("只有等待中的房間可以加入玩家。");
+        error.code = "ROOM_NOT_JOINABLE";
+        error.status = 409;
+        throw error;
+      },
+    },
+    documentRef,
+    navigate: (route) => routes.push(route),
+  });
+
+  await page.handleJoin({ preventDefault() {} });
+
+  assert.deepEqual(routes, []);
+  assert.equal(documentRef.elements.joinGameError.hidden, false);
+  assert.equal(
+    documentRef.elements.joinGameError.textContent,
+    "房主尚未開放世界，請稍後再試。",
+  );
+  assert.equal(documentRef.elements.joinGameButton.disabled, false);
+});
+
 test("LandingPage 建房失敗時留在首頁並顯示錯誤", async () => {
   assert.equal(typeof LandingPage, "function", "LandingPage controller 尚未建立");
   const documentRef = fakeDocument("   ");
