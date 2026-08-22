@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import hmac
+import json
+import logging
 import secrets
 import string
 from datetime import datetime, timedelta
@@ -15,6 +17,7 @@ from app.application.ports import (
     Storyteller,
     StorytellerFailure,
 )
+from app.application.input_safety import contains_explicit_prompt_injection
 from app.application.rules import (
     apply_spark,
     classify_result,
@@ -29,6 +32,16 @@ from app.domain.errors import DomainError
 from app.domain.models import Character, DiceResult, Player, Room, StoryEntry, TransferCode, World
 
 ROOM_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+STORYTELLER_LOGGER = logging.getLogger("co_story.storyteller")
+STORYTELLER_FAILURE_CODES = {
+    "AUTHORIZATION_ERROR",
+    "CONTENT_REJECTED",
+    "INVALID_MODEL",
+    "SCHEMA_INVALID",
+    "THROTTLED",
+    "TIMEOUT",
+    "TRANSIENT_SERVICE_ERROR",
+}
 TRANSFER_CODE_ISSUE_STATUSES = {
     "DRAFT",
     "LOBBY",
@@ -306,6 +319,16 @@ class RoomService:
                 raise DomainError("WORLD_ALREADY_CONFIRMED", "世界設定已確認。", 409)
             if current.world_generation_count >= 2:
                 raise DomainError("WORLD_GENERATION_LIMIT", "世界生成次數已達上限。", 409)
+            if contains_explicit_prompt_injection(
+                *keywords,
+                custom_tone,
+                supplemental_request,
+            ):
+                raise DomainError(
+                    "PROMPT_INJECTION_REJECTED",
+                    "輸入包含疑似提示注入指令，請改寫故事要求。",
+                    422,
+                )
 
             current.world_generation_count += 1
             current.version += 1
@@ -315,6 +338,20 @@ class RoomService:
                     keywords, tone, custom_tone, supplemental_request
                 )
             except StorytellerFailure as failure:
+                failure_code = (
+                    failure.code
+                    if failure.code in STORYTELLER_FAILURE_CODES
+                    else "UNKNOWN"
+                )
+                STORYTELLER_LOGGER.warning(
+                    json.dumps(
+                        {
+                            "operation": "generate_world",
+                            "failure_code": failure_code,
+                        },
+                        separators=(",", ":"),
+                    )
+                )
                 return {"room": current, "failure": failure.code}
 
             current.world = generated

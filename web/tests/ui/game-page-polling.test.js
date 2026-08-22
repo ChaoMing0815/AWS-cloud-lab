@@ -249,6 +249,64 @@ test("GamePage 遇到 401 或 403 時停止 polling 並顯示 session 下一步"
   }
 });
 
+test("GamePage 房間被刪除後停止 polling、清除舊房間並只導回首頁一次", async () => {
+  const scheduler = createScheduler();
+  const statusDocument = installPollingStatusDocument();
+  const navigations = [];
+  let loadCount = 0;
+  const page = new GamePage({
+    loadRoom: {
+      async execute() {
+        loadCount += 1;
+        throw new ApiError("ROOM_NOT_FOUND", "找不到目前房間。", 404);
+      },
+    },
+    navigate: (path) => navigations.push(path),
+    schedule: scheduler.schedule,
+    cancelSchedule: scheduler.cancel,
+  });
+  page.room = { id: "room-deleted", status: "COLLECTING_ACTIONS", version: 7 };
+
+  try {
+    page.startPolling();
+    await assert.doesNotReject(scheduler.tasks[0].callback());
+    await assert.doesNotReject(page.pollOnce());
+
+    assert.equal(loadCount, 1, "停止後不得再次讀取已刪除的房間");
+    assert.equal(page.pollingStopped, true);
+    assert.equal(page.room, null, "不得保留已刪除房間的 canonical state");
+    assert.equal(scheduler.tasks.length, 1, "收到第一個 404 後不得再排定 polling");
+    assert.deepEqual(navigations, ["/"], "舊分頁只可導回首頁一次");
+    assert.equal(statusDocument.pollingStatus.dataset.kind, "room-removed");
+    assert.equal(
+      statusDocument.pollingStatus.textContent,
+      "房間已結束或刪除，已返回首頁。",
+    );
+  } finally {
+    statusDocument.restore();
+  }
+});
+
+test("GamePage 不把其他 404 誤判為房間已刪除", async () => {
+  const page = new GamePage({
+    loadRoom: {
+      async execute() {
+        throw new ApiError("PLAYER_NOT_FOUND", "找不到玩家。", 404);
+      },
+    },
+    schedule: () => 1,
+    cancelSchedule: () => {},
+  });
+  page.room = { status: "COLLECTING_ACTIONS", version: 7 };
+
+  await assert.rejects(
+    page.pollOnce(),
+    (error) => error?.code === "PLAYER_NOT_FOUND",
+  );
+  assert.equal(page.pollingStopped, false);
+  assert.notEqual(page.room, null);
+});
+
 test("GamePage 遇到 409 時立即重新載入 canonical state", async () => {
   const scheduler = createScheduler();
   const statusDocument = installPollingStatusDocument();

@@ -55,14 +55,14 @@ Demo 與每日進度依本清單逐項驗收。檔案存在不代表完成；必
 
 ## Tier 0：AWS 可玩 MVP
 
-- [ ] VPC、public subnet、private DB subnets 與 routing 正確。
-- [ ] Web／API 位於 public；外部可開啟並使用。
-- [ ] Database 位於 private，`Public access = No` 或等效隔離。
-- [ ] DB SG 只允許 App SG 的必要 port。
+- [x] VPC、public subnet、private DB subnets 與 routing 正確。
+- [x] Web／API 位於 public；外部可開啟並使用。
+- [x] Database 位於 private，`Public access = No` 或等效隔離。
+- [x] DB SG 只允許 App SG 的必要 port。
 - [ ] 外部 DB 連線負面測試失敗。
-- [ ] 3 位玩家可建立角色、提交 action 並完成至少一回合。
-- [ ] Bedrock 依固定骰子結果生成故事。
-- [ ] Refresh／重連後房間、角色、回合與故事仍存在。
+- [x] 3 位玩家可建立角色、提交 action 並完成至少一回合。
+- [x] Bedrock 依固定骰子結果生成故事。
+- [x] Refresh／重連後房間、角色、回合與故事仍存在。
 - [ ] 架構圖、AWS 截圖、README 與部署紀錄完整。
 
 ## Tier 1：CloudWatch、AIOps、SSM

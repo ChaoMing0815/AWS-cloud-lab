@@ -34,6 +34,7 @@
 - [EC2＋SSM management plane](2026-08-15-tier0-compute-iac/tdd-validation.md)
 - [Bedrock Guardrail baseline](2026-08-15-tier0-bedrock-guardrail/validation.md)
 - [Artifacts、runtime secrets、migration 與 internal staging](2026-08-16-tier0-internal-staging/validation.md)
+- [Batch 9A、Prompt Attack 未歸因結果與公開試玩 readiness](2026-08-19-tier0-public-trial-readiness/validation.md)
 
 ## 產品與 release gates
 

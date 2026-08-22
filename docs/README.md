@@ -17,6 +17,7 @@
 - [Screen States](product/screen-states.md)
 - [Feature Specs](features/README.md)
 - [本機 MVP Test Plan](qa/local-mvp-test-plan.md)
+- [Tier 0 公開試玩操作與外部 E2E 驗證指南](qa/public-trial-guide.md)
 - [產品核准紀錄](governance/approval-log.md)
 
 ## AWS 與架構

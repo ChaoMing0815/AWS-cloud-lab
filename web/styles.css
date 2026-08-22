@@ -43,6 +43,8 @@ body::before {
 button, input, textarea, select { font: inherit; }
 button { cursor: pointer; }
 button:disabled, textarea:disabled, input:disabled, select:disabled { cursor: not-allowed; opacity: .5; }
+h1, h2, h3, .section-heading { text-wrap: balance; }
+p, li { text-wrap: pretty; }
 
 .topbar {
   height: 76px;
@@ -65,6 +67,9 @@ button:disabled, textarea:disabled, input:disabled, select:disabled { cursor: no
 .topbar-link { color: var(--muted); font-size: .78rem; text-decoration: none; }
 .topbar-link:hover, .topbar-link:focus-visible { color: var(--gold); }
 
+#appLoadingStatus { display: grid; min-height: calc(100vh - 150px); margin: 0; place-items: center; color: var(--muted); }
+#appLoadingStatus[hidden] { display: none; }
+
 .landing-shell {
   position: relative;
   display: grid;
@@ -81,6 +86,7 @@ button:disabled, textarea:disabled, input:disabled, select:disabled { cursor: no
 .landing-features { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 28px 0 0; padding: 0; color: var(--muted); font-size: .78rem; list-style: none; }
 .landing-features li::before { content: "✦"; margin-right: 7px; color: var(--gold); }
 .entry-panel { padding: 26px; border: 1px solid var(--line); background: var(--panel); box-shadow: 0 24px 80px rgba(0,0,0,.28); }
+.trial-safety-note { margin: 0 0 18px; padding: 10px 12px; color: var(--muted); border-left: 2px solid var(--gold); background: rgba(227,182,107,.055); font-size: .7rem; line-height: 1.6; }
 .rules-shell { align-items: start; }
 .rules-return { display: inline-block; width: auto; margin-top: 1rem; text-decoration: none; }
 .rules-content { display: grid; gap: 1.15rem; }
@@ -255,4 +261,12 @@ footer { display: flex; justify-content: space-between; width: min(1500px, 94vw)
   .action-composer { margin: 0 12px 12px; }
   .composer-footer { align-items: end; gap: 10px; }
   .status-panel { display: block; }
+}
+
+@media print {
+  h1, h2, h3 { break-after: avoid-page; }
+  p, li { orphans: 2; widows: 2; }
+  .entry-panel, .panel, .story-entry, .objective, .ai-card, .ending-panel {
+    break-inside: avoid-page;
+  }
 }

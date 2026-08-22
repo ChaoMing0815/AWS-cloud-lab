@@ -18,6 +18,12 @@ function element(tagName, { className, text, title } = {}) {
   return node;
 }
 
+function publicErrorMessage(error, fallback) {
+  return typeof error?.publicMessage === "string" && error.publicMessage.trim()
+    ? error.publicMessage
+    : fallback;
+}
+
 export class GamePage {
   constructor({
     loadRoom,
@@ -155,6 +161,17 @@ export class GamePage {
         } catch (reloadError) {
           error = reloadError;
         }
+      }
+
+      if (error?.status === 404 && error?.code === "ROOM_NOT_FOUND") {
+        this.room = null;
+        this.stopPolling();
+        this.showPollingStatus(
+          "房間已結束或刪除，已返回首頁。",
+          "room-removed",
+        );
+        if (this.navigate) this.navigate("/");
+        return false;
       }
 
       if (error?.status === 401 || error?.status === 403) {
@@ -324,6 +341,10 @@ export class GamePage {
         supplementalRequest: byId("supplementalRequestInput").value,
       }),
       "世界草稿已生成，請編輯後再確認。",
+      {
+        feedbackId: "worldGenerationFeedback",
+        pendingMessage: "正在生成世界草稿…",
+      },
     );
     if (completed) this.applyGeneratedWorldDraft();
   }
@@ -358,6 +379,7 @@ export class GamePage {
         bond: byId("bondInput").value,
       }),
       "角色已儲存。",
+      { errorMessage: "角色儲存失敗，請重新整理後再試。" },
     );
   }
 
@@ -404,18 +426,27 @@ export class GamePage {
     await this.run(() => this.useCases.finishGame.execute({ decision }), message);
   }
 
-  async run(operation, successMessage = "", { onError = null } = {}) {
+  async run(
+    operation,
+    successMessage = "",
+    {
+      onError = null,
+      feedbackId = "feedback",
+      pendingMessage = "",
+      errorMessage = "操作失敗，請稍後再試。",
+    } = {},
+  ) {
     this.setBusy(true);
-    this.showFeedback("");
+    this.showFeedback(pendingMessage, pendingMessage ? "pending" : "", feedbackId);
     try {
       this.room = await operation();
       this.syncRoute();
       this.render();
-      this.showFeedback(successMessage, "success");
+      this.showFeedback(successMessage, "success", feedbackId);
       return true;
     } catch (error) {
       onError?.(error);
-      this.showFeedback(error.message || "操作失敗，請稍後再試。", "error");
+      this.showFeedback(publicErrorMessage(error, errorMessage), "error", feedbackId);
       return false;
     } finally {
       this.setBusy(false);
@@ -440,8 +471,9 @@ export class GamePage {
     });
   }
 
-  showFeedback(message, kind = "") {
-    const feedback = byId("feedback");
+  showFeedback(message, kind = "", feedbackId = "feedback") {
+    const feedback = byId(feedbackId);
+    if (!feedback) return;
     feedback.hidden = !message;
     feedback.textContent = message;
     feedback.dataset.kind = kind;

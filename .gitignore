@@ -24,3 +24,6 @@ node_modules/
 npm-debug.log*
 pnpm-debug.log*
 yarn-debug.log*
+
+# Microsoft Office temporary lock files
+~$*

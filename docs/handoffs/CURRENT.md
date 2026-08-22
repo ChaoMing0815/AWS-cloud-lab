@@ -1,65 +1,66 @@
 # CURRENT：目前工作交接
 
-- 更新日期：2026-08-18
-- 近期交付目標：2026-08-24 第一次報告前完成 Tier 0 AWS 公開試玩、去識別化證據與成本檢查；甘特圖 M3 `2026-08-20` 保留為內部提前完成目標。
-- Branch：`codex/tier0-bedrock-guardrail`（從同步後的 `main` 建立；尚未 push／merge）
-- Git checkpoint：installer umask 修正 `a1160bc`；Bedrock `guardContent`／query 強化 `63d46c3`
-- 最後全綠功能基準：`a1160bc`（user-controlled prompt tagging＋公開模式 release update 自行固定 service-readable umask）
-- Regression：Backend `308 passed, 8 skipped`；Frontend `80 passed`（2026-08-18 重跑）
-- AWS：Tokyo `ap-northeast-1` 已有 IAM、network、private RDS、EC2＋SSM、private artifacts、runtime secrets、Guardrail v1 與 bounded Bedrock runtime IAM；無 NAT／EIP／SSH
-- 操作邊界：Console-first；曾在使用者逐批明確核准後，於 EC2 的 SSM Session 內執行 exact-prefix S3 download 與安裝指令。未修改 `~/.aws`、憑證或 Keychain。
+- 更新日期：2026-08-22
+- 近期目標：第一次進度報告書面稿與簡報已完成本機初稿；接續處理 Tier 0 公開試玩發現、PR #4 review／merge、延遲成本檢查與報告後資源清理。
+- Branch：`codex/tier0-public-trial-ui`，刪房 polling lifecycle 交付 tip `bfe3ce0` 已 push；本文件狀態 commit 另計。GitHub PR #4 尚未合併。
+- 本機功能 checkpoint：公開試玩 UX／安全失敗記錄 `d2b76ba`；canonical route loading shell `f9d4155`；明確 Prompt Injection 前置拒絕 `6f872b2`；widow／orphan 排版規則 `18fcd21`；首頁公開試玩安全提示 `62b4e02`。
+- Regression：Backend `313 passed, 8 skipped`；Frontend `90 passed`（2026-08-22，刪房 polling lifecycle Green gate）。
+- AWS active release：`tier0-20260819-ee128da`。
+- 操作邊界：Console-first；未經新的 bounded batch 核准不得執行 AWS CLI。使用者操作 AWS Console／SSM，Agent 只提供單一可驗證步驟。
 
 ## Current
 
-- 本機 MVP P0 release gate 已全綠：正式入口、三玩家回合、結局、PostgreSQL persistence、LLM recovery、polling 與 session lifecycle。
-- Network stack 已部署：VPC `10.20.0.0/16`、1 個 public app subnet、2 個 private DB subnets、private local-only route、無 NAT／EIP；DB `5432` 只接受 App Security Group。
-- RDS stack `co-story-tier0-rds` 已部署：PostgreSQL `18.3`、Single-AZ `db.t4g.micro`、20 GiB gp2、private-only、加密、RDS-managed master secret，狀態 `Available`。
-- Compute stack `co-story-tier0-compute` 已部署：AL2023 ARM64 `t4g.micro`、8 GiB encrypted gp3、IMDSv2 required、無 Key Pair／SSH；EC2 checks passed，SSM managed node Online。
-- Artifact stack `co-story-tier0-artifacts` 已部署：generated-name private S3 bucket、Block Public Access、SSE-S3、BucketOwnerEnforced、TLS-only、`releases/` 7 日到期；AppRole 只有 exact-prefix list／read。
-- Runtime secrets stack `co-story-tier0-runtime-secrets` 已部署：application DB secret 與永久 exact-secret read policy 保留。DB bootstrap／migration 完成後，`EnableMigrationBootstrapAccess=false` 的 change set 只移除 temporary master-secret policy，stack 已 `UPDATE_COMPLETE`。
-- AWS private RDS 已完成 `co_story_app` restricted role bootstrap 與 migration；role 不具 superuser／createdb／createrole／replication／bypassrls，應用 DSN 使用 `verify-full`。
-- Public release 已更新為 `tier0-20260818-27bebe2`：Batch 7.1R 只讀取 exact archive／checksum，驗證 checksum 後從 archive 取出 update installer；未重新取得 master secret。`co-story.service` 與 `co-story-nginx-public.service` active、staging inactive，`/opt/co-story/current` 指向該 release，公開 readiness HTTP `200`，首頁 `Cache-Control: no-store`。
-- EC2 service restart persistence 已實機驗證：經正式 API 建立測試房間後，重啟 `co-story.service`，兩個 services 回到 active、readiness HTTP `200`，同一 session 讀回相同 room／status／version；測試房間以 API `204` 刪除，四個 `/tmp` session／JSON 暫存檔亦已清除。8/16 原訂 EC2／SSM／migration／restart persistence 成果完成。
-- 實機安裝除錯已回饋到 tests 與 release tooling：包含 binary psycopg、bounded readiness retry、安全的既有 DB role rotate、symlink target 驗證，以及 Nginx journal／runtime write path。
-- Guardrail `co-story-tier0-safety` 為 `Ready`：Standard filters、APAC cross-Region profile、EMAIL／PHONE Mask；固定 version `1` 已發布。`co-story-tier0-compute` 已以單一 `AppRole Modify / Replacement=False` change set 更新為 exact Nova Lite＋Guardrail v1 policy，stack 為 `UPDATE_COMPLETE`。
-- AppRole Console inventory 保留 SSM、artifact 與 runtime-secret policies，沒有 Bedrock／Administrator Full Access；Policy Simulator 已驗證 exact Nova Lite＋Guardrail v1 為 `Allowed`、相同 model＋Guardrail v2 為 `Denied`。IAM Console 未顯示 Access Analyzer policy validation pane，因此未宣稱完成該項檢查；全程未使用 AWS CLI。
-- Batch 6A 已完成：Let's Encrypt short-lived IP certificate、production runtime、public Nginx 與 renewal timer active；Browser 無 certificate warning、landing page 可見、HTTP→HTTPS，public `8000/8080` 不可達，bad Host／Origin 與 security headers 均符合。尚未完成真實 Bedrock／三玩家 smoke，因此仍不得宣稱 Tier 0 AWS 垂直切片完成。
-- 使用者決定後續維持 AWS Free plan／credits 與最低成本，現階段不購買網域。既有 EC2＋Let's Encrypt short-lived IP certificate 路徑已完成，新增 AWS resource 為 0；未建立 CloudFront／Route 53／ACM／ALB。
-- Batch 6A／6A.1 已完成並關閉；release `tier0-20260818-7b89e60` 通過 checksum、internal activation、可信任 public HTTPS 與正負 boundary。Batch 7 已核准並完成 exactly 3 次 SDK `ApplyGuardrail`：benign allow、harmful block、synthetic EMAIL／PHONE mask 全符合；content／sensitive 各 3 units，估算 `US$0.00075`。首次真實世界生成已送達 Nova Lite 並產生 input／output token metrics，但應用因模型 JSON 草稿不合 schema 回傳 `503`；生成額度剩 1 次，不得在修正版部署前重試。
-- 世界生成 schema／cache 修正 `d9c8f4e` 已包含在正式 release。首次更新因舊 installer 以 `localhost` 驗證 public runtime 而失敗並乾淨回滾；TDD 修正 `27bebe2` 會保留 active public／staging edge 並在 edge 失敗時恢復上一版。第一次安裝 `27bebe2` 又因下載步驟留下的 caller `umask 0077` 令新 venv 無法由 `co-story` 執行，仍在切換前乾淨回滾；隔離 root subshell 使用 `umask 022` 後部署成功。兩次失敗均未中斷舊版公開服務。
-- Batch 7.1／7.1R 已完成並關閉：只沿用既有 private S3／SSM，不新增 resource、IAM、RDS／TLS／DNS 變更或模型 invocation。Batch 7.2 隨後核准並完成一次公開 HTTPS 真實世界生成：Nova Lite 回傳符合 schema 的繁體中文草稿，五個 canonical 欄位自動填入、無錯誤，生成次數由 canonical `2` 變為 `1`。先前失敗呼叫未持久化扣次，重新載入後恢復為 `2`，證明交易 rollback 邊界有效。
-- Batch 8A 三玩家公開單回合 smoke 已完成：三個獨立 Browser sessions 加入同房、建立角色、同步三個 action、擲骰與各自星火決策；房主以 exactly 1 次真實 Nova Lite 敘事結算後進入第 2 回合，正式進度 `4（13%）`、危機 `2（7%）`、AI 敘事與三個 sessions 同步。三個頁面重新整理後完整讀回狀態，private RDS refresh gate 通過。重新整理時短暫閃回 Landing 是待改善的 loading-shell 視覺問題，不是資料遺失。
-- Batch 8A 後 Cost Explorer 唯讀檢查顯示 Total、Amazon Bedrock、EC2、RDS 與其他服務目前均為 `0`；帳務可能延遲入帳，後續成本證據須保留此限制，不將即時 `0` 解讀為永久零成本。
-- 目前 AWS active release `tier0-20260818-27bebe2` 的 Converse request 尚未以 `guardContent` 標示 user-controlled prompt，因此仍不得宣稱 Prompt Attack filter 已充分啟用。本機 TDD 強化 `63d46c3` 已將世界生成、回合與結局的 structured user input 統一包為 `guardContent`／query；installer `a1160bc` 亦在 root check 後固定 `umask 0022`。新 release `tier0-20260818-a1160bc` 已建立並通過 checksum，尚未上傳／部署／做真實 prompt-attack smoke；不變更模型、IAM 或 Guardrail version。
-- 推進原則：甘特圖是先後與風險參考，不是速度上限。當日預定成果、驗證與必要文件均完成後，可提前推進下一個最小切片或做不擴張成本／權限／產品範圍的小幅優化；不得跳過 Tier gate、TDD、bounded batch、成本、安全或證據關卡。
-- 專案文件入口已收斂：根目錄 `README.md` 只保留產品、架構、執行方式與核心文件入口；完整文件索引位於 `docs/README.md`，證據保存規則位於 `docs/evidence/README.md`。
-- `codex/session-lifecycle` 已 push 並透過 PR `#1` 合併到 `main`；三個更早的 remote feature branches 與該 branch 均已被 `main` 包含，remote branch 指標清理屬可選 Git housekeeping，不阻塞 AWS 進度。
+- Tier 0 AWS 基礎已完成：Tokyo VPC、公網 EC2＋SSM、private PostgreSQL RDS、private S3 artifacts、runtime secret、Guardrail v1 與 bounded Bedrock runtime IAM；無 NAT、EIP、SSH、ALB、CloudFront、Route 53 或自有網域。
+- 公開 HTTPS 已啟用：Let's Encrypt short-lived IP certificate、public Nginx 與 renewal timer active；HTTP→HTTPS、bad Host／Origin、security headers、public `8000/8080` 不可達均已驗證。
+- Batch 8A 已完成 AWS 三玩家單回合 smoke：三個 Browser sessions 建立角色、同步 action、擲骰、星火決策與房主結算；進入 Round 2，進度 `4（13%）`、危機 `2（7%）`，三端 refresh 後由 private RDS 完整讀回。
+- PR #3 已合併至 `main`；merge commit `3c5db99`。Batch 9A 隨後部署 `tier0-20260818-a1160bc`，exact S3 objects `2`、checksum `OK`，application／public Nginx／renew timer active、staging inactive、HTTPS readiness `200`、首頁 `Cache-Control: no-store`。
+- Batch 9A 只允許兩次 bounded 世界生成呼叫，均已用完：benign request 回 `200` 並產生完整世界草稿；synthetic prompt-injection request 回 `503`。`503` 只能證明應用失敗，不能證明 Guardrail Prompt Attack filter 介入，故目前不得宣稱 Prompt Attack smoke 通過，也不得在新核准前重試。
+- `a1160bc` 已包含 Bedrock `guardContent`／`query` 標記與 installer `umask 0022`，但當時 runtime 沒有安全、正規化的 storyteller failure log；因此無法由既有 log 判定 `503` 是 `CONTENT_REJECTED`、schema invalid 或其他 provider failure。
+- Batch 9B 已部署 `tier0-20260819-2de0424`：exact S3 objects `2`、checksum `OK`；application／public Nginx／renew timer active、staging inactive、HTTPS readiness `200`、首頁 `Cache-Control: no-store`。Browser 已驗證 AWS runtime 文案、private PostgreSQL 標示、canonical loading shell、session restore 與近端 validation error；未呼叫 Bedrock。
+- 該版本的本機 Red commits 為 `66ee7b5`、`8c9bde0`、`816b817`；Green commits 為 `d2b76ba`、`f9d4155`。世界生成按鈕旁顯示 loading／安全錯誤、關鍵字接受 `、`／`，`／`,`、範例文字泛用化，後端只記 allowlist failure code，不記 prompt、room、player、AWS 原始錯誤或 secret。
+- Batch 9C exactly 1 次 synthetic prompt-injection 世界生成已完成：Browser 顯示安全的「世界生成暫時無法完成」、world fields 未變、生成剩餘次數由 `2` 變 `1`；正規化 log 為 `SCHEMA_INVALID`、HTTP `503`。這不是 `CONTENT_REJECTED` 或 Guardrail intervention，證明既有 Prompt Attack filter 對代表性測試不足以單獨依賴；禁止重試。
+- Application-layer 明確注入前置拒絕已依嚴格 TDD 完成並部署：Red `a3f12a8`、Green `6f872b2`，active release `tier0-20260819-ee128da`。Batch 9D Browser 驗證英文 override＋system-prompt extraction 在 Storyteller 前回安全 `422`，生成剩餘次數維持 `1`、world fields 不變、`STORYTELLER_FAILURE_LOGS=0`；普通「忽略風雨」故事語句仍通過。此 bounded detector 只是 defense-in-depth，不宣稱能偵測所有 Prompt Injection。
+- 同學／友人試玩已限縮為 AWS 外部 E2E 驗證：客觀記錄 HTTPS、三玩家同步、Bedrock 敘事、refresh persistence、錯誤與完成時間；非阻斷性的 UI／UX 回饋不在本輪範圍。操作、停止條件與去識別化證據規則見 `docs/qa/public-trial-guide.md`。
+- 尚未部署的本機 UI 收尾已依 TDD 完成：標題與段落使用 responsive `balance`／`pretty` wrapping，列印樣式避免單行跨頁；首頁移除硬編換行並加入「使用暱稱、勿輸入個資／機密」提示。Red commits 為 `a3337b0`、`bf8b193`；Green commits 為 `18fcd21`、`62b4e02`。
+- 2026-08-20 完成 Tier 0 四玩家、四回合外部公開試玩：iPhone 12 Safari 房主、macOS Chrome 與兩個 Windows Chrome 玩家均完成加入、角色、四回合、Bedrock 敘事、結局與刪房。AWS E2E 判定為 **PASS with findings**。
+- Bedrock CloudWatch 在 22:10–23:00 顯示 Nova Lite `Invocations=6`、input tokens `3,018`、output tokens `1,549`，六次呼叫與世界生成、四回合敘事及結局一致；加權平均 latency 約 `1,940 ms`。EC2 CPU 峰值約 `1.8133%`，RDS `DatabaseConnections` 有非零 client connection。
+- Sanitized access log：`200 × 2,671`、`201 × 5`、`204 × 1`、`404 × 317`、`409 × 30`、`5xx × 0`。房間於 22:53:22 成功刪除；317 次 current-room `404` 全部從刪除後 24 秒才開始，確認是舊分頁未停止 polling。
+- 公開試玩發現：iPhone Safari 需頻繁手動更新、世界生成前回合數會回預設值、角色儲存後曾顯示原始 JavaScript exception、刪房後各頁未立即導頁，以及回合敘事偏向逐句整合而非深入演繹。前三類 state／error 與刪房 lifecycle 是正式修正候選；敘事品質列為 post-MVP Prompt 優化。
+- 8/20 backend metrics／sanitized logs 已入 `docs/evidence/2026-08-20-tier0-four-player-trial/`。六張受測者原圖含 public IP、暱稱、通知或 Browser 資訊，未直接入庫；先以去識別化文字紀錄，報告圖待裁切／遮罩。
+- Batch 8A 後 Cost Explorer 的 Total、Bedrock、EC2、RDS 與其他服務當時均顯示 `0`；帳務可能延遲，不能解讀為永久零成本。Credits 尚餘 `US$137.40`，最近到期日 2027-09-08。
+- 第一次進度書面報告初稿已產出至 `docs/reports/2026-08-24-first-progress-report.docx`。內容已納入 Tier 0–5 選題思路、商業價值、前後端與 AWS 架構、Web／DB 分離、公私 subnet、重啟後 RDS persistence、CloudFormation、成本管控、Prompt Injection 防護邊界、實際遊玩畫面與後續演進；中文字體、標題尺寸、段落間距及單行跨頁已調整。
+- 第一次進度簡報已產出至 `docs/presentations/2026-08-24-first-progress-presentation.pptx`，共 13 頁並附逐頁繁體中文講稿。投影片以簡短文字、實際遊玩畫面與圖解呈現，另加入前端／後端責任及各自與 AWS 的串接方式；架構連線改用直角路徑，避免斜線穿越區塊。已通過投影片 overflow、逐頁視覺與 PowerPoint 壓縮檔完整性檢查。
+- 第一次進度報告、簡報與三張可重用架構圖已在 `bf12650` commit 並 push；Office 檔經壓縮結構與敏感字串 pre-push audit。報告產生／修復腳本因含本機限定路徑未入庫，已保留在 `/private/tmp/co-story-report-scripts-20260821`；`.gitignore` 已排除 `~$*` Office 鎖定檔。
+- GitHub CI foundation 已依嚴格 TDD 完成本機 Red `832d6bf` 與 Green `a8763df`：`.github/workflows/ci.yml` 在 pull request 與 `main` push 執行獨立 Backend／Frontend jobs，固定 Python `3.13`、Node `24` 與唯讀 `contents: read`；明確不授予 OIDC、AWS、ECR 或部署能力。Contract targeted tests `2 passed`，本機 Backend `313 passed, 8 skipped`、Frontend `85 passed`。兩個 commits 已 push；GitHub Actions run `32478705788` 實際通過，`backend-tests` 約 25 秒、`frontend-tests` 約 9 秒。PR checks 已成立，branch protection required checks 尚未設定。
+- 角色儲存原始 JavaScript exception 已完成 R2 TDD：Red `6d3c8fe` 精確證明未知 `TypeError.message` 會外露；Green `49aa5dc` 只允許 `ApiError`／`DomainError` 的 `publicMessage` 顯示，未知錯誤改為「角色儲存失敗，請重新整理後再試。」並保留輸入、canonical room、解除 busy。Targeted `3 passed`、Frontend `88 passed`，代表性 sensitivity 可抓回直接顯示原文的 mutation；GitHub Actions run `32496325155` 的 `backend-tests` 與 `frontend-tests` 均通過。驗證見 `docs/evidence/2026-08-21-character-error-safety/validation.md`；尚未部署。
+- 刪房後舊分頁 polling lifecycle 已完成 R2 TDD：Red `a2b192d` 證明 `404 ROOM_NOT_FOUND` 仍會向外拋出；Green `f97a059` 在第一個精準錯誤後清除舊 room、停止排程並只導回首頁一次。Affected `15 passed`、Frontend `90 passed`；其他 `404` 與房主主動刪房行為未退化，代表性 sensitivity 可抓到 guard 失效。交付 tip `bfe3ce0` 已 push，GitHub Actions run `32542655388` 的 Backend／Frontend jobs 均通過；驗證見 `docs/evidence/2026-08-22-room-removal-polling/validation.md`。尚未部署或執行 Browser gate。
 
 ## Next
 
 ```text
-Batch 6A／6A.1 public HTTPS 與正負 boundary 已完成
-→ Batch 7 已明確核准
-→ SSM 內以既有 SDK exactly 3 次 ApplyGuardrail 驗證 allow／block／synthetic PII mask
-→ `tier0-20260818-27bebe2` 已部署並通過 HTTPS／cache release gate
-→ Batch 7.2 真實世界生成已成功，尚餘 1 次但不得為重複驗證而使用
-→ Batch 8A 公開 HTTPS 三玩家單回合、真實 storyteller 與 private RDS refresh 已完成
-→ Batch 後 Cost Explorer 目前全為 0；完成去識別化證據與第一份報告
-→ 部署 `tier0-20260818-a1160bc`，再以 bounded benign／synthetic prompt-attack smoke 驗證既有 High filter
-→ 依清理計畫停止或刪除持續計費資源，保留程式碼、IaC 與去識別化證據
-→ 再進入 Tier 1 可觀測性最小切片
+Batch 9B release 與零模型 Browser gate已完成
+→ Batch 9C exactly 1 次 synthetic prompt-injection smoke 回 SCHEMA_INVALID／503，未通過
+→ Batch 9D 已部署 application-layer 明確注入拒絕，零 Bedrock rejection gate 通過
+→ 四玩家四回合外部試玩與 backend evidence 已完成
+→ 第一次進度書面報告與 13 頁簡報已完成、通過 audit 並 push
+→ 純 CI foundation 已完成本機 Red／Green、完整 regression 與 GitHub-hosted runner 驗證
+→ 公開 JavaScript exception 已完成 R2 TDD、push 與 GitHub CI；尚未部署
+→ 刪房後其他分頁的 `404` 導頁／polling lifecycle 已完成 R2 TDD、push 與 GitHub CI；尚待 release Browser gate
+→ bounded reproduction Safari sync／回合選擇問題
+→ 製作去識別化報告截圖、完成延遲成本檢查與 PR #4 review／merge
+→ 第一次報告後依清理計畫停止或刪除持續計費資源，再進入 Tier 1
 ```
 
-新對話的第一步：確認 `codex/tier0-bedrock-guardrail` 工作樹與 `27bebe2`，再依 `operate-aws-final-project` 與本文件，從 **bounded 真實世界生成 smoke approval** 接續。仍採 Console-first，每次只做一個可驗證小步驟，且未核准新的 AWS CLI batch 前仍禁止 AWS CLI。
+下一個開發起點：先更新 PR #4 過期的測試與交付摘要，再依使用者核准合併；之後對 Safari sync 做 bounded reproduction，再重現世界生成前回合選擇回復預設值。完成 release Browser gate 與延遲成本檢查後，再決定是否建立新的部署 batch。任何後續 S3 讀取、部署或 Bedrock 呼叫都不得沿用舊核准。
 
 ## Residual risks
 
-- Public Web／TLS、真實世界生成、三玩家公開單回合、真實 storyteller、private RDS refresh 與 Batch 後 Cost Explorer 檢查均完成；尚待去識別化 evidence。進行中的 smoke room 依 SSOT 最後活動後 7 天到期；目前永久刪除 UI 只在結局後提供，不為清理而額外執行五回合模型呼叫。
-- Page bootstrap 在 canonical session 載入前會短暫顯示 Landing，狀態隨後正確恢復；列入第一輪 smoke 後 UI backlog，不阻塞 Tier 0。
-- AWS active release 仍是 `tier0-20260818-27bebe2`；本機下一版已修正 installer `umask` 並加入 `guardContent`，但部署與真實 Prompt Attack smoke 尚待新的 bounded batch 核准。
+- Prompt Attack 代表性測試明確得到 `SCHEMA_INVALID`／`503`，而非 Guardrail intervention；現有 Guardrail 不可作為唯一防線。
 - IAM Access Analyzer basic policy validation 未在 Console 顯示；CloudFormation、R3 tests、安全 review 與正負 Policy Simulator 已通過，但此項仍記為未執行。
-- 尚無自有網域；Route 53 註冊不是免費項目且 domain registration 不能使用 AWS credits。建議的 direct IP certificate 只有約 160 小時效期，必須證明自動續期；EC2 stop/start 若改變 public IP，URL、certificate 與 application allowlist 都需重建。CloudFront global path／HTTP origin trade-off 只作備選。
-- 尚未完成 AWS 三玩家核心流程與公開路徑 smoke test；EC2 service restart persistence 已通過。
+- Direct IP certificate 約 160 小時效期；必須保留 renewal timer 驗證。EC2 stop/start 若 public IP 改變，URL、certificate 與 allowlist 都需重建。
 - Idempotency store 仍是 process memory，不宣稱 multi-process exactly-once。
-- EC2 與 RDS 持續運行會消耗 credits；artifact objects 依 7 日 lifecycle 自動到期，但 stack／bucket 不會自動刪除。
-- 原始截圖若仍位於 macOS TemporaryItems，尚未算 repo evidence；入庫前必須去除 account ID、ARN、instance／subnet／SG IDs、endpoint、secret ARN 與 bucket 隨機 suffix。
+- iPhone Safari 未穩定取得即時 canonical state，需要手動重新整理；mobile sync 尚未達 Desktop Chrome 等價。
+- 角色儲存原始 JavaScript exception 已在 `49aa5dc` 修正並通過 GitHub CI，但尚未部署；AWS active release 仍不得宣稱已具備此防線。
+- 成功刪房後舊分頁持續 polling 已在 `f97a059` 修正並通過 GitHub CI，但尚未部署或以 AWS 多分頁重驗。
+- EC2 與 RDS 持續運行會消耗 credits；artifact objects 依 7 日 lifecycle 到期，但 stack／bucket不會自動刪除。
+- 原始截圖位於 macOS TemporaryItems／Downloads 時不算正式 evidence；入庫前須去除 account ID、ARN、IP、instance／subnet／SG ID、endpoint、secret ARN、bucket suffix、通知與不必要的 Browser 資訊。
