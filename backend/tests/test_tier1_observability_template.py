@@ -17,6 +17,13 @@ def test_template_contains_only_the_bounded_observability_resources() -> None:
     resources = template["Resources"]
 
     assert template["AWSTemplateFormatVersion"] == "2010-09-09"
+    assert set(template) == {
+        "AWSTemplateFormatVersion",
+        "Description",
+        "Parameters",
+        "Resources",
+        "Outputs",
+    }
     assert {resource["Type"] for resource in resources.values()} == {
         "AWS::Logs::LogGroup",
         "AWS::Logs::MetricFilter",
@@ -110,7 +117,7 @@ def test_metric_filter_counts_only_json_request_5xx_without_dimensions() -> None
     assert resource["UpdateReplacePolicy"] == "Delete"
     assert resource["Properties"] == {
         "FilterName": "co-story-tier1-application-5xx",
-        "FilterPattern": "{ $.status >= 500 }",
+        "FilterPattern": "{ ($.status >= 500) && ($.status <= 599) }",
         "LogGroupName": {"Ref": "ApplicationLogGroup"},
         "MetricTransformations": [
             {
