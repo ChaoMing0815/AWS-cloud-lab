@@ -37,7 +37,23 @@
 - Targeted `1 passed`；world-generation＋polling affected suite `16 passed`；Frontend regression `93 passed`。
 - Red 本身為代表性 sensitivity：移除 polling restore 後立即回到 `'6' !== '8'`。
 
+## Batch 10C AWS re-gate
+
+- Release `tier0-20260822-c5c1541` 由 PR #6 exact merge commit 建置；S3 exact objects `2`、EC2 checksum `OK`。部署後 application／public edge／renewal timer active、staging inactive，readiness／public HTTPS `200`，previous release 為 `tier0-20260822-de49944`。
+- 同一匿名驗證房 `LRTPGC` 完整 reload 後，房主選 `8` 回合並送出低於 Backend 長度限制的短欄位；API `422` 正確顯示 field errors，返回當下仍為 `8`。
+- 等待 `4.2` 秒、跨過至少一個 `3` 秒 polling 週期後，回合上限仍為 `8`；zero-model gate 通過。
+- 只執行 exactly one benign Bedrock 世界生成：關鍵字為匿名虛構內容「雨夜／山村／風車」，生成成功，剩餘次數由 `2` 變 `1`，表單取得完整 canonical world draft。
+- 生成後再等待 `4.2` 秒，回合上限仍為 `8`；世界生成前後與後續 polling 的 state-preservation gate 全數通過。未重試 Bedrock。
+- 新 finding：先前 `422` 的 field error／`aria-invalid` 在成功生成有效草稿後仍殘留。這不影響生成結果、回合選項或後續再次確認時的清除行為，但會造成誤導，列為後續小型 UX TDD slice。
+
+## Stale field-error UX follow-up TDD
+
+- Red `3863404`：以五個 world fields 均帶 `aria-invalid` 與可見 error text 的狀態執行成功 mock 世界生成；targeted test 精確證明 `aria-invalid` 仍為 `true`。
+- Green `6e9de5a`：只在 `handleGenerateWorld()` 成功取得 canonical draft 後呼叫既有 `clearWorldFieldErrors()`，再回填生成內容；生成失敗時不清除既有錯誤。
+- Targeted `1 passed`；world-generation affected suite `6 passed`；Frontend regression `94 passed`。
+- Red 本身為代表性 sensitivity：移除成功路徑的 clear 呼叫後，測試立即回到 `aria-invalid === true`。
+
 ## Residual
 
-- AWS active release `tier0-20260822-de49944` 尚未包含 polling Green `1940b8b`；需先 push／CI，再建立新的 checksummed release 才能重驗。
-- 世界生成成功後的 `8` 回合保留已有獨立本機測試；Batch 10B 因 zero-model gate 失敗而停止，AWS exactly-one-call 驗證仍未執行。
+- AWS active release `tier0-20260822-c5c1541` 已包含 polling Green `1940b8b`，zero-model 與 exactly-one-call AWS Browser gates 均已通過。
+- 成功生成後清除先前 `422` field errors 的 Green `6e9de5a` 已完成本機 TDD，AWS active release 尚未包含此修正。

@@ -355,6 +355,7 @@ export class GamePage {
       },
     );
     if (completed) {
+      this.clearWorldFieldErrors();
       this.applyGeneratedWorldDraft();
       if (maxRoundsInput) maxRoundsInput.value = selectedMaxRounds;
     }
