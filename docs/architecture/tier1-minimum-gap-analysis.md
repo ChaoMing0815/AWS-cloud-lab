@@ -23,7 +23,7 @@
 1. **已完成：**建立安全的 production JSONL file sink，只接收 `co_story.request` 與 `co_story.storyteller`；不收自由輸入或 Uvicorn raw access log，並限制本機檔案大小／rotation。驗證見 `docs/evidence/2026-08-22-tier1-safe-log-file/validation.md`。
 2. **repo-local contract 已完成：**CloudWatch Agent config 僅讀取該 JSONL file，送到固定 `/co-story/tier1/application` Log Group；active／candidate log 已隔離。Agent 安裝、Log Group 與 retention `7` 天仍待 AWS batch。驗證見 `docs/evidence/2026-08-22-tier1-cloudwatch-agent-contract/validation.md`。
 3. **repo-local IaC 已完成：**固定 Log Group retention `7` 天；AppRole 只新增該 group 的 `logs:DescribeLogStreams`，以及精確 instance stream 的 `logs:CreateLogStream`／`logs:PutLogEvents`，不授予 `CloudWatchAgentServerPolicy` 或 log-group management 權限。AWS deploy／IAM validation 尚待 bounded batch；驗證見 `docs/evidence/2026-08-22-tier1-observability-iac/validation.md`。
-4. 建立 JSON filter `{ $.status >= 500 }`、單一 `Application5xx` metric 與 `>= 1 / 1 minute` alarm；第一批不加入 SNS Email、Lambda 或自動修復。
+4. **repo-local IaC 已完成：**建立精確 500–599 JSON filter、單一 `Application5xx` metric 與 `>= 1 / 1 minute` alarm；無 dimensions、SNS Email、Lambda 或自動修復。AWS deploy／alarm state gate 尚待 bounded batch；驗證見 `docs/evidence/2026-08-22-tier1-application-5xx-alarm/validation.md`。
 5. 建立沒有自由文字 command parameter 的 `CoStoryHealthCheck` SSM document，只執行 service active、loopback live／ready；target 限定既有 `Project=co-story`、`Tier=0` instance。
 6. Incident gate 留到短時 AWS window：RDS stopped 時 readiness `503`→log／alarm→人工判讀→人工核准啟動 RDS→readiness `200`。不得為測試呼叫 Bedrock。
 
