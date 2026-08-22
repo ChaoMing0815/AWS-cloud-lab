@@ -2,9 +2,9 @@
 
 - 更新日期：2026-08-22
 - 近期目標：完成 Tier 0 公開試玩剩餘 bounded reproduction，同時暫停非必要 AWS compute 以節省 credits；之後依甘特圖縮減原則進入 Tier 1 最小可驗證切片。
-- Branch：`codex/tier0-polling-release-gate`，由 PR #6 merge commit `c5c1541` 建立；release-gate metadata `5de5570` 已 push。PR #6 已合併至 `main`；合併前 CI run `32560906206` 與合併後 main CI run `32560950967` 的 Backend／Frontend jobs 均成功。
+- Branch：`codex/tier0-polling-release-gate`，由 PR #6 merge commit `c5c1541` 建立；release-gate metadata `5de5570` 與 Batch 10C evidence `078be1f` 已 push。Stale field-error Red `3863404`、Green `6e9de5a` 尚未 push。
 - 本機功能 checkpoint：公開試玩 UX／安全失敗記錄 `d2b76ba`；canonical route loading shell `f9d4155`；明確 Prompt Injection 前置拒絕 `6f872b2`；widow／orphan 排版規則 `18fcd21`；首頁公開試玩安全提示 `62b4e02`。
-- Regression：Backend `325 passed, 8 skipped`；Frontend `93 passed`（2026-08-22，DRAFT polling round-state Green gate）。
+- Regression：Backend `325 passed, 8 skipped`；Frontend `94 passed`（2026-08-22，stale world field-error Green gate）。
 - AWS active release：`tier0-20260822-c5c1541`。
 - 操作邊界：Console-first；未經新的 bounded batch 核准不得執行 AWS CLI。使用者操作 AWS Console／SSM，Agent 只提供單一可驗證步驟。
 
@@ -49,7 +49,8 @@
 - DRAFT polling round-state 已完成後續 R2 TDD：Red `8dc7592` 精確得到 `'6' !== '8'`；Green `1940b8b` 只在 incoming room 仍為 DRAFT 時跨 polling render 保留未確認選項，離開 DRAFT 仍接受 canonical state。Targeted `1 passed`、affected `16 passed`、Frontend `93 passed`；PR #6 已以 merge commit `c5c1541` 合併，main CI 全綠，尚未部署。驗證見 `docs/evidence/2026-08-22-confirm-world-round-preservation/validation.md`。
 - Polling 修正 release `tier0-20260822-c5c1541` 已由 exact main merge commit 建置；`co-story.tar.gz` 約 `138 KiB`，SHA-256 `ce035e329e37f38b742dee78f21217b72b4696603a2be1927e3d561ec19de122`。Batch 10C 以 S3 exact objects `2` 上傳、EC2 checksum `OK` 後部署；application／public edge／renewal timer active、staging inactive，readiness／public HTTPS `200`，previous release `tier0-20260822-de49944`。
 - Batch 10C zero-model Browser gate 已通過：匿名房 `LRTPGC` 選 `8` 回合並取得 Backend `422` field errors，返回當下與等待 `4.2` 秒、跨至少一次 polling 後均維持 `8`。
-- Batch 10C exactly one Bedrock 世界生成已成功：匿名 benign 關鍵字「雨夜／山村／風車」，生成剩餘次數 `2 → 1`，產生完整 canonical world draft；生成後再等待 `4.2` 秒仍維持 `8` 回合，未重試模型。新 finding 為先前 `422` field errors 在成功生成後仍殘留，屬非阻斷但誤導性的 UX。
+- Batch 10C exactly one Bedrock 世界生成已成功：匿名 benign 關鍵字「雨夜／山村／風車」，生成剩餘次數 `2 → 1`，產生完整 canonical world draft；生成後再等待 `4.2` 秒仍維持 `8` 回合，未重試模型。當時發現先前 `422` field errors 在成功生成後仍殘留。
+- Stale world field-error UX 已完成 R2 TDD：Red `3863404` 精確證明成功生成後 `aria-invalid` 仍為 `true`；Green `6e9de5a` 只在生成成功後清除舊 field errors，再回填 canonical draft。Targeted `1 passed`、affected `6 passed`、Frontend `94 passed`；尚未 push、CI、merge 或部署。
 
 ## Next
 
@@ -69,12 +70,12 @@ Batch 9B release 與零模型 Browser gate已完成
 → `tier0-20260822-de49944` 已部署且 runtime gate 通過；zero-model 422 gate 發現 DRAFT polling reset，未呼叫 Bedrock
 → DRAFT polling round-state Red／Green 已隨 PR #6 合併，main CI 全綠；尚未部署
 → `tier0-20260822-c5c1541` 已部署；zero-model 422＋polling 與 exactly-one Bedrock generation＋polling gates 全數通過
-→ 新 finding：成功生成有效草稿後仍殘留先前 422 field errors，待小型 UX TDD slice
+→ 成功生成後清除舊 422 field errors 的 Red／Green 已完成，Frontend 94 passed；尚未 push、CI、merge 或部署
 → 製作去識別化報告截圖、完成延遲成本檢查
 → 第一次報告後依清理計畫停止或刪除持續計費資源，再進入 Tier 1
 ```
 
-下一個開發起點：先以嚴格 TDD 清除「成功生成有效世界草稿後仍殘留先前 422 field errors」的誤導狀態，再完成 metadata push／PR；之後關閉 Tier 0 stabilization，回到已完成 repo-local contracts 的 Tier 1。Tier 1 Agent 安裝、SSM document 與 incident AWS gate 須另開 bounded batch。
+下一個開發起點：完成 stale field-error TDD metadata commit，取得 push／PR 核准並確認 CI；合併後評估此非阻斷 UX 是否需要立即部署，或以已通過核心 AWS gates 的 `tier0-20260822-c5c1541` 關閉 Tier 0 stabilization。之後回到已完成 repo-local contracts 的 Tier 1；Tier 1 Agent 安裝、SSM document 與 incident AWS gate 須另開 bounded batch。
 
 ## Residual risks
 
@@ -84,7 +85,7 @@ Batch 9B release 與零模型 Browser gate已完成
 - Idempotency store 仍是 process memory，不宣稱 multi-process exactly-once。
 - iPhone Safari 在 Batch 10A 的 Lobby 雙向同步小於 10 秒且 refresh 後正常；先前公開試玩的不穩定現象未取得可重現根因，仍需在下一次完整多人遊戲觀察長時間 polling／visibility 行為。
 - 角色儲存安全化已部署並通過 Browser gate；confirm `422` 與 DRAFT polling 的 8 回合保留已在 `tier0-20260822-c5c1541` 通過 zero-model 及 exactly-one-call AWS Browser gates。
-- 世界生成成功後先前 `422` 的 field errors 仍顯示在已有效的 generated fields 下方；不阻斷後續操作，但使用者可能誤認草稿仍無效。
+- 成功生成後清除先前 `422` field errors 的 Green `6e9de5a` 已完成本機 TDD，AWS active release 尚未包含此修正。
 - 成功刪房後舊分頁 polling 修正已部署，但尚未以 `COMPLETED` 房間執行 AWS 多分頁重驗。
 - EC2 與 RDS 最近一次已知狀態均為運行中。RDS 會持續產生 DB instance hours；若預估超過 48 小時不使用則手動停止。EC2 若 stop/start 會更換 public IP，使目前 IP certificate 與 allowlist 都需重建；artifact objects 依 7 日 lifecycle 到期，但 stack／bucket不會自動刪除。
 - 原始截圖位於 macOS TemporaryItems／Downloads 時不算正式 evidence；入庫前須去除 account ID、ARN、IP、instance／subnet／SG ID、endpoint、secret ARN、bucket suffix、通知與不必要的 Browser 資訊。
