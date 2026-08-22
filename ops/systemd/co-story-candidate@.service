@@ -10,6 +10,9 @@ Group=co-story
 WorkingDirectory=/opt/co-story/releases/%i/backend
 EnvironmentFile=/etc/co-story/runtime.env
 EnvironmentFile=/etc/co-story/database.env
+Environment=CO_STORY_APPLICATION_LOG_PATH=/var/log/co-story/candidate.jsonl
+LogsDirectory=co-story
+LogsDirectoryMode=0750
 ExecStart=/opt/co-story/releases/%i/.venv/bin/uvicorn app.main:create_app --factory --host 127.0.0.1 --port 8001 --workers 1
 Restart=no
 NoNewPrivileges=true
