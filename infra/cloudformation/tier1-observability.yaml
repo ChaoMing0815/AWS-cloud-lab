@@ -28,6 +28,41 @@ Resources:
         - Key: Tier
           Value: '1'
 
+  Application5xxMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      FilterName: co-story-tier1-application-5xx
+      FilterPattern: '{ ($.status >= 500) && ($.status <= 599) }'
+      LogGroupName:
+        Ref: ApplicationLogGroup
+      MetricTransformations:
+        - DefaultValue: 0
+          MetricName: Application5xx
+          MetricNamespace: CoStory/Tier1
+          MetricValue: '1'
+          Unit: Count
+
+  Application5xxAlarm:
+    Type: AWS::CloudWatch::Alarm
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      ActionsEnabled: false
+      AlarmDescription: Co-Story application emitted at least one 5xx in one minute.
+      AlarmName: co-story-tier1-application-5xx
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      DatapointsToAlarm: 1
+      EvaluationPeriods: 1
+      MetricName: Application5xx
+      Namespace: CoStory/Tier1
+      Period: 60
+      Statistic: Sum
+      Threshold: 1
+      TreatMissingData: notBreaching
+      Unit: Count
+
   ApplicationLogWritePolicy:
     Type: AWS::IAM::ManagedPolicy
     Properties:
