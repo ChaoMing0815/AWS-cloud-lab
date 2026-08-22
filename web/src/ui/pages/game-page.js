@@ -200,9 +200,12 @@ export class GamePage {
   }
 
   applyPolledRoom(room) {
+    const maxRoundsInput = globalThis.document?.getElementById("maxRoundsInput");
+    const selectedMaxRounds = room?.status === "DRAFT" ? maxRoundsInput?.value : null;
     this.room = room;
     this.syncRoute();
     this.render();
+    if (selectedMaxRounds && maxRoundsInput) maxRoundsInput.value = selectedMaxRounds;
   }
 
   handlePollingSuccess() {
