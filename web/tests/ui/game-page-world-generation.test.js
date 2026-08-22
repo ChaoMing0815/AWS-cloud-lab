@@ -61,6 +61,60 @@ test("GamePage 生成 canonical world draft 後留在 DRAFT 並回填可編輯�
   }
 });
 
+test("GamePage 生成世界草稿後保留房主尚未確認的回合上限", async () => {
+  const originalDocument = globalThis.document;
+  const nodes = new Map([
+    ["worldKeywordsInput", { value: "雨夜，山村，風車" }],
+    ["toneInput", { value: "mystery" }],
+    ["customToneInput", { value: "" }],
+    ["supplementalRequestInput", { value: "" }],
+    ["maxRoundsInput", { value: "8" }],
+    ["worldTitle", { value: "" }],
+    ["worldPremiseInput", { value: "" }],
+    ["worldObjectiveInput", { value: "" }],
+    ["openingSceneInput", { value: "" }],
+    ["coreObstacleInput", { value: "" }],
+    ["worldGenerationRemaining", { textContent: "" }],
+  ]);
+  globalThis.document = { getElementById: (id) => nodes.get(id) };
+  try {
+    const canonicalDraft = {
+      status: "DRAFT",
+      version: 2,
+      maxRounds: 6,
+      worldGenerationCount: 1,
+      world: {
+        storyTitle: "雨夜風車之謎",
+        premise: "山村的風車在雨夜停止轉動。",
+        objective: "找出風車停止的原因。",
+        openingScene: "玩家在雷聲中抵達山村。",
+        coreObstacle: "風車入口被不明機關封鎖。",
+        tone: "mystery",
+      },
+    };
+    const page = new GamePage({
+      generateWorld: { async execute() { return canonicalDraft; } },
+    });
+    page.room = { status: "DRAFT", version: 1, maxRounds: 6, session: { isHost: true } };
+    page.setBusy = () => {};
+    page.showFeedback = () => {};
+    page.syncRoute = () => {};
+    page.render = () => {
+      nodes.get("maxRoundsInput").value = String(page.room.maxRounds ?? 6);
+    };
+
+    await page.handleGenerateWorld({ preventDefault() {} });
+
+    assert.equal(
+      nodes.get("maxRoundsInput").value,
+      "8",
+      "生成草稿不可覆寫房主尚未確認的 8 回合選擇",
+    );
+  } finally {
+    globalThis.document = originalDocument;
+  }
+});
+
 test("GamePage 確認世界的 422 會標示對應欄位並保留可編輯草稿", async () => {
   const originalDocument = globalThis.document;
   const input = (value = "") => ({
