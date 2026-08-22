@@ -2,7 +2,7 @@
 
 - 更新日期：2026-08-22
 - 近期目標：完成 Tier 0 公開試玩剩餘 bounded reproduction，同時暫停非必要 AWS compute 以節省 credits；之後依甘特圖縮減原則進入 Tier 1 最小可驗證切片。
-- Branch：`codex/tier0-final-release-gate`，由 PR #5 merge commit `de49944` 建立；DRAFT polling Red `8dc7592`、Green `1940b8b` 與 evidence `558572e` 已 push。PR #6 open，GitHub Actions run `32560802843` 的 Backend／Frontend jobs 均成功，merge state `CLEAN`。
+- Branch：`codex/tier0-polling-release-gate`，由 PR #6 merge commit `c5c1541` 建立。PR #6 已合併至 `main`；合併前 CI run `32560906206` 與合併後 main CI run `32560950967` 的 Backend／Frontend jobs 均成功。
 - 本機功能 checkpoint：公開試玩 UX／安全失敗記錄 `d2b76ba`；canonical route loading shell `f9d4155`；明確 Prompt Injection 前置拒絕 `6f872b2`；widow／orphan 排版規則 `18fcd21`；首頁公開試玩安全提示 `62b4e02`。
 - Regression：Backend `325 passed, 8 skipped`；Frontend `93 passed`（2026-08-22，DRAFT polling round-state Green gate）。
 - AWS active release：`tier0-20260822-de49944`。
@@ -46,7 +46,8 @@
 - Tier 1 Log Group／IAM repo-local IaC 已完成：Red `9c50ec4`／`ad4bc05`、Green `2250bd3`。Template 只建立固定 Standard Log Group（7 天 retention、stack cleanup 刪除）與單一 managed policy；寫入權限限定 `${AppInstanceId}` stream，禁止 group management、wildcard resource 與其他 principal。Affected `20 passed`、Backend `323 passed, 8 skipped`，五類 sensitivity 全數有效；R3 Sol review 無 High／Critical blocker。驗證見 `docs/evidence/2026-08-22-tier1-observability-iac/validation.md`。尚未 deploy；正式 gate 必須確認 instance profile 與 AppRole／instance parameter 對應。
 - Tier 1 5xx metric／alarm repo-local IaC 已完成：Red `cc208d4`／`aad2626`、Green `fc96f12`。Filter 精確限定 500–599；只建立無 dimensions 的單一 custom metric，Alarm 為 Sum／60 秒／1 of 1／threshold 1／missing notBreaching，明確停用所有 action。Affected `14 passed`、Backend `325 passed, 8 skipped`，六類 sensitivity 全數有效；R3 Sol review 無 High／Critical blocker。驗證見 `docs/evidence/2026-08-22-tier1-application-5xx-alarm/validation.md`。尚未 deploy 或產生 alarm state evidence。
 - Batch 10B zero-model Browser gate 在匿名房 `LRTPGC` 重現：完整重載部署後前端，選 `8` 回合並送出會由 Backend 回 `422` 的短欄位；欄位錯誤正確顯示，但後續 DRAFT polling 又將選項覆寫為 canonical `6`。依停止條件未呼叫 Bedrock。根因為既有 `9ff0506` 只覆蓋 command error 後的同步 restore，沒有覆蓋下一次 polling render。
-- DRAFT polling round-state 已完成後續 R2 TDD：Red `8dc7592` 精確得到 `'6' !== '8'`；Green `1940b8b` 只在 incoming room 仍為 DRAFT 時跨 polling render 保留未確認選項，離開 DRAFT 仍接受 canonical state。Targeted `1 passed`、affected `16 passed`、Frontend `93 passed`；PR #6 CI 全綠且 merge state `CLEAN`，尚未合併或部署。驗證見 `docs/evidence/2026-08-22-confirm-world-round-preservation/validation.md`。
+- DRAFT polling round-state 已完成後續 R2 TDD：Red `8dc7592` 精確得到 `'6' !== '8'`；Green `1940b8b` 只在 incoming room 仍為 DRAFT 時跨 polling render 保留未確認選項，離開 DRAFT 仍接受 canonical state。Targeted `1 passed`、affected `16 passed`、Frontend `93 passed`；PR #6 已以 merge commit `c5c1541` 合併，main CI 全綠，尚未部署。驗證見 `docs/evidence/2026-08-22-confirm-world-round-preservation/validation.md`。
+- Polling 修正 release candidate `tier0-20260822-c5c1541` 已由 exact main merge commit 建置；`co-story.tar.gz` 約 `138 KiB`，SHA-256 `ce035e329e37f38b742dee78f21217b72b4696603a2be1927e3d561ec19de122`，本機 checksum `OK`。尚未 push 本分支、上傳 S3 或部署；AWS active release 仍為 `tier0-20260822-de49944`。
 
 ## Next
 
@@ -64,12 +65,13 @@ Batch 9B release 與零模型 Browser gate已完成
 → Tier 1 安全 JSONL、Agent collection、Log Group／最小 IAM、5xx metric／alarm contract 已完成本機 R3 TDD；AWS deploy／SSM 尚未開始
 → 世界尚未開放的 join `409` 明確玩家提示與 confirm `422` form-state 修正已隨 PR #5 合併，main CI 全綠
 → `tier0-20260822-de49944` 已部署且 runtime gate 通過；zero-model 422 gate 發現 DRAFT polling reset，未呼叫 Bedrock
-→ DRAFT polling round-state Red／Green 已完成，PR #6 CI 全綠且 merge state CLEAN；尚未合併或部署
+→ DRAFT polling round-state Red／Green 已隨 PR #6 合併，main CI 全綠；尚未部署
+→ `tier0-20260822-c5c1541` 已完成本機 bundle／manifest／checksum gate；尚未 push 或部署
 → 製作去識別化報告截圖、完成延遲成本檢查
 → 第一次報告後依清理計畫停止或刪除持續計費資源，再進入 Tier 1
 ```
 
-下一個開發起點：取得 metadata push 與 PR #6 merge 核准，確認更新後 CI 全綠再合併；其後由新的 main merge commit 建立 checksummed release。新的 AWS batch 必須先以 zero-model `422`＋至少一次後續 polling 重驗仍保留 `8`，通過後才可使用 Batch 10B 尚未消耗的 exactly one Bedrock call。Tier 1 Agent 安裝、SSM document 與 incident AWS gate 須另開 bounded batch。
+下一個開發起點：取得本 release-gate metadata push 與新 bounded AWS batch 核准，只上傳 `tier0-20260822-c5c1541` 的 archive／checksum 兩個 exact objects 並部署。部署後必須先以 zero-model `422`＋至少一次後續 polling 重驗仍保留 `8`，通過後才可使用 Batch 10B 尚未消耗的 exactly one Bedrock call。Tier 1 Agent 安裝、SSM document 與 incident AWS gate 須另開 bounded batch。
 
 ## Residual risks
 
@@ -78,7 +80,7 @@ Batch 9B release 與零模型 Browser gate已完成
 - Direct IP certificate 約 160 小時效期；必須保留 renewal timer 驗證。EC2 stop/start 若 public IP 改變，URL、certificate 與 allowlist 都需重建。
 - Idempotency store 仍是 process memory，不宣稱 multi-process exactly-once。
 - iPhone Safari 在 Batch 10A 的 Lobby 雙向同步小於 10 秒且 refresh 後正常；先前公開試玩的不穩定現象未取得可重現根因，仍需在下一次完整多人遊戲觀察長時間 polling／visibility 行為。
-- 角色儲存安全化已部署並通過 Browser gate；confirm `422` 的同步 restore 已部署，但 AWS re-gate 證明後續 DRAFT polling 仍會重設回合上限。Polling Green `1940b8b` 已在 PR #6 通過 CI，尚未合併或部署。
+- 角色儲存安全化已部署並通過 Browser gate；confirm `422` 的同步 restore 已部署，但 AWS re-gate 證明後續 DRAFT polling 仍會重設回合上限。Polling Green `1940b8b` 已隨 PR #6 合併，AWS active release 尚未包含此修正。
 - 成功刪房後舊分頁 polling 修正已部署，但尚未以 `COMPLETED` 房間執行 AWS 多分頁重驗。
 - EC2 與 RDS 最近一次已知狀態均為運行中。RDS 會持續產生 DB instance hours；若預估超過 48 小時不使用則手動停止。EC2 若 stop/start 會更換 public IP，使目前 IP certificate 與 allowlist 都需重建；artifact objects 依 7 日 lifecycle 到期，但 stack／bucket不會自動刪除。
 - 原始截圖位於 macOS TemporaryItems／Downloads 時不算正式 evidence；入庫前須去除 account ID、ARN、IP、instance／subnet／SG ID、endpoint、secret ARN、bucket suffix、通知與不必要的 Browser 資訊。
