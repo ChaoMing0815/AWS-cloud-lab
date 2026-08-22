@@ -76,19 +76,24 @@ def test_safe_application_file_rotates_and_refuses_symlink_target(
         create_app()
         logger = logging.getLogger("co_story.request")
         long_path = "/api/v1/" + ("x" * 2048)
-        for index in range(600):
-            logger.info(
-                json.dumps(
-                    {
-                        "request_id": f"rotation-{index}",
-                        "method": "GET",
-                        "path": long_path,
-                        "status": 200,
-                        "latency_ms": 1,
-                    },
-                    separators=(",", ":"),
+        previous_propagate = logger.propagate
+        logger.propagate = False
+        try:
+            for index in range(600):
+                logger.info(
+                    json.dumps(
+                        {
+                            "request_id": f"rotation-{index}",
+                            "method": "GET",
+                            "path": long_path,
+                            "status": 200,
+                            "latency_ms": 1,
+                        },
+                        separators=(",", ":"),
+                    )
                 )
-            )
+        finally:
+            logger.propagate = previous_propagate
 
         rotated_files = sorted(tmp_path.glob("application.jsonl*"))
         assert any(path.name == "application.jsonl.1" for path in rotated_files)
@@ -101,8 +106,9 @@ def test_safe_application_file_rotates_and_refuses_symlink_target(
 
     real_file = tmp_path / "real.log"
     real_file.write_text("do-not-follow", encoding="utf-8")
-    log_path.symlink_to(real_file)
-    monkeypatch.setenv("CO_STORY_APPLICATION_LOG_PATH", str(log_path))
+    symlink_path = tmp_path / "symlinked-application.jsonl"
+    symlink_path.symlink_to(real_file)
+    monkeypatch.setenv("CO_STORY_APPLICATION_LOG_PATH", str(symlink_path))
     try:
         with pytest.raises(RuntimeError, match="CO_STORY_APPLICATION_LOG_PATH"):
             create_app()
