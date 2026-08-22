@@ -1,0 +1,17 @@
+{
+  "logs": {
+    "logs_collected": {
+      "files": {
+        "collect_list": [
+          {
+            "file_path": "/var/log/co-story/application.jsonl",
+            "log_group_name": "/co-story/tier1/application",
+            "log_stream_name": "{instance_id}",
+            "encoding": "utf-8",
+            "timezone": "UTC"
+          }
+        ]
+      }
+    }
+  }
+}

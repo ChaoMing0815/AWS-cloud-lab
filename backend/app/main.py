@@ -17,6 +17,9 @@ from app.adapters.postgres_room_repository import PostgresRoomRepository
 from app.adapters.memory_idempotency_store import MemoryIdempotencyStore
 from app.adapters.mock_storyteller import MockStoryteller
 from app.adapters.session_security import HmacSessionTokenFactory
+from app.adapters.safe_application_file_logging import (
+    configure_safe_application_file_logging,
+)
 from app.adapters.system_clock import SystemClock
 from app.adapters.secure_dice_roller import SecureDiceRoller
 from app.api.routes import create_api_router
@@ -102,6 +105,9 @@ def _production_bedrock_storyteller():
 
 
 def create_app(dice_roller=None, room_repository=None, storyteller=None, clock=None) -> FastAPI:
+    configure_safe_application_file_logging(
+        os.environ.get("CO_STORY_APPLICATION_LOG_PATH")
+    )
     production = _production_configuration_is_valid()
     if storyteller is None:
         storyteller = _production_bedrock_storyteller() if production else MockStoryteller()
