@@ -1,0 +1,57 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Tier 1 Co-Story bounded application log group and single-instance write access.
+
+Parameters:
+  AppRoleName:
+    Type: String
+    Default: AWSFinalProjectAppRole
+    AllowedPattern: '^AWSFinalProject[A-Za-z0-9+=,.@_-]+$'
+    Description: Existing EC2 application role created by co-story-tier0-compute.
+  AppInstanceId:
+    Type: AWS::EC2::Instance::Id
+    Description: Existing application instance created by co-story-tier0-compute.
+
+Resources:
+  ApplicationLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName: /co-story/tier1/application
+      LogGroupClass: STANDARD
+      RetentionInDays: 7
+      Tags:
+        - Key: Name
+          Value: co-story-tier1-application
+        - Key: Project
+          Value: co-story
+        - Key: Tier
+          Value: '1'
+
+  ApplicationLogWritePolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: AWSFinalProjectTier1ApplicationLogWrite
+      Description: Lets the existing Co-Story instance write only its Tier 1 application log stream.
+      Roles:
+        - Ref: AppRoleName
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: DescribeApplicationLogStreams
+            Effect: Allow
+            Action: logs:DescribeLogStreams
+            Resource:
+              Fn::Sub: arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/co-story/tier1/application
+          - Sid: WriteSingleInstanceApplicationLogStream
+            Effect: Allow
+            Action:
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Resource:
+              Fn::Sub: arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/co-story/tier1/application:log-stream:${AppInstanceId}
+
+Outputs:
+  ApplicationLogGroupName:
+    Value:
+      Ref: ApplicationLogGroup
