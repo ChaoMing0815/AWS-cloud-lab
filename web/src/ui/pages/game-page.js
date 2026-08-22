@@ -163,6 +163,17 @@ export class GamePage {
         }
       }
 
+      if (error?.status === 404 && error?.code === "ROOM_NOT_FOUND") {
+        this.room = null;
+        this.stopPolling();
+        this.showPollingStatus(
+          "房間已結束或刪除，已返回首頁。",
+          "room-removed",
+        );
+        if (this.navigate) this.navigate("/");
+        return false;
+      }
+
       if (error?.status === 401 || error?.status === 403) {
         this.pollingStopped = true;
         this.showPollingStatus(
