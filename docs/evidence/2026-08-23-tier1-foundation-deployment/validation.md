@@ -8,8 +8,10 @@
 - Operations Change Set：`CREATE_COMPLETE／AVAILABLE`，精確一筆 `HealthCheckDocument Add / AWS::SSM::Document`，無 IAM、Association、排程或其他資源。
 - Operations resource：使用者回報 `HealthCheckDocument=CREATE_COMPLETE`；尚未執行 Run Command。
 - Safety：兩份 Change Set 均為 rollback-all；沒有 EC2、RDS、SNS、Lambda、Bedrock、NAT 或自動修復變更。
-- IAM boundary：部署的是已通過 R3 contract 的 single-instance log-stream policy；AWS Access Analyzer／實際正負權限測試仍待後續 gate。
+- IAM attachment：Console 顯示只附加至 `AWSFinalProjectAppRole` 一個 Role，沒有 Users／Groups attachment。
+- IAM Access Analyzer：existing managed policy 的基本 validation 為 `Security 0／Errors 0／Warnings 0／Suggestions 0`；未執行會計費的 custom `Check for new access`，也未儲存新 policy version。
+- IAM residual：實際 log-stream 寫入正向測試與未核准 stream 負向測試仍待後續 gate。
 - Cost surface：7 天 Standard Log Group、單一 custom metric 與單一 Alarm；SSM Document 無 Association／排程。實際新增費用尚待帳務延遲後確認。
 - Rollback：刪除 `co-story-tier1-observability` 與 `co-story-tier1-operations`；observability stack delete 會刪除 Tier 1 demo log data。
-- Evidence limitation：使用者提供兩張已遮蔽 change set ID 的 Console 圖；原圖位於 repo 外，未直接 commit。兩次回報的 `stack_status` 欄位留空，但精確資源均回報 `CREATE_COMPLETE`。
-- Result：Batch 11A 資源層級 PASS with follow-up validations；在 Agent install、log delivery、IAM negative test 與實機 SSM health check 前不宣稱 Tier 1 runtime gate 完成。
+- Evidence limitation：使用者提供三張已遮蔽 change set ID／ARN／instance ID 的 Console 圖；原圖位於 repo 外，未直接 commit。兩次回報的 `stack_status` 欄位留空，但精確資源均回報 `CREATE_COMPLETE`。
+- Result：Batch 11A 資源與基本 IAM validation PASS；在 Agent install、log delivery、IAM negative test 與實機 SSM health check 前不宣稱 Tier 1 runtime gate 完成。
