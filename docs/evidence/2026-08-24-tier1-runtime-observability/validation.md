@@ -5,8 +5,9 @@
 - 安裝後 preflight：`co-story.service=active`、安全 JSONL runtime path 尚不存在、CloudWatch Agent service 為 inactive，符合尚未啟用 collection 的預期狀態。
 - 首次設定嘗試：腳本加入安全 JSONL runtime 設定並重啟 application 後，立即檢查 loopback `127.0.0.1:8000` 時得到 `curl (7) Could not connect`；腳本依停止條件執行 rollback，回報 `rollback=attempted`、`configure_result=7`。
 - 停止點：失敗發生在 CloudWatch Agent 啟動與 CloudWatch log delivery 驗證之前，因此目前不得宣稱安全 log stream、metric filter 或 runtime alarm path 已通過。
-- 未決狀態：rollback 是否已恢復 `application=active`、移除 runtime env 設定並維持 Agent inactive，仍需下一次 SSM Session 只讀確認。`curl (7)` 可能是 restart 後 readiness race，也可能是 application 啟動失敗；取得 service 狀態前不定因。
-- 額外 repo 缺口：已部署的 `CoStoryHealthCheck` 文件仍檢查 `/live`、`/ready`，實際 API route 為 `/api/v1/live`、`/api/v1/ready`。該文件尚未執行；必須先依嚴格 TDD 修正並透過 Change Set 更新，再做 Run Command 實機驗證。
+- Rollback audit：單次唯讀 SSM Session 確認 `co-story.service=active`、runtime env 已移除 `CO_STORY_APPLICATION_LOG_PATH`、`application.jsonl=absent`、CloudWatch Agent service 仍為 `inactive`；不需讀取 service failure journal，production 已恢復且沒有啟用 log collection。
+- Health document 修正：依 R3 嚴格 TDD 將固定路徑修正為 `/api/v1/live`、`/api/v1/ready`；Red `dcd8efd`、Green `529d223`，targeted `5 passed`、Tier 1 affected `15 passed`、Backend `330 passed, 8 skipped`，代表性舊 `/live` mutation 會被測試攔截。AWS 上仍是舊版本；完成 Change Set 更新前禁止執行。
+- Restart wait 評估：首次失敗與 restart 後立即單次 curl 相符，但既有證據不足以排除其他啟動原因。下一次設定命令應以固定總期限、固定間隔輪詢 `/api/v1/ready`；只有 service active 且 readiness 成功才啟動 Agent，逾時即 rollback 並停止。
 - 成本：本次新增的是既有 EC2 上的 Agent package；尚無 log delivery 證據。既有 Log Group／custom metric／Alarm 的費用邊界不變。
 
-結果：**PARTIAL／STOPPED SAFELY**。下一步先做 rollback 狀態的唯讀確認，不重跑設定；確認 production service 正常後，再針對啟動等待機制做 repo-local TDD 修正。
+結果：**PARTIAL／ROLLBACK VERIFIED**。下一步先以 Change Set 更新 `CoStoryHealthCheck`，確認新版本後才可執行；runtime 設定重試須使用 bounded readiness wait，且仍不得直接沿用首次命令。
