@@ -14,6 +14,14 @@ from app.application.incident_analysis import IncidentAnalysisFailure, IncidentA
 
 
 APPLICATION_LOG_PATH = Path("/var/log/co-story/application.jsonl")
+RUNTIME_ENV_PATH = Path("/etc/co-story/runtime.env")
+_RUNTIME_KEYS = (
+    "CO_STORY_AWS_REGION",
+    "CO_STORY_BEDROCK_MODEL_ID",
+    "CO_STORY_BEDROCK_GUARDRAIL_ID",
+    "CO_STORY_BEDROCK_GUARDRAIL_VERSION",
+    "CO_STORY_BEDROCK_MAX_TOKENS",
+)
 
 
 class _ConfigurationError(Exception):
@@ -27,11 +35,12 @@ def main(argv: list[str] | None = None, *, client: Any | None = None) -> int:
     arguments = parser.parse_args(argv)
 
     try:
-        region = _required_setting("CO_STORY_AWS_REGION")
-        model_id = _required_setting("CO_STORY_BEDROCK_MODEL_ID")
-        guardrail_id = _required_setting("CO_STORY_BEDROCK_GUARDRAIL_ID")
-        guardrail_version = _required_setting("CO_STORY_BEDROCK_GUARDRAIL_VERSION")
-        configured_tokens = _configured_tokens()
+        settings = _runtime_settings()
+        region = settings["CO_STORY_AWS_REGION"]
+        model_id = settings["CO_STORY_BEDROCK_MODEL_ID"]
+        guardrail_id = settings["CO_STORY_BEDROCK_GUARDRAIL_ID"]
+        guardrail_version = settings["CO_STORY_BEDROCK_GUARDRAIL_VERSION"]
+        configured_tokens = _configured_tokens(settings["CO_STORY_BEDROCK_MAX_TOKENS"])
     except _ConfigurationError:
         _print_json({"error": {"code": "CONFIGURATION_ERROR"}})
         return 2
@@ -74,21 +83,52 @@ def main(argv: list[str] | None = None, *, client: Any | None = None) -> int:
     return 0
 
 
-def _required_setting(name: str) -> str:
-    value = os.environ.get(name, "").strip()
-    if not value:
-        raise _ConfigurationError(name)
-    return value
+def _runtime_settings() -> dict[str, str]:
+    settings = {
+        key: os.environ[key].strip()
+        for key in _RUNTIME_KEYS
+        if os.environ.get(key, "").strip()
+    }
+    missing = set(_RUNTIME_KEYS) - set(settings)
+    if missing:
+        try:
+            lines = RUNTIME_ENV_PATH.read_text(encoding="utf-8").splitlines()
+        except OSError:
+            raise _ConfigurationError("runtime_env") from None
+        file_settings: dict[str, str] = {}
+        for raw_line in lines:
+            line = raw_line.strip()
+            if not line or line.startswith("#"):
+                continue
+            key, separator, raw_value = line.partition("=")
+            key = key.strip()
+            if separator and key in _RUNTIME_KEYS:
+                if key in file_settings:
+                    raise _ConfigurationError(key)
+                value = _unquote(raw_value.strip())
+                if value:
+                    file_settings[key] = value
+        for key in missing:
+            if key in file_settings:
+                settings[key] = file_settings[key]
+    if set(settings) != set(_RUNTIME_KEYS):
+        raise _ConfigurationError("runtime_settings")
+    return settings
 
 
-def _configured_tokens() -> int:
-    raw_value = _required_setting("CO_STORY_BEDROCK_MAX_TOKENS")
+def _configured_tokens(raw_value: str) -> int:
     try:
         value = int(raw_value)
     except ValueError:
         raise _ConfigurationError("CO_STORY_BEDROCK_MAX_TOKENS") from None
     if not 1 <= value <= 1200:
         raise _ConfigurationError("CO_STORY_BEDROCK_MAX_TOKENS")
+    return value
+
+
+def _unquote(value: str) -> str:
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+        return value[1:-1]
     return value
 
 
