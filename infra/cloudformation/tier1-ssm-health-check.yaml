@@ -34,8 +34,8 @@ Resources:
                 - 'host_header="$(awk -F= ''$1 == "CO_STORY_ALLOWED_HOSTS" { split($2, hosts, ","); print hosts[1]; exit }'' "$runtime_env")"'
                 - 'case "$host_header" in ''''|*[!A-Za-z0-9._:-]*) printf ''health_check=invalid_host_configuration\n'' >&2; exit 1 ;; esac'
                 - 'systemctl is-active --quiet co-story.service'
-                - 'curl --fail --silent --show-error --max-time 5 --header "Host: $host_header" "$health_base_url/live" >/dev/null'
-                - 'curl --fail --silent --show-error --max-time 5 --header "Host: $host_header" "$health_base_url/ready" >/dev/null'
+                - 'curl --fail --silent --show-error --max-time 5 --header "Host: $host_header" "$health_base_url/api/v1/live" >/dev/null'
+                - 'curl --fail --silent --show-error --max-time 5 --header "Host: $host_header" "$health_base_url/api/v1/ready" >/dev/null'
                 - 'printf ''service=active\nlive=200\nready=200\n'''
       Tags:
         - Key: Name
