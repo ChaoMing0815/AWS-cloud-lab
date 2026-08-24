@@ -9,6 +9,7 @@
 - Health document 修正與部署：依 R3 嚴格 TDD 將固定路徑修正為 `/api/v1/live`、`/api/v1/ready`；Red `dcd8efd`、Green `529d223`，targeted `5 passed`、Tier 1 affected `15 passed`、Backend `330 passed, 8 skipped`，代表性舊 `/live` mutation 會被測試攔截。使用者透過 Console 執行唯一 `HealthCheckDocument Modify` 的 Change Set，operations stack 回到 `UPDATE_COMPLETE`；Document version `2` 同時為 latest／default。
 - Health document runtime gate：首次 Run Command 僅 target 單一 app instance，`CheckCoStoryHealth=Success`、response code `0`、error empty；輸出精確為 `service=active`、`live=200`、`ready=200`。未使用 S3／CloudWatch output，未重試或執行其他 Document。
 - Runtime retry：單一 SSM Session 命令加入安全 JSONL env、restart application，並以 60 秒 bounded wait 輪詢 `/api/v1/ready`；第一次 curl 在 restart 空窗回 `7`，後續於期限內成功。最終 `application=active_ready`、runtime log setting present、JSONL present 且 `co-story:co-story:640`、CloudWatch Agent active，沒有執行 rollback。
-- 成本：既有 EC2 上的 Agent 已開始執行，可能開始產生少量 CloudWatch Logs ingestion；Log Group 仍為 7 天 retention，未新增資源。尚未在 Console 驗證 log stream／event，因此不得宣稱 delivery 通過。
+- CloudWatch delivery gate：Tokyo Console 的固定 `/co-story/tier1/application` Log Group 已出現 instance stream 與最新事件；代表性事件為 `GET /api/v1/ready`、status `200`、latency `101 ms`。JSON 只含去識別化 `request_id`、method、path、status、latency，未見 query、prompt、cookie、authorization、database URL 或其他 secret；未產生額外請求或 5xx。
+- 成本：既有 EC2 上的 Agent 已開始少量 CloudWatch Logs ingestion；Log Group 仍為 7 天 retention，未新增資源。正向 delivery 已通過，負向越界寫入與 alarm incident 尚未執行。
 
-結果：**PARTIAL／RUNTIME ACTIVE**。Health Document 與 bounded restart gate 已通過，安全 JSONL 與 Agent active；下一步只在 Console 驗證固定 Log Group／instance stream 的 delivery，不產生 5xx。
+結果：**PARTIAL／POSITIVE DELIVERY PASSED**。Health Document、bounded restart、安全 JSONL、Agent 與固定 Log Group 正向 delivery 均通過；今天依停止決策不做 5xx／alarm／AIOps，後續再完成負向 IAM 與 incident gate。
