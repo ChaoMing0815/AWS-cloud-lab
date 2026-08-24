@@ -55,6 +55,7 @@
 - Tier 1 Batch 11A 已由使用者透過 Tokyo Console 部署：`co-story-tier1-observability` 四項資源與 `co-story-tier1-operations` 的 `HealthCheckDocument` 均回報 `CREATE_COMPLETE`，Alarm 初始為 `OK`。兩份 Change Set 精確為四筆與一筆 `Add`，ID 已遮蔽；policy 只附加 `AWSFinalProjectAppRole`，Access Analyzer 顯示 `Security／Errors／Warnings／Suggestions = 0`；未安裝 CloudWatch Agent、未執行 SSM Document 或 Bedrock。驗證見 `docs/evidence/2026-08-23-tier1-foundation-deployment/validation.md`。
 - Tier 1 Batch 11B runtime／IAM／Alarm path 已通過：CloudWatch Agent package 安裝成功；首次 restart race 安全 rollback，後續 60 秒 bounded readiness wait 成功；application active／ready、runtime JSONL env present、log file 為 `co-story:co-story:640`、Agent active。固定 instance stream 正向 delivery 與越界 stream `AccessDenied` 均通過；exactly-one synthetic 500 使 Alarm `OK → In alarm → OK`，Actions 全程 `No actions`。驗證見 `docs/evidence/2026-08-24-tier1-runtime-observability/validation.md`。
 - Tier 1 bounded AIOps Agent 已完成 repo-local R2 TDD：只讀固定安全 JSONL 的最後 `200` 行、丟棄非 allowlist 事件，Bedrock adapter 單次 guarded Converse 且輸出 action enum／強制人工批准；Agent 不具修復執行能力。Red `bea8e08`／`8e6b7cb`／`ac15c71`／`f0d268f`，Green `ba9b553`／`069b939`／`a8d0bf3`；targeted `13 passed`、affected `58 passed`、Backend `343 passed, 8 skipped`，人工批准 sensitivity 有效。尚未部署或呼叫模型，驗證見 `docs/evidence/2026-08-24-tier1-aiops-agent/validation.md`。
+- AIOps release `tier1-20260824-59f5458` 已由 exact commit `59f54586324427e94760899531c0104722050204` 建立；archive 約 `148 KiB`，SHA-256 `50331286421507ba7639a5f2ab5e4eb2c51ec0cbb7d92e2ef19d7db4b3946d60`，本機 checksum `OK`。artifact 尚未上傳或部署；此 release 也包含 branch base PR #7 的成功生成後清除舊 `422` field errors 修正。
 - Batch 10B zero-model Browser gate 在匿名房 `LRTPGC` 重現：完整重載部署後前端，選 `8` 回合並送出會由 Backend 回 `422` 的短欄位；欄位錯誤正確顯示，但後續 DRAFT polling 又將選項覆寫為 canonical `6`。依停止條件未呼叫 Bedrock。根因為既有 `9ff0506` 只覆蓋 command error 後的同步 restore，沒有覆蓋下一次 polling render。
 - DRAFT polling round-state 已完成後續 R2 TDD：Red `8dc7592` 精確得到 `'6' !== '8'`；Green `1940b8b` 只在 incoming room 仍為 DRAFT 時跨 polling render 保留未確認選項，離開 DRAFT 仍接受 canonical state。Targeted `1 passed`、affected `16 passed`、Frontend `93 passed`；PR #6 已以 merge commit `c5c1541` 合併，main CI 全綠，尚未部署。驗證見 `docs/evidence/2026-08-22-confirm-world-round-preservation/validation.md`。
 - Polling 修正 release `tier0-20260822-c5c1541` 已由 exact main merge commit 建置；`co-story.tar.gz` 約 `138 KiB`，SHA-256 `ce035e329e37f38b742dee78f21217b72b4696603a2be1927e3d561ec19de122`。Batch 10C 以 S3 exact objects `2` 上傳、EC2 checksum `OK` 後部署；application／public edge／renewal timer active、staging inactive，readiness／public HTTPS `200`，previous release `tier0-20260822-de49944`。
@@ -92,7 +93,7 @@ Batch 9B release 與零模型 Browser gate已完成
 → 第一次報告後依清理計畫停止或刪除持續計費資源，再進入 Tier 1
 ```
 
-下一個執行起點：Batch 11B observability incident path 與 repo-local bounded AIOps Agent 均已完成；先建立 exact release artifact／checksum 與部署 envelope，再由使用者透過 Console／SSM 部署。真實 AIOps 分析需另行核准 exactly-one Bedrock invocation，且不得自動執行建議 action。Agent 仍禁止執行 AWS CLI、S3 讀取或 Bedrock 呼叫。
+下一個執行起點：Batch 11B observability incident path、repo-local bounded AIOps Agent 與 exact release artifact 均已完成；等待使用者核准後，先以 Console／SSM 部署 `tier1-20260824-59f5458` 並做 zero-model runtime gate。真實 AIOps 分析需在部署成功後另行核准 exactly-one Bedrock invocation，且不得自動執行建議 action。Agent 仍禁止執行 AWS CLI、S3 讀取或 Bedrock 呼叫。
 
 ## Residual risks
 

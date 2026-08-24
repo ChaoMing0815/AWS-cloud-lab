@@ -12,4 +12,5 @@
 - Targeted verification：incident analyzer／adapter／entrypoint `13 passed`；affected suite `58 passed`。
 - Full regression：Backend `343 passed, 8 skipped`。
 - Sensitivity：暫時移除 `requires_human_approval=true` guard 後，目標測試精確失敗；mutation 已還原，targeted 與 full regression 重新全綠。
-- Residual risk：尚未打包、部署或執行真實 Bedrock AIOps call；AWS gate 必須由使用者另行核准 exactly-one invocation，輸出只作建議，不得自動 restart。
+- Release artifact：從 detached exact commit `59f54586324427e94760899531c0104722050204` 建立 `tier1-20260824-59f5458`；archive 約 `148 KiB`，SHA-256 `50331286421507ba7639a5f2ab5e4eb2c51ec0cbb7d92e2ef19d7db4b3946d60`，本機 `shasum -c` 為 `OK`，並確認 archive 含三個 AIOps module。build 使用暫時 worktree，未納入工作樹中未提交的簡報。
+- Residual risk：artifact 尚未上傳、部署或執行真實 Bedrock AIOps call；AWS deploy 與 exactly-one invocation 必須分開由使用者核准，輸出只作建議，不得自動 restart。
