@@ -2,9 +2,9 @@
 
 - 更新日期：2026-08-24
 - 近期目標：完整交付 Tier 0–2；若 2026-09-01 前 Tier 2 AWS E2E 穩定通過，挑戰以 Docker、ECR、GitHub OIDC 與 SSM 完成 Tier 3 自動部署垂直切片。目前先完成 Tier 1 CloudWatch／SSM／AIOps incident。
-- Branch：`codex/tier1-runtime-observability`，由 PR #7 merge commit `9dc2350` 建立；Tier 1 SSM health-check 第一版 Red `f854723`／Green `3dd8a84`，versioned route 修正 Red `dcd8efd`／Green `529d223`；Batch 11A evidence commits `35aa801`、`94e4358`。
+- Branch：`codex/tier1-runtime-observability`，由 PR #7 merge commit `9dc2350` 建立；Tier 1 AIOps Red `bea8e08`／`8e6b7cb`／`ac15c71`／`f0d268f`，Green `ba9b553`／`069b939`／`a8d0bf3`；AWS runtime evidence commits `3500bdf`、`428df68`。
 - 本機功能 checkpoint：公開試玩 UX／安全失敗記錄 `d2b76ba`；canonical route loading shell `f9d4155`；明確 Prompt Injection 前置拒絕 `6f872b2`；widow／orphan 排版規則 `18fcd21`；首頁公開試玩安全提示 `62b4e02`。
-- Regression：Backend `330 passed, 8 skipped`（2026-08-24，versioned health route R3 gate）；Frontend `94 passed`（2026-08-23，最近一次前端 gate）。
+- Regression：Backend `343 passed, 8 skipped`（2026-08-24，bounded AIOps R2 gate）；Frontend `94 passed`（2026-08-23，最近一次前端 gate）。
 - AWS active release：`tier0-20260822-c5c1541`。
 - 操作邊界：Console-first；未經新的 bounded batch 核准不得執行 AWS CLI。使用者操作 AWS Console／SSM，Agent 只提供單一可驗證步驟。
 
@@ -53,7 +53,8 @@
 - Tier 1 5xx metric／alarm repo-local IaC 已完成：Red `cc208d4`／`aad2626`、Green `fc96f12`。Filter 精確限定 500–599；只建立無 dimensions 的單一 custom metric，Alarm 為 Sum／60 秒／1 of 1／threshold 1／missing notBreaching，明確停用所有 action。Affected `14 passed`、Backend `325 passed, 8 skipped`，六類 sensitivity 全數有效；R3 Sol review 無 High／Critical blocker。驗證見 `docs/evidence/2026-08-22-tier1-application-5xx-alarm/validation.md`。已隨 Batch 11A deploy；exactly-one synthetic 500 使 Alarm 於 `2026-08-24 22:23:03` 轉為 `In alarm`，Actions 維持 `No actions`；沒有第二筆注入或設定變更，於 `22:29:03` 自動回到 `OK`。
 - Tier 1 受限 SSM health-check 的 versioned route 修正已依 R3 TDD 完成：Red `dcd8efd`、Green `529d223`，固定檢查 `/api/v1/live`、`/api/v1/ready`；targeted `5 passed`、Tier 1 affected `15 passed`、Backend `330 passed, 8 skipped`，舊 `/live` sensitivity 有效。operations stack Change Set 已更新完成，Document version `2` 為 latest／default；首次單 instance Run Command 回 `Success`／response code `0`，輸出 `service=active`、`live=200`、`ready=200`，error empty。
 - Tier 1 Batch 11A 已由使用者透過 Tokyo Console 部署：`co-story-tier1-observability` 四項資源與 `co-story-tier1-operations` 的 `HealthCheckDocument` 均回報 `CREATE_COMPLETE`，Alarm 初始為 `OK`。兩份 Change Set 精確為四筆與一筆 `Add`，ID 已遮蔽；policy 只附加 `AWSFinalProjectAppRole`，Access Analyzer 顯示 `Security／Errors／Warnings／Suggestions = 0`；未安裝 CloudWatch Agent、未執行 SSM Document 或 Bedrock。驗證見 `docs/evidence/2026-08-23-tier1-foundation-deployment/validation.md`。
-- Tier 1 Batch 11B runtime／IAM path 已通過：CloudWatch Agent package 安裝成功；首次 restart race 安全 rollback，後續 60 秒 bounded readiness wait 成功；application active／ready、runtime JSONL env present、log file 為 `co-story:co-story:640`、Agent active。Tokyo Console 已在固定 Log Group／instance stream 收到 allowlist JSON：`GET /api/v1/ready`、`200`、`101 ms`，未見敏感欄位；AppRole 對未核准 stream 的單次 `PutLogEvents` 回 `AccessDenied`，未建立越界 stream。5xx alarm gate 尚未執行。驗證見 `docs/evidence/2026-08-24-tier1-runtime-observability/validation.md`。
+- Tier 1 Batch 11B runtime／IAM／Alarm path 已通過：CloudWatch Agent package 安裝成功；首次 restart race 安全 rollback，後續 60 秒 bounded readiness wait 成功；application active／ready、runtime JSONL env present、log file 為 `co-story:co-story:640`、Agent active。固定 instance stream 正向 delivery 與越界 stream `AccessDenied` 均通過；exactly-one synthetic 500 使 Alarm `OK → In alarm → OK`，Actions 全程 `No actions`。驗證見 `docs/evidence/2026-08-24-tier1-runtime-observability/validation.md`。
+- Tier 1 bounded AIOps Agent 已完成 repo-local R2 TDD：只讀固定安全 JSONL 的最後 `200` 行、丟棄非 allowlist 事件，Bedrock adapter 單次 guarded Converse 且輸出 action enum／強制人工批准；Agent 不具修復執行能力。Red `bea8e08`／`8e6b7cb`／`ac15c71`／`f0d268f`，Green `ba9b553`／`069b939`／`a8d0bf3`；targeted `13 passed`、affected `58 passed`、Backend `343 passed, 8 skipped`，人工批准 sensitivity 有效。尚未部署或呼叫模型，驗證見 `docs/evidence/2026-08-24-tier1-aiops-agent/validation.md`。
 - Batch 10B zero-model Browser gate 在匿名房 `LRTPGC` 重現：完整重載部署後前端，選 `8` 回合並送出會由 Backend 回 `422` 的短欄位；欄位錯誤正確顯示，但後續 DRAFT polling 又將選項覆寫為 canonical `6`。依停止條件未呼叫 Bedrock。根因為既有 `9ff0506` 只覆蓋 command error 後的同步 restore，沒有覆蓋下一次 polling render。
 - DRAFT polling round-state 已完成後續 R2 TDD：Red `8dc7592` 精確得到 `'6' !== '8'`；Green `1940b8b` 只在 incoming room 仍為 DRAFT 時跨 polling render 保留未確認選項，離開 DRAFT 仍接受 canonical state。Targeted `1 passed`、affected `16 passed`、Frontend `93 passed`；PR #6 已以 merge commit `c5c1541` 合併，main CI 全綠，尚未部署。驗證見 `docs/evidence/2026-08-22-confirm-world-round-preservation/validation.md`。
 - Polling 修正 release `tier0-20260822-c5c1541` 已由 exact main merge commit 建置；`co-story.tar.gz` 約 `138 KiB`，SHA-256 `ce035e329e37f38b742dee78f21217b72b4696603a2be1927e3d561ec19de122`。Batch 10C 以 S3 exact objects `2` 上傳、EC2 checksum `OK` 後部署；application／public edge／renewal timer active、staging inactive，readiness／public HTTPS `200`，previous release `tier0-20260822-de49944`。
@@ -91,7 +92,7 @@ Batch 9B release 與零模型 Browser gate已完成
 → 第一次報告後依清理計畫停止或刪除持續計費資源，再進入 Tier 1
 ```
 
-下一個執行起點：Batch 11B 正向 runtime／delivery、代表性 IAM 越界拒絕與 exactly-one 5xx Alarm trigger／automatic recover 均已完成；不得再注入事件，接著以既有事件進行 AIOps incident analysis。仍禁止 Agent 執行 AWS CLI、S3 讀取或 Bedrock 呼叫。
+下一個執行起點：Batch 11B observability incident path 與 repo-local bounded AIOps Agent 均已完成；先建立 exact release artifact／checksum 與部署 envelope，再由使用者透過 Console／SSM 部署。真實 AIOps 分析需另行核准 exactly-one Bedrock invocation，且不得自動執行建議 action。Agent 仍禁止執行 AWS CLI、S3 讀取或 Bedrock 呼叫。
 
 ## Residual risks
 
@@ -99,6 +100,7 @@ Batch 9B release 與零模型 Browser gate已完成
 - IAM Access Analyzer basic policy validation 已在 Console 顯示 `Security／Errors／Warnings／Suggestions = 0`；runtime instance stream 正向 delivery 與代表性越界 stream 寫入拒絕均已通過，但不宣稱已窮舉所有 Logs API 權限組合。
 - Batch 11B bounded restart 與正向 Agent delivery 已成功，支持首次失敗是 restart readiness race，但不把單次結果當成所有啟動故障的通則。
 - `CoStoryHealthCheck` version `2` 已完成 Change Set update 與首次實機正面 gate；尚未做代表性 failure gate，不能宣稱完整 incident path 已完成。
+- Bounded AIOps Agent 已通過本機 R2 gate，但 active release 尚未包含，且尚無真實 Bedrock 分析輸出；目前不得宣稱 AIOps AWS Demo 已完成。
 - Direct IP certificate 約 160 小時效期；必須保留 renewal timer 驗證。EC2 stop/start 若 public IP 改變，URL、certificate 與 allowlist 都需重建。
 - Idempotency store 仍是 process memory，不宣稱 multi-process exactly-once。
 - iPhone Safari 在 Batch 10A 的 Lobby 雙向同步小於 10 秒且 refresh 後正常；先前公開試玩的不穩定現象未取得可重現根因，仍需在下一次完整多人遊戲觀察長時間 polling／visibility 行為。

@@ -1,0 +1,15 @@
+# Tier 1 bounded AIOps Agent 驗證摘要
+
+- Scope／risk／upstream source：R2；依 Tier 1 checkpoint 建立可部署至既有 EC2、讀取安全 application JSONL 並提出人工批准建議的最小 AIOps Agent。
+- Architecture：`IncidentAnalyzer` 只建立 bounded sanitized facts；`BedrockIncidentAdvisor` 是可抽換 adapter，runtime entrypoint 固定讀取 `/var/log/co-story/application.jsonl`，不新增 CloudWatch read IAM 或常駐 AWS resource。
+- Baseline：Backend `330 passed, 8 skipped`。
+- Red commits：`bea8e08`（analyzer／adapter）、`8e6b7cb`（unhashable forged values）、`ac15c71`（EC2 entrypoint）、`f0d268f`（固定 runtime env 五鍵讀取）。
+- Green commits：`ba9b553`、`069b939`、`a8d0bf3`。
+- Input boundary：最多讀取最後 `200` 行，只接受 request／Storyteller exact allowlist schema；malformed、額外欄位、query path 與不合型別事件均丟棄，不把 request ID 或 raw line 傳給模型。
+- Output boundary：固定五欄 JSON；action 只能為 `NO_ACTION`、`RUN_HEALTH_CHECK`、`RESTART_APPLICATION`、`CHECK_DATABASE`，且 `requires_human_approval` 必須為 `true`；Agent 本身沒有執行修復工具。
+- Model boundary：單次 guarded Bedrock Converse，temperature `0`、max tokens `600`、retries `0`；沒有新增 Python dependency，沿用既有 exact model／Guardrail runtime configuration。
+- Runtime boundary：SSM shell 不需 source 整份設定；entrypoint 只從固定 `/etc/co-story/runtime.env` 讀取五個必要 Bedrock key，忽略且不輸出其他設定。
+- Targeted verification：incident analyzer／adapter／entrypoint `13 passed`；affected suite `58 passed`。
+- Full regression：Backend `343 passed, 8 skipped`。
+- Sensitivity：暫時移除 `requires_human_approval=true` guard 後，目標測試精確失敗；mutation 已還原，targeted 與 full regression 重新全綠。
+- Residual risk：尚未打包、部署或執行真實 Bedrock AIOps call；AWS gate 必須由使用者另行核准 exactly-one invocation，輸出只作建議，不得自動 restart。
