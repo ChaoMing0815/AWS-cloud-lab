@@ -47,7 +47,7 @@
 - Tier 1 5xx metric／alarm repo-local IaC 已完成：Red `cc208d4`／`aad2626`、Green `fc96f12`。Filter 精確限定 500–599；只建立無 dimensions 的單一 custom metric，Alarm 為 Sum／60 秒／1 of 1／threshold 1／missing notBreaching，明確停用所有 action。Affected `14 passed`、Backend `325 passed, 8 skipped`，六類 sensitivity 全數有效；R3 Sol review 無 High／Critical blocker。驗證見 `docs/evidence/2026-08-22-tier1-application-5xx-alarm/validation.md`。已隨 Batch 11A deploy，Alarm 初始為 `OK`；尚未產生 trigger／recover evidence。
 - Tier 1 受限 SSM health-check 的 versioned route 修正已依 R3 TDD 完成：Red `dcd8efd`、Green `529d223`，固定檢查 `/api/v1/live`、`/api/v1/ready`；targeted `5 passed`、Tier 1 affected `15 passed`、Backend `330 passed, 8 skipped`，舊 `/live` sensitivity 有效。operations stack Change Set 已更新完成，Document version `2` 為 latest／default；首次單 instance Run Command 回 `Success`／response code `0`，輸出 `service=active`、`live=200`、`ready=200`，error empty。
 - Tier 1 Batch 11A 已由使用者透過 Tokyo Console 部署：`co-story-tier1-observability` 四項資源與 `co-story-tier1-operations` 的 `HealthCheckDocument` 均回報 `CREATE_COMPLETE`，Alarm 初始為 `OK`。兩份 Change Set 精確為四筆與一筆 `Add`，ID 已遮蔽；policy 只附加 `AWSFinalProjectAppRole`，Access Analyzer 顯示 `Security／Errors／Warnings／Suggestions = 0`；未安裝 CloudWatch Agent、未執行 SSM Document 或 Bedrock。驗證見 `docs/evidence/2026-08-23-tier1-foundation-deployment/validation.md`。
-- Tier 1 Batch 11B 已部分執行：使用者透過 SSM Distributor 成功安裝 `amazon-cloudwatch-agent-1.300071.0b1720-1.aarch64`。首次 runtime 設定在 restart 後立即檢查 loopback 得到 `curl (7)` 並 rollback；後續單次唯讀 audit 已確認 application active、runtime log env absent、JSONL absent、Agent inactive，production 安全恢復。下次重試必須以固定期限輪詢 `/api/v1/ready`，成功後才啟動 Agent，逾時 rollback；不得直接重跑首次命令。驗證見 `docs/evidence/2026-08-24-tier1-runtime-observability/validation.md`。
+- Tier 1 Batch 11B 已部分執行：CloudWatch Agent package 安裝成功；首次 runtime 設定因 restart race rollback，唯讀 audit 確認 production 恢復。後續單一命令使用 60 秒 bounded readiness wait：第一次 curl 在 restart 空窗回 `7`，之後於期限內成功；最終 application active／ready、runtime JSONL env present、log file 為 `co-story:co-story:640`、Agent active。尚未在 Console 驗證 log stream／event，亦未做 5xx alarm gate。驗證見 `docs/evidence/2026-08-24-tier1-runtime-observability/validation.md`。
 - Batch 10B zero-model Browser gate 在匿名房 `LRTPGC` 重現：完整重載部署後前端，選 `8` 回合並送出會由 Backend 回 `422` 的短欄位；欄位錯誤正確顯示，但後續 DRAFT polling 又將選項覆寫為 canonical `6`。依停止條件未呼叫 Bedrock。根因為既有 `9ff0506` 只覆蓋 command error 後的同步 restore，沒有覆蓋下一次 polling render。
 - DRAFT polling round-state 已完成後續 R2 TDD：Red `8dc7592` 精確得到 `'6' !== '8'`；Green `1940b8b` 只在 incoming room 仍為 DRAFT 時跨 polling render 保留未確認選項，離開 DRAFT 仍接受 canonical state。Targeted `1 passed`、affected `16 passed`、Frontend `93 passed`；PR #6 已以 merge commit `c5c1541` 合併，main CI 全綠，尚未部署。驗證見 `docs/evidence/2026-08-22-confirm-world-round-preservation/validation.md`。
 - Polling 修正 release `tier0-20260822-c5c1541` 已由 exact main merge commit 建置；`co-story.tar.gz` 約 `138 KiB`，SHA-256 `ce035e329e37f38b742dee78f21217b72b4696603a2be1927e3d561ec19de122`。Batch 10C 以 S3 exact objects `2` 上傳、EC2 checksum `OK` 後部署；application／public edge／renewal timer active、staging inactive，readiness／public HTTPS `200`，previous release `tier0-20260822-de49944`。
@@ -78,17 +78,18 @@ Batch 9B release 與零模型 Browser gate已完成
 → Batch 11A observability 四項資源與 operations SSM Document 已部署；Alarm `OK`
 → Batch 11B Agent package 安裝成功；runtime 設定因 restart 後 loopback `curl (7)` rollback，唯讀 audit 已確認 production 恢復且 Agent inactive
 → SSM health document versioned route 修正、Change Set 更新與首次實機 Run Command 均已通過
+→ Batch 11B bounded restart retry 已通過，安全 JSONL 與 CloudWatch Agent active；待 Console log-delivery gate
 → 製作去識別化報告截圖、完成延遲成本檢查
 → 第一次報告後依清理計畫停止或刪除持續計費資源，再進入 Tier 1
 ```
 
-下一個執行起點：Batch 11B 已核准且尚未完成。rollback audit、health document repo-local 修正、Change Set 更新與首次 Run Command 均已完成；下一步以單一 SSM Session 命令加入安全 JSONL runtime env、restart application 並以 bounded readiness wait 驗證，成功後才啟動 Agent，逾時立即 rollback。仍禁止 Agent 執行 AWS CLI、S3 讀取或 Bedrock 呼叫。
+下一個執行起點：Batch 11B 已核准且尚未完成。rollback audit、health document、bounded restart retry 與 Agent start 均已完成；下一步只由使用者在 CloudWatch Console 查看 `/co-story/tier1/application` 是否出現單一 instance stream 與 allowlist JSON event，不產生 5xx。仍禁止 Agent 執行 AWS CLI、S3 讀取或 Bedrock 呼叫。
 
 ## Residual risks
 
 - Prompt Attack 代表性測試明確得到 `SCHEMA_INVALID`／`503`，而非 Guardrail intervention；現有 Guardrail 不可作為唯一防線。
 - IAM Access Analyzer basic policy validation 已在 Console 顯示 `Security／Errors／Warnings／Suggestions = 0`；尚未執行 runtime log-write 正／負測試。
-- Batch 11B rollback 已確認 application active、runtime env 設定與 JSONL absent、Agent inactive；首次 `curl (7)` 的唯一根因仍未證實，下次只能以 bounded readiness wait 重試並保留 rollback。
+- Batch 11B bounded restart retry 已成功，支持首次失敗是 restart readiness race，但不把單次結果當成所有啟動故障的通則；Agent delivery 與 IAM runtime 正／負證據仍待完成。
 - `CoStoryHealthCheck` version `2` 已完成 Change Set update 與首次實機正面 gate；尚未做代表性 failure gate，不能宣稱完整 incident path 已完成。
 - Direct IP certificate 約 160 小時效期；必須保留 renewal timer 驗證。EC2 stop/start 若 public IP 改變，URL、certificate 與 allowlist 都需重建。
 - Idempotency store 仍是 process memory，不宣稱 multi-process exactly-once。

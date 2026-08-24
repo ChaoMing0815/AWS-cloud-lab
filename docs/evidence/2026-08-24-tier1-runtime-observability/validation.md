@@ -4,11 +4,11 @@
 - CloudWatch Agent 安裝：SSM Distributor `AWS-ConfigureAWSPackage` 執行成功，單一 target、`0` error；實機 package 為 `amazon-cloudwatch-agent-1.300071.0b1720-1.aarch64`，control tool 與 repo config 均存在。
 - 安裝後 preflight：`co-story.service=active`、安全 JSONL runtime path 尚不存在、CloudWatch Agent service 為 inactive，符合尚未啟用 collection 的預期狀態。
 - 首次設定嘗試：腳本加入安全 JSONL runtime 設定並重啟 application 後，立即檢查 loopback `127.0.0.1:8000` 時得到 `curl (7) Could not connect`；腳本依停止條件執行 rollback，回報 `rollback=attempted`、`configure_result=7`。
-- 停止點：失敗發生在 CloudWatch Agent 啟動與 CloudWatch log delivery 驗證之前，因此目前不得宣稱安全 log stream、metric filter 或 runtime alarm path 已通過。
+- 首次停止點：失敗發生在 CloudWatch Agent 啟動與 CloudWatch log delivery 驗證之前，因此當時未宣稱安全 log stream、metric filter 或 runtime alarm path 已通過。
 - Rollback audit：單次唯讀 SSM Session 確認 `co-story.service=active`、runtime env 已移除 `CO_STORY_APPLICATION_LOG_PATH`、`application.jsonl=absent`、CloudWatch Agent service 仍為 `inactive`；不需讀取 service failure journal，production 已恢復且沒有啟用 log collection。
 - Health document 修正與部署：依 R3 嚴格 TDD 將固定路徑修正為 `/api/v1/live`、`/api/v1/ready`；Red `dcd8efd`、Green `529d223`，targeted `5 passed`、Tier 1 affected `15 passed`、Backend `330 passed, 8 skipped`，代表性舊 `/live` mutation 會被測試攔截。使用者透過 Console 執行唯一 `HealthCheckDocument Modify` 的 Change Set，operations stack 回到 `UPDATE_COMPLETE`；Document version `2` 同時為 latest／default。
 - Health document runtime gate：首次 Run Command 僅 target 單一 app instance，`CheckCoStoryHealth=Success`、response code `0`、error empty；輸出精確為 `service=active`、`live=200`、`ready=200`。未使用 S3／CloudWatch output，未重試或執行其他 Document。
-- Restart wait 評估：首次失敗與 restart 後立即單次 curl 相符，但既有證據不足以排除其他啟動原因。下一次設定命令應以固定總期限、固定間隔輪詢 `/api/v1/ready`；只有 service active 且 readiness 成功才啟動 Agent，逾時即 rollback 並停止。
-- 成本：本次新增的是既有 EC2 上的 Agent package；尚無 log delivery 證據。既有 Log Group／custom metric／Alarm 的費用邊界不變。
+- Runtime retry：單一 SSM Session 命令加入安全 JSONL env、restart application，並以 60 秒 bounded wait 輪詢 `/api/v1/ready`；第一次 curl 在 restart 空窗回 `7`，後續於期限內成功。最終 `application=active_ready`、runtime log setting present、JSONL present 且 `co-story:co-story:640`、CloudWatch Agent active，沒有執行 rollback。
+- 成本：既有 EC2 上的 Agent 已開始執行，可能開始產生少量 CloudWatch Logs ingestion；Log Group 仍為 7 天 retention，未新增資源。尚未在 Console 驗證 log stream／event，因此不得宣稱 delivery 通過。
 
-結果：**PARTIAL／HEALTH GATE PASSED**。Health Document 修正、部署與首次實機 gate 已完成；下一步以 bounded readiness wait 重試 runtime 設定，且不得直接沿用首次命令。
+結果：**PARTIAL／RUNTIME ACTIVE**。Health Document 與 bounded restart gate 已通過，安全 JSONL 與 Agent active；下一步只在 Console 驗證固定 Log Group／instance stream 的 delivery，不產生 5xx。
