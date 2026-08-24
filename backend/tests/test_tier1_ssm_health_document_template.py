@@ -94,12 +94,12 @@ def test_health_check_runs_only_the_fixed_service_live_and_ready_checks() -> Non
                     "systemctl is-active --quiet co-story.service",
                     (
                         'curl --fail --silent --show-error --max-time 5 '
-                        '--header "Host: $host_header" "$health_base_url/live" '
+                        '--header "Host: $host_header" "$health_base_url/api/v1/live" '
                         ">/dev/null"
                     ),
                     (
                         'curl --fail --silent --show-error --max-time 5 '
-                        '--header "Host: $host_header" "$health_base_url/ready" '
+                        '--header "Host: $host_header" "$health_base_url/api/v1/ready" '
                         ">/dev/null"
                     ),
                     "printf 'service=active\\nlive=200\\nready=200\\n'",
@@ -124,6 +124,8 @@ def test_document_cannot_accept_commands_or_expose_runtime_configuration() -> No
     assert "cat /etc/co-story" not in commands
     assert "SecretString" not in rendered
     assert "SecureString" not in rendered
+    assert '"$health_base_url/live"' not in commands
+    assert '"$health_base_url/ready"' not in commands
     assert all(
         forbidden not in commands
         for forbidden in (
