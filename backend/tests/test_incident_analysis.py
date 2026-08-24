@@ -161,6 +161,39 @@ def test_incident_analyzer_rejects_symlink_before_reading_or_model_call(
     assert advisor.calls == []
 
 
+def test_incident_analyzer_discards_exact_shape_events_with_unhashable_values(
+    tmp_path: Path,
+) -> None:
+    module = _analysis_module()
+    log_path = tmp_path / "application.jsonl"
+    _write_jsonl(
+        log_path,
+        [
+            {
+                "request_id": "forged-request",
+                "method": ["GET"],
+                "path": "/api/v1/ready",
+                "status": 200,
+                "latency_ms": 1,
+            },
+            {"operation": ["resolve_round"], "failure_code": "TIMEOUT"},
+        ],
+    )
+    advisor = RecordingAdvisor()
+
+    module.IncidentAnalyzer(advisor).analyze(
+        log_path,
+        alarm_state="OK",
+        service_state="active",
+    )
+
+    assert advisor.calls[0]["window"] == {
+        "scanned_lines": 2,
+        "accepted_events": 0,
+        "discarded_lines": 2,
+    }
+
+
 @pytest.mark.parametrize(
     "report",
     [
