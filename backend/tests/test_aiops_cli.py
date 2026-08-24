@@ -121,3 +121,59 @@ def test_aiops_entrypoint_fails_closed_without_runtime_configuration(
     assert json.loads(capsys.readouterr().out) == {
         "error": {"code": "CONFIGURATION_ERROR"}
     }
+
+
+def test_aiops_entrypoint_reads_only_required_keys_from_fixed_runtime_env(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+) -> None:
+    module = _module()
+    log_path = tmp_path / "application.jsonl"
+    log_path.write_text(
+        json.dumps(
+            {
+                "request_id": "synthetic",
+                "method": "GET",
+                "path": "/tier1/incident-simulation",
+                "status": 500,
+                "latency_ms": 0,
+            },
+            separators=(",", ":"),
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    runtime_env_path = tmp_path / "runtime.env"
+    runtime_env_path.write_text(
+        "\n".join(
+            (
+                "CO_STORY_AWS_REGION=ap-northeast-1",
+                "CO_STORY_BEDROCK_MODEL_ID=model-id",
+                "CO_STORY_BEDROCK_GUARDRAIL_ID=guardrail-id",
+                "CO_STORY_BEDROCK_GUARDRAIL_VERSION=1",
+                "CO_STORY_BEDROCK_MAX_TOKENS=1200",
+                "UNRELATED_SECRET=never-print-runtime-secret",
+            )
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(module, "APPLICATION_LOG_PATH", log_path)
+    monkeypatch.setattr(module, "RUNTIME_ENV_PATH", runtime_env_path)
+    for key in (
+        "CO_STORY_AWS_REGION",
+        "CO_STORY_BEDROCK_MODEL_ID",
+        "CO_STORY_BEDROCK_GUARDRAIL_ID",
+        "CO_STORY_BEDROCK_GUARDRAIL_VERSION",
+        "CO_STORY_BEDROCK_MAX_TOKENS",
+    ):
+        monkeypatch.delenv(key, raising=False)
+
+    result = module.main(
+        ["--alarm-state", "OK", "--service-state", "active"],
+        client=FakeBedrockClient(),
+    )
+
+    assert result == 0
+    assert "never-print-runtime-secret" not in capsys.readouterr().out
