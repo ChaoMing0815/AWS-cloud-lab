@@ -10,6 +10,7 @@
 - Health document runtime gate：首次 Run Command 僅 target 單一 app instance，`CheckCoStoryHealth=Success`、response code `0`、error empty；輸出精確為 `service=active`、`live=200`、`ready=200`。未使用 S3／CloudWatch output，未重試或執行其他 Document。
 - Runtime retry：單一 SSM Session 命令加入安全 JSONL env、restart application，並以 60 秒 bounded wait 輪詢 `/api/v1/ready`；第一次 curl 在 restart 空窗回 `7`，後續於期限內成功。最終 `application=active_ready`、runtime log setting present、JSONL present 且 `co-story:co-story:640`、CloudWatch Agent active，沒有執行 rollback。
 - CloudWatch delivery gate：Tokyo Console 的固定 `/co-story/tier1/application` Log Group 已出現 instance stream 與最新事件；代表性事件為 `GET /api/v1/ready`、status `200`、latency `101 ms`。JSON 只含去識別化 `request_id`、method、path、status、latency，未見 query、prompt、cookie、authorization、database URL 或其他 secret；未產生額外請求或 5xx。
-- 成本：既有 EC2 上的 Agent 已開始少量 CloudWatch Logs ingestion；Log Group 仍為 7 天 retention，未新增資源。正向 delivery 已通過，負向越界寫入與 alarm incident 尚未執行。
+- IAM runtime 負向 gate：由使用者在 SSM Session 以 EC2 AppRole 對既有 Log Group 的未核准 stream `iam-negative-control-never-create` 嘗試單次 `PutLogEvents`；application 與 Agent preflight 均為 active，API 回 `AccessDenied`，腳本回報 `negative_write=denied_expected`、exit `0`。未建立越界 stream、未修改 IAM，也未輸出 credential 或 runtime secret。
+- 成本：既有 EC2 上的 Agent 已開始少量 CloudWatch Logs ingestion；Log Group 仍為 7 天 retention，未新增資源。正向 delivery 與代表性越界寫入拒絕均已通過，alarm incident 尚未執行。
 
-結果：**PARTIAL／POSITIVE DELIVERY PASSED**。Health Document、bounded restart、安全 JSONL、Agent 與固定 Log Group 正向 delivery 均通過；今天依停止決策不做 5xx／alarm／AIOps，後續再完成負向 IAM 與 incident gate。
+結果：**PARTIAL／DELIVERY AND IAM BOUNDARY PASSED**。Health Document、bounded restart、安全 JSONL、Agent、固定 Log Group 正向 delivery 與代表性 IAM 越界拒絕均通過；後續再完成 bounded 5xx trigger／alarm recover 與 AIOps incident。
