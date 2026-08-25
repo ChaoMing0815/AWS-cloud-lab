@@ -241,11 +241,17 @@ class FakeBedrockClient:
 
 def _bedrock_response(report: dict) -> dict:
     return {
-        "stopReason": "end_turn",
+        "stopReason": "tool_use",
         "output": {
             "message": {
                 "content": [
-                    {"text": json.dumps(report, ensure_ascii=False, separators=(",", ":"))}
+                    {
+                        "toolUse": {
+                            "toolUseId": "incident-report-1",
+                            "name": "submit_incident_report",
+                            "input": report,
+                        }
+                    }
                 ]
             }
         },
@@ -280,9 +286,97 @@ def test_bedrock_incident_advisor_makes_one_bounded_guarded_call() -> None:
         "guardrailIdentifier": "guardrail-id",
         "guardrailVersion": "1",
     }
+    assert call["toolConfig"]["toolChoice"] == {
+        "tool": {"name": "submit_incident_report"}
+    }
+    tool_spec = call["toolConfig"]["tools"][0]["toolSpec"]
+    assert tool_spec["name"] == "submit_incident_report"
+    assert tool_spec["inputSchema"]["json"]["required"] == [
+        "summary",
+        "probable_cause",
+        "evidence",
+        "recommended_action",
+        "requires_human_approval",
+    ]
     prompt = call["messages"][0]["content"][0]["guardContent"]["text"]
     assert prompt["qualifiers"] == ["query"]
     assert json.loads(prompt["text"]) == facts
+
+
+def test_bedrock_incident_advisor_rejects_text_even_when_it_contains_valid_json() -> None:
+    analysis = _analysis_module()
+    module = _adapter_module()
+    report = RecordingAdvisor().report
+    response = {
+        "stopReason": "end_turn",
+        "output": {
+            "message": {
+                "content": [
+                    {
+                        "text": json.dumps(
+                            report,
+                            ensure_ascii=False,
+                            separators=(",", ":"),
+                        )
+                    }
+                ]
+            }
+        },
+    }
+    advisor = module.BedrockIncidentAdvisor(
+        client=FakeBedrockClient(response),
+        model_id="model-id",
+        guardrail_id="guardrail-id",
+        guardrail_version="1",
+    )
+
+    with pytest.raises(analysis.IncidentAnalysisFailure, match="SCHEMA_INVALID"):
+        advisor.advise({"alarm_state": "OK"})
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        [
+            {
+                "toolUse": {
+                    "toolUseId": "wrong-tool",
+                    "name": "restart_application",
+                    "input": RecordingAdvisor().report,
+                }
+            }
+        ],
+        [
+            {
+                "toolUse": {
+                    "toolUseId": "report-1",
+                    "name": "submit_incident_report",
+                    "input": RecordingAdvisor().report,
+                }
+            },
+            {"text": "extra output"},
+        ],
+    ],
+)
+def test_bedrock_incident_advisor_rejects_non_exact_report_tool_content(
+    content: list[dict],
+) -> None:
+    analysis = _analysis_module()
+    module = _adapter_module()
+    advisor = module.BedrockIncidentAdvisor(
+        client=FakeBedrockClient(
+            {
+                "stopReason": "tool_use",
+                "output": {"message": {"content": content}},
+            }
+        ),
+        model_id="model-id",
+        guardrail_id="guardrail-id",
+        guardrail_version="1",
+    )
+
+    with pytest.raises(analysis.IncidentAnalysisFailure, match="SCHEMA_INVALID"):
+        advisor.advise({"alarm_state": "OK"})
 
 
 @pytest.mark.parametrize(
