@@ -37,7 +37,6 @@ def test_cloudwatch_agent_collects_only_bounded_application_and_system_jsonl() -
         "metrics_collected": {
             "mem": {
                 "measurement": ["mem_used_percent"],
-                "drop_original_metrics": ["mem_used_percent"],
                 "metrics_collection_interval": 60,
             },
             "disk": {
@@ -49,6 +48,7 @@ def test_cloudwatch_agent_collects_only_bounded_application_and_system_jsonl() -
             },
         },
     }
+    assert "drop_original_metrics" not in config["metrics"]["metrics_collected"]["mem"]
 
     rendered = json.dumps(config, sort_keys=True).lower()
     for forbidden_source in (

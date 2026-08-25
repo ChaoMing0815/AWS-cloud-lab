@@ -32,7 +32,6 @@
     "metrics_collected": {
       "mem": {
         "measurement": ["mem_used_percent"],
-        "drop_original_metrics": ["mem_used_percent"],
         "metrics_collection_interval": 60
       },
       "disk": {
