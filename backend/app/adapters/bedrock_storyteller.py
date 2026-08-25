@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any
 
 from app.application.ports import Storyteller, StorytellerFailure
@@ -31,6 +32,7 @@ _WORLD_SYSTEM = (
     "Do not add any other fields or change canonical game state."
 )
 _NARRATIVE_SYSTEM = "Return only bounded narrative text; never change canonical game results."
+_METRICS_LOGGER = logging.getLogger("co_story.storyteller_metrics")
 
 
 class BedrockStoryteller(Storyteller):
@@ -162,7 +164,38 @@ class BedrockStoryteller(Storyteller):
         text = _sanitize(text)
         if not text or (maximum_length is not None and len(text) > maximum_length):
             raise StorytellerFailure("SCHEMA_INVALID")
+        _log_usage_metrics(response, prompt["task"])
         return text
+
+
+def _log_usage_metrics(response: dict[str, Any], operation: str) -> None:
+    usage = response.get("usage")
+    metrics = response.get("metrics")
+    if not isinstance(usage, dict) or not isinstance(metrics, dict):
+        return
+    input_tokens = _nonnegative_int(usage.get("inputTokens"))
+    output_tokens = _nonnegative_int(usage.get("outputTokens"))
+    latency_ms = _nonnegative_int(metrics.get("latencyMs"))
+    if input_tokens is None or output_tokens is None or latency_ms is None:
+        return
+    _METRICS_LOGGER.info(
+        json.dumps(
+            {
+                "metric_type": "storyteller_usage",
+                "operation": operation,
+                "latency_ms": latency_ms,
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
+            },
+            separators=(",", ":"),
+        )
+    )
+
+
+def _nonnegative_int(value: Any) -> int | None:
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        return None
+    return value
 
 
 def _world_from_draft(text: str, requested_tone: str, requested_custom_tone: str | None) -> World:

@@ -9,8 +9,38 @@
             "log_stream_name": "{instance_id}",
             "encoding": "utf-8",
             "timezone": "UTC"
+          },
+          {
+            "file_path": "/var/log/co-story/system.jsonl",
+            "log_group_name": "/co-story/tier1/system",
+            "log_stream_name": "{instance_id}",
+            "encoding": "utf-8",
+            "timezone": "UTC"
           }
         ]
+      }
+    }
+  },
+  "metrics": {
+    "namespace": "CoStory/Tier1/System",
+    "append_dimensions": {
+      "InstanceId": "${aws:InstanceId}"
+    },
+    "aggregation_dimensions": [
+      ["InstanceId"]
+    ],
+    "metrics_collected": {
+      "mem": {
+        "measurement": ["mem_used_percent"],
+        "drop_original_metrics": ["mem_used_percent"],
+        "metrics_collection_interval": 60
+      },
+      "disk": {
+        "measurement": ["used_percent"],
+        "resources": ["/"],
+        "drop_device": true,
+        "drop_original_metrics": ["used_percent"],
+        "metrics_collection_interval": 60
       }
     }
   }

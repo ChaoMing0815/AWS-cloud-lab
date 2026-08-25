@@ -84,10 +84,16 @@ def test_parameters_bind_policy_to_the_existing_app_role_and_instance() -> None:
 
 def test_app_policy_writes_only_fixed_log_streams_and_bounded_system_metrics() -> None:
     policy = _template()["Resources"]["ApplicationLogWritePolicy"]["Properties"]
-    group_arn = {
+    application_group_arn = {
         "Fn::Sub": (
             "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:"
             "log-group:/co-story/tier1/application"
+        )
+    }
+    system_group_arn = {
+        "Fn::Sub": (
+            "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:"
+            "log-group:/co-story/tier1/system"
         )
     }
     stream_arn = {
@@ -111,7 +117,7 @@ def test_app_policy_writes_only_fixed_log_streams_and_bounded_system_metrics() -
             "Sid": "DescribeApplicationLogStreams",
             "Effect": "Allow",
             "Action": "logs:DescribeLogStreams",
-            "Resource": group_arn,
+            "Resource": [application_group_arn, system_group_arn],
         },
         {
             "Sid": "WriteSingleInstanceApplicationLogStream",
@@ -214,6 +220,7 @@ def test_dashboard_visualizes_application_ai_and_system_signals() -> None:
         "StorytellerOutputTokens",
         "StorytellerRetries",
         "StorytellerFallbacks",
+        "EstimatedBedrockCostUsd",
         "mem_used_percent",
         "disk_used_percent",
     ):

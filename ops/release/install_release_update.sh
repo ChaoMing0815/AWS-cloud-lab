@@ -151,9 +151,18 @@ install -m 0644 "$release_dir/ops/systemd/co-story-nginx-staging.service" \
   /etc/systemd/system/co-story-nginx-staging.service
 install -m 0644 "$release_dir/ops/systemd/co-story-nginx-public.service" \
   /etc/systemd/system/co-story-nginx-public.service
+install -d -m 0755 /usr/local/libexec
+install -m 0755 "$release_dir/ops/observability/write_system_health.sh" \
+  /usr/local/libexec/co-story-write-system-health
+install -m 0644 "$release_dir/ops/systemd/co-story-system-health.service" \
+  /etc/systemd/system/co-story-system-health.service
+install -m 0644 "$release_dir/ops/systemd/co-story-system-health.timer" \
+  /etc/systemd/system/co-story-system-health.timer
 install -m 0644 "$release_dir/ops/nginx/co-story-staging.conf" \
   /etc/nginx/co-story-staging.conf
 systemctl daemon-reload
+systemctl enable --now co-story-system-health.timer
+systemctl start co-story-system-health.service
 
 "$release_dir/ops/release/activate.sh" "$release_id" "$health_host"
 if ! verify_active_edge; then

@@ -1,0 +1,14 @@
+[Unit]
+Description=Write bounded Co-Story system health telemetry
+After=co-story.service amazon-cloudwatch-agent.service
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+ExecStart=/usr/local/libexec/co-story-write-system-health
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/log/co-story

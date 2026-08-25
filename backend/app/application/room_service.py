@@ -33,6 +33,7 @@ from app.domain.models import Character, DiceResult, Player, Room, StoryEntry, T
 
 ROOM_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 STORYTELLER_LOGGER = logging.getLogger("co_story.storyteller")
+STORYTELLER_RECOVERY_LOGGER = logging.getLogger("co_story.storyteller_recovery")
 STORYTELLER_FAILURE_CODES = {
     "AUTHORIZATION_ERROR",
     "CONTENT_REJECTED",
@@ -1024,11 +1025,28 @@ class RoomService:
         while attempts < 2:
             attempts += 1
             try:
-                return self.storyteller.resolve_round(room), attempts, None
+                narration = self.storyteller.resolve_round(room)
+                self._log_storyteller_recovery(attempts - 1, 0)
+                return narration, attempts, None
             except StorytellerFailure as failure:
                 if not failure.retryable or attempts == 2:
+                    self._log_storyteller_recovery(attempts - 1, 0)
                     return "", attempts, failure.code
         raise RuntimeError("storyteller retry loop exited unexpectedly")
+
+    @staticmethod
+    def _log_storyteller_recovery(retry_count: int, fallback_count: int) -> None:
+        STORYTELLER_RECOVERY_LOGGER.info(
+            json.dumps(
+                {
+                    "metric_type": "storyteller_recovery",
+                    "operation": "resolve_round_narrative",
+                    "retry_count": retry_count,
+                    "fallback_count": fallback_count,
+                },
+                separators=(",", ":"),
+            )
+        )
 
     def fallback_round(
         self,
@@ -1101,6 +1119,7 @@ class RoomService:
                     else "COLLECTING_ACTIONS"
                 )
             current.resolution_mode = "fallback"
+            self._log_storyteller_recovery(0, 1)
             current.version += 1
             self._refresh_activity(current, host=True, completed=completed)
             self.repository.save(current)

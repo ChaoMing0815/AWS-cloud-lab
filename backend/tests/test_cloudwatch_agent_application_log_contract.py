@@ -37,12 +37,14 @@ def test_cloudwatch_agent_collects_only_bounded_application_and_system_jsonl() -
         "metrics_collected": {
             "mem": {
                 "measurement": ["mem_used_percent"],
+                "drop_original_metrics": ["mem_used_percent"],
                 "metrics_collection_interval": 60,
             },
             "disk": {
                 "measurement": ["used_percent"],
                 "resources": ["/"],
                 "drop_device": True,
+                "drop_original_metrics": ["used_percent"],
                 "metrics_collection_interval": 60,
             },
         },
