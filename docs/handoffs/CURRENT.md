@@ -1,118 +1,61 @@
 # CURRENT：目前工作交接
 
 - 更新日期：2026-08-25
-- 近期目標：完整交付 Tier 0–2；若 2026-09-01 前 Tier 2 AWS E2E 穩定通過，挑戰以 Docker、ECR、GitHub OIDC 與 SSM 完成 Tier 3 自動部署垂直切片。目前先完成 Tier 1 CloudWatch／SSM／AIOps incident。
-- Branch：`codex/tier1-runtime-observability`，由 PR #7 merge commit `9dc2350` 建立；Tier 1 AIOps Red `bea8e08`／`8e6b7cb`／`ac15c71`／`f0d268f`，Green `ba9b553`／`069b939`／`a8d0bf3`；AWS runtime evidence commits `3500bdf`、`428df68`。
-- 本機功能 checkpoint：公開試玩 UX／安全失敗記錄 `d2b76ba`；canonical route loading shell `f9d4155`；明確 Prompt Injection 前置拒絕 `6f872b2`；widow／orphan 排版規則 `18fcd21`；首頁公開試玩安全提示 `62b4e02`。
-- Regression：Backend `358 passed, 8 skipped`、Frontend `94 passed`（2026-08-25 Tier 1 completion gate）。
-- AWS active release：`tier1-20260825-4a51e0e`。
-- 操作邊界：Console-first；未經新的 bounded batch 核准不得執行 AWS CLI。使用者操作 AWS Console／SSM，Agent 只提供單一可驗證步驟。
+- 目前里程碑：Tier 1 已完整完成；下一階段為 Tier 2 Web／Story Worker／Data 切割。
+- 交付策略：保底完成 Tier 2 AWS E2E；若 2026-09-01 前穩定通過，再挑戰 Tier 3 Docker、ECR、GitHub Actions OIDC 與 SSM 自動部署垂直切片。
+- Branch：`codex/tier1-runtime-observability`
+- Tier 1 完成基準 commit：`07a986a`
+- Regression：Backend `358 passed, 8 skipped`、Frontend `94 passed`。
+- AWS active release：`tier1-20260825-4a51e0e`
+- 操作邊界：Console-first；使用者操作 AWS Console／SSM。Agent 未經新的 bounded batch 核准不得執行 AWS CLI，且不得執行 S3 讀取或 Bedrock 呼叫。
 
 ## Current
 
-- Tier 0 AWS 基礎已完成：Tokyo VPC、公網 EC2＋SSM、private PostgreSQL RDS、private S3 artifacts、runtime secret、Guardrail v1 與 bounded Bedrock runtime IAM；無 NAT、EIP、SSH、ALB、CloudFront、Route 53 或自有網域。
-- 公開 HTTPS 已啟用：Let's Encrypt short-lived IP certificate、public Nginx 與 renewal timer active；HTTP→HTTPS、bad Host／Origin、security headers、public `8000/8080` 不可達均已驗證。
-- Batch 8A 已完成 AWS 三玩家單回合 smoke：三個 Browser sessions 建立角色、同步 action、擲骰、星火決策與房主結算；進入 Round 2，進度 `4（13%）`、危機 `2（7%）`，三端 refresh 後由 private RDS 完整讀回。
-- PR #3 已合併至 `main`；merge commit `3c5db99`。Batch 9A 隨後部署 `tier0-20260818-a1160bc`，exact S3 objects `2`、checksum `OK`，application／public Nginx／renew timer active、staging inactive、HTTPS readiness `200`、首頁 `Cache-Control: no-store`。
-- Batch 9A 只允許兩次 bounded 世界生成呼叫，均已用完：benign request 回 `200` 並產生完整世界草稿；synthetic prompt-injection request 回 `503`。`503` 只能證明應用失敗，不能證明 Guardrail Prompt Attack filter 介入，故目前不得宣稱 Prompt Attack smoke 通過，也不得在新核准前重試。
-- `a1160bc` 已包含 Bedrock `guardContent`／`query` 標記與 installer `umask 0022`，但當時 runtime 沒有安全、正規化的 storyteller failure log；因此無法由既有 log 判定 `503` 是 `CONTENT_REJECTED`、schema invalid 或其他 provider failure。
-- Batch 9B 已部署 `tier0-20260819-2de0424`：exact S3 objects `2`、checksum `OK`；application／public Nginx／renew timer active、staging inactive、HTTPS readiness `200`、首頁 `Cache-Control: no-store`。Browser 已驗證 AWS runtime 文案、private PostgreSQL 標示、canonical loading shell、session restore 與近端 validation error；未呼叫 Bedrock。
-- 該版本的本機 Red commits 為 `66ee7b5`、`8c9bde0`、`816b817`；Green commits 為 `d2b76ba`、`f9d4155`。世界生成按鈕旁顯示 loading／安全錯誤、關鍵字接受 `、`／`，`／`,`、範例文字泛用化，後端只記 allowlist failure code，不記 prompt、room、player、AWS 原始錯誤或 secret。
-- Batch 9C exactly 1 次 synthetic prompt-injection 世界生成已完成：Browser 顯示安全的「世界生成暫時無法完成」、world fields 未變、生成剩餘次數由 `2` 變 `1`；正規化 log 為 `SCHEMA_INVALID`、HTTP `503`。這不是 `CONTENT_REJECTED` 或 Guardrail intervention，證明既有 Prompt Attack filter 對代表性測試不足以單獨依賴；禁止重試。
-- Application-layer 明確注入前置拒絕已依嚴格 TDD 完成並部署：Red `a3f12a8`、Green `6f872b2`，active release `tier0-20260819-ee128da`。Batch 9D Browser 驗證英文 override＋system-prompt extraction 在 Storyteller 前回安全 `422`，生成剩餘次數維持 `1`、world fields 不變、`STORYTELLER_FAILURE_LOGS=0`；普通「忽略風雨」故事語句仍通過。此 bounded detector 只是 defense-in-depth，不宣稱能偵測所有 Prompt Injection。
-- 同學／友人試玩已限縮為 AWS 外部 E2E 驗證：客觀記錄 HTTPS、三玩家同步、Bedrock 敘事、refresh persistence、錯誤與完成時間；非阻斷性的 UI／UX 回饋不在本輪範圍。操作、停止條件與去識別化證據規則見 `docs/qa/public-trial-guide.md`。
-- 公開試玩前的 UI 收尾已依 TDD 完成：標題與段落使用 responsive `balance`／`pretty` wrapping，列印樣式避免單行跨頁；首頁移除硬編換行並加入「使用暱稱、勿輸入個資／機密」提示。Red commits 為 `a3337b0`、`bf8b193`；Green commits 為 `18fcd21`、`62b4e02`，目前已包含於 Batch 10A active release。
-- 2026-08-20 完成 Tier 0 四玩家、四回合外部公開試玩：iPhone 12 Safari 房主、macOS Chrome 與兩個 Windows Chrome 玩家均完成加入、角色、四回合、Bedrock 敘事、結局與刪房。AWS E2E 判定為 **PASS with findings**。
-- Bedrock CloudWatch 在 22:10–23:00 顯示 Nova Lite `Invocations=6`、input tokens `3,018`、output tokens `1,549`，六次呼叫與世界生成、四回合敘事及結局一致；加權平均 latency 約 `1,940 ms`。EC2 CPU 峰值約 `1.8133%`，RDS `DatabaseConnections` 有非零 client connection。
-- Sanitized access log：`200 × 2,671`、`201 × 5`、`204 × 1`、`404 × 317`、`409 × 30`、`5xx × 0`。房間於 22:53:22 成功刪除；317 次 current-room `404` 全部從刪除後 24 秒才開始，確認是舊分頁未停止 polling。
-- 公開試玩發現：iPhone Safari 需頻繁手動更新、世界生成前回合數會回預設值、角色儲存後曾顯示原始 JavaScript exception、刪房後各頁未立即導頁，以及回合敘事偏向逐句整合而非深入演繹。前三類 state／error 與刪房 lifecycle 是正式修正候選；敘事品質列為 post-MVP Prompt 優化。
-- 8/20 backend metrics／sanitized logs 已入 `docs/evidence/2026-08-20-tier0-four-player-trial/`。六張受測者原圖含 public IP、暱稱、通知或 Browser 資訊，未直接入庫；先以去識別化文字紀錄，報告圖待裁切／遮罩。
-- Batch 8A 後 Cost Explorer 的 Total、Bedrock、EC2、RDS 與其他服務當時均顯示 `0`；帳務可能延遲，不能解讀為永久零成本。Credits 尚餘 `US$137.40`，最近到期日 2027-09-08。
-- 第一次進度書面報告初稿已產出至 `docs/reports/2026-08-24-first-progress-report.docx`。內容已納入 Tier 0–5 選題思路、商業價值、前後端與 AWS 架構、Web／DB 分離、公私 subnet、重啟後 RDS persistence、CloudFormation、成本管控、Prompt Injection 防護邊界、實際遊玩畫面與後續演進；中文字體、標題尺寸、段落間距及單行跨頁已調整。
-- 第一次進度簡報已產出至 `docs/presentations/2026-08-24-first-progress-presentation.pptx`，共 13 頁並附逐頁繁體中文講稿。投影片以簡短文字、實際遊玩畫面與圖解呈現，另加入前端／後端責任及各自與 AWS 的串接方式；架構連線改用直角路徑，避免斜線穿越區塊。已通過投影片 overflow、逐頁視覺與 PowerPoint 壓縮檔完整性檢查。
-- 面向面試官／業主的正式專題展示版已重構至 `docs/presentations/2026-08-24-project-showcase-presentation.pptx`，由進度條列改為「問題與價值 → 產品體驗 → 可玩證據 → 應用與 AWS 架構 → 安全維運 → 演進路線 → 求職價值」的 10 頁敘事。應用與 AWS 架構圖已用可編輯原生圖形重繪，主流程、維運路徑與託管服務分線呈現；逐頁繁體中文講稿、overflow、模板一致性、逐頁視覺、PPTX 完整性與敏感字串檢查均已通過，原 13 頁版本保留不變。
-- 商業視覺改版已另存為 `docs/presentations/2026-08-24-project-showcase-commercial.pptx`，維持 10 頁主敘事但改採純白背景、單一結論與視覺主導版面；移除點陣背景與 CloudFormation 依賴圖附錄，AWS runtime／Tier 1 圖使用 2026 Q3 官方 service icons 原色，三張核心架構頁以 2× 高解析 PNG 嵌入以避免 PowerPoint 重新排線，其餘頁面保留向量 icon 與可編輯文字。10 份繁體中文講稿、逐頁 PowerPoint render、overflow、封裝完整性與敏感字串檢查均已通過；前兩版簡報保留不變。
-- 15–20 分鐘延伸版已另存為 `docs/presentations/2026-08-24-project-showcase-extended.pptx`，共 16 頁與 16 份繁體中文講稿。封面改為不使用截圖的深色極簡主題，新增 `WHY／DESIGN／OPERATE` 三張深色章節頁、AI 輔助會議與培訓工作坊的概念延伸、五項 AWS 服務問題導向選型，以及 Nova Lite 的成本／互動延遲取捨與 `Storyteller port → Bedrock Converse → model ID` 抽換邊界；未實作的商業延伸與換模必要 validation gate 均明確標示。已通過逐頁 PowerPoint render、overflow、封裝完整性與敏感字串檢查；前三版簡報保留不變。
-- 延伸版第二次視覺修訂已另存為 `docs/presentations/2026-08-24-project-showcase-extended-v2.pptx`，擴充為 17 頁與 17 份講稿。內容頁左上 kicker 統一為粗體藍字，指定對比句型已改為直接陳述；新增前端／後端 Clean Architecture HLD，呈現 `Game API Port`、`Repository Port`、`Storyteller Port` 與 RDS／Bedrock／CloudWatch／SSM adapter 邊界。AWS runtime 圖改用上方 Bedrock、下方 CloudWatch、獨立 SSM 管理通道，連線不沿 VPC／Subnet 邊界行進；兩張複雜架構頁以 2× 高解析 PNG 嵌入。已通過 17 頁重新渲染、overflow、17 份講稿、封裝完整性與指定句型字串檢查，前四版簡報保留不變。
-- 延伸版第三次視覺修訂已另存為 `docs/presentations/2026-08-24-project-showcase-extended-v3.pptx`。P3 改以「缺少共同狀態」為中心，向不同步、無共識、難延伸三個同時發生的後果發散；P4 將遊戲、會議、培訓改為三個完整色塊；P8 標題精簡為「產品限制決定 AWS 服務選型」。P11–12 重新產製為 2× 高解析 PNG，底稿採 PowerPoint 原生 connector 箭頭並校正 AWS runtime 資料流方向，避免箭頭端點破圖與線條貼合邊界。已通過 17 頁重新渲染、overflow、封裝完整性與逐頁視覺檢查；v2 保留不變。
-- 核心檢核點口試問答已整理為 `docs/reports/2026-08-24-project-showcase-qa.docx`，共 30 題，依高機率題、Tier 1 可觀測性與 SSM、安全／IAM／成本、架構演進分章；每題採「結論、實證、目前邊界」答法，並附尚未完成項目的統一回答句型與演練檢查表。DOCX 已完成 9 頁版面、繁體中文顯示、表格幾何與封裝完整性檢查。
-- 第一次進度報告、簡報與三張可重用架構圖已在 `bf12650` commit 並 push；Office 檔經壓縮結構與敏感字串 pre-push audit。報告產生／修復腳本因含本機限定路徑未入庫，已保留在 `/private/tmp/co-story-report-scripts-20260821`；`.gitignore` 已排除 `~$*` Office 鎖定檔。
-- GitHub CI foundation 已依嚴格 TDD 完成本機 Red `832d6bf` 與 Green `a8763df`：`.github/workflows/ci.yml` 在 pull request 與 `main` push 執行獨立 Backend／Frontend jobs，固定 Python `3.13`、Node `24` 與唯讀 `contents: read`；明確不授予 OIDC、AWS、ECR 或部署能力。Contract targeted tests `2 passed`，本機 Backend `313 passed, 8 skipped`、Frontend `85 passed`。兩個 commits 已 push；GitHub Actions run `32478705788` 實際通過，`backend-tests` 約 25 秒、`frontend-tests` 約 9 秒。PR checks 已成立，branch protection required checks 尚未設定。
-- 角色儲存原始 JavaScript exception 已完成 R2 TDD：Red `6d3c8fe` 精確證明未知 `TypeError.message` 會外露；Green `49aa5dc` 只允許 `ApiError`／`DomainError` 的 `publicMessage` 顯示，未知錯誤改為「角色儲存失敗，請重新整理後再試。」並保留輸入、canonical room、解除 busy。Targeted `3 passed`、Frontend `88 passed`，代表性 sensitivity 可抓回直接顯示原文的 mutation；GitHub Actions run `32496325155` 的 `backend-tests` 與 `frontend-tests` 均通過。Batch 10A 已部署，Desktop 角色儲存／改名成功且 Console error `0`。驗證見 `docs/evidence/2026-08-21-character-error-safety/validation.md` 與 `docs/evidence/2026-08-22-tier0-stabilization-release/validation.md`。
-- 刪房後舊分頁 polling lifecycle 已完成 R2 TDD：Red `a2b192d` 證明 `404 ROOM_NOT_FOUND` 仍會向外拋出；Green `f97a059` 在第一個精準錯誤後清除舊 room、停止排程並只導回首頁一次。Affected `15 passed`、Frontend `90 passed`；其他 `404` 與房主主動刪房行為未退化，代表性 sensitivity 可抓到 guard 失效。修正已隨 Batch 10A 部署，但測試房停在 `LOBBY`，正式 UI 只允許刪除 `COMPLETED` 房間，因此 AWS 多分頁刪房 gate 尚未執行。
-- PR #4 已更新 metadata 並以 merge commit `d94e47b` 合併至 `main`；合併後 GitHub Actions run `32544076633` 的 Backend／Frontend jobs 均通過。合併沒有部署權限，AWS active release 未改變。
-- 世界尚未開放的 join `409` 已完成 R1 TDD：Red 精確證明原始「只有等待中的房間可以加入玩家」不具體；Green `afe63bd` 將 `409 + ROOM_NOT_JOINABLE` 映射為「房主尚未開放世界，請稍後再試。」。Landing Page `8 passed`、Frontend `92 passed`；合併前 PR #5 GitHub Actions run `32553658881` 的 Backend／Frontend jobs 均通過。
-- PR #5 已以 merge commit `de49944` 合併至 `main`；合併後 GitHub Actions run `32557825420` 的 Backend／Frontend jobs 均通過。Release `tier0-20260822-de49944` 已部署：`co-story.tar.gz` 約 `138 KiB`，SHA-256 `d686adecc932747141c9f0c1e3b8077cc705479b4bea6879155429a65a7cff8b`，S3 exact objects `2`、EC2 checksum `OK`；application／public edge／renewal timer active、staging inactive，readiness／public HTTPS `200`，previous release `tier0-20260822-8bb6bfc`。
-- 甘特圖 M4 原訂 8/25 完成 Tier 1–2，目前已落後；後續依縮減原則先交付每層一個可驗證案例，不以擴張 AWS 常駐資源追回時程。
-- 世界生成前回合上限回復預設 `6` 已完成 R2 TDD：Red `28f0127` 重現房主選 `8` 後生成草稿變回 `6`；Green `8a27aa4` 只保留尚未確認的表單選項，不提前寫入 canonical state，已隨 Batch 10A 部署。Batch 10A 另發現 confirm `422` 後回合上限從 `8` 回到 `6`；後續 Green `9ff0506` 只在確認失敗時恢復送出前選項，Targeted `1 passed`、Affected `4 passed`、Frontend `92 passed`，尚未部署。
-- 節費操作由使用者透過 AWS Console 進行；2026-08-22 private PostgreSQL RDS 曾停止後為 Batch 10A 啟動，目前維持運行。因近期仍會頻繁使用，專題採「預估超過 48 小時不使用才停止」的操作門檻；這不是 AWS 規則。停止期間不計 DB instance hours，但 storage／backup 仍計費，且最長 7 天會自動啟動。
-- Batch 10A 已部署 `tier0-20260822-8bb6bfc`：exact S3 objects `2`、checksum `OK`；application／public edge／renewal timer active、staging inactive、readiness／HTTPS `200`、首頁 `no-store`，previous release 保留 `tier0-20260819-ee128da`。世界未開放提示、角色儲存與 iPhone Safari 雙向同步均通過；Desktop → Safari 延遲小於 10 秒，雙方 refresh 後 RDS persistence 正常；未呼叫 Bedrock。完整證據見 `docs/evidence/2026-08-22-tier0-stabilization-release/validation.md`。
-- Tier 1 repo-local gap analysis 已完成；第一個 R3 TDD slice 亦已完成：Red `8f5aea8`／`3e33e5f`、Green `66cf913`。設定 `CO_STORY_APPLICATION_LOG_PATH` 後，只接受 request／Storyteller 精確 allowlist schema，排除 query、raw access line 與 forged extra field；檔案為 `0640`、1 MiB rotation、最多兩份 backup 並拒絕 symlink target。Targeted `4 passed`、Backend `315 passed, 8 skipped`，三類 safety sensitivity 皆有效；驗證見 `docs/evidence/2026-08-22-tier1-safe-log-file/validation.md`。程式已包含於 active release，runtime sink 已啟用並完成固定 Log Group delivery gate。
-- Tier 1 CloudWatch Agent 最終 config 只收固定 application JSONL 與 sanitized system-health JSONL，不收 raw system／auth／Nginx／wildcard source；另發布同一 InstanceId 的 memory／root disk metrics。初始 application-only contract 的 Red `0c166c8`／`7f5da34`、Green `b347abe` 保留於歷史 evidence；completion Red `9ac925c`／Green `a9420c0` 擴充正式範圍，`4a51e0e` 修正 memory series 去重。Agent 兩階段 validation、兩個 log deliveries 與 memory／disk Dashboard 均已通過。
-- Tier 1 Log Group／IAM 最終 IaC 有兩個固定 Standard Log Groups（7 天 retention）、HTTP／Storyteller metric filters、disabled-actions Alarm、Dashboard 與單一 managed policy。application／system stream 都限定 `${AppInstanceId}`；system metrics 的 `Resource: "*"` 以 `cloudwatch:namespace=CoStory/Tier1/System` 限制，policy 仍只附加 AppRole。`dd553b1` 阻止 named Managed Policy replacement，實際 Change Set 為 `Modify／Replacement=False`；既有 Access Analyzer basic validation與越界 stream `AccessDenied` 證據保留。
-- Tier 1 5xx metric／alarm repo-local IaC 已完成：Red `cc208d4`／`aad2626`、Green `fc96f12`。Filter 精確限定 500–599；只建立無 dimensions 的單一 custom metric，Alarm 為 Sum／60 秒／1 of 1／threshold 1／missing notBreaching，明確停用所有 action。Affected `14 passed`、Backend `325 passed, 8 skipped`，六類 sensitivity 全數有效；R3 Sol review 無 High／Critical blocker。驗證見 `docs/evidence/2026-08-22-tier1-application-5xx-alarm/validation.md`。已隨 Batch 11A deploy；exactly-one synthetic 500 使 Alarm 於 `2026-08-24 22:23:03` 轉為 `In alarm`，Actions 維持 `No actions`；沒有第二筆注入或設定變更，於 `22:29:03` 自動回到 `OK`。
-- Tier 1 受限 SSM health-check 的 versioned route 修正已依 R3 TDD 完成：Red `dcd8efd`、Green `529d223`，固定檢查 `/api/v1/live`、`/api/v1/ready`；targeted `5 passed`、Tier 1 affected `15 passed`、Backend `330 passed, 8 skipped`，舊 `/live` sensitivity 有效。operations stack Change Set 已更新完成，Document version `2` 為 latest／default；首次單 instance Run Command 回 `Success`／response code `0`，輸出 `service=active`、`live=200`、`ready=200`，error empty。
-- Tier 1 Batch 11A 已由使用者透過 Tokyo Console 部署：`co-story-tier1-observability` 四項資源與 `co-story-tier1-operations` 的 `HealthCheckDocument` 均回報 `CREATE_COMPLETE`，Alarm 初始為 `OK`。兩份 Change Set 精確為四筆與一筆 `Add`，ID 已遮蔽；policy 只附加 `AWSFinalProjectAppRole`，Access Analyzer 顯示 `Security／Errors／Warnings／Suggestions = 0`；未安裝 CloudWatch Agent、未執行 SSM Document 或 Bedrock。驗證見 `docs/evidence/2026-08-23-tier1-foundation-deployment/validation.md`。
-- Tier 1 Batch 11B runtime／IAM／Alarm path 已通過：CloudWatch Agent package 安裝成功；首次 restart race 安全 rollback，後續 60 秒 bounded readiness wait 成功；application active／ready、runtime JSONL env present、log file 為 `co-story:co-story:640`、Agent active。固定 instance stream 正向 delivery 與越界 stream `AccessDenied` 均通過；exactly-one synthetic 500 使 Alarm `OK → In alarm → OK`，Actions 全程 `No actions`。驗證見 `docs/evidence/2026-08-24-tier1-runtime-observability/validation.md`。
-- Tier 1 bounded AIOps Agent 已完成 repo-local R2 TDD：只讀固定安全 JSONL 的最後 `200` 行、丟棄非 allowlist 事件，Bedrock adapter 單次 guarded Converse 且輸出 action enum／強制人工批准；Agent 不具修復執行能力。Red `bea8e08`／`8e6b7cb`／`ac15c71`／`f0d268f`，Green `ba9b553`／`069b939`／`a8d0bf3`；targeted `13 passed`、affected `58 passed`、Backend `343 passed, 8 skipped`，人工批准 sensitivity 有效。release 已部署並通過 zero-model gate，尚未呼叫模型，驗證見 `docs/evidence/2026-08-24-tier1-aiops-agent/validation.md`。
-- AIOps release `tier1-20260824-59f5458` 已由 exact commit `59f54586324427e94760899531c0104722050204` 建立並部署；archive 約 `148 KiB`，SHA-256 `50331286421507ba7639a5f2ab5e4eb2c51ec0cbb7d92e2ef19d7db4b3946d60`，EC2 checksum `OK`。application／CloudWatch Agent／public edge active；safe log 最近 `200` 行 accepted `200`、discarded `0`，zero-model gate exit `0`、Bedrock invocations `0`。此 release 也包含 branch base PR #7 的成功生成後清除舊 `422` field errors 修正。
-- Exactly-one Nova Lite AIOps gate 已依獨立核准執行：不可重跑 marker 已建立、retries `0`；模型輸出未通過固定 report contract，安全回 `SCHEMA_INVALID`／exit `3`，未輸出 raw model content。application／CloudWatch Agent／public edge 前後均 active，沒有建議 action、人工批准、修復或第二次呼叫。
-- `SCHEMA_INVALID` remediation 已依 R2 TDD 完成：Nova Lite v1 不支援 Bedrock 原生 structured outputs，因此改用官方支援的 forced `toolChoice.tool`，只暴露 output-only `submit_incident_report` schema，不提供 recovery tool；拒絕 text JSON、錯誤工具與額外 content block。Red `dea39a2`、Green `38296e7`；targeted `6 passed`、affected `16 passed`、Backend `346 passed, 8 skipped`，single-block guard sensitivity 有效。replacement release `tier1-20260825-38296e7` 由 exact commit `38296e7f1e06d74a32ce551a62b064fe0dbac5af` 建立，archive `150625` bytes、SHA-256 `dacd7a168b49f294229aba0b881ac0a353095750d2145aed87b585c85155e47e`、checksum `OK`。
-- Replacement release 已部署並通過 forced-tool zero-model gate：EC2 checksum `OK`，application／CloudWatch Agent／public edge active；deployed adapter 以 fake Converse client 驗證唯一 report tool、固定 safe log parser 與人工批准 guard，最近 `200` 行 accepted `199`、discarded `1`，Bedrock invocations `0`。舊 exactly-one marker仍保留。
-- Forced-tool exactly-one Nova Lite gate 已成功：新不可重跑 marker recorded、retries `0`；固定 report schema 判定 service active、最近 200 行無 5xx，recommended action `NO_ACTION`、`requires_human_approval=true`。使用者已明確批准 `NO_ACTION`；application／CloudWatch Agent／public edge 前後 active，未執行 SSM、restart、DB check 或其他 AWS 變更。
-- Bounded AIOps incident response vertical slice 已通過：在乾淨 preflight 下寫入 exactly one `/tier1/aiops-incident-simulation` 500，唯讀 audit exact match `1`；Alarm 自動回 `OK`，Last update `2026-08-25 13:59:03`、Actions `No actions`。Incident-specific forced-tool Nova call成功但建議缺乏 DB 證據的 `CHECK_DATABASE`；使用者人工拒絕並改批准 `RUN_HEALTH_CHECK`。`CoStoryHealthCheck` version 2/default 對單一 target 回 `Success`／response `0`，`service=active`、`live=200`、`ready=200`、Error `0`；未 restart、讀 DB secret或重試模型。這證明受控 incident response 與人工監督，不宣稱實際 outage restart recovery。
-- Tier 1 正式 completion gate 已通過：Red `9ac925c`／Green `a9420c0` 建立 sanitized system JSONL、memory／root disk metrics、HTTP latency、Storyteller latency／token／retry／fallback 與估計成本 Dashboard；`dd553b1` 阻止 named Managed Policy replacement，`4a51e0e` 修正 memory series 被 `drop_original_metrics` 移除。Observability stack `UPDATE_COMPLETE`、policy `Modify／Replacement=False`；active release `tier1-20260825-4a51e0e`，system log、memory／disk、HTTP latency、Nova Lite input `206`／output `465`／latency `2,823 ms`／估計 `US$0.00012396` 均有 AWS 證據。Exactly-one zero baseline 顯示 retry／fallback 均 `0`，未呼叫 Bedrock或 recovery action。完整證據見 `docs/evidence/2026-08-25-tier1-completion/validation.md`。
-- Batch 10B zero-model Browser gate 在匿名房 `LRTPGC` 重現：完整重載部署後前端，選 `8` 回合並送出會由 Backend 回 `422` 的短欄位；欄位錯誤正確顯示，但後續 DRAFT polling 又將選項覆寫為 canonical `6`。依停止條件未呼叫 Bedrock。根因為既有 `9ff0506` 只覆蓋 command error 後的同步 restore，沒有覆蓋下一次 polling render。
-- DRAFT polling round-state 已完成後續 R2 TDD：Red `8dc7592` 精確得到 `'6' !== '8'`；Green `1940b8b` 只在 incoming room 仍為 DRAFT 時跨 polling render 保留未確認選項，離開 DRAFT 仍接受 canonical state。Targeted `1 passed`、affected `16 passed`、Frontend `93 passed`；PR #6 已以 merge commit `c5c1541` 合併，main CI 全綠，尚未部署。驗證見 `docs/evidence/2026-08-22-confirm-world-round-preservation/validation.md`。
-- Polling 修正 release `tier0-20260822-c5c1541` 已由 exact main merge commit 建置；`co-story.tar.gz` 約 `138 KiB`，SHA-256 `ce035e329e37f38b742dee78f21217b72b4696603a2be1927e3d561ec19de122`。Batch 10C 以 S3 exact objects `2` 上傳、EC2 checksum `OK` 後部署；application／public edge／renewal timer active、staging inactive，readiness／public HTTPS `200`，previous release `tier0-20260822-de49944`。
-- Batch 10C zero-model Browser gate 已通過：匿名房 `LRTPGC` 選 `8` 回合並取得 Backend `422` field errors，返回當下與等待 `4.2` 秒、跨至少一次 polling 後均維持 `8`。
-- Batch 10C exactly one Bedrock 世界生成已成功：匿名 benign 關鍵字「雨夜／山村／風車」，生成剩餘次數 `2 → 1`，產生完整 canonical world draft；生成後再等待 `4.2` 秒仍維持 `8` 回合，未重試模型。當時發現先前 `422` field errors 在成功生成後仍殘留。
-- Stale world field-error UX 已完成 R2 TDD：Red `3863404` 精確證明成功生成後 `aria-invalid` 仍為 `true`；Green `6e9de5a` 只在生成成功後清除舊 field errors，再回填 canonical draft。Targeted `1 passed`、affected `6 passed`、Frontend `94 passed`；PR #7 已以 merge commit `9dc2350` 合併，尚未部署。
+### Tier 0
+
+- 多人 AI 文字 RPG 已部署於 Tokyo：public EC2 Web／API、private PostgreSQL RDS、private S3 artifacts、runtime secret 與 bounded Bedrock IAM。
+- 公開 HTTPS、Nginx、SSM 免 SSH、RDS persistence、三至四玩家完整回合與結局均已有 AWS E2E 證據。
+- 無 NAT、EIP、SSH、ALB、CloudFront、Route 53 或自有網域。
+- Prompt Injection 採 application-layer 明確拒絕作為 defense-in-depth；既有代表性 Guardrail 測試回 `SCHEMA_INVALID`／`503`，不得宣稱 Guardrail Prompt Attack intervention 已通過。
+
+### Tier 1
+
+- `co-story-tier1-observability` 與 `co-story-tier1-operations` 已部署，最後 CloudFormation update 為 `UPDATE_COMPLETE`。
+- CloudWatch Agent 收集固定 allowlist application JSONL 與 sanitized system-health JSONL；不收 raw journal、auth、Nginx、query、cookie、prompt 或 secrets。
+- Log Groups：`/co-story/tier1/application`、`/co-story/tier1/system`，retention 均為 7 天。
+- Dashboard `co-story-tier1-observability` 已驗證 HTTP 5xx／latency、Storyteller latency／tokens／estimated cost／retry／fallback，以及 EC2 memory／root disk。
+- Nova Lite 實測：input `206`、output `465`、latency `2,823 ms`、estimated cost `US$0.00012396`。
+- `co-story-tier1-application-5xx` 已以 exactly-one synthetic 500 驗證 `OK → In alarm → OK`，Actions 全程 `No actions`。
+- IAM policy 只附加 application role；越界 Log Stream 寫入回 `AccessDenied`。最終 Change Set 顯示 managed policy `Modify／Replacement=False`。
+- `CoStoryHealthCheck` version 2/default 固定檢查 `/api/v1/live`、`/api/v1/ready`；Run Command 回 `service=active`、`live=200`、`ready=200`。
+- Bounded AIOps 已完成 healthy `NO_ACTION` 與 synthetic 500 incident response。人工拒絕缺乏證據的 `CHECK_DATABASE`，改批准 `RUN_HEALTH_CHECK`；沒有 restart、DB secret 讀取或模型重試。
+- Storyteller recovery metric pipeline 以 exactly-one zero baseline 驗證 Retries `0`、Fallbacks `0`；此證據不代表真實 retry／fallback incident。
+- Tier 1 checkpoints、task list、deployment log 與 sanitized evidence 均已更新。正式證據入口：[`docs/evidence/2026-08-25-tier1-completion/validation.md`](../evidence/2026-08-25-tier1-completion/validation.md)。
 
 ## Next
 
-```text
-Batch 9B release 與零模型 Browser gate已完成
-→ Batch 9C exactly 1 次 synthetic prompt-injection smoke 回 SCHEMA_INVALID／503，未通過
-→ Batch 9D 已部署 application-layer 明確注入拒絕，零 Bedrock rejection gate 通過
-→ 四玩家四回合外部試玩與 backend evidence 已完成
-→ 第一次進度書面報告與 13 頁簡報已完成、通過 audit 並 push
-→ 純 CI foundation 已完成本機 Red／Green、完整 regression 與 GitHub-hosted runner 驗證
-→ 公開 JavaScript exception 已完成 R2 TDD並於 Batch 10A 部署，Desktop Browser gate 通過
-→ 刪房後其他分頁的 `404` 導頁／polling lifecycle 已完成 R2 TDD 並部署；待下一個已完成房間做 AWS Browser gate
-→ PR #4 已合併，合併後 main CI 全綠
-→ Batch 10A stabilization release 與 Safari 雙向同步已通過；RDS 因近期頻繁使用暫時維持運行
-→ Tier 1 安全 JSONL、Agent collection、Log Group／最小 IAM、5xx metric／alarm contract 已完成本機 R3 TDD；Batch 11A AWS foundation 已部署
-→ 世界尚未開放的 join `409` 明確玩家提示與 confirm `422` form-state 修正已隨 PR #5 合併，main CI 全綠
-→ `tier0-20260822-de49944` 已部署且 runtime gate 通過；zero-model 422 gate 發現 DRAFT polling reset，未呼叫 Bedrock
-→ DRAFT polling round-state Red／Green 已隨 PR #6 合併，main CI 全綠；尚未部署
-→ `tier0-20260822-c5c1541` 已部署；zero-model 422＋polling 與 exactly-one Bedrock generation＋polling gates 全數通過
-→ 成功生成後清除舊 422 field errors 的 Red／Green 已隨 PR #7 合併，main CI 全綠；尚未部署
-→ Tier 1 parameter-free SSM health-check Red／Green、完整 regression 與四類 R3 sensitivity 已完成
-→ Batch 11A observability 四項資源與 operations SSM Document 已部署；Alarm `OK`
-→ Batch 11B Agent package 安裝成功；runtime 設定因 restart 後 loopback `curl (7)` rollback，唯讀 audit 已確認 production 恢復且 Agent inactive
-→ SSM health document versioned route 修正、Change Set 更新與首次實機 Run Command 均已通過
-→ Batch 11B bounded restart、安全 JSONL、CloudWatch Agent active 與 application log 正向 delivery gate 已通過
-→ Batch 11B 代表性 IAM 越界 stream 寫入回 `AccessDenied`，runtime 最小權限負向 gate 已通過
-→ 8/24 報告已結束，恢復 Tier 1 推進
-→ 製作去識別化報告截圖、完成延遲成本檢查
-→ 第一次報告後依清理計畫停止或刪除持續計費資源，再進入 Tier 1
-```
+Tier 2 先做 repo-local 設計與嚴格 TDD，不直接調整 AWS 部署：
 
-下一個執行起點：Tier 1 已完成；保留 EC2 上全部 exactly-one markers，明日開始 Tier 2 repo-local queue／job／idempotency 設計與嚴格 TDD。Agent 仍禁止執行 AWS CLI、S3 讀取或 Bedrock 呼叫。互動式 SSM 指令不得使用頂層 `exit`；protected file 唯讀檢查必須使用 `sudo`，gate 失敗只輸出 `stopped` 並保留 Session prompt。
+1. 讀取 `docs/testing-strategy.md`、Tier 2 直接相關 Project Plan／Checkpoints、既有 repository／Storyteller ports 與資料模型。
+2. 定義 Web／Story Worker／Data 的責任邊界，以及 queue、job、version、idempotency contract。
+3. 先以 Red tests 固定 enqueue、single-consumer processing、duplicate delivery 與 stale result 邊界。
+4. Green 完成最小可運作垂直切片，再跑 affected suites 與完整 regression。
+5. Repo-local gate 通過後，另提出一個含成本、安全、IAM、驗證與 rollback 的 Tier 2 AWS bounded batch，供使用者核准。
+
+## 操作護欄
+
+- 保留 EC2 上所有 exactly-one markers，不重跑已完成的模型、incident 或 synthetic baseline gate。
+- 每次只提供一組同一目的、具停止條件的 Console／SSM 指令，不重複檢查已知 MFA、Budget、principal 或基礎資源狀態。
+- 互動式 SSM Session 指令不得使用頂層 `exit`；若需要 exit code，使用 subshell，讓外層 Session 保持開啟。
+- Protected file 的唯讀檢查必須使用 `sudo`；gate 失敗只輸出 `stopped` 與診斷摘要，不終止 Session。
+- 指令不得輸出 runtime.env、secrets、token、ARN、public IP 或其他敏感值。
 
 ## Residual risks
 
-- Prompt Attack 代表性測試明確得到 `SCHEMA_INVALID`／`503`，而非 Guardrail intervention；現有 Guardrail 不可作為唯一防線。
-- IAM Access Analyzer basic policy validation 已在 Console 顯示 `Security／Errors／Warnings／Suggestions = 0`；runtime instance stream 正向 delivery 與代表性越界 stream 寫入拒絕均已通過，但不宣稱已窮舉所有 Logs API 權限組合。
-- Batch 11B bounded restart 與正向 Agent delivery 已成功，支持首次失敗是 restart readiness race，但不把單次結果當成所有啟動故障的通則。
-- `CoStoryHealthCheck` version `2` 已完成 Change Set update 與實機正面 gate；尚未做 Document 本身的代表性 failure gate，因此不宣稱其所有負面分支已驗證。Tier 1 bounded incident response 由既有 500 Alarm、AIOps 判讀、人工批准與正面 health check 組成。
-- Bounded AIOps Agent 已完成 healthy-state `NO_ACTION` 與 synthetic 500 incident response兩條 forced-tool gate；人工監督成功阻止證據不足的 DB action，並以唯讀 SSM health check完成受控處置。這不是實際 outage restart recovery。Storyteller retry／fallback Dashboard 目前以 exactly-one zero baseline 驗證 pipeline，不宣稱發生真實 retry／fallback incident。
-- Direct IP certificate 約 160 小時效期；必須保留 renewal timer 驗證。EC2 stop/start 若 public IP 改變，URL、certificate 與 allowlist 都需重建。
-- Idempotency store 仍是 process memory，不宣稱 multi-process exactly-once。
-- iPhone Safari 在 Batch 10A 的 Lobby 雙向同步小於 10 秒且 refresh 後正常；先前公開試玩的不穩定現象未取得可重現根因，仍需在下一次完整多人遊戲觀察長時間 polling／visibility 行為。
-- 角色儲存安全化已部署並通過 Browser gate；confirm `422` 與 DRAFT polling 的 8 回合保留已在 `tier0-20260822-c5c1541` 通過 zero-model 及 exactly-one-call AWS Browser gates。
-- 成功生成後清除先前 `422` field errors 的 Green `6e9de5a` 已隨 PR #7 合併，並已包含於目前 AWS active release。
-- 成功刪房後舊分頁 polling 修正已部署，但尚未以 `COMPLETED` 房間執行 AWS 多分頁重驗。
-- EC2 與 RDS 最近一次已知狀態均為運行中。RDS 會持續產生 DB instance hours；若預估超過 48 小時不使用則手動停止。EC2 若 stop/start 會更換 public IP，使目前 IP certificate 與 allowlist 都需重建；artifact objects 依 7 日 lifecycle 到期，但 stack／bucket不會自動刪除。
-- 原始截圖位於 macOS TemporaryItems／Downloads 時不算正式 evidence；入庫前須去除 account ID、ARN、IP、instance／subnet／SG ID、endpoint、secret ARN、bucket suffix、通知與不必要的 Browser 資訊。
+- Direct IP certificate 約 160 小時效期；須保留 renewal timer 驗證。EC2 stop/start 若 public IP 改變，URL、certificate 與 allowlist 都需重建。
+- EC2 與 RDS 最近一次已知狀態均為運行中。若預估超過 48 小時不使用，依既定清理計畫由使用者手動停止 RDS；storage／backup 仍可能計費，且 RDS 最長 7 天會自動啟動。
+- `CoStoryHealthCheck` 已通過正面 gate，尚未執行 Document 自身的代表性 failure gate。
+- Idempotency store 目前仍為 process memory，不宣稱 multi-process exactly-once；這是 Tier 2 的核心設計缺口。
+- iPhone Safari 短期雙向同步已通過，但長時間 polling／visibility 行為仍需在下一次完整多人遊戲觀察。
+- 刪房後舊分頁 lifecycle 修正已部署，尚未以 `COMPLETED` 房間做 AWS 多分頁重驗。
+- 原始截圖若位於 TemporaryItems／Downloads，不算正式 evidence；入庫前必須去識別化。
