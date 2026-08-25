@@ -60,6 +60,7 @@
 - `SCHEMA_INVALID` remediation 已依 R2 TDD 完成：Nova Lite v1 不支援 Bedrock 原生 structured outputs，因此改用官方支援的 forced `toolChoice.tool`，只暴露 output-only `submit_incident_report` schema，不提供 recovery tool；拒絕 text JSON、錯誤工具與額外 content block。Red `dea39a2`、Green `38296e7`；targeted `6 passed`、affected `16 passed`、Backend `346 passed, 8 skipped`，single-block guard sensitivity 有效。replacement release `tier1-20260825-38296e7` 由 exact commit `38296e7f1e06d74a32ce551a62b064fe0dbac5af` 建立，archive `150625` bytes、SHA-256 `dacd7a168b49f294229aba0b881ac0a353095750d2145aed87b585c85155e47e`、checksum `OK`。
 - Replacement release 已部署並通過 forced-tool zero-model gate：EC2 checksum `OK`，application／CloudWatch Agent／public edge active；deployed adapter 以 fake Converse client 驗證唯一 report tool、固定 safe log parser 與人工批准 guard，最近 `200` 行 accepted `199`、discarded `1`，Bedrock invocations `0`。舊 exactly-one marker仍保留。
 - Forced-tool exactly-one Nova Lite gate 已成功：新不可重跑 marker recorded、retries `0`；固定 report schema 判定 service active、最近 200 行無 5xx，recommended action `NO_ACTION`、`requires_human_approval=true`。使用者已明確批准 `NO_ACTION`；application／CloudWatch Agent／public edge 前後 active，未執行 SSM、restart、DB check 或其他 AWS 變更。
+- Bounded AIOps incident response vertical slice 已通過：在乾淨 preflight 下寫入 exactly one `/tier1/aiops-incident-simulation` 500，唯讀 audit exact match `1`；Alarm 自動回 `OK`，Last update `2026-08-25 13:59:03`、Actions `No actions`。Incident-specific forced-tool Nova call成功但建議缺乏 DB 證據的 `CHECK_DATABASE`；使用者人工拒絕並改批准 `RUN_HEALTH_CHECK`。`CoStoryHealthCheck` version 2/default 對單一 target 回 `Success`／response `0`，`service=active`、`live=200`、`ready=200`、Error `0`；未 restart、讀 DB secret或重試模型。這證明受控 incident response 與人工監督，不宣稱實際 outage restart recovery。
 - Batch 10B zero-model Browser gate 在匿名房 `LRTPGC` 重現：完整重載部署後前端，選 `8` 回合並送出會由 Backend 回 `422` 的短欄位；欄位錯誤正確顯示，但後續 DRAFT polling 又將選項覆寫為 canonical `6`。依停止條件未呼叫 Bedrock。根因為既有 `9ff0506` 只覆蓋 command error 後的同步 restore，沒有覆蓋下一次 polling render。
 - DRAFT polling round-state 已完成後續 R2 TDD：Red `8dc7592` 精確得到 `'6' !== '8'`；Green `1940b8b` 只在 incoming room 仍為 DRAFT 時跨 polling render 保留未確認選項，離開 DRAFT 仍接受 canonical state。Targeted `1 passed`、affected `16 passed`、Frontend `93 passed`；PR #6 已以 merge commit `c5c1541` 合併，main CI 全綠，尚未部署。驗證見 `docs/evidence/2026-08-22-confirm-world-round-preservation/validation.md`。
 - Polling 修正 release `tier0-20260822-c5c1541` 已由 exact main merge commit 建置；`co-story.tar.gz` 約 `138 KiB`，SHA-256 `ce035e329e37f38b742dee78f21217b72b4696603a2be1927e3d561ec19de122`。Batch 10C 以 S3 exact objects `2` 上傳、EC2 checksum `OK` 後部署；application／public edge／renewal timer active、staging inactive，readiness／public HTTPS `200`，previous release `tier0-20260822-de49944`。
@@ -97,7 +98,7 @@ Batch 9B release 與零模型 Browser gate已完成
 → 第一次報告後依清理計畫停止或刪除持續計費資源，再進入 Tier 1
 ```
 
-下一個執行起點：保留 EC2 上兩個 exactly-one markers。健康狀態 AIOps 判讀與人工批准已完成，但因 window 無 active incident，不能宣稱 incident recovery Demo 完成；先規劃一個新的 bounded incident／allowlisted action gate，與既有 alarm injection 證據分離並取得核准。完成後更新 Tier 1 gate，再開始 Tier 2 repo-local queue／job／idempotency 設計。Agent 仍禁止執行 AWS CLI、S3 讀取或 Bedrock 呼叫。
+下一個執行起點：保留 EC2 上全部 exactly-one markers；bounded Tier 1 AIOps incident response vertical slice 已完成。開始 Tier 2 repo-local queue／job／idempotency設計與嚴格 TDD；正式 Tier 1 checklist的 system metrics／dashboard等完整缺口另行保留，不以擴張 AWS 常駐資源阻塞 Tier 2。另需從 Alarm history補回本輪 `In alarm` exact transition time。Agent 仍禁止執行 AWS CLI、S3 讀取或 Bedrock 呼叫。
 
 ## Residual risks
 
@@ -105,7 +106,7 @@ Batch 9B release 與零模型 Browser gate已完成
 - IAM Access Analyzer basic policy validation 已在 Console 顯示 `Security／Errors／Warnings／Suggestions = 0`；runtime instance stream 正向 delivery 與代表性越界 stream 寫入拒絕均已通過，但不宣稱已窮舉所有 Logs API 權限組合。
 - Batch 11B bounded restart 與正向 Agent delivery 已成功，支持首次失敗是 restart readiness race，但不把單次結果當成所有啟動故障的通則。
 - `CoStoryHealthCheck` version `2` 已完成 Change Set update 與首次實機正面 gate；尚未做代表性 failure gate，不能宣稱完整 incident path 已完成。
-- Bounded AIOps Agent replacement 已完成有效 healthy-state 分析與 `NO_ACTION` 人工批准，兩個 markers 均保留；尚無 active incident 下的受控 recovery action，目前不得宣稱完整 incident recovery Demo 已完成或直接重跑。
+- Bounded AIOps Agent 已完成 healthy-state `NO_ACTION` 與 synthetic 500 incident response兩條 forced-tool gate；人工監督成功阻止證據不足的 DB action，並以唯讀 SSM health check完成受控處置。這不是實際 outage restart recovery，且本輪 Alarm history仍待補 `In alarm` exact time。
 - Direct IP certificate 約 160 小時效期；必須保留 renewal timer 驗證。EC2 stop/start 若 public IP 改變，URL、certificate 與 allowlist 都需重建。
 - Idempotency store 仍是 process memory，不宣稱 multi-process exactly-once。
 - iPhone Safari 在 Batch 10A 的 Lobby 雙向同步小於 10 秒且 refresh 後正常；先前公開試玩的不穩定現象未取得可重現根因，仍需在下一次完整多人遊戲觀察長時間 polling／visibility 行為。
