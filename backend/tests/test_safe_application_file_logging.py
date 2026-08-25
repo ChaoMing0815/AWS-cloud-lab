@@ -29,6 +29,29 @@ def test_safe_application_file_collects_only_allowlisted_json_events(
                 separators=(",", ":"),
             )
         )
+        logging.getLogger("co_story.storyteller_metrics").info(
+            json.dumps(
+                {
+                    "metric_type": "storyteller_usage",
+                    "operation": "resolve_round_narrative",
+                    "latency_ms": 321,
+                    "input_tokens": 45,
+                    "output_tokens": 67,
+                },
+                separators=(",", ":"),
+            )
+        )
+        logging.getLogger("co_story.storyteller_recovery").info(
+            json.dumps(
+                {
+                    "metric_type": "storyteller_recovery",
+                    "operation": "resolve_round_narrative",
+                    "retry_count": 1,
+                    "fallback_count": 0,
+                },
+                separators=(",", ":"),
+            )
+        )
         logging.getLogger("uvicorn.access").warning(
             'GET /api/v1/live?token=raw-access-secret HTTP/1.1 200'
         )
@@ -54,6 +77,19 @@ def test_safe_application_file_collects_only_allowlisted_json_events(
         assert {
             "operation": "generate_world",
             "failure_code": "TIMEOUT",
+        } in events
+        assert {
+            "metric_type": "storyteller_usage",
+            "operation": "resolve_round_narrative",
+            "latency_ms": 321,
+            "input_tokens": 45,
+            "output_tokens": 67,
+        } in events
+        assert {
+            "metric_type": "storyteller_recovery",
+            "operation": "resolve_round_narrative",
+            "retry_count": 1,
+            "fallback_count": 0,
         } in events
 
         rendered = log_path.read_text(encoding="utf-8")

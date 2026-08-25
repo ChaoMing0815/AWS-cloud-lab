@@ -1,5 +1,6 @@
 import importlib
 import json
+import logging
 
 import pytest
 
@@ -178,6 +179,60 @@ def test_generate_world_uses_injected_converse_client_with_bounded_tokens_guardr
     assert "premise must contain 50-500 characters" in instructions
     assert "opening_scene must contain 20-400 characters" in instructions
     assert "Do not use Markdown code fences" in instructions
+
+
+def test_successful_converse_emits_only_bounded_usage_metrics(caplog) -> None:
+    secret_text = "固定規則已結算；模型回覆不得出現在 metrics。"
+    client = FakeBedrockClient(
+        converse_response(
+            secret_text,
+            usage={"inputTokens": 45, "outputTokens": 67, "totalTokens": 112},
+            metrics={"latencyMs": 321},
+        )
+    )
+
+    with caplog.at_level(logging.INFO, logger="co_story.storyteller_metrics"):
+        assert adapter(client).resolve_round(resolution_room()) == secret_text
+
+    events = [
+        json.loads(record.message)
+        for record in caplog.records
+        if record.name == "co_story.storyteller_metrics"
+    ]
+    assert events == [
+        {
+            "metric_type": "storyteller_usage",
+            "operation": "resolve_round_narrative",
+            "latency_ms": 321,
+            "input_tokens": 45,
+            "output_tokens": 67,
+        }
+    ]
+    assert secret_text not in json.dumps(events, ensure_ascii=False)
+
+
+@pytest.mark.parametrize(
+    "response_fields",
+    [
+        {},
+        {"usage": {"inputTokens": -1, "outputTokens": 2}, "metrics": {"latencyMs": 3}},
+        {"usage": {"inputTokens": True, "outputTokens": 2}, "metrics": {"latencyMs": 3}},
+        {"usage": {"inputTokens": 1, "outputTokens": 2}, "metrics": {"latencyMs": "3"}},
+    ],
+)
+def test_missing_or_invalid_usage_metrics_never_breaks_storytelling_or_logs_forged_metrics(
+    response_fields: dict,
+    caplog,
+) -> None:
+    client = FakeBedrockClient(converse_response("安全敘事", **response_fields))
+
+    with caplog.at_level(logging.INFO, logger="co_story.storyteller_metrics"):
+        assert adapter(client).resolve_round(resolution_room()) == "安全敘事"
+
+    assert not [
+        record for record in caplog.records
+        if record.name == "co_story.storyteller_metrics"
+    ]
 
 
 def test_generate_world_keeps_prompt_attack_text_inside_guarded_query_data() -> None:

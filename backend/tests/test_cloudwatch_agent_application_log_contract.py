@@ -9,7 +9,7 @@ SYSTEMD_UNIT = ROOT / "ops/systemd/co-story.service"
 CANDIDATE_SYSTEMD_UNIT = ROOT / "ops/systemd/co-story-candidate@.service"
 
 
-def test_cloudwatch_agent_collects_only_the_safe_application_jsonl() -> None:
+def test_cloudwatch_agent_collects_only_bounded_application_and_system_jsonl() -> None:
     assert AGENT_CONFIG.is_file(), "CloudWatch Agent application log config 尚未建立"
     config = json.loads(AGENT_CONFIG.read_text(encoding="utf-8"))
 
@@ -21,9 +21,32 @@ def test_cloudwatch_agent_collects_only_the_safe_application_jsonl() -> None:
             "log_stream_name": "{instance_id}",
             "encoding": "utf-8",
             "timezone": "UTC",
-        }
+        },
+        {
+            "file_path": "/var/log/co-story/system.jsonl",
+            "log_group_name": "/co-story/tier1/system",
+            "log_stream_name": "{instance_id}",
+            "encoding": "utf-8",
+            "timezone": "UTC",
+        },
     ]
-    assert "metrics" not in config
+    assert config["metrics"] == {
+        "namespace": "CoStory/Tier1/System",
+        "append_dimensions": {"InstanceId": "${aws:InstanceId}"},
+        "aggregation_dimensions": [["InstanceId"]],
+        "metrics_collected": {
+            "mem": {
+                "measurement": ["mem_used_percent"],
+                "metrics_collection_interval": 60,
+            },
+            "disk": {
+                "measurement": ["used_percent"],
+                "resources": ["/"],
+                "drop_device": True,
+                "metrics_collection_interval": 60,
+            },
+        },
+    }
 
     rendered = json.dumps(config, sort_keys=True).lower()
     for forbidden_source in (
