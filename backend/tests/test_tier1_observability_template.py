@@ -110,6 +110,10 @@ def test_app_policy_writes_only_fixed_log_streams_and_bounded_system_metrics() -
         "PolicyDocument",
     }
     assert policy["ManagedPolicyName"] == "AWSFinalProjectTier1ApplicationLogWrite"
+    assert policy["Description"] == (
+        "Lets the existing Co-Story instance write only its Tier 1 application "
+        "log stream."
+    )
     assert policy["Roles"] == [{"Ref": "AppRoleName"}]
     statements = policy["PolicyDocument"]["Statement"]
     assert statements[:2] == [

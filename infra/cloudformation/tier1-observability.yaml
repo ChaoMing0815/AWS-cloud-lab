@@ -258,7 +258,7 @@ Resources:
     Type: AWS::IAM::ManagedPolicy
     Properties:
       ManagedPolicyName: AWSFinalProjectTier1ApplicationLogWrite
-      Description: Lets the existing Co-Story instance publish only bounded Tier 1 logs and system metrics.
+      Description: Lets the existing Co-Story instance write only its Tier 1 application log stream.
       Roles:
         - Ref: AppRoleName
       PolicyDocument:
