@@ -57,6 +57,7 @@
 - Tier 1 bounded AIOps Agent 已完成 repo-local R2 TDD：只讀固定安全 JSONL 的最後 `200` 行、丟棄非 allowlist 事件，Bedrock adapter 單次 guarded Converse 且輸出 action enum／強制人工批准；Agent 不具修復執行能力。Red `bea8e08`／`8e6b7cb`／`ac15c71`／`f0d268f`，Green `ba9b553`／`069b939`／`a8d0bf3`；targeted `13 passed`、affected `58 passed`、Backend `343 passed, 8 skipped`，人工批准 sensitivity 有效。release 已部署並通過 zero-model gate，尚未呼叫模型，驗證見 `docs/evidence/2026-08-24-tier1-aiops-agent/validation.md`。
 - AIOps release `tier1-20260824-59f5458` 已由 exact commit `59f54586324427e94760899531c0104722050204` 建立並部署；archive 約 `148 KiB`，SHA-256 `50331286421507ba7639a5f2ab5e4eb2c51ec0cbb7d92e2ef19d7db4b3946d60`，EC2 checksum `OK`。application／CloudWatch Agent／public edge active；safe log 最近 `200` 行 accepted `200`、discarded `0`，zero-model gate exit `0`、Bedrock invocations `0`。此 release 也包含 branch base PR #7 的成功生成後清除舊 `422` field errors 修正。
 - Exactly-one Nova Lite AIOps gate 已依獨立核准執行：不可重跑 marker 已建立、retries `0`；模型輸出未通過固定 report contract，安全回 `SCHEMA_INVALID`／exit `3`，未輸出 raw model content。application／CloudWatch Agent／public edge 前後均 active，沒有建議 action、人工批准、修復或第二次呼叫。
+- `SCHEMA_INVALID` remediation 已依 R2 TDD 完成：Nova Lite v1 不支援 Bedrock 原生 structured outputs，因此改用官方支援的 forced `toolChoice.tool`，只暴露 output-only `submit_incident_report` schema，不提供 recovery tool；拒絕 text JSON、錯誤工具與額外 content block。Red `dea39a2`、Green `38296e7`；targeted `6 passed`、affected `16 passed`、Backend `346 passed, 8 skipped`，single-block guard sensitivity 有效。replacement release `tier1-20260825-38296e7` 由 exact commit `38296e7f1e06d74a32ce551a62b064fe0dbac5af` 建立，archive `150625` bytes、SHA-256 `dacd7a168b49f294229aba0b881ac0a353095750d2145aed87b585c85155e47e`、本機 checksum `OK`，尚未上傳或部署。
 - Batch 10B zero-model Browser gate 在匿名房 `LRTPGC` 重現：完整重載部署後前端，選 `8` 回合並送出會由 Backend 回 `422` 的短欄位；欄位錯誤正確顯示，但後續 DRAFT polling 又將選項覆寫為 canonical `6`。依停止條件未呼叫 Bedrock。根因為既有 `9ff0506` 只覆蓋 command error 後的同步 restore，沒有覆蓋下一次 polling render。
 - DRAFT polling round-state 已完成後續 R2 TDD：Red `8dc7592` 精確得到 `'6' !== '8'`；Green `1940b8b` 只在 incoming room 仍為 DRAFT 時跨 polling render 保留未確認選項，離開 DRAFT 仍接受 canonical state。Targeted `1 passed`、affected `16 passed`、Frontend `93 passed`；PR #6 已以 merge commit `c5c1541` 合併，main CI 全綠，尚未部署。驗證見 `docs/evidence/2026-08-22-confirm-world-round-preservation/validation.md`。
 - Polling 修正 release `tier0-20260822-c5c1541` 已由 exact main merge commit 建置；`co-story.tar.gz` 約 `138 KiB`，SHA-256 `ce035e329e37f38b742dee78f21217b72b4696603a2be1927e3d561ec19de122`。Batch 10C 以 S3 exact objects `2` 上傳、EC2 checksum `OK` 後部署；application／public edge／renewal timer active、staging inactive，readiness／public HTTPS `200`，previous release `tier0-20260822-de49944`。
@@ -94,7 +95,7 @@ Batch 9B release 與零模型 Browser gate已完成
 → 第一次報告後依清理計畫停止或刪除持續計費資源，再進入 Tier 1
 ```
 
-下一個執行起點：保留 EC2 上 exactly-one marker，不得直接重跑模型。先以本機嚴格 TDD 對 `SCHEMA_INVALID` 增加不暴露原文的 failure classification 或 bounded normalization，跑完整 Backend regression 並重建 release；新版本通過 zero-model gate 後，才另行評估 bounded Nova Lite invocation。完成有效分析、人工批准與 allowlisted action 後，再開始 Tier 2 repo-local queue／job／idempotency 設計。Agent 仍禁止執行 AWS CLI、S3 讀取或 Bedrock 呼叫。
+下一個執行起點：保留 EC2 上舊 exactly-one marker；以 Console 上傳 replacement release `tier1-20260825-38296e7` 的 exact archive／checksum，再透過 SSM 部署並做 zero-model gate。部署成功後才另行核准新的 bounded Nova Lite invocation；有效分析必須先取得人工批准，才執行 allowlisted action。完成後開始 Tier 2 repo-local queue／job／idempotency 設計。Agent 仍禁止執行 AWS CLI、S3 讀取或 Bedrock 呼叫。
 
 ## Residual risks
 
@@ -102,7 +103,7 @@ Batch 9B release 與零模型 Browser gate已完成
 - IAM Access Analyzer basic policy validation 已在 Console 顯示 `Security／Errors／Warnings／Suggestions = 0`；runtime instance stream 正向 delivery 與代表性越界 stream 寫入拒絕均已通過，但不宣稱已窮舉所有 Logs API 權限組合。
 - Batch 11B bounded restart 與正向 Agent delivery 已成功，支持首次失敗是 restart readiness race，但不把單次結果當成所有啟動故障的通則。
 - `CoStoryHealthCheck` version `2` 已完成 Change Set update 與首次實機正面 gate；尚未做代表性 failure gate，不能宣稱完整 incident path 已完成。
-- Bounded AIOps Agent 已部署並完成 exactly-one 真實呼叫，但輸出因 `SCHEMA_INVALID` 被安全拒絕；尚無有效分析、人工批准與受控 recovery action，目前不得宣稱 AIOps AWS Demo 已完成或直接重跑。
+- Bounded AIOps Agent 的 `SCHEMA_INVALID` replacement 已通過本機 TDD／regression，但尚未部署；舊呼叫 marker 必須保留。尚無有效分析、人工批准與受控 recovery action，目前不得宣稱 AIOps AWS Demo 已完成或直接重跑。
 - Direct IP certificate 約 160 小時效期；必須保留 renewal timer 驗證。EC2 stop/start 若 public IP 改變，URL、certificate 與 allowlist 都需重建。
 - Idempotency store 仍是 process memory，不宣稱 multi-process exactly-once。
 - iPhone Safari 在 Batch 10A 的 Lobby 雙向同步小於 10 秒且 refresh 後正常；先前公開試玩的不穩定現象未取得可重現根因，仍需在下一次完整多人遊戲觀察長時間 polling／visibility 行為。
