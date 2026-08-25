@@ -17,22 +17,22 @@ class FakeBedrockClient:
     def converse(self, **kwargs) -> dict:
         self.calls.append(kwargs)
         return {
-            "stopReason": "end_turn",
+            "stopReason": "tool_use",
             "output": {
                 "message": {
                     "content": [
                         {
-                            "text": json.dumps(
-                                {
+                            "toolUse": {
+                                "toolUseId": "incident-report-1",
+                                "name": "submit_incident_report",
+                                "input": {
                                     "summary": "單筆受控 500 已恢復。",
                                     "probable_cause": "事件路徑標示為 incident simulation。",
                                     "evidence": ["服務 active，Alarm 已回到 OK"],
                                     "recommended_action": "RUN_HEALTH_CHECK",
                                     "requires_human_approval": True,
                                 },
-                                ensure_ascii=False,
-                                separators=(",", ":"),
-                            )
+                            }
                         }
                     ]
                 }
