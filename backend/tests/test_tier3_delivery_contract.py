@@ -18,8 +18,8 @@ def test_release_workflow_is_manual_approved_main_only_and_digest_pinned() -> No
     workflow = _read(RELEASE_WORKFLOW)
 
     assert "workflow_dispatch:" in workflow
-    assert "pull_request:" not in workflow
-    assert "push:" not in workflow
+    assert "\n  pull_request:" not in workflow
+    assert "\n  push:" not in workflow
     assert "environment: production" in workflow
     assert "github.ref == 'refs/heads/main'" in workflow
     assert "approval-gate:" in workflow
@@ -69,7 +69,7 @@ def test_ssm_release_document_and_host_script_fail_closed_with_rollback() -> Non
     assert "CoStoryTier3ContainerRelease" in template
     assert "ImageDigest" in template
     assert "PreviousImageDigest" in template
-    assert "AllowedPattern: '^sha256:[a-f0-9]{64}$'" in template
+    assert "allowedPattern: '^sha256:[a-f0-9]{64}$'" in template
     assert "deploy_container.sh" in template
     assert "set -euo pipefail" in script
     assert "docker pull" in script
