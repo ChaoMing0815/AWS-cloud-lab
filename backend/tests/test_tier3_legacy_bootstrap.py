@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import hashlib
 import subprocess
 from pathlib import Path
 
@@ -91,6 +92,8 @@ def _run(
     target: str = TARGET,
     previous: str = "",
     legacy: str = LEGACY,
+    unit_asset: Path = UNIT,
+    driver_asset: Path = SCRIPT,
 ) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         [
@@ -102,7 +105,8 @@ def _run(
             previous,
             legacy,
             "localhost",
-            str(UNIT),
+            str(unit_asset),
+            str(driver_asset),
         ],
         cwd=ROOT,
         env=env,
@@ -244,6 +248,62 @@ def test_target_restart_failure_restores_legacy(tmp_path: Path) -> None:
     assert "health:legacy-restore:8000" in _events(event_log)
 
 
+@pytest.mark.parametrize(
+    "failure",
+    (
+        "stable-driver-install",
+        "state-write",
+        "release-env-write",
+        "container-unit-install",
+        "daemon-reload",
+    ),
+)
+def test_bootstrap_mutation_failure_restores_clean_retryable_legacy(
+    tmp_path: Path, failure: str
+) -> None:
+    host, env, event_log = _sandbox(tmp_path)
+    installed = _host_path(host, "/etc/systemd/system/co-story.service")
+    original = installed.read_bytes()
+    env["CO_STORY_TEST_FAIL"] = failure
+
+    failed = _run(env, "legacy-bootstrap")
+
+    assert failed.returncode != 0
+    assert installed.read_bytes() == original
+    assert "health:legacy-restore:8000" in _events(event_log)
+    for path in (
+        "/etc/co-story/container-transition.state",
+        "/etc/co-story/container-release.env",
+        "/etc/co-story/legacy-co-story.service",
+        "/usr/local/libexec/co-story-deploy-container",
+        "/usr/local/share/co-story/co-story-container.service",
+    ):
+        assert not _host_path(host, path).exists(), path
+
+    env.pop("CO_STORY_TEST_FAIL")
+    event_log.write_text("", encoding="utf-8")
+    retried = _run(env, "legacy-bootstrap")
+    assert retried.returncode == 0, retried.stderr
+
+
+def test_bootstrap_mutation_restore_failure_is_root_only_and_fail_closed(
+    tmp_path: Path,
+) -> None:
+    host, env, _ = _sandbox(tmp_path)
+    env["CO_STORY_TEST_FAIL"] = "stable-driver-install,legacy-restore"
+
+    failed = _run(env, "legacy-bootstrap")
+
+    assert failed.returncode != 0
+    state = _host_path(host, "/etc/co-story/container-transition.state")
+    assert "STATE=legacy-mutation-restore-failed" in state.read_text()
+    assert state.stat().st_mode & 0o777 == 0o600
+    env.pop("CO_STORY_TEST_FAIL")
+    retry = _run(env, "legacy-bootstrap")
+    assert retry.returncode != 0
+    assert "existing_transition_state" in retry.stderr
+
+
 def test_digest_release_fences_state_and_restores_previous_digest(tmp_path: Path) -> None:
     host, env, event_log = _sandbox(tmp_path)
     assert _run(env, "legacy-bootstrap").returncode == 0
@@ -280,6 +340,83 @@ def test_digest_release_fences_state_and_restores_previous_digest(tmp_path: Path
     env["CO_STORY_TEST_STALE_FENCE"] = "unit"
     stale = _run(env, "digest-release", target=third, previous=NEXT_TARGET, legacy="")
     assert stale.returncode != 0
+
+
+def test_digest_release_promotes_target_bound_assets_only_after_target_health(
+    tmp_path: Path,
+) -> None:
+    host, env, event_log = _sandbox(tmp_path)
+    assert _run(env, "legacy-bootstrap").returncode == 0
+    new_driver = tmp_path / "target-deploy-container.sh"
+    new_driver.write_bytes(SCRIPT.read_bytes() + b"\n# target-driver-version\n")
+    new_driver.chmod(0o755)
+    new_unit = tmp_path / "target-container.service"
+    new_unit.write_bytes(UNIT.read_bytes() + b"\n# target-unit-version\n")
+    event_log.write_text("", encoding="utf-8")
+
+    released = _run(
+        env,
+        "digest-release",
+        target=NEXT_TARGET,
+        previous=TARGET,
+        legacy="",
+        unit_asset=new_unit,
+        driver_asset=new_driver,
+    )
+
+    assert released.returncode == 0, released.stderr
+    events = _events(event_log)
+    _assert_order(
+        events,
+        (
+            "health:target-active:8000",
+            "mutation:promote-stable-assets",
+            "health:target-promoted:8000",
+        ),
+    )
+    stable_driver = _host_path(host, "/usr/local/libexec/co-story-deploy-container")
+    stable_unit = _host_path(host, "/usr/local/share/co-story/co-story-container.service")
+    installed_unit = _host_path(host, "/etc/systemd/system/co-story.service")
+    assert stable_driver.read_bytes() == new_driver.read_bytes()
+    assert stable_unit.read_bytes() == new_unit.read_bytes()
+    assert installed_unit.read_bytes() == new_unit.read_bytes()
+    state = _host_path(host, "/etc/co-story/container-transition.state").read_text()
+    assert f"DRIVER_SHA256={hashlib.sha256(new_driver.read_bytes()).hexdigest()}" in state
+
+
+def test_digest_asset_promotion_failure_restores_previous_assets_and_digest(
+    tmp_path: Path,
+) -> None:
+    host, env, event_log = _sandbox(tmp_path)
+    assert _run(env, "legacy-bootstrap").returncode == 0
+    stable_driver = _host_path(host, "/usr/local/libexec/co-story-deploy-container")
+    stable_unit = _host_path(host, "/usr/local/share/co-story/co-story-container.service")
+    old_driver = stable_driver.read_bytes()
+    old_unit = stable_unit.read_bytes()
+    new_driver = tmp_path / "target-deploy-container.sh"
+    new_driver.write_bytes(SCRIPT.read_bytes() + b"\n# unsafe-unverified-promotion\n")
+    new_driver.chmod(0o755)
+    new_unit = tmp_path / "target-container.service"
+    new_unit.write_bytes(UNIT.read_bytes() + b"\n# unsafe-unverified-promotion\n")
+    env["CO_STORY_TEST_FAIL"] = "asset-promotion"
+    event_log.write_text("", encoding="utf-8")
+
+    failed = _run(
+        env,
+        "digest-release",
+        target=NEXT_TARGET,
+        previous=TARGET,
+        legacy="",
+        unit_asset=new_unit,
+        driver_asset=new_driver,
+    )
+
+    assert failed.returncode != 0
+    assert stable_driver.read_bytes() == old_driver
+    assert stable_unit.read_bytes() == old_unit
+    assert _host_path(host, "/etc/systemd/system/co-story.service").read_bytes() == old_unit
+    assert TARGET in _host_path(host, "/etc/co-story/container-release.env").read_text()
+    assert "health:previous-restore:8000" in _events(event_log)
 
 
 @pytest.mark.parametrize("mismatch", ("state", "checksum", "env", "previous"))

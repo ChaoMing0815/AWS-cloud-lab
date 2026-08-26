@@ -154,6 +154,15 @@ def test_ssm_documents_bound_bootstrap_assets_and_keep_legacy_rollback_human_onl
     assert "/usr/local/libexec/co-story-deploy-container" in template_text
     assert "docker create" in template_text
     assert "docker cp" in template_text
+    digest = template_text.index("digest-release)")
+    rollback = template_text.index("LegacyRollbackDocument:")
+    digest_block = template_text[digest:rollback]
+    assert 'docker pull "$target_image"' in digest_block
+    assert 'docker create --name "$asset_container" "$target_image"' in digest_block
+    assert 'docker cp "$asset_container:/usr/local/share/co-story/deploy_container.sh"' in digest_block
+    assert 'docker cp "$asset_container:/usr/local/share/co-story/co-story-container.service"' in digest_block
+    assert '"$temporary/deploy_container.sh"' in digest_block
+    assert '"$temporary/co-story-container.service"' in digest_block
     assert "curl --location" not in template_text
     assert "curl -L" not in template_text
     assert "https://raw." not in template_text
