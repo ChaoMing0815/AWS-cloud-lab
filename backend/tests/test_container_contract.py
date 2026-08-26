@@ -37,18 +37,32 @@ def test_image_is_non_root_secret_free_and_keeps_the_runtime_contract() -> None:
     assert "docs/evidence" in dockerignore
 
 
-def test_production_image_pins_fixed_versions_for_known_high_vulnerabilities() -> None:
+def test_production_image_uses_a_clean_runtime_stage_without_build_tooling() -> None:
     requirements = {
         line.strip()
         for line in _read(PRODUCTION_REQUIREMENTS).splitlines()
         if line.strip() and not line.startswith("#")
     }
-    required_security_pins = {"msgpack==1.2.1", "setuptools==78.1.1"}
+    dockerfile = _read(DOCKERFILE)
+    stages = [line for line in dockerfile.splitlines() if line.startswith("FROM ")]
+    violations: list[str] = []
 
-    assert not (required_security_pins - requirements), (
-        "production image 缺少已修復版本的 exact security pins："
-        f"{sorted(required_security_pins - requirements)}"
-    )
+    if "msgpack==1.2.1" not in requirements:
+        violations.append("production requirements 缺少 msgpack==1.2.1")
+    if any(line.lower().startswith("setuptools==") for line in requirements):
+        violations.append("production requirements 不得保留 setuptools")
+    if not stages or not stages[0].endswith(" AS builder"):
+        violations.append("Python image 必須只作為 builder stage")
+    if len(stages) != 2 or not stages[-1].startswith(
+        "FROM debian:bookworm-slim@sha256:"
+    ):
+        violations.append("final stage 必須是 digest-pinned Debian slim")
+    if "python -m pip uninstall --yes pip setuptools" not in dockerfile:
+        violations.append("builder 必須先移除 pip 與 setuptools build tooling")
+    if "COPY --from=builder /usr/local /usr/local" not in dockerfile:
+        violations.append("final stage 必須只複製清理後的 Python runtime")
+
+    assert not violations, "\n".join(violations)
 
 
 class _Response:
