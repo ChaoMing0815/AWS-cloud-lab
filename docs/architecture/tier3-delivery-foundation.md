@@ -1,6 +1,6 @@
 # Tier 3 delivery foundation
 
-- 狀態：Repo-local foundation；尚未部署 AWS
+- 狀態：Repo-local foundation 已合併 `main`；T3A control plane 已建立，尚未執行 application release
 - 範圍：current monolith 的 Docker、ECR、GitHub OIDC、CI build／scan、SSM release、readiness 與 rollback
 - 非範圍：產品行為、Storyteller、Web UI、Tier 2 拆分
 
@@ -9,6 +9,10 @@
 映像使用 Python 3.13、UID／GID `10001:10001`、單一 Uvicorn worker，並保留 `/api/v1/live`、`/api/v1/ready` 與 port `8000`。正式主機以 host network 綁定 `127.0.0.1:8000`，既有 Nginx 仍是唯一 public edge。
 
 映像不包含 runtime env、RDS URL、Bedrock Guardrail ID 或 credential。`/etc/co-story/runtime.env`、`/etc/co-story/database.env` 與 `/var/log/co-story` 由主機在啟動時注入；CloudWatch 既有 safe JSONL 路徑因此不變。
+
+映像採 runtime-only multi-stage build。Digest-pinned `python:3.13-slim-bookworm` 只作 builder；安裝 exact production dependencies 後移除 `pip`／`setuptools`。Final stage 改以 digest-pinned `debian:bookworm-slim` 建立，只加入官方 Python slim 所需的 `ca-certificates`、`netbase`、`tzdata`，再複製清理後的 `/usr/local` Python runtime。`msgpack==1.2.1` 為顯式安全 pin。
+
+這個 final lineage 避免繼承 builder 的過期 third-party SBOM 宣告，同時保留 filesystem package analysis。PR #8 的 Trivy v0.70.0 以 `HIGH,CRITICAL`、`ignore-unfixed`、`exit-code: 1` 通過，結果為 `HIGH=0`、`CRITICAL=0`；未使用 ignorefile、VEX、skip 或降低 severity。
 
 ## Delivery flow
 
@@ -28,6 +32,8 @@ flowchart LR
 ```
 
 CI 沒有 `id-token: write`、AWS action 或 deploy 權限。Release workflow 必須來自 `main`，先通過 GitHub `production` environment 的 required reviewer，再取得短期 OIDC credential。Trust subject 固定為 `repo:ChaoMing0815/AWS-cloud-lab:ref:refs/heads/main`。
+
+PR #8 已以 merge commit `030f11d` 進入 `main`，PR 四項 checks 全綠；main CI run `32939458577` 也通過 Backend、Frontend 與 container build／scan。Release workflow 只接受 `workflow_dispatch`，因此 `main` merge 不會自動 push image 或部署 production。
 
 現有 EC2 是 `t4g` ARM64，因此 production release 以 QEMU／Buildx 明確建立 `linux/arm64` image；不得把 hosted runner 預設的 AMD64 image 當成可部署 artifact。
 

@@ -3,7 +3,7 @@
 - 狀態：Active
 - Owner：專題使用者
 - Source of Truth：是，僅記錄已核准補充決策
-- 最後檢視：2026-08-11
+- 最後檢視：2026-08-26
 
 ## 使用原則
 
@@ -33,3 +33,14 @@
 | 房主的 Player | 補充 | 房主轉移自己的 Player 時只撤銷 Player session；原裝置 Host session 保留，UI 必須提示 Host 權限未移轉。 | Session rotation、UI、安全提示 |
 
 核准方式：使用者先核准前三項，再於說明取捨後核准後兩項；五項均已完成核准。
+
+## 2026-08-26 Tier 3 交付順序與安全 gate
+
+| 決策 | 類型 | 核准內容 | 影響 |
+| --- | --- | --- | --- |
+| Tier 3 先於 Tier 2 | 交付順序補充 | 先完成 current monolith 的 Docker／ECR／GitHub OIDC／SSM 自動部署垂直切片，再以已驗證 pipeline 推進 Tier 2 queue／worker／data 拆分。Tier 2 與 Tier 3 仍是不同層面的能力，不改變累積演進關係。 | Gantt、CURRENT、Tier 2／3 task routing |
+| 平行分支邊界 | 治理補充 | Storyteller 品質與 Tier 3 delivery 使用隔離 worktree／branch；只有整合 task 能修改 protected milestone 文件、擴張 allowed paths 與合併分支。 | work boundaries、merge gate、context management |
+| PR 與 production release 分離 | 安全補充 | PR／`main` push 只執行 CI；production release 僅能以 `workflow_dispatch`、GitHub `production` environment 人工批准與 exact previous digest 啟動。合併 `main` 不等於授權 image push、SSM 或 production deploy。 | GitHub Actions、OIDC、T3B change envelope |
+| Runtime-only image | 安全補充 | Python image 只作 builder；final 使用 digest-pinned Debian slim，移除 `pip`／`setuptools`，固定 `msgpack==1.2.1`。Trivy 必須維持 HIGH／CRITICAL fail-closed，不使用 ignore、VEX、skip 或降低 severity。 | Dockerfile、dependency policy、container scan |
+
+核准方式：使用者於對話中核准先完成 Tier 3、自動整合 PR #8，以及合併後收斂決策與交接文件；production release 仍保留為下一個獨立 bounded batch。

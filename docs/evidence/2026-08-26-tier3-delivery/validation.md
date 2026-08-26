@@ -3,14 +3,16 @@
 - Baseline：Backend `363 passed, 8 skipped`；Frontend `94 passed`。
 - Red commits：`6d74a1a`、`2e095cb`、`42a2ca5`、`3c49733`、`1bbe71b`、`a1d4ce0`、`9fd6fc8`。
 - Green commits：delivery foundation `b1c8cb1`；metrics artifact `aa2fe2b`；IAM boundary 為本次 `fix(green)` commit。
-- Targeted verification：Tier 3 delivery 11 passed；既有 affected release／runtime／observability suite 44 passed。
-- Container contract：image build passed；UID `10001`、Docker `healthy`、`/live`＋`/ready`、外部 env 與 safe JSONL bind mount passed。
+- Targeted verification：最終 runtime-only image 的 Tier 3 affected suite `13 passed`；PR #8 integration targeted `13 passed`。
+- Container contract：runtime-only multi-stage image build passed；UID `10001`、Docker `healthy`、`/live`＋`/ready`、外部 env 與 safe JSONL bind mount passed；runtime 為 `msgpack=1.2.1`，`pip`／`setuptools` distribution 與 import 均不存在。
 - CI contract：Backend／Frontend 完成後才 build；HIGH／CRITICAL scan fail closed；CI 無 AWS identity。
 - IAM negative：OIDC 固定 repository／main；ECR 固定 repository；SSM 固定 document／instance；無 long-term key 或 `iam:PassRole`。
 - Release boundary：manual production approval、exact target／previous digest、candidate readiness、previous rollback。
 - Evidence contract：成功／失敗皆輸出去識別化 timing artifact；不含 account、instance、role、SSM output 或 token。
 - Sensitivity：OIDC subject 暫改 branch wildcard 時指定 IAM test 失敗；還原 main-only 後通過。
-- Full regression：Backend `372 passed, 8 skipped`；Frontend `94 passed`。
+- Security regression：Trivy v0.70.0 使用 `HIGH,CRITICAL`／`ignore-unfixed`／`exit-code: 1`，Debian 12.15 與 Python filesystem targets 均為 `0`，總計 `HIGH=0`、`CRITICAL=0`；沒有 third-party SBOM warning。
+- Full regression：delivery branch Backend `374 passed, 8 skipped`、Frontend `94 passed`；整合基準 Backend `388 passed, 8 skipped`、Frontend `94 passed`。
 - Rollback：不做 schema downgrade；migration 必須 backward compatible。
-- Residual risk：Docker Scout 因可能外傳 image／SBOM metadata而未獲准；正式 HIGH／CRITICAL 結果以 GitHub CI Trivy gate 為準。
-- AWS freeze：未執行 AWS CLI、S3、Bedrock 或 production deploy。
+- GitHub evidence：PR #8 merge commit `030f11d`；PR branch-boundary、Backend、Frontend、container-build-scan 四項 checks 全綠。合併後 main CI run `32939458577` 亦通過 Backend、Frontend、container-build-scan；此時間不是 application deployment duration。
+- Residual risk：Docker Scout 因可能外傳 image／SBOM metadata而未獲准；ECR 仍為空，尚無 ECR scan、SSM release 或 rollback evidence。
+- AWS freeze：未執行 AWS CLI、S3、Bedrock、image push、SSM 或 production deploy。
