@@ -69,3 +69,25 @@ def test_tier3_workflows_pin_compatible_exact_trivy_action_and_scanner_versions(
             violations.append(f"{name}: unavailable Trivy scanner v0.65.0 remains")
 
     assert not violations, "\n".join(violations)
+
+
+def test_tier3_workflows_pin_node24_docker_action_releases() -> None:
+    violations: list[str] = []
+    for name, workflow in (
+        ("ci", _workflow_text()),
+        ("release", _release_workflow_text()),
+    ):
+        if workflow.count("docker/setup-buildx-action@") != 1:
+            violations.append(f"{name}: expected exactly one setup-buildx action step")
+        if workflow.count("docker/build-push-action@") != 1:
+            violations.append(f"{name}: expected exactly one build-push action step")
+        if "docker/setup-buildx-action@v4.0.0" not in workflow:
+            violations.append(f"{name}: setup-buildx is not pinned to Node 24 release v4.0.0")
+        if "docker/build-push-action@v7.0.0" not in workflow:
+            violations.append(f"{name}: build-push is not pinned to Node 24 release v7.0.0")
+        if "docker/setup-buildx-action@v3.11.1" in workflow:
+            violations.append(f"{name}: Node 20 setup-buildx v3.11.1 remains")
+        if "docker/build-push-action@v6.18.0" in workflow:
+            violations.append(f"{name}: Node 20 build-push v6.18.0 remains")
+
+    assert not violations, "\n".join(violations)
