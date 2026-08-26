@@ -61,6 +61,7 @@
         "backend/tests/test_tier3*.py",
         "docs/evidence/2026-*-tier3-production-release/**",
         "docs/runbooks/tier3-container-release.md",
+        "infra/cloudformation/tier3-delivery.yaml",
         "ops/release/deploy_container.sh",
         "ops/release/write_delivery_metrics.py",
         "ops/systemd/co-story-container.service"
