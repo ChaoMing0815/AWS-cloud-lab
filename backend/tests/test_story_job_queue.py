@@ -219,6 +219,21 @@ def test_expired_token_cannot_complete_before_another_worker_reclaims() -> None:
         raise AssertionError("到期 fencing token 即使尚未被接管也不可完成 job")
 
 
+def test_expired_token_cannot_report_failure() -> None:
+    domain, application, adapter, _ = _contracts()
+    queue, clock = _queue(adapter)
+    queue.enqueue(_job(application, domain))
+    claimed = queue.claim("job-1", "worker-a")
+
+    clock.advance(timedelta(seconds=30))
+    try:
+        queue.fail("job-1", claimed.ownership_token, "TOO_LATE")
+    except domain.StoryJobOwnershipConflict:
+        pass
+    else:
+        raise AssertionError("到期 fencing token 不可改變 failure／retry lifecycle")
+
+
 def test_expired_lease_dead_letters_when_max_attempts_are_exhausted() -> None:
     domain, application, adapter, _ = _contracts()
     queue, clock = _queue(adapter, max_attempts=1)
