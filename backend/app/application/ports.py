@@ -75,8 +75,16 @@ class StoryJobQueue(ABC):
     def complete(
         self,
         job_id: str,
-        worker_id: str,
+        ownership_token: str,
         result: dict[str, Any],
+    ) -> StoryJob: ...
+
+    @abstractmethod
+    def fail(
+        self,
+        job_id: str,
+        ownership_token: str,
+        error_code: str,
     ) -> StoryJob: ...
 
 

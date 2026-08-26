@@ -43,7 +43,7 @@ flowchart LR
 | --- | --- | --- | --- |
 | Browser → Web／API | 同步 HTTPS | session、CSRF、expected Room version | 驗證 command，回傳玩家可見狀態 |
 | Web／API → queue | 非同步 enqueue | 建立唯一 `job_id`、穩定 idempotency key、immutable payload snapshot | 以 key 去重並保存 job lifecycle |
-| Worker → queue | claim／complete | 穩定 worker identity、replay-safe completion | 保護 claim owner 與完成結果不可覆寫 |
+| Worker → queue | claim／complete／fail | 穩定 worker identity、保存目前 fencing token、replay-safe completion | UTC lease、token fencing、bounded attempts 與完成結果不可覆寫 |
 | Web／Worker → Data | 同步或明確 command（後續決定） | 傳入 `room_id` 與 expected version | Room aggregate、round progression、玩家可見結果的唯一權威 |
 | Worker → Storyteller | 同步 adapter call | 只使用 job snapshot，分類 retryable failure | 產生敘事，不直接改 Room 或 queue |
 
@@ -51,9 +51,11 @@ flowchart LR
 
 - Transport 以 at-least-once 為設計前提；不得從 memory test double 推論 production exactly-once。
 - Producer 以 operation／Room／round／version 建立 canonical idempotency key。相同內容重送回既有 job，不同內容重用 key 必須拒絕。
-- Queue 負責 job identity、claim ownership、attempt 計數與 completion replay；Story Worker 不得藉由重送不同 result 改寫已完成工作。
+- Queue 負責 `job_id`／idempotency key 雙重唯一性、claim ownership、attempt 計數與 completion replay；cross-identity collision 一律拒絕。
+- Memory contract 以 injected clock 計算 aware UTC lease，以 secure random 或測試注入的唯一 token 作 fencing。未到期的 owner replay 不增加 attempt；到期 reclaim 會換 token，使舊 worker 不得 complete。
+- Worker 明確 fail 或 lease expiry 達 `max_attempts` 時進入 `DEAD_LETTERED` 等價 terminal 狀態；本地狀態只驗證 bounded retry contract，不是 durable DLQ。
 - Data component 在下一個 integration slice 以 Room version compare-and-set 防止 stale result；只有 Data commit 成功後才可形成玩家可見的 canonical state。
-- Worker crash、claim lease／visibility timeout、retry scheduling、dead-letter 與 poison payload policy 尚未定案。導入 durable queue／store 前必須另寫 contract 與 failure tests。
+- SQS visibility timeout 與 ownership token 的 durable mapping、retry delay、真正 DLQ、poison payload 與 process restart recovery尚未定案。導入 durable queue／store 前必須另寫 integration contract 與 failure tests。
 - Queue completion 與 Data commit 的一致性仍是待解 integration point；下一切片需選擇 transactional outbox、result inbox 或等價 replay-safe 設計，不在此 memory adapter 假裝原子性。
 
 ## 第一階段刻意未接線項目

@@ -28,25 +28,31 @@
 ### 狀態轉移與 replay
 
 ```text
-PENDING --claim(worker)--> CLAIMED --complete(worker, result)--> COMPLETED
+PENDING --claim(worker)--> CLAIMED --complete(token, result)--> COMPLETED
+   ^                         |
+   |---- fail(token) --------|  （attempt 尚未耗盡）
+                             +-- fail／lease expiry at max --> DEAD_LETTERED
 ```
 
 - `enqueue`：新 key 建立 `PENDING` job；相同 key 與相同完整工作內容回傳既有 job，不新增副本；相同 key 但不同 job identity、Room 關聯、operation 或 payload 時拒絕為 conflict。
-- `claim`：只有 `PENDING` 可由 worker claim；同一 worker 重複 claim 同一 job 回傳既有 `CLAIMED` job；不同 worker 不可接管；`COMPLETED` 不可再 claim。
-- `complete`：只有 owner worker 可完成；相同 worker 以相同 result 重複 complete 回傳既有 `COMPLETED` job；不同 result 或不同 worker 必須拒絕，避免 replay 覆寫權威結果。
+- `job_id` 與 `idempotency_key` 各自唯一；若一次 enqueue 的兩個 identity 分別解析到不同既有 job，必須拒絕 cross-identity collision。
+- `claim`：使用 injected clock 的 aware UTC timestamp 建立 lease，並產生不可猜測的 ownership／fencing token；測試可注入 deterministic token factory，但 production 預設使用 secure random token。
+- lease 未到期時，同一 worker replay 回傳相同 token 且不增加 attempt；其他 worker 不可接管。lease 到期後，新 worker 可取得新 token 並增加 attempt，舊 token 立即失效。
+- `complete`：只有未到期的目前 token 可完成；相同 token 以相同 result 重複 complete 回傳既有 `COMPLETED` job；不同 token 或 result 必須拒絕，避免 replay 覆寫權威結果。
+- `fail`：目前 token 回報失敗後，未達 `max_attempts` 回到 `PENDING`；到達上限則進入 terminal `DEAD_LETTERED`。lease 到期且 attempt 已耗盡時同樣進入 terminal 狀態，不可無限重試。
 - `attempt_count` 在首次成功 claim 時增加；同一 owner 的 replay 不增加。
 - 找不到 job 時回報 not-found contract error，不將 transport timeout 誤當成工作不存在。
 
 ### 失敗、重試與 exactly-once 邊界
 
-- 目前 memory adapter 不提供 durable lease、visibility timeout、dead-letter、process restart recovery 或 multi-process coordination。
+- 目前 memory adapter 只模擬 lease timestamp 與 dead-letter 等價狀態，不提供 durable lease、外部 visibility timeout、durable dead-letter queue、process restart recovery 或 multi-process coordination。
 - transport 可 at-least-once 投遞；producer 負責穩定 idempotency key，queue adapter 負責同 key 去重，worker 負責 claim ownership 與 deterministic completion，Data integration 最終必須以 `room_version` 做 compare-and-set。
-- worker failure／lease expiry／retry scheduling 與 Data transaction 將在 SQS／durable store 接線前另定 contract；本切片刻意不以 process memory 模擬 production exactly-once。
+- retry scheduling、Data transaction 與 durable queue 的 token／lease mapping 將在 SQS／durable store 接線前另定 contract；本切片刻意不以 process memory 模擬 production exactly-once。
 
 ## Acceptance criteria
 
 1. Domain 能表達 immutable job identity、Room／round／version 關聯、payload、狀態、owner、attempt 與 completion result。
 2. Application 提供 canonical idempotency key 與建立 `PENDING` job 的 factory。
-3. `StoryJobQueue` port 固定 enqueue／claim／complete 邊界。
-4. Memory adapter 通過新建與上述重複 enqueue／claim／complete 的正負 contract。
+3. `StoryJobQueue` port 固定 enqueue／claim／complete／fail 邊界。
+4. Memory adapter 通過 identity collision、nested snapshot、lease、fencing token、bounded retry 與上述 replay 正負 contract。
 5. 現行 RoomService、API、Storyteller、repository 與 composition 完全不接線且 regression 全綠。
