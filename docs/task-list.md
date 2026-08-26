@@ -101,9 +101,9 @@
 
 ## F. Tier 3：CI/CD
 
-- [ ] 建立 Dockerfile 與本機 container tests。
-- [ ] 建立 ECR repositories 與 lifecycle policy。
-- [ ] 建立 GitHub OIDC deploy role，trust policy 限定 repo／branch。
+- [x] 建立 runtime-only multi-stage Dockerfile 與本機 container tests；PR #8 的 GitHub container build／Trivy gate 通過。
+- [x] 建立 immutable、scan-on-push ECR repository 與 lifecycle policy；目前 repository 仍為空。
+- [x] 建立 GitHub OIDC deploy role，trust policy 限定 exact repository／`main`，並通過正負控制。
 - [ ] GitHub Actions 執行 test、build、scan、push。
 - [ ] 自動部署至 EC2／ECS，保留人工批准或 environment gate。
 - [ ] Demo 改一行版本資訊後自動上線，保存 pipeline 證據。
