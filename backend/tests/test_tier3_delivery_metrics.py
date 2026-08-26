@@ -32,7 +32,7 @@ def _run_writer(tmp_path: Path, *extra: str) -> tuple[subprocess.CompletedProces
             "200",
             "--release-start-epoch",
             "210",
-            "--verified-epoch",
+            "--completed-epoch",
             "240",
             *extra,
         ],
@@ -63,7 +63,7 @@ def test_metrics_writer_emits_sanitized_comparable_automatic_timing(tmp_path: Pa
             "deploy_start": 140,
             "artifact_ready": 200,
             "release_start": 210,
-            "verified": 240,
+            "completed": 240,
         },
         "durations_seconds": {
             "approval_wait": 30,
@@ -83,7 +83,7 @@ def test_metrics_writer_emits_sanitized_comparable_automatic_timing(tmp_path: Pa
 def test_metrics_writer_rejects_reversed_or_untrusted_measurements(tmp_path: Path) -> None:
     reversed_result, _ = _run_writer(
         tmp_path,
-        "--verified-epoch",
+        "--completed-epoch",
         "90",
     )
     assert reversed_result.returncode == 2
@@ -104,7 +104,7 @@ def test_metrics_writer_rejects_reversed_or_untrusted_measurements(tmp_path: Pat
             "12345",
             "--request-epoch",
             "100",
-            "--verified-epoch",
+            "--completed-epoch",
             "200",
         ],
         cwd=ROOT,
