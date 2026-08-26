@@ -49,6 +49,35 @@
         "ops/release/**",
         "ops/systemd/co-story-container*.service"
       ]
+    },
+    "codex/tier3-production-release": {
+      "purpose": "完成 T3B production release 前置相容性、人工核准 handoff、部署驗證與 rollback 證據",
+      "allowed_paths": [
+        ".github/workflows/ci.yml",
+        ".github/workflows/tier3-release.yml",
+        "Dockerfile",
+        "backend/tests/test_container*.py",
+        "backend/tests/test_github_ci_workflow.py",
+        "backend/tests/test_tier3*.py",
+        "docs/evidence/2026-*-tier3-production-release/**",
+        "docs/runbooks/tier3-container-release.md",
+        "ops/release/deploy_container.sh",
+        "ops/release/write_delivery_metrics.py",
+        "ops/systemd/co-story-container.service"
+      ]
+    },
+    "codex/tier2-components": {
+      "purpose": "建立 Web／Story Worker／Data 的本地組件邊界與第一個 queue／job contract，不部署 AWS",
+      "allowed_paths": [
+        "backend/app/application/ports.py",
+        "backend/app/application/story_jobs.py",
+        "backend/app/domain/story_jobs.py",
+        "backend/app/adapters/memory_story_job_queue.py",
+        "backend/tests/test_story_job*.py",
+        "docs/architecture/tier2-components.md",
+        "docs/features/tier2-story-jobs.md",
+        "docs/evidence/2026-*-tier2-components/**"
+      ]
     }
   }
 }

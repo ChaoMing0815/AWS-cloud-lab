@@ -24,6 +24,8 @@ def test_policy_defines_exact_parallel_branches_and_protects_integration_state()
     assert set(policy["branches"]) == {
         "codex/story-quality",
         "codex/tier3-delivery",
+        "codex/tier3-production-release",
+        "codex/tier2-components",
     }
     assert "docs/handoffs/CURRENT.md" in policy["protected_paths"]
     assert "docs/checkpoints.md" in policy["protected_paths"]
@@ -75,6 +77,51 @@ def test_tier3_delivery_branch_accepts_delivery_paths_and_rejects_product_paths(
     assert "docs/handoffs/CURRENT.md" in rejected.stderr
 
 
+def test_tier3_production_release_accepts_release_paths_and_rejects_product_paths() -> None:
+    accepted = _check(
+        "codex/tier3-production-release",
+        ".github/workflows/tier3-release.yml",
+        "ops/release/deploy_container.sh",
+        "backend/tests/test_github_ci_workflow.py",
+        "docs/evidence/2026-08-26-tier3-production-release/validation.md",
+    )
+    rejected = _check(
+        "codex/tier3-production-release",
+        "backend/app/application/story_jobs.py",
+        "web/src/ui/pages/game-page.js",
+        "docs/handoffs/CURRENT.md",
+    )
+
+    assert accepted.returncode == 0, accepted.stderr
+    assert rejected.returncode == 2
+    assert "backend/app/application/story_jobs.py" in rejected.stderr
+    assert "docs/handoffs/CURRENT.md" in rejected.stderr
+
+
+def test_tier2_components_accepts_first_local_slice_and_rejects_delivery_paths() -> None:
+    accepted = _check(
+        "codex/tier2-components",
+        "backend/app/application/story_jobs.py",
+        "backend/app/domain/story_jobs.py",
+        "backend/app/adapters/memory_story_job_queue.py",
+        "backend/tests/test_story_jobs.py",
+        "docs/architecture/tier2-components.md",
+    )
+    rejected = _check(
+        "codex/tier2-components",
+        ".github/workflows/tier3-release.yml",
+        "infra/cloudformation/tier3-delivery.yaml",
+        "backend/app/application/room_service.py",
+        "docs/handoffs/CURRENT.md",
+    )
+
+    assert accepted.returncode == 0, accepted.stderr
+    assert rejected.returncode == 2
+    assert ".github/workflows/tier3-release.yml" in rejected.stderr
+    assert "backend/app/application/room_service.py" in rejected.stderr
+    assert "docs/handoffs/CURRENT.md" in rejected.stderr
+
+
 def test_unknown_branch_fails_closed() -> None:
     result = _check("codex/unregistered-work", "README.md")
 
@@ -88,6 +135,8 @@ def test_governance_guide_and_pull_request_gate_are_present() -> None:
 
     assert "codex/story-quality" in guide
     assert "codex/tier3-delivery" in guide
+    assert "codex/tier3-production-release" in guide
+    assert "codex/tier2-components" in guide
     assert "單一部署 owner" in guide
     assert "branch-boundary:" in workflow
     assert "scripts/check_branch_boundaries.py" in workflow
