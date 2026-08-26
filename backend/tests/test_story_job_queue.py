@@ -204,6 +204,21 @@ def test_expired_lease_is_reclaimed_with_new_fencing_token() -> None:
         raise AssertionError("過期 lease 的舊 fencing token 不可完成 job")
 
 
+def test_expired_token_cannot_complete_before_another_worker_reclaims() -> None:
+    domain, application, adapter, _ = _contracts()
+    queue, clock = _queue(adapter)
+    queue.enqueue(_job(application, domain))
+    claimed = queue.claim("job-1", "worker-a")
+
+    clock.advance(timedelta(seconds=30))
+    try:
+        queue.complete("job-1", claimed.ownership_token, {"narration": "too late"})
+    except domain.StoryJobOwnershipConflict:
+        pass
+    else:
+        raise AssertionError("到期 fencing token 即使尚未被接管也不可完成 job")
+
+
 def test_expired_lease_dead_letters_when_max_attempts_are_exhausted() -> None:
     domain, application, adapter, _ = _contracts()
     queue, clock = _queue(adapter, max_attempts=1)
