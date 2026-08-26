@@ -258,6 +258,7 @@ def test_generate_world_uses_injected_converse_client_with_bounded_tokens_guardr
         "guardrailIdentifier": "gr-story-safety",
         "guardrailVersion": "7",
     }
+    assert "toolConfig" not in request
     assert request["system"]
     assert request["messages"][0]["role"] == "user"
     guarded_text = request["messages"][0]["content"][0]["guardContent"]["text"]
