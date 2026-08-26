@@ -1,12 +1,12 @@
 # CURRENT：目前工作交接
 
 - 更新日期：2026-08-26
-- 目前里程碑：Tier 1 已完整完成；先平行建立 Tier 3 delivery foundation 與改善 Storyteller／遊玩品質，再回到 Tier 2 Web／Story Worker／Data 切割。
-- 交付策略：`codex/story-quality` 與 `codex/tier3-delivery` 使用獨立 worktree 與路徑白名單；完成整合、完整 regression 與自動部署示範後，再以既有 pipeline 推進 Tier 2。
+- 目前里程碑：Tier 1 已完整完成；Tier 3 delivery foundation 與 Storyteller 品質分支已整合，Batch T3A control plane 已建立並通過細部安全驗證，但尚未部署容器。
+- 交付策略：先以 integration candidate 的 PR 執行 Backend／Frontend／container build／scan gate；未經另一個 bounded batch 核准，不合併至 `main`、不 push image、不執行 SSM release。自動部署示範完成後，再以既有 pipeline 推進 Tier 2。
 - Branch：`codex/tier1-runtime-observability`
 - Tier 1 完成基準 commit：`07a986a`
 - 平行分支治理基準：Red `6a76daf`／Green `b772116`。
-- Regression：Backend `363 passed, 8 skipped`、Frontend `94 passed`。
+- Regression：Backend `387 passed, 8 skipped`、Frontend `94 passed`；Tier 3＋Storyteller targeted `68 passed`；合併後本機 container build、non-root `10001:10001` 與 `/live`＋`/ready` health gate 通過。
 - AWS active release：`tier1-20260825-4a51e0e`
 - 操作邊界：Console-first；使用者操作 AWS Console／SSM。Agent 未經新的 bounded batch 核准不得執行 AWS CLI，且不得執行 S3 讀取或 Bedrock 呼叫。
 
@@ -33,16 +33,20 @@
 - Storyteller recovery metric pipeline 以 exactly-one zero baseline 驗證 Retries `0`、Fallbacks `0`；此證據不代表真實 retry／fallback incident。
 - Tier 1 checkpoints、task list、deployment log 與 sanitized evidence 均已更新。正式證據入口：[`docs/evidence/2026-08-25-tier1-completion/validation.md`](../evidence/2026-08-25-tier1-completion/validation.md)。
 
+### Tier 3 delivery foundation 與 Storyteller 品質
+
+- `codex/tier3-delivery` tip `6679007` 與 `codex/story-quality` tip `ac18cd0` 已依序整合至目前 branch；兩分支沒有重疊路徑或 merge conflict。
+- Storyteller 現在以 canonical 玩家行動、角色、完整骰點、前景、進度／危機與最近五筆 history 形成因果敘事；round／ending 使用 forced output-only tool 與嚴格 schema，game engine 仍是狀態權威。
+- Batch T3A stack `co-story-tier3-delivery` 的 ECR、GitHub OIDC deploy role、AppRole pull policy與 SSM release document 共五項資源均為 `CREATE_COMPLETE`，OIDC trust、IAM 正負控制、ECR immutable／scan／lifecycle 與 SSM document 邊界已通過 Console 驗證。
+- ECR 仍為空；尚未 push／scan image、設定或執行 GitHub production release、執行 SSM command、bootstrap Docker 或變更 AWS active release。正式證據入口：[`docs/evidence/2026-08-26-tier3-control-plane/validation.md`](../evidence/2026-08-26-tier3-control-plane/validation.md)。
+
 ## Next
 
-兩個平行 task 都從包含治理基準的同一 commit 建立：
-
-1. `codex/story-quality`：以嚴格 TDD 定義敘事 contract，讓玩家行為、角色、骰點、進度、危機與結局產生可驗證的因果劇情；不得修改 delivery／AWS 路徑。
-2. `codex/tier3-delivery`：以嚴格 TDD 建立 current monolith 的 Docker、ECR、GitHub OIDC、CI/CD、SSM release、health gate 與 rollback；不得修改產品行為。
-3. 兩分支交付前執行 `scripts/check_branch_boundaries.py`，越界即停止並交回整合 task。
-4. 整合 task依序整合 delivery foundation 與 story quality，重跑 Backend／Frontend／container regression。
-5. Repo-local gate 全綠後，另提出含成本、安全、IAM、驗證與 rollback 的 Tier 3 AWS bounded batch，供使用者核准。
-6. 自動部署垂直切片完成後，再以相同 pipeline 推進 Tier 2 queue／job／idempotency 與三組件 AWS E2E。
+1. Push 目前 integration candidate，建立指向 `main` 的 PR，讓 GitHub CI 執行 Backend／Frontend、container build 與 Trivy HIGH／CRITICAL gate；PR 不等於 production deploy。
+2. CI 全綠後停在 PR review；合併至 `main` 仍需使用者明確核准。
+3. 以整合後程式準備最小 Nova Lite bounded evaluation：round 與 ending 各一次；不得由 Agent 呼叫，且必須另行核准。
+4. Tier 3 production release 另建立 T3B change envelope，列出 GitHub environment／variables、previous digest、image push／scan、SSM readiness、rollback、成本與停止條件；目前未授權。
+5. 自動部署垂直切片完成後，再以相同 pipeline 推進 Tier 2 queue／job／idempotency 與三組件 AWS E2E。
 
 ## 操作護欄
 
@@ -57,6 +61,8 @@
 - Direct IP certificate 約 160 小時效期；須保留 renewal timer 驗證。EC2 stop/start 若 public IP 改變，URL、certificate 與 allowlist 都需重建。
 - EC2 與 RDS 最近一次已知狀態均為運行中。若預估超過 48 小時不使用，依既定清理計畫由使用者手動停止 RDS；storage／backup 仍可能計費，且 RDS 最長 7 天會自動啟動。
 - `CoStoryHealthCheck` 已通過正面 gate，尚未執行 Document 自身的代表性 failure gate。
+- Forced-tool Storyteller 已通過 fake Converse contract，但尚未以真實 Nova Lite 驗證 round／ending schema 與敘事品質。
+- Tier 3 control plane 已建立但尚未完成任何 image scan 或 application release；不得把 T3A 約 55 分鐘人工安全審查當成應用程式部署時間。
 - Idempotency store 目前仍為 process memory，不宣稱 multi-process exactly-once；這是 Tier 2 的核心設計缺口。
 - iPhone Safari 短期雙向同步已通過，但長時間 polling／visibility 行為仍需在下一次完整多人遊戲觀察。
 - 刪房後舊分頁 lifecycle 修正已部署，尚未以 `COMPLETED` 房間做 AWS 多分頁重驗。
