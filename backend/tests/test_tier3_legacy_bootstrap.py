@@ -64,7 +64,9 @@ def _sandbox(tmp_path: Path) -> tuple[Path, dict[str, str], Path]:
     )
     _write_executable(
         fake_bin / "systemctl",
-        "#!/bin/sh\nprintf 'systemctl:%s\\n' \"$*\" >>\"$CO_STORY_TEST_EVENT_LOG\"\nexit 0\n",
+        "#!/bin/sh\nprintf 'systemctl:%s\\n' \"$*\" >>\"$CO_STORY_TEST_EVENT_LOG\"\n"
+        "if [ \"$*\" = 'is-active --quiet co-story-legacy-candidate.service' ]; then exit 3; fi\n"
+        "exit 0\n",
     )
     _write_executable(
         fake_bin / "systemd-run",

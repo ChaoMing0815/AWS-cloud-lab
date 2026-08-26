@@ -154,6 +154,8 @@ def test_ssm_documents_bound_bootstrap_assets_and_keep_legacy_rollback_human_onl
     assert "/usr/local/libexec/co-story-deploy-container" in template_text
     assert "docker create" in template_text
     assert "docker cp" in template_text
-    assert "curl " not in template_text
+    assert "curl --location" not in template_text
+    assert "curl -L" not in template_text
+    assert "https://raw." not in template_text
     assert "wget " not in template_text
-    assert "s3" not in template_text.lower()
+    assert "aws s3" not in template_text.lower()

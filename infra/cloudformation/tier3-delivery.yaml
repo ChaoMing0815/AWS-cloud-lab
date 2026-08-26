@@ -170,8 +170,13 @@ Resources:
       UpdateMethod: NewVersion
       Content:
         schemaVersion: '2.2'
-        description: Release one immutable Co-Story image digest with fixed health and previous-digest rollback.
+        description: Bootstrap from the exact legacy release or release one immutable digest with fail-closed rollback.
         parameters:
+          ReleaseMode:
+            type: String
+            allowedValues:
+              - legacy-bootstrap
+              - digest-release
           RepositoryUri:
             type: String
             allowedPattern: '^[0-9]{12}[.]dkr[.]ecr[.]ap-northeast-1[.]amazonaws[.]com/co-story-tier3$'
@@ -180,7 +185,14 @@ Resources:
             allowedPattern: '^sha256:[a-f0-9]{64}$'
           PreviousImageDigest:
             type: String
-            allowedPattern: '^sha256:[a-f0-9]{64}$'
+            default: ''
+            allowedPattern: '^$|^sha256:[a-f0-9]{64}$'
+          ExpectedLegacyRelease:
+            type: String
+            default: ''
+            allowedValues:
+              - ''
+              - tier1-20260825-4a51e0e
         mainSteps:
           - action: aws:runShellScript
             name: ReleaseCoStoryContainer
@@ -191,14 +203,131 @@ Resources:
             inputs:
               timeoutSeconds: '900'
               runCommand:
-                - '#!/bin/bash'
-                - 'set -euo pipefail'
-                - 'readonly release_script=/opt/co-story/current/ops/release/deploy_container.sh'
-                - 'readonly runtime_env=/etc/co-story/runtime.env'
-                - 'health_host="$(awk -F= ''$1 == "CO_STORY_ALLOWED_HOSTS" { split($2, hosts, ","); print hosts[1]; exit }'' "$runtime_env")"'
-                - 'case "$health_host" in ''''|*[!A-Za-z0-9.-]*) printf ''container_release=invalid_host\n'' >&2; exit 2 ;; esac'
-                - 'test -x "$release_script"'
-                - '"$release_script" "{{ RepositoryUri }}" "{{ ImageDigest }}" "{{ PreviousImageDigest }}" "$health_host"'
+                - |
+                  #!/bin/bash
+                  set -euo pipefail
+                  readonly repository_uri='{{ RepositoryUri }}'
+                  readonly image_digest='{{ ImageDigest }}'
+                  readonly previous_image_digest='{{ PreviousImageDigest }}'
+                  readonly release_mode='{{ ReleaseMode }}'
+                  readonly expected_legacy_release='{{ ExpectedLegacyRelease }}'
+                  readonly target_image="$repository_uri@$image_digest"
+                  readonly runtime_env=/etc/co-story/runtime.env
+                  readonly stable_driver=/usr/local/libexec/co-story-deploy-container
+                  readonly stable_unit=/usr/local/share/co-story/co-story-container.service
+                  health_host="$(awk -F= '$1 == "CO_STORY_ALLOWED_HOSTS" { split($2, hosts, ","); print hosts[1]; exit }' "$runtime_env")"
+                  case "$health_host" in ''|*[!A-Za-z0-9.-]*) printf 'container_release=invalid_host\n' >&2; exit 2 ;; esac
+                  case "$release_mode" in
+                    legacy-bootstrap)
+                      test -z "$previous_image_digest"
+                      test "$expected_legacy_release" = tier1-20260825-4a51e0e
+                      readonly legacy_release=/opt/co-story/releases/tier1-20260825-4a51e0e
+                      readonly database_env=/etc/co-story/database.env
+                      test "$(readlink -f /opt/co-story/current)" = "$legacy_release"
+                      test -s "$runtime_env"
+                      test -s "$database_env"
+                      test "$(stat -c '%U:%G:%a' "$runtime_env")" = root:co-story:640
+                      test "$(stat -c '%U:%G:%a' "$database_env")" = root:co-story:640
+                      test ! -e /etc/co-story/container-transition.state
+                      test ! -e /etc/co-story/container-release.env
+                      test ! -e /etc/co-story/legacy-co-story.service
+                      test -f "$legacy_release/ops/systemd/co-story.service"
+                      cmp -s /etc/systemd/system/co-story.service "$legacy_release/ops/systemd/co-story.service"
+                      command -v docker >/dev/null
+                      systemctl is-active --quiet docker.service
+                      legacy_preflight() {
+                        attempt=1
+                        while [ "$attempt" -le 30 ]; do
+                          if curl --fail --silent --show-error --max-time 3 \
+                            --header "Host: $health_host" http://127.0.0.1:8000/api/v1/live >/dev/null \
+                            && curl --fail --silent --show-error --max-time 3 \
+                              --header "Host: $health_host" http://127.0.0.1:8000/api/v1/ready >/dev/null; then
+                            return 0
+                          fi
+                          if [ "$attempt" -lt 30 ]; then sleep 1; fi
+                          attempt=$((attempt + 1))
+                        done
+                        return 1
+                      }
+                      legacy_preflight
+                      registry="${repository_uri%%/*}"
+                      temporary="$(mktemp -d)"
+                      asset_container="co-story-release-assets-$$"
+                      cleanup() {
+                        docker rm -f "$asset_container" >/dev/null 2>&1 || true
+                        rm -rf "$temporary"
+                      }
+                      trap cleanup EXIT
+                      aws ecr get-login-password --region ap-northeast-1 | docker login --username AWS --password-stdin "$registry" >/dev/null
+                      docker pull "$target_image" >/dev/null
+                      docker create --name "$asset_container" "$target_image" >/dev/null
+                      docker cp "$asset_container:/usr/local/share/co-story/deploy_container.sh" "$temporary/deploy_container.sh"
+                      docker cp "$asset_container:/usr/local/share/co-story/co-story-container.service" "$temporary/co-story-container.service"
+                      chmod 0500 "$temporary/deploy_container.sh"
+                      "$temporary/deploy_container.sh" legacy-bootstrap "$repository_uri" "$image_digest" '' "$expected_legacy_release" "$health_host" "$temporary/co-story-container.service"
+                      ;;
+                    digest-release)
+                      test -x "$stable_driver"
+                      test -f "$stable_unit"
+                      test -z "$expected_legacy_release"
+                      "$stable_driver" digest-release "$repository_uri" "$image_digest" "$previous_image_digest" '' "$health_host" "$stable_unit"
+                      ;;
+                    *)
+                      printf 'container_release=invalid_mode\n' >&2
+                      exit 2
+                      ;;
+                  esac
+      Tags:
+        - Key: Project
+          Value: co-story
+        - Key: Tier
+          Value: '3'
+
+  LegacyRollbackDocument:
+    Type: AWS::SSM::Document
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      Name: CoStoryTier3LegacyRollback
+      DocumentType: Command
+      DocumentFormat: YAML
+      TargetType: /AWS::EC2::Instance
+      UpdateMethod: NewVersion
+      Content:
+        schemaVersion: '2.2'
+        description: Human-operated rollback from the exact active container digest to the preserved legacy release.
+        parameters:
+          RepositoryUri:
+            type: String
+            allowedPattern: '^[0-9]{12}[.]dkr[.]ecr[.]ap-northeast-1[.]amazonaws[.]com/co-story-tier3$'
+          ActiveImageDigest:
+            type: String
+            allowedPattern: '^sha256:[a-f0-9]{64}$'
+          ExpectedLegacyRelease:
+            type: String
+            allowedValues:
+              - tier1-20260825-4a51e0e
+        mainSteps:
+          - action: aws:runShellScript
+            name: RollbackCoStoryToLegacy
+            precondition:
+              StringEquals:
+                - platformType
+                - Linux
+            inputs:
+              timeoutSeconds: '600'
+              runCommand:
+                - |
+                  #!/bin/bash
+                  set -euo pipefail
+                  readonly stable_driver=/usr/local/libexec/co-story-deploy-container
+                  readonly stable_unit=/usr/local/share/co-story/co-story-container.service
+                  readonly runtime_env=/etc/co-story/runtime.env
+                  health_host="$(awk -F= '$1 == "CO_STORY_ALLOWED_HOSTS" { split($2, hosts, ","); print hosts[1]; exit }' "$runtime_env")"
+                  case "$health_host" in ''|*[!A-Za-z0-9.-]*) printf 'container_release=invalid_host\n' >&2; exit 2 ;; esac
+                  test -x "$stable_driver"
+                  test -f "$stable_unit"
+                  "$stable_driver" legacy-rollback '{{ RepositoryUri }}' '{{ ActiveImageDigest }}' '' '{{ ExpectedLegacyRelease }}' "$health_host" "$stable_unit"
       Tags:
         - Key: Project
           Value: co-story
@@ -222,3 +351,6 @@ Outputs:
   ReleaseDocumentName:
     Value:
       Ref: ContainerReleaseDocument
+  LegacyRollbackDocumentName:
+    Value:
+      Ref: LegacyRollbackDocument
