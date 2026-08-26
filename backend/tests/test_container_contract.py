@@ -7,6 +7,7 @@ DOCKERFILE = ROOT / "Dockerfile"
 DOCKERIGNORE = ROOT / ".dockerignore"
 HEALTHCHECK = ROOT / "ops/container/healthcheck.py"
 SYSTEMD_UNIT = ROOT / "ops/systemd/co-story-container.service"
+PRODUCTION_REQUIREMENTS = ROOT / "backend/requirements-prod.txt"
 
 
 def _read(path: Path) -> str:
@@ -34,6 +35,34 @@ def test_image_is_non_root_secret_free_and_keeps_the_runtime_contract() -> None:
     assert ".env" in dockerignore
     assert ".git" in dockerignore
     assert "docs/evidence" in dockerignore
+
+
+def test_production_image_uses_a_clean_runtime_stage_without_build_tooling() -> None:
+    requirements = {
+        line.strip()
+        for line in _read(PRODUCTION_REQUIREMENTS).splitlines()
+        if line.strip() and not line.startswith("#")
+    }
+    dockerfile = _read(DOCKERFILE)
+    stages = [line for line in dockerfile.splitlines() if line.startswith("FROM ")]
+    violations: list[str] = []
+
+    if "msgpack==1.2.1" not in requirements:
+        violations.append("production requirements 缺少 msgpack==1.2.1")
+    if any(line.lower().startswith("setuptools==") for line in requirements):
+        violations.append("production requirements 不得保留 setuptools")
+    if not stages or not stages[0].endswith(" AS builder"):
+        violations.append("Python image 必須只作為 builder stage")
+    if len(stages) != 2 or not stages[-1].startswith(
+        "FROM debian:bookworm-slim@sha256:"
+    ):
+        violations.append("final stage 必須是 digest-pinned Debian slim")
+    if "python -m pip uninstall --yes pip setuptools" not in dockerfile:
+        violations.append("builder 必須先移除 pip 與 setuptools build tooling")
+    if "COPY --from=builder /usr/local /usr/local" not in dockerfile:
+        violations.append("final stage 必須只複製清理後的 Python runtime")
+
+    assert not violations, "\n".join(violations)
 
 
 class _Response:
