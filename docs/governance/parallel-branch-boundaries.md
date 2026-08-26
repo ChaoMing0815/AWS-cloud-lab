@@ -17,7 +17,8 @@
 
 允許範圍以 policy 為準，主要包括：
 
-- `backend/co_story/**`
+- `backend/app/adapters/bedrock_storyteller.py`
+- `backend/app/adapters/mock_storyteller.py`
 - Storyteller、ending、world generation 直接相關 Backend tests
 - `web/**`
 - `docs/features/story-quality.md`
