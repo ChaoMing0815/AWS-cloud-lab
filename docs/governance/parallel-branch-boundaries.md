@@ -58,6 +58,7 @@
 允許範圍以 policy 為準，主要包括：
 
 - Tier 3 CI／release workflow 與對應 contract tests
+- 既有 Tier 3 SSM release Document template（只限首次 container bootstrap／legacy rollback contract）
 - `Dockerfile` 與 container contract（僅在 release gate 證明需要時）
 - `ops/release/` 的 container deploy／metrics scripts 與 container systemd unit
 - Tier 3 release runbook 與專屬 production-release evidence

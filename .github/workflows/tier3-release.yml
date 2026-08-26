@@ -3,9 +3,22 @@ name: Tier 3 container release
 on:
   workflow_dispatch:
     inputs:
-      previous_image_digest:
-        description: Previously verified ECR image digest used for rollback
+      release_mode:
+        description: Explicit first-transition or established-container release mode
         required: true
+        type: choice
+        options:
+          - legacy-bootstrap
+          - digest-release
+      previous_image_digest:
+        description: Required only for digest-release; must be the active verified digest
+        required: false
+        default: ""
+        type: string
+      expected_legacy_release:
+        description: Required only for legacy-bootstrap
+        required: false
+        default: ""
         type: string
 
 permissions:
@@ -59,14 +72,38 @@ jobs:
         uses: actions/checkout@v6.0.2
         with:
           persist-credentials: false
-      - name: Validate previous digest
+      - name: Validate mutually exclusive release inputs
         env:
+          RELEASE_MODE: ${{ inputs.release_mode }}
           PREVIOUS_IMAGE_DIGEST: ${{ inputs.previous_image_digest }}
+          EXPECTED_LEGACY_RELEASE: ${{ inputs.expected_legacy_release }}
         run: |
-          if [[ ! "$PREVIOUS_IMAGE_DIGEST" =~ ^sha256:[a-f0-9]{64}$ ]]; then
-            printf '%s\n' 'invalid previous image digest' >&2
-            exit 2
-          fi
+          case "$RELEASE_MODE" in
+            legacy-bootstrap)
+              if [[ -n "$PREVIOUS_IMAGE_DIGEST" ]]; then
+                printf '%s\n' 'bootstrap must not provide a previous digest' >&2
+                exit 2
+              fi
+              if [[ "$EXPECTED_LEGACY_RELEASE" != tier1-20260825-4a51e0e ]]; then
+                printf '%s\n' 'bootstrap requires the exact expected legacy release' >&2
+                exit 2
+              fi
+              ;;
+            digest-release)
+              if [[ ! "$PREVIOUS_IMAGE_DIGEST" =~ ^sha256:[a-f0-9]{64}$ ]]; then
+                printf '%s\n' 'digest release requires a previous digest' >&2
+                exit 2
+              fi
+              if [[ -n "$EXPECTED_LEGACY_RELEASE" ]]; then
+                printf '%s\n' 'digest release must not provide a legacy release' >&2
+                exit 2
+              fi
+              ;;
+            *)
+              printf '%s\n' 'invalid release mode' >&2
+              exit 2
+              ;;
+          esac
       - name: Configure bounded AWS credentials
         uses: aws-actions/configure-aws-credentials@v5.1.0
         with:
@@ -78,15 +115,25 @@ jobs:
       - name: Set up ARM64 emulation
         uses: docker/setup-qemu-action@v3.6.0
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3.11.1
+        uses: docker/setup-buildx-action@v4.0.0
       - name: Build and push immutable commit image
         id: build
-        uses: docker/build-push-action@v6.18.0
+        uses: docker/build-push-action@v7.0.0
         with:
           context: .
           platforms: linux/arm64
           push: true
           tags: ${{ steps.ecr.outputs.registry }}/${{ vars.TIER3_ECR_REPOSITORY }}:${{ github.sha }}
+      - name: Fence target and previous digests
+        if: inputs.release_mode == 'digest-release'
+        env:
+          IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
+          PREVIOUS_IMAGE_DIGEST: ${{ inputs.previous_image_digest }}
+        run: |
+          if [[ "$IMAGE_DIGEST" == "$PREVIOUS_IMAGE_DIGEST" ]]; then
+            printf '%s\n' 'target and previous image digests must differ' >&2
+            exit 2
+          fi
       - name: Scan the exact pushed digest
         uses: aquasecurity/trivy-action@v0.36.0
         with:
@@ -101,15 +148,24 @@ jobs:
       - name: Release exact digest through bounded SSM document
         id: release_timing
         env:
+          RELEASE_MODE: ${{ inputs.release_mode }}
           IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
           PREVIOUS_IMAGE_DIGEST: ${{ inputs.previous_image_digest }}
+          EXPECTED_LEGACY_RELEASE: ${{ inputs.expected_legacy_release }}
           REPOSITORY_URI: ${{ steps.ecr.outputs.registry }}/${{ vars.TIER3_ECR_REPOSITORY }}
         run: |
           echo "release_started_epoch=$(date +%s)" >> "$GITHUB_OUTPUT"
+          parameters="$(jq -cn \
+            --arg repository_uri "$REPOSITORY_URI" \
+            --arg image_digest "$IMAGE_DIGEST" \
+            --arg previous_image_digest "$PREVIOUS_IMAGE_DIGEST" \
+            --arg release_mode "$RELEASE_MODE" \
+            --arg expected_legacy_release "$EXPECTED_LEGACY_RELEASE" \
+            '{RepositoryUri:[$repository_uri],ImageDigest:[$image_digest],PreviousImageDigest:[$previous_image_digest],ReleaseMode:[$release_mode],ExpectedLegacyRelease:[$expected_legacy_release]}')"
           command_id="$(aws ssm send-command \
             --document-name CoStoryTier3ContainerRelease \
             --targets "Key=InstanceIds,Values=${{ vars.TIER3_INSTANCE_ID }}" \
-            --parameters "RepositoryUri=$REPOSITORY_URI,ImageDigest=$IMAGE_DIGEST,PreviousImageDigest=$PREVIOUS_IMAGE_DIGEST" \
+            --parameters "$parameters" \
             --comment "co-story tier3 ${{ github.sha }}" \
             --cloud-watch-output-config CloudWatchOutputEnabled=false \
             --query 'Command.CommandId' --output text)"

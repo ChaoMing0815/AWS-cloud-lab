@@ -44,6 +44,24 @@ def test_release_workflow_is_manual_approved_main_only_and_digest_pinned() -> No
     assert "aws-secret-access-key" not in workflow
 
 
+def test_release_workflow_distinguishes_legacy_bootstrap_from_digest_release() -> None:
+    workflow = _read(RELEASE_WORKFLOW)
+
+    assert "release_mode:" in workflow
+    assert "legacy-bootstrap" in workflow
+    assert "digest-release" in workflow
+    assert "expected_legacy_release" in workflow
+    assert "tier1-20260825-4a51e0e" in workflow
+    assert "bootstrap must not provide a previous digest" in workflow
+    assert "digest release requires a previous digest" in workflow
+    assert "target and previous image digests must differ" in workflow
+    scan_at = workflow.index("Scan the exact pushed digest")
+    release_at = workflow.index("Release exact digest through bounded SSM document")
+    assert scan_at < release_at
+    assert "ReleaseMode" in workflow
+    assert "ExpectedLegacyRelease" in workflow
+
+
 def test_cloudformation_limits_oidc_ecr_and_ssm_to_repo_branch_and_instance() -> None:
     template_text = _read(TEMPLATE)
     template = yaml.safe_load(template_text)
@@ -96,3 +114,62 @@ def test_ssm_release_document_and_host_script_fail_closed_with_rollback() -> Non
     assert "DATABASE_URL" not in script
     assert "set -x" not in script
     assert "--privileged" not in script
+
+
+def test_ssm_documents_bound_bootstrap_assets_and_keep_legacy_rollback_human_only() -> None:
+    template_text = _read(TEMPLATE)
+    template = yaml.safe_load(template_text)
+    resources = template["Resources"]
+    deploy_policy = resources["GitHubDeployRole"]["Properties"]["Policies"][0][
+        "PolicyDocument"
+    ]["Statement"]
+    send_command = next(
+        statement
+        for statement in deploy_policy
+        if statement["Sid"] == "ReleaseOnlyThroughPinnedDocumentAndInstance"
+    )
+
+    assert "LegacyRollbackDocument" in resources
+    assert resources["LegacyRollbackDocument"]["Properties"]["Name"] == (
+        "CoStoryTier3LegacyRollback"
+    )
+    assert "CoStoryTier3LegacyRollback" not in str(send_command["Resource"])
+    assert "ReleaseMode" in template_text
+    assert "legacy-bootstrap" in template_text
+    bootstrap = template_text.index("legacy-bootstrap)")
+    first_pull = template_text.index('docker pull "$target_image"', bootstrap)
+    for preflight_guard in (
+        'readlink -f /opt/co-story/current',
+        'stat -c \'%U:%G:%a\' "$runtime_env"',
+        'test ! -e /etc/co-story/container-transition.state',
+        'test ! -e /etc/co-story/container-release.env',
+        'test ! -e "$stable_driver"',
+        'test ! -e "$stable_unit"',
+        'cmp -s /etc/systemd/system/co-story.service',
+        'legacy_preflight',
+    ):
+        assert bootstrap < template_text.index(preflight_guard, bootstrap) < first_pull
+    assert "digest-release" in template_text
+    assert "tier1-20260825-4a51e0e" in template_text
+    assert "/usr/local/share/co-story/deploy_container.sh" in template_text
+    assert "/usr/local/share/co-story/co-story-container.service" in template_text
+    assert "/usr/local/libexec/co-story-deploy-container" in template_text
+    assert "docker create" in template_text
+    assert "docker cp" in template_text
+    digest = template_text.index("digest-release)")
+    rollback = template_text.index("LegacyRollbackDocument:")
+    digest_block = template_text[digest:rollback]
+    digest_preflight = digest_block.index("preflight-only")
+    digest_pull = digest_block.index('docker pull "$target_image"')
+    assert digest_preflight < digest_pull
+    assert 'docker pull "$target_image"' in digest_block
+    assert 'docker create --name "$asset_container" "$target_image"' in digest_block
+    assert 'docker cp "$asset_container:/usr/local/share/co-story/deploy_container.sh"' in digest_block
+    assert 'docker cp "$asset_container:/usr/local/share/co-story/co-story-container.service"' in digest_block
+    assert '"$temporary/deploy_container.sh"' in digest_block
+    assert '"$temporary/co-story-container.service"' in digest_block
+    assert "curl --location" not in template_text
+    assert "curl -L" not in template_text
+    assert "https://raw." not in template_text
+    assert "wget " not in template_text
+    assert "aws s3" not in template_text.lower()

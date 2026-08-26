@@ -35,6 +35,9 @@ def test_image_is_non_root_secret_free_and_keeps_the_runtime_contract() -> None:
     assert ".env" in dockerignore
     assert ".git" in dockerignore
     assert "docs/evidence" in dockerignore
+    assert "COPY ops/release/deploy_container.sh /usr/local/share/co-story/deploy_container.sh" in dockerfile
+    assert "COPY ops/systemd/co-story-container.service /usr/local/share/co-story/co-story-container.service" in dockerfile
+    assert "chmod 0555 /usr/local/share/co-story/deploy_container.sh" in dockerfile
 
 
 def test_production_image_uses_a_clean_runtime_stage_without_build_tooling() -> None:
