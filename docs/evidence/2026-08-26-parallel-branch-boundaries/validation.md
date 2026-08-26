@@ -13,3 +13,10 @@
 - CI behavior：Pull request 對 registered branch 以 base/head SHA 計算 changed paths；其他既有 branch 不受此專案專用 gate 阻擋。
 - AWS boundary：未執行 AWS CLI、S3 讀取、Bedrock 呼叫或 production deploy。
 - Residual risk：worktree 隔離不能消除語意衝突；shared/protected files 仍只由整合 task 修改與最終 review。
+
+## Storyteller adapter 權限修正
+
+- 產品 task 回報原 policy 使用不存在的 `backend/co_story/**`，實際需要兩個 `backend/app/adapters` 檔案。
+- Red `c56cb37` 精確證明兩個 adapter 均被拒絕；Green `de80a80` 只加入兩個檔案級白名單並移除錯誤 pattern。
+- Targeted boundary／CI contract `7 passed`；Backend `363 passed, 8 skipped`；Frontend `94 passed`。
+- Delivery、IaC、protected paths 的拒絕案例維持全綠；沒有開放 `backend/app/**`。
