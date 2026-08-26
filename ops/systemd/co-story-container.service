@@ -1,0 +1,27 @@
+[Unit]
+Description=Co-Story container runtime behind the existing Nginx edge
+After=network-online.target docker.service
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=simple
+User=root
+Group=root
+EnvironmentFile=/etc/co-story/container-release.env
+ExecStartPre=-/usr/bin/docker rm -f co-story
+ExecStart=/usr/bin/docker run --name co-story --network host --read-only --cap-drop ALL --security-opt no-new-privileges --tmpfs /tmp:rw,noexec,nosuid,size=64m --env-file /etc/co-story/runtime.env --env-file /etc/co-story/database.env --volume /var/log/co-story:/var/log/co-story --user 10001:10001 ${CO_STORY_CONTAINER_IMAGE} uvicorn app.main:create_app --factory --host 127.0.0.1 --port 8000 --workers 1
+ExecStop=/usr/bin/docker stop --time 20 co-story
+ExecStopPost=-/usr/bin/docker rm -f co-story
+Restart=on-failure
+RestartSec=5
+TimeoutStartSec=120
+TimeoutStopSec=30
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/var/log/co-story /etc/co-story
+
+[Install]
+WantedBy=multi-user.target

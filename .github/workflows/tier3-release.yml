@@ -1,0 +1,95 @@
+name: Tier 3 container release
+
+on:
+  workflow_dispatch:
+    inputs:
+      previous_image_digest:
+        description: Previously verified ECR image digest used for rollback
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tier3-production-release
+  cancel-in-progress: false
+
+jobs:
+  approval-gate:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment: production
+    steps:
+      - name: Record bounded approval gate
+        run: test "${{ github.ref }}" = refs/heads/main
+
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    needs: approval-gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Check out approved source
+        uses: actions/checkout@v6.0.2
+        with:
+          persist-credentials: false
+      - name: Validate previous digest
+        env:
+          PREVIOUS_IMAGE_DIGEST: ${{ inputs.previous_image_digest }}
+        run: |
+          if [[ ! "$PREVIOUS_IMAGE_DIGEST" =~ ^sha256:[a-f0-9]{64}$ ]]; then
+            printf '%s\n' 'invalid previous image digest' >&2
+            exit 2
+          fi
+      - name: Configure bounded AWS credentials
+        uses: aws-actions/configure-aws-credentials@v5.1.0
+        with:
+          role-to-assume: ${{ vars.TIER3_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - name: Log in to the bounded ECR registry
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2.0.1
+      - name: Set up ARM64 emulation
+        uses: docker/setup-qemu-action@v3.6.0
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3.11.1
+      - name: Build and push immutable commit image
+        id: build
+        uses: docker/build-push-action@v6.18.0
+        with:
+          context: .
+          platforms: linux/arm64
+          push: true
+          tags: ${{ steps.ecr.outputs.registry }}/${{ vars.TIER3_ECR_REPOSITORY }}:${{ github.sha }}
+      - name: Scan the exact pushed digest
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          image-ref: ${{ steps.ecr.outputs.registry }}/${{ vars.TIER3_ECR_REPOSITORY }}@${{ steps.build.outputs.digest }}
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: 1
+      - name: Release exact digest through bounded SSM document
+        env:
+          IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
+          PREVIOUS_IMAGE_DIGEST: ${{ inputs.previous_image_digest }}
+          REPOSITORY_URI: ${{ steps.ecr.outputs.registry }}/${{ vars.TIER3_ECR_REPOSITORY }}
+        run: |
+          command_id="$(aws ssm send-command \
+            --document-name CoStoryTier3ContainerRelease \
+            --targets "Key=InstanceIds,Values=${{ vars.TIER3_INSTANCE_ID }}" \
+            --parameters "RepositoryUri=$REPOSITORY_URI,ImageDigest=$IMAGE_DIGEST,PreviousImageDigest=$PREVIOUS_IMAGE_DIGEST" \
+            --comment "co-story tier3 ${{ github.sha }}" \
+            --cloud-watch-output-config CloudWatchOutputEnabled=false \
+            --query 'Command.CommandId' --output text)"
+          aws ssm wait command-executed \
+            --command-id "$command_id" \
+            --instance-id "${{ vars.TIER3_INSTANCE_ID }}"
+          aws ssm get-command-invocation \
+            --command-id "$command_id" \
+            --instance-id "${{ vars.TIER3_INSTANCE_ID }}" \
+            --query '{Status:Status,ResponseCode:ResponseCode}' --output json
