@@ -23,20 +23,24 @@ Change Set 執行完成後，使用者另開一批 Console／SSM read-only prefl
 
 1. 指定合併後、已全綠的 exact main SHA；production reviewer 必須核對 SHA、mode、固定 legacy release、Region、repository、instance 與 rollback envelope。
 2. Workflow build／push ARM64 immutable image，對 build output 的 exact digest 執行 Trivy；scan 未通過即停止，不得新增 ignore／VEX／skip 或降低 gate。
-3. SSM bootstrap 在第一次 pull 前再次驗證 symlink、legacy unit checksum、legacy health、env metadata，以及沒有既有 container state／release env；任一不符即在 mutation 前 fail closed。
+3. SSM bootstrap 在第一次 pull 前再次驗證 symlink、legacy unit checksum、legacy health、env metadata，以及沒有既有 container state、release env、legacy backup或 stable assets；任一不符即在 mutation 前 fail closed。
 4. Document 只從 exact scanned digest 建立暫時 container，複製 image 內固定 driver 與 container unit；不得下載任意 URL，也不得依賴 active legacy release 裡不存在的 Tier 3 script。
 5. 順序固定為 exact digest pull → migration → legacy `live`／`ready` 再驗證 → target candidate `:8001` `live`／`ready` → 原子保存 legacy unit、checksum、release 與 root-only transition state → 切換 target `:8000`。
 6. Migration 後 legacy 不再 ready，視為 backward-compatible gate 失敗；保持 legacy unit，不切換。Candidate 失敗亦不切換。
-7. Target restart 或 health 失敗，原子恢復 exact legacy unit、`daemon-reload`、restart 並驗證。Restore 失敗必須 nonzero 且保存 `legacy-restore-failed`，不得宣告成功。
-8. 只有 SSM 回傳 `container_release=verified`，且 public edge 的 `/live`、`/ready` 都是 200，才算完成；成功 state 保存 exact active digest、legacy release、legacy／container unit checksum。
+7. Backup、stable asset、state、release env、unit install或 `daemon-reload`任何一步失敗，都要精確恢復 legacy unit、reload、restart並驗證 health，再逐一清除本次建立的五個 transaction files；乾淨恢復後可用相同 exact inputs安全重試。
+8. 若 mutation restore或精確 cleanup本身失敗，保留 mode `0600`的 `legacy-mutation-restore-failed` state與 nonzero結果；不得自動重試或刪除 failure state。程序 crash若留下 pending／checksum不一致也一律 fail closed，等待人工判讀。
+9. Target restart或 health失敗走相同 rollback；不得吞錯或宣告成功。
+10. 只有 SSM回傳 `container_release=verified`，且 public edge的 `/live`、`/ready`都是 200，才算完成；成功 state保存 exact active digest、legacy release、stable driver及 legacy／container unit checksum。
 
 ## 後續 digest release
 
-後續 release 在 login、pull、migration 之前，會核對 state metadata／shape、active env、installed unit checksum、固定 container unit asset checksum與 previous digest。任何不一致都停止。通過後仍依序執行 migration、previous runtime schema-compatible health、target candidate 與 target switch；target 失敗須恢復 previous exact digest，restore 失敗明確 nonzero。這條路徑不降級既有 digest-to-digest rollback。
+後續 release在任何 target pull前，先由目前 active stable driver核對 state metadata／shape、active env、stable driver checksum、stable／installed unit checksum、暫存 backup不存在與 previous digest。任何不一致都停止。Document之後才從 exact scanned target digest擷取本次 driver與unit到暫存區，不使用任意 URL。
+
+通過後依序執行 migration、previous runtime schema-compatible health、target candidate與使用目前 stable unit的第一次 target switch。新 driver／unit在 target `:8000`健康前不得永久安裝；其後先保存 previous stable assets與 pending state，再原子 promotion、`daemon-reload`、以新 unit restart target並再次驗證 `target-promoted` health，最後才寫入新 checksum與 active state。Promotion或第二次 health失敗，必須恢復 previous stable driver、unit、installed unit與 exact previous digest；restore失敗保存 `asset-restore-failed`並 nonzero。Crash留下 pending state、backup或 checksum漂移時 fail closed。這條路徑不降級既有 digest-to-digest rollback。
 
 ## 人工 legacy rollback
 
-`CoStoryTier3LegacyRollback` 只能由使用者在 Console／SSM 單獨操作，輸入 exact active digest 與固定 legacy release。它先核對 root-only state、active env、unit／backup checksum，再以固定 `/opt/co-story/releases/tier1-20260825-4a51e0e/.venv/bin/uvicorn` 啟動 transient systemd candidate，在 `:8001` 驗證 legacy 對現行 schema仍可讀。失敗不切換；切換 legacy 後若 `:8000` 不健康，必須恢復原 container unit與 exact active digest。兩條 rollback 都不執行 schema downgrade。
+`CoStoryTier3LegacyRollback`只能由使用者在 Console／SSM單獨操作，輸入 exact active digest與固定 legacy release。它先核對 root-only state、active env、stable driver、stable／installed unit與legacy backup checksum，再以固定 `/opt/co-story/releases/tier1-20260825-4a51e0e/.venv/bin/uvicorn`啟動 transient systemd candidate，在 `:8001`驗證 legacy對現行 schema仍可讀。失敗不切換；切換 legacy後若 `:8000`不健康，必須恢復原 container unit與 exact active digest。兩條 rollback都不執行 schema downgrade。
 
 ## Release gate
 
@@ -55,6 +59,7 @@ Change Set 執行完成後，使用者另開一批 Console／SSM read-only prefl
 - Docker 未安裝／未 active、ECR 沒有已掃描 target digest或 Change Set 未完成：停止。
 - migration、candidate 或 target health 失敗：停止；target 未啟用或自動恢復 previous digest。
 - legacy／previous restore health 仍失敗：保留 nonzero state並停止；不得覆寫 state、關閉 guard或直接重試 deploy。
+- `legacy-switch-pending`、`digest-switch-pending`、`asset-promotion-pending`、任何 `*-failed` state、previous asset backup殘留或 stable asset checksum漂移：停止並交由人工處置。
 - public edge 與 instance health 不一致、SSM timeout／nonzero、scan digest 與 deploy digest 不一致：停止。
 - Rollback 不降版 PostgreSQL schema；所有 Tier 3 migration 必須先證明 previous image 可讀新 schema。
 

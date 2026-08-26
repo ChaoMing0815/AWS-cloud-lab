@@ -143,6 +143,8 @@ def test_ssm_documents_bound_bootstrap_assets_and_keep_legacy_rollback_human_onl
         'stat -c \'%U:%G:%a\' "$runtime_env"',
         'test ! -e /etc/co-story/container-transition.state',
         'test ! -e /etc/co-story/container-release.env',
+        'test ! -e "$stable_driver"',
+        'test ! -e "$stable_unit"',
         'cmp -s /etc/systemd/system/co-story.service',
         'legacy_preflight',
     ):
@@ -157,6 +159,9 @@ def test_ssm_documents_bound_bootstrap_assets_and_keep_legacy_rollback_human_onl
     digest = template_text.index("digest-release)")
     rollback = template_text.index("LegacyRollbackDocument:")
     digest_block = template_text[digest:rollback]
+    digest_preflight = digest_block.index("preflight-only")
+    digest_pull = digest_block.index('docker pull "$target_image"')
+    assert digest_preflight < digest_pull
     assert 'docker pull "$target_image"' in digest_block
     assert 'docker create --name "$asset_container" "$target_image"' in digest_block
     assert 'docker cp "$asset_container:/usr/local/share/co-story/deploy_container.sh"' in digest_block

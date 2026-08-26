@@ -233,7 +233,7 @@ def test_target_failure_restores_legacy_and_restore_failure_is_nonzero(tmp_path:
     result = _run(env, "legacy-bootstrap")
     assert result.returncode != 0
     state = _host_path(host, "/etc/co-story/container-transition.state").read_text()
-    assert "STATE=legacy-restore-failed" in state
+    assert "STATE=legacy-mutation-restore-failed" in state
 
 
 def test_target_restart_failure_restores_legacy(tmp_path: Path) -> None:
@@ -419,7 +419,37 @@ def test_digest_asset_promotion_failure_restores_previous_assets_and_digest(
     assert "health:previous-restore:8000" in _events(event_log)
 
 
-@pytest.mark.parametrize("mismatch", ("state", "checksum", "env", "previous"))
+def test_digest_asset_restore_failure_is_root_only_and_fail_closed(tmp_path: Path) -> None:
+    host, env, _ = _sandbox(tmp_path)
+    assert _run(env, "legacy-bootstrap").returncode == 0
+    new_driver = tmp_path / "target-deploy-container.sh"
+    new_driver.write_bytes(SCRIPT.read_bytes() + b"\n# target-driver-version\n")
+    new_driver.chmod(0o755)
+    new_unit = tmp_path / "target-container.service"
+    new_unit.write_bytes(UNIT.read_bytes() + b"\n# target-unit-version\n")
+    env["CO_STORY_TEST_FAIL"] = "asset-promotion,previous-restore"
+
+    failed = _run(
+        env,
+        "digest-release",
+        target=NEXT_TARGET,
+        previous=TARGET,
+        legacy="",
+        unit_asset=new_unit,
+        driver_asset=new_driver,
+    )
+
+    assert failed.returncode != 0
+    state = _host_path(host, "/etc/co-story/container-transition.state")
+    assert "STATE=asset-restore-failed" in state.read_text()
+    assert state.stat().st_mode & 0o777 == 0o600
+    assert _host_path(host, "/etc/co-story/previous-stable-driver").exists()
+    assert _host_path(host, "/etc/co-story/previous-stable-unit").exists()
+
+
+@pytest.mark.parametrize(
+    "mismatch", ("state", "checksum", "driver", "env", "previous")
+)
 def test_digest_release_preflight_mismatch_stops_before_migration(
     tmp_path: Path, mismatch: str
 ) -> None:
@@ -440,6 +470,10 @@ def test_digest_release_preflight_mismatch_stops_before_migration(
                 ),
                 "CONTAINER_UNIT_SHA256=" + "0" * 64,
             )
+        )
+    elif mismatch == "driver":
+        _host_path(host, "/usr/local/libexec/co-story-deploy-container").write_text(
+            "stale driver\n"
         )
     elif mismatch == "env":
         release_env.write_text("CO_STORY_CONTAINER_IMAGE=invalid\n")

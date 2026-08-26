@@ -23,6 +23,18 @@ record_event() {
   fi
 }
 
+failure_enabled() {
+  wanted="${1:?failure label required}"
+  failures=",${CO_STORY_TEST_FAIL:-},"
+  case "$failures" in *",$wanted,"*) return 0 ;; *) return 1 ;; esac
+}
+
+mutation_guard() {
+  label="${1:?mutation label required}"
+  record_event "mutation-attempt:$label"
+  ! failure_enabled "$label"
+}
+
 file_metadata() {
   kind="${1:?metadata kind required}"
   path="${2:?metadata path required}"
@@ -54,11 +66,14 @@ atomic_install() {
   directory="$(dirname "$destination")"
   if [ ! -d "$directory" ]; then install -d -m 0755 "$directory"; fi
   temporary="$(mktemp "$directory/.co-story-install.XXXXXX")"
-  install -m "$mode" "$source" "$temporary"
-  if [ -z "$test_root" ]; then
-    chown root:root "$temporary"
+  if ! install -m "$mode" "$source" "$temporary"; then
+    rm -f "$temporary"
+    return 1
   fi
-  mv -f "$temporary" "$destination"
+  if [ -z "$test_root" ]; then
+    if ! chown root:root "$temporary"; then rm -f "$temporary"; return 1; fi
+  fi
+  if ! mv -f "$temporary" "$destination"; then rm -f "$temporary"; return 1; fi
 }
 
 atomic_write() {
@@ -68,26 +83,22 @@ atomic_write() {
   directory="$(dirname "$destination")"
   if [ ! -d "$directory" ]; then install -d -m 0755 "$directory"; fi
   temporary="$(mktemp "$directory/.co-story-state.XXXXXX")"
-  printf '%s' "$content" >"$temporary"
-  chmod "$mode" "$temporary"
+  if ! printf '%s' "$content" >"$temporary"; then rm -f "$temporary"; return 1; fi
+  if ! chmod "$mode" "$temporary"; then rm -f "$temporary"; return 1; fi
   if [ -z "$test_root" ]; then
-    chown root:root "$temporary"
+    if ! chown root:root "$temporary"; then rm -f "$temporary"; return 1; fi
   fi
-  mv -f "$temporary" "$destination"
+  if ! mv -f "$temporary" "$destination"; then rm -f "$temporary"; return 1; fi
 }
 
 wait_for_health() {
   label="${1:?health label required}"
   port="${2:?port required}"
   record_event "health:$label:$port"
-  case "${CO_STORY_TEST_FAIL:-}" in
-    "$label") return 1 ;;
-    target-and-legacy-restore)
-      if [ "$label" = target-active ] || [ "$label" = legacy-restore ]; then
-        return 1
-      fi
-      ;;
-  esac
+  if failure_enabled "$label"; then return 1; fi
+  if failure_enabled target-and-legacy-restore; then
+    if [ "$label" = target-active ] || [ "$label" = legacy-restore ]; then return 1; fi
+  fi
   if [ -n "$test_root" ]; then
     return 0
   fi
@@ -107,7 +118,7 @@ wait_for_health() {
 
 restart_service() {
   label="${1:?restart label required}"
-  if [ "${CO_STORY_TEST_FAIL:-}" = "$label" ]; then
+  if failure_enabled "$label"; then
     return 1
   fi
   systemctl restart co-story.service
@@ -126,6 +137,7 @@ write_transition_state() {
 LEGACY_RELEASE_ID=$expected_legacy_release
 LEGACY_RELEASE_TARGET=$legacy_release
 LEGACY_UNIT_SHA256=$legacy_unit_sha
+DRIVER_SHA256=$driver_sha
 CONTAINER_UNIT_SHA256=$container_unit_sha
 CONTAINER_IMAGE=$image
 "
@@ -142,16 +154,18 @@ state_value() {
 load_container_state() {
   [ -s "$transition_state" ] || fail missing_transition_state
   [ "$(file_metadata state "$transition_state")" = root:root:600 ] || fail invalid_transition_state_metadata
-  [ "$(wc -l <"$transition_state" | tr -d ' ')" -eq 6 ] || fail invalid_transition_state_shape
+  [ "$(wc -l <"$transition_state" | tr -d ' ')" -eq 7 ] || fail invalid_transition_state_shape
   state_status="$(state_value STATE)"
   state_legacy_id="$(state_value LEGACY_RELEASE_ID)"
   state_legacy_release="$(state_value LEGACY_RELEASE_TARGET)"
   state_legacy_unit_sha="$(state_value LEGACY_UNIT_SHA256)"
+  state_driver_sha="$(state_value DRIVER_SHA256)"
   state_container_unit_sha="$(state_value CONTAINER_UNIT_SHA256)"
   state_container_image="$(state_value CONTAINER_IMAGE)"
   [ "$state_legacy_id" = "$expected_legacy_release" ] || fail legacy_state_mismatch
   [ "$state_legacy_release" = "$legacy_release" ] || fail legacy_release_state_mismatch
   [[ "$state_legacy_unit_sha" =~ ^[a-f0-9]{64}$ ]] || fail invalid_legacy_unit_checksum
+  [[ "$state_driver_sha" =~ ^[a-f0-9]{64}$ ]] || fail invalid_driver_checksum
   [[ "$state_container_unit_sha" =~ ^[a-f0-9]{64}$ ]] || fail invalid_container_unit_checksum
   [[ "$state_container_image" =~ ^${repository_uri}@sha256:[a-f0-9]{64}$ ]] || fail invalid_state_image
 }
@@ -215,24 +229,87 @@ check_target_candidate() {
   docker rm -f co-story-candidate >/dev/null
 }
 
-restore_legacy() {
-  record_event mutation:restore-legacy-unit
-  atomic_install "$legacy_unit_backup" "$installed_unit" 0644
-  systemctl daemon-reload
-  if ! restart_service legacy-restore-restart || ! wait_for_health legacy-restore 8000; then
-    write_transition_state legacy-restore-failed "$target_image"
-    return 1
-  fi
-  rm -f "$release_env" "$transition_state" "$legacy_unit_backup"
+mark_legacy_mutation_restore_failed() {
+  rm -f "$release_env"
+  write_transition_state legacy-mutation-restore-failed "$target_image" || true
 }
 
-restore_previous_container() {
-  write_release_env "$previous_image"
-  if ! restart_service previous-restore-restart || ! wait_for_health previous-restore 8000; then
-    write_transition_state container-restore-failed "$previous_image"
+cleanup_bootstrap_transaction() {
+  cleanup_failed=0
+  for exact_path in \
+    "$release_env" "$transition_state" "$stable_driver" \
+    "$stable_container_unit" "$legacy_unit_backup"; do
+    if ! rm -f "$exact_path"; then cleanup_failed=1; fi
+  done
+  [ "$cleanup_failed" -eq 0 ] || return 1
+  for exact_path in \
+    "$release_env" "$transition_state" "$stable_driver" \
+    "$stable_container_unit" "$legacy_unit_backup"; do
+    [ ! -e "$exact_path" ] || return 1
+  done
+}
+
+rollback_legacy_mutation() {
+  record_event mutation:restore-legacy-unit
+  restore_source="$legacy_release/ops/systemd/co-story.service"
+  if [ -s "$legacy_unit_backup" ]; then restore_source="$legacy_unit_backup"; fi
+  if ! atomic_install "$restore_source" "$installed_unit" 0644 \
+    || ! systemctl daemon-reload \
+    || ! restart_service legacy-restore-restart \
+    || ! wait_for_health legacy-restore 8000 \
+    || [ "$(file_sha256 "$installed_unit")" != "$legacy_unit_sha" ]; then
+    mark_legacy_mutation_restore_failed
     return 1
   fi
-  write_transition_state container-active "$previous_image"
+  if ! cleanup_bootstrap_transaction; then
+    mark_legacy_mutation_restore_failed
+    return 1
+  fi
+}
+
+bootstrap_mutation_failed() {
+  reason="${1:?failure reason required}"
+  if ! rollback_legacy_mutation; then
+    fail legacy_mutation_restore_failed
+    return $?
+  fi
+  fail "bootstrap_mutation_$reason"
+}
+
+mark_asset_restore_failed() {
+  driver_sha="$previous_driver_sha"
+  container_unit_sha="$previous_unit_sha"
+  write_transition_state asset-restore-failed "$previous_image" || true
+}
+
+cleanup_previous_asset_backups() {
+  backup_cleanup_failed=0
+  for exact_path in "$previous_driver_backup" "$previous_unit_backup"; do
+    if ! rm -f "$exact_path"; then backup_cleanup_failed=1; fi
+  done
+  [ "$backup_cleanup_failed" -eq 0 ] || return 1
+  [ ! -e "$previous_driver_backup" ] && [ ! -e "$previous_unit_backup" ]
+}
+
+restore_previous_assets_and_container() {
+  record_event mutation:restore-previous-assets
+  driver_sha="$previous_driver_sha"
+  container_unit_sha="$previous_unit_sha"
+  if ! atomic_install "$previous_driver_backup" "$stable_driver" 0755 \
+    || ! atomic_install "$previous_unit_backup" "$stable_container_unit" 0644 \
+    || ! atomic_install "$previous_unit_backup" "$installed_unit" 0644 \
+    || ! systemctl daemon-reload \
+    || ! write_release_env "$previous_image" \
+    || ! restart_service previous-restore-restart \
+    || ! wait_for_health previous-restore 8000 \
+    || ! write_transition_state container-active "$previous_image"; then
+    mark_asset_restore_failed
+    return 1
+  fi
+  if ! cleanup_previous_asset_backups; then
+    mark_asset_restore_failed
+    return 1
+  fi
 }
 
 legacy_bootstrap() {
@@ -242,9 +319,13 @@ legacy_bootstrap() {
   [ ! -e "$transition_state" ] || fail existing_transition_state
   [ ! -e "$release_env" ] || fail existing_container_release_env
   [ ! -e "$legacy_unit_backup" ] || fail existing_legacy_unit_backup
+  [ ! -e "$stable_driver" ] || fail existing_stable_driver
+  [ ! -e "$stable_container_unit" ] || fail existing_stable_container_unit
   [ -f "$container_unit_source" ] || fail missing_container_unit_asset
+  [ -f "$driver_asset_source" ] || fail missing_driver_asset
   cmp -s "$installed_unit" "$legacy_release/ops/systemd/co-story.service" || fail installed_legacy_unit_mismatch
   legacy_unit_sha="$(file_sha256 "$installed_unit")"
+  driver_sha="$(file_sha256 "$driver_asset_source")"
   container_unit_sha="$(file_sha256 "$container_unit_source")"
   wait_for_health legacy-preflight 8000 || fail legacy_preflight_unhealthy
 
@@ -258,19 +339,46 @@ legacy_bootstrap() {
   [ "$(readlink -f "$current_link" 2>/dev/null || true)" = "$legacy_release" ] || fail stale_legacy_symlink
   [ "$(file_sha256 "$installed_unit")" = "$legacy_unit_sha" ] || fail stale_legacy_unit
 
-  atomic_install "$installed_unit" "$legacy_unit_backup" 0600
-  atomic_install "$0" "$stable_driver" 0755
-  atomic_install "$container_unit_source" "$stable_container_unit" 0644
-  write_transition_state legacy-switch-pending "$target_image"
-  write_release_env "$target_image"
+  if ! atomic_install "$installed_unit" "$legacy_unit_backup" 0600; then
+    bootstrap_mutation_failed legacy-backup-install
+    return $?
+  fi
+  if ! mutation_guard stable-driver-install \
+    || ! atomic_install "$driver_asset_source" "$stable_driver" 0755; then
+    bootstrap_mutation_failed stable-driver-install
+    return $?
+  fi
+  if ! atomic_install "$container_unit_source" "$stable_container_unit" 0644; then
+    bootstrap_mutation_failed stable-unit-install
+    return $?
+  fi
+  if ! mutation_guard state-write \
+    || ! write_transition_state legacy-switch-pending "$target_image"; then
+    bootstrap_mutation_failed state-write
+    return $?
+  fi
+  if ! mutation_guard release-env-write || ! write_release_env "$target_image"; then
+    bootstrap_mutation_failed release-env-write
+    return $?
+  fi
   record_event mutation:install-container-unit
-  atomic_install "$container_unit_source" "$installed_unit" 0644
-  systemctl daemon-reload
+  if ! mutation_guard container-unit-install \
+    || ! atomic_install "$container_unit_source" "$installed_unit" 0644; then
+    bootstrap_mutation_failed container-unit-install
+    return $?
+  fi
+  if ! mutation_guard daemon-reload || ! systemctl daemon-reload; then
+    bootstrap_mutation_failed daemon-reload
+    return $?
+  fi
   if ! restart_service target-restart || ! wait_for_health target-active 8000; then
-    if ! restore_legacy; then fail legacy_restore_failed; fi
+    if ! rollback_legacy_mutation; then fail legacy_restore_failed; fi
     fail target_activation_failed
   fi
-  write_transition_state container-active "$target_image"
+  if ! write_transition_state container-active "$target_image"; then
+    bootstrap_mutation_failed final-state-write
+    return $?
+  fi
   printf 'container_release=verified mode=legacy-bootstrap image_digest=%s\n' "$image_digest"
 }
 
@@ -287,12 +395,28 @@ digest_release() {
   [ "$state_container_image" = "$previous_image" ] || fail previous_digest_state_mismatch
   [ "$(cat "$release_env" 2>/dev/null || true)" = "CO_STORY_CONTAINER_IMAGE=$previous_image" ] || fail active_release_env_mismatch
   [ "$(file_sha256 "$installed_unit")" = "$state_container_unit_sha" ] || fail active_container_unit_mismatch
+  [ "$(file_sha256 "$stable_driver")" = "$state_driver_sha" ] || fail active_driver_asset_mismatch
+  [ "$(file_sha256 "$stable_container_unit")" = "$state_container_unit_sha" ] || fail active_unit_asset_mismatch
   [ -f "$container_unit_source" ] || fail missing_container_unit_asset
-  [ "$(file_sha256 "$container_unit_source")" = "$state_container_unit_sha" ] || fail container_unit_asset_mismatch
+  [ -f "$driver_asset_source" ] || fail missing_driver_asset
+  [ ! -e "$previous_driver_backup" ] || fail existing_previous_driver_backup
+  [ ! -e "$previous_unit_backup" ] || fail existing_previous_unit_backup
   legacy_unit_sha="$state_legacy_unit_sha"
-  container_unit_sha="$state_container_unit_sha"
+  previous_driver_sha="$state_driver_sha"
+  previous_unit_sha="$state_container_unit_sha"
+  driver_sha="$previous_driver_sha"
+  container_unit_sha="$previous_unit_sha"
+  target_driver_sha="$(file_sha256 "$driver_asset_source")"
+  target_unit_sha="$(file_sha256 "$container_unit_source")"
+  if [ "$release_action" = preflight-only ]; then
+    printf 'container_release=preflight-verified mode=digest-release previous_image_digest=%s\n' "$previous_image_digest"
+    return 0
+  fi
+  [ "$release_action" = release ] || fail invalid_release_action
   state_fence="$(file_sha256 "$transition_state")"
   unit_fence="$(file_sha256 "$installed_unit")"
+  driver_fence="$(file_sha256 "$stable_driver")"
+  stable_unit_fence="$(file_sha256 "$stable_container_unit")"
 
   login_registry
   docker pull "$previous_image" >/dev/null
@@ -304,14 +428,49 @@ digest_release() {
   if [ "${CO_STORY_TEST_STALE_FENCE:-}" = unit ]; then printf '# stale\n' >>"$installed_unit"; fi
   [ "$(file_sha256 "$transition_state")" = "$state_fence" ] || fail stale_transition_state
   [ "$(file_sha256 "$installed_unit")" = "$unit_fence" ] || fail stale_container_unit
+  [ "$(file_sha256 "$stable_driver")" = "$driver_fence" ] || fail stale_driver_asset
+  [ "$(file_sha256 "$stable_container_unit")" = "$stable_unit_fence" ] || fail stale_unit_asset
   [ "$(cat "$release_env")" = "CO_STORY_CONTAINER_IMAGE=$previous_image" ] || fail stale_release_env
 
-  write_release_env "$target_image"
+  if ! atomic_install "$stable_driver" "$previous_driver_backup" 0600 \
+    || ! atomic_install "$stable_container_unit" "$previous_unit_backup" 0600; then
+    if ! cleanup_previous_asset_backups; then mark_asset_restore_failed; fi
+    fail asset_backup_failed
+    return $?
+  fi
+  if ! write_transition_state digest-switch-pending "$target_image" \
+    || ! write_release_env "$target_image"; then
+    if ! restore_previous_assets_and_container; then fail previous_asset_restore_failed; fi
+    fail digest_switch_prepare_failed
+  fi
   if ! restart_service target-restart || ! wait_for_health target-active 8000; then
-    if ! restore_previous_container; then fail previous_container_restore_failed; fi
+    if ! restore_previous_assets_and_container; then fail previous_container_restore_failed; fi
     fail target_activation_failed
   fi
-  write_transition_state container-active "$target_image"
+  record_event mutation:promote-stable-assets
+  if ! write_transition_state asset-promotion-pending "$target_image" \
+    || ! mutation_guard asset-promotion \
+    || ! atomic_install "$driver_asset_source" "$stable_driver" 0755 \
+    || ! atomic_install "$container_unit_source" "$stable_container_unit" 0644 \
+    || ! atomic_install "$container_unit_source" "$installed_unit" 0644 \
+    || ! systemctl daemon-reload \
+    || ! restart_service target-promoted-restart \
+    || ! wait_for_health target-promoted 8000; then
+    if ! restore_previous_assets_and_container; then fail previous_asset_restore_failed; fi
+    fail asset_promotion_failed
+  fi
+  driver_sha="$target_driver_sha"
+  container_unit_sha="$target_unit_sha"
+  if ! write_transition_state container-active "$target_image"; then
+    driver_sha="$previous_driver_sha"
+    container_unit_sha="$previous_unit_sha"
+    if ! restore_previous_assets_and_container; then fail previous_asset_restore_failed; fi
+    fail final_state_write_failed
+  fi
+  if ! cleanup_previous_asset_backups; then
+    write_transition_state asset-backup-cleanup-failed "$target_image" || true
+    fail asset_backup_cleanup_failed
+  fi
   printf 'container_release=verified mode=digest-release image_digest=%s previous_image_digest=%s\n' \
     "$image_digest" "$previous_image_digest"
 }
@@ -324,10 +483,13 @@ legacy_rollback() {
   [ "$state_status" = container-active ] || fail container_state_not_active
   [ "$state_container_image" = "$target_image" ] || fail active_digest_state_mismatch
   [ "$(cat "$release_env" 2>/dev/null || true)" = "CO_STORY_CONTAINER_IMAGE=$target_image" ] || fail active_release_env_mismatch
+  [ "$(file_sha256 "$stable_driver")" = "$state_driver_sha" ] || fail active_driver_asset_mismatch
+  [ "$(file_sha256 "$stable_container_unit")" = "$state_container_unit_sha" ] || fail active_unit_asset_mismatch
   [ "$(file_sha256 "$installed_unit")" = "$state_container_unit_sha" ] || fail active_container_unit_mismatch
   [ "$(file_sha256 "$legacy_unit_backup")" = "$state_legacy_unit_sha" ] || fail legacy_unit_backup_mismatch
   [ "$(file_sha256 "$container_unit_source")" = "$state_container_unit_sha" ] || fail container_unit_asset_mismatch
   legacy_unit_sha="$state_legacy_unit_sha"
+  driver_sha="$state_driver_sha"
   container_unit_sha="$state_container_unit_sha"
   state_fence="$(file_sha256 "$transition_state")"
   unit_fence="$(file_sha256 "$installed_unit")"
@@ -367,6 +529,8 @@ previous_image_digest="${4-}"
 legacy_release_id="${5-}"
 health_host="${6:?health host required}"
 container_unit_source="${7:?container unit source required}"
+driver_asset_source="${8:?driver asset source required}"
+release_action="${9:-release}"
 
 case "$repository_uri" in
   [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9].dkr.ecr.ap-northeast-1.amazonaws.com/co-story-tier3) ;;
@@ -389,6 +553,8 @@ readonly legacy_release="$(host_path "/opt/co-story/releases/$expected_legacy_re
 readonly log_dir="$(host_path /var/log/co-story)"
 readonly stable_driver="$(host_path /usr/local/libexec/co-story-deploy-container)"
 readonly stable_container_unit="$(host_path /usr/local/share/co-story/co-story-container.service)"
+readonly previous_driver_backup="$(host_path /etc/co-story/previous-stable-driver)"
+readonly previous_unit_backup="$(host_path /etc/co-story/previous-stable-unit)"
 
 case "$mode" in
   legacy-bootstrap) legacy_bootstrap ;;
