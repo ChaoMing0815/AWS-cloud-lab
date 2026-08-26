@@ -1,7 +1,7 @@
 # 共演計劃：LLM／Amazon Bedrock 串接設計
 
 - 狀態：Recovery contract 已實作；正式 Bedrock adapter 待建立
-- 查核日期：2026-08-10
+- 查核日期：2026-08-26
 - AWS 寫入：無
 
 ## 結論
@@ -54,6 +54,18 @@ flowchart LR
 後端先完成 action lock、骰子、星火、成功等級、進度與危機計算，再將固定結果交給 LLM。LLM 只生成敘事與受限的場景建議，不得修改 canonical state。
 
 輸出必須通過 JSON schema、玩家集合、成功等級、字數與 forbidden delta 驗證，通過後才提交。Timeout、retry 與 fallback 依正式 MVP Spec 執行。
+
+目前 text-only narrative adapter 的輸入 contract 已固定為以下順序：
+
+1. 世界前提、不可變主要目標、開場、核心障礙與調性。
+2. 當前回合、回合上限、回合前進度／危機，以及規則引擎已鎖定的本回合 delta。
+3. 最近最多五筆已提交的 narrator／ending 事件；不重送本回合 action event，也不無限制傳送完整歷史。
+4. 每位已結算玩家的角色背景、特質、弱點、具體行動、方式、兩顆骰子、屬性、星火、最終總值、固定結果與 delta。
+5. 因果敘事要求：承接前景、逐人描述結果、把進度與危機寫成事件後果，並由後果形成下一場景。
+
+玩家與世界文字仍放在 Guardrail query data，system instruction 只定義不變 contract。`RoomService`／rules engine 保持唯一狀態權威；Storyteller 只能描述傳入的固定值，不能重新計算或提交任何 state transition。
+
+結局 contract 會傳入不可變 `ending_result`、`ending_cost`、最終進度／危機與最近故事，要求把分類轉成具體成果、犧牲和未解後果。`MockStoryteller` 使用同一組 canonical 資訊產生 deterministic 敘事，供本機 Demo 與 contract regression 使用。
 
 ## Bedrock 呼叫方式
 
