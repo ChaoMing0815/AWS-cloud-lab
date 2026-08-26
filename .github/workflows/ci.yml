@@ -13,6 +13,24 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  branch-boundary:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out source and history
+        uses: actions/checkout@v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Enforce registered branch ownership
+        run: >-
+          python3 scripts/check_branch_boundaries.py
+          --branch "${{ github.head_ref }}"
+          --base "${{ github.event.pull_request.base.sha }}"
+          --head "${{ github.event.pull_request.head.sha }}"
+          --allow-unregistered
+
   backend-tests:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
