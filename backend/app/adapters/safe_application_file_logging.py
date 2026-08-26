@@ -16,6 +16,19 @@ _SAFE_EVENT_KEYS = {
         "latency_ms",
     },
     "co_story.storyteller": {"operation", "failure_code"},
+    "co_story.storyteller_metrics": {
+        "metric_type",
+        "operation",
+        "latency_ms",
+        "input_tokens",
+        "output_tokens",
+    },
+    "co_story.storyteller_recovery": {
+        "metric_type",
+        "operation",
+        "retry_count",
+        "fallback_count",
+    },
 }
 _active_handler: RotatingFileHandler | None = None
 _previous_levels: dict[str, int] = {}

@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import yaml
@@ -29,8 +30,9 @@ def test_template_contains_only_the_bounded_observability_resources() -> None:
         "AWS::Logs::MetricFilter",
         "AWS::IAM::ManagedPolicy",
         "AWS::CloudWatch::Alarm",
+        "AWS::CloudWatch::Dashboard",
     }
-    assert len(resources) == 4
+    assert len(resources) == 12
 
 
 def test_application_log_group_is_fixed_short_lived_and_deletable() -> None:
@@ -48,6 +50,15 @@ def test_application_log_group_is_fixed_short_lived_and_deletable() -> None:
             {"Key": "Tier", "Value": "1"},
         ],
     }
+
+
+def test_system_log_group_is_fixed_short_lived_and_deletable() -> None:
+    resource = _template()["Resources"]["SystemLogGroup"]
+
+    assert resource["DeletionPolicy"] == "Delete"
+    assert resource["UpdateReplacePolicy"] == "Delete"
+    assert resource["Properties"]["LogGroupName"] == "/co-story/tier1/system"
+    assert resource["Properties"]["RetentionInDays"] == 7
 
 
 def test_parameters_bind_policy_to_the_existing_app_role_and_instance() -> None:
@@ -71,12 +82,18 @@ def test_parameters_bind_policy_to_the_existing_app_role_and_instance() -> None:
     }
 
 
-def test_app_policy_writes_only_the_single_instance_log_stream() -> None:
+def test_app_policy_writes_only_fixed_log_streams_and_bounded_system_metrics() -> None:
     policy = _template()["Resources"]["ApplicationLogWritePolicy"]["Properties"]
-    group_arn = {
+    application_group_arn = {
         "Fn::Sub": (
             "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:"
             "log-group:/co-story/tier1/application"
+        )
+    }
+    system_group_arn = {
+        "Fn::Sub": (
+            "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:"
+            "log-group:/co-story/tier1/system"
         )
     }
     stream_arn = {
@@ -93,13 +110,18 @@ def test_app_policy_writes_only_the_single_instance_log_stream() -> None:
         "PolicyDocument",
     }
     assert policy["ManagedPolicyName"] == "AWSFinalProjectTier1ApplicationLogWrite"
+    assert policy["Description"] == (
+        "Lets the existing Co-Story instance write only its Tier 1 application "
+        "log stream."
+    )
     assert policy["Roles"] == [{"Ref": "AppRoleName"}]
-    assert policy["PolicyDocument"]["Statement"] == [
+    statements = policy["PolicyDocument"]["Statement"]
+    assert statements[:2] == [
         {
             "Sid": "DescribeApplicationLogStreams",
             "Effect": "Allow",
             "Action": "logs:DescribeLogStreams",
-            "Resource": group_arn,
+            "Resource": [application_group_arn, system_group_arn],
         },
         {
             "Sid": "WriteSingleInstanceApplicationLogStream",
@@ -108,6 +130,22 @@ def test_app_policy_writes_only_the_single_instance_log_stream() -> None:
             "Resource": stream_arn,
         },
     ]
+    assert statements[2]["Action"] == ["logs:CreateLogStream", "logs:PutLogEvents"]
+    assert statements[2]["Resource"] == {
+        "Fn::Sub": (
+            "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:"
+            "log-group:/co-story/tier1/system:log-stream:${AppInstanceId}"
+        )
+    }
+    assert statements[3] == {
+        "Sid": "PublishBoundedSystemMetrics",
+        "Effect": "Allow",
+        "Action": "cloudwatch:PutMetricData",
+        "Resource": "*",
+        "Condition": {
+            "StringEquals": {"cloudwatch:namespace": "CoStory/Tier1/System"}
+        },
+    }
 
 
 def test_metric_filter_counts_only_json_request_5xx_without_dimensions() -> None:
@@ -153,6 +191,46 @@ def test_alarm_triggers_on_one_5xx_in_one_minute_without_actions() -> None:
     }
 
 
+def test_metric_filters_cover_latency_tokens_retry_and_fallback() -> None:
+    resources = _template()["Resources"]
+    expected = {
+        "ApplicationLatencyMetricFilter": ("ApplicationLatencyMs", "$.latency_ms", "Milliseconds"),
+        "StorytellerLatencyMetricFilter": ("StorytellerLatencyMs", "$.latency_ms", "Milliseconds"),
+        "StorytellerInputTokenMetricFilter": ("StorytellerInputTokens", "$.input_tokens", "Count"),
+        "StorytellerOutputTokenMetricFilter": ("StorytellerOutputTokens", "$.output_tokens", "Count"),
+        "StorytellerRetryMetricFilter": ("StorytellerRetries", "$.retry_count", "Count"),
+        "StorytellerFallbackMetricFilter": ("StorytellerFallbacks", "$.fallback_count", "Count"),
+    }
+    for logical_id, (metric_name, value, unit) in expected.items():
+        props = resources[logical_id]["Properties"]
+        assert props["LogGroupName"] == {"Ref": "ApplicationLogGroup"}
+        transformation = props["MetricTransformations"][0]
+        assert transformation["MetricName"] == metric_name
+        assert transformation["MetricNamespace"] == "CoStory/Tier1"
+        assert transformation["MetricValue"] == value
+        assert transformation["Unit"] == unit
+
+
+def test_dashboard_visualizes_application_ai_and_system_signals() -> None:
+    dashboard = _template()["Resources"]["Tier1Dashboard"]["Properties"]
+    assert dashboard["DashboardName"] == "co-story-tier1-observability"
+    body = json.loads(dashboard["DashboardBody"]["Fn::Sub"])
+    rendered = json.dumps(body)
+    for signal in (
+        "Application5xx",
+        "ApplicationLatencyMs",
+        "StorytellerLatencyMs",
+        "StorytellerInputTokens",
+        "StorytellerOutputTokens",
+        "StorytellerRetries",
+        "StorytellerFallbacks",
+        "EstimatedBedrockCostUsd",
+        "mem_used_percent",
+        "disk_used_percent",
+    ):
+        assert signal in rendered
+
+
 def test_template_grants_no_log_group_management_or_unrelated_services() -> None:
     template = _template()
     rendered = TEMPLATE.read_text(encoding="utf-8")
@@ -160,7 +238,8 @@ def test_template_grants_no_log_group_management_or_unrelated_services() -> None
     assert "logs:CreateLogGroup" not in rendered
     assert "logs:PutRetentionPolicy" not in rendered
     assert "CloudWatchAgentServerPolicy" not in rendered
-    assert "Resource: '*'" not in rendered
+    assert rendered.count("Resource: '*'") == 1
+    assert "cloudwatch:namespace" in rendered
     assert 'Resource: "*"' not in rendered
     assert all(
         not resource["Type"].startswith(("AWS::SNS::", "AWS::SSM::", "AWS::Lambda::"))
@@ -168,7 +247,9 @@ def test_template_grants_no_log_group_management_or_unrelated_services() -> None
     )
 
 
-def test_template_outputs_only_the_fixed_log_group_name() -> None:
+def test_template_outputs_fixed_observability_names() -> None:
     assert _template()["Outputs"] == {
-        "ApplicationLogGroupName": {"Value": {"Ref": "ApplicationLogGroup"}}
+        "ApplicationLogGroupName": {"Value": {"Ref": "ApplicationLogGroup"}},
+        "SystemLogGroupName": {"Value": {"Ref": "SystemLogGroup"}},
+        "DashboardName": {"Value": "co-story-tier1-observability"},
     }

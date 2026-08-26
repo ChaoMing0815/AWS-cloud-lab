@@ -1,5 +1,7 @@
 from copy import deepcopy
 from datetime import datetime, timezone
+import json
+import logging
 
 import pytest
 from fastapi.testclient import TestClient
@@ -139,6 +141,44 @@ def test_retryable_story_failure_retries_once_with_identical_draft(failure_code:
     assert resolved.resolution_attempts == 2
     assert resolved.resolution_mode == "storyteller"
     assert resolved.resolution_failure_code is None
+
+
+def test_retry_and_fallback_emit_bounded_recovery_metrics(caplog) -> None:
+    storyteller = ScriptedStoryteller(
+        [StorytellerFailure("TIMEOUT"), StorytellerFailure("TIMEOUT")]
+    )
+    service, _repository = service_with(storyteller)
+
+    with caplog.at_level(logging.INFO, logger="co_story.storyteller_recovery"):
+        failed = resolve(service)
+        service.fallback_round(
+            room_id=failed.id,
+            round_number=1,
+            expected_version=failed.version,
+            host_token="host-token",
+            csrf_token="host-csrf",
+            idempotency_key="story-fallback-metrics",
+        )
+
+    events = [
+        json.loads(record.message)
+        for record in caplog.records
+        if record.name == "co_story.storyteller_recovery"
+    ]
+    assert events == [
+        {
+            "metric_type": "storyteller_recovery",
+            "operation": "resolve_round_narrative",
+            "retry_count": 1,
+            "fallback_count": 0,
+        },
+        {
+            "metric_type": "storyteller_recovery",
+            "operation": "resolve_round_narrative",
+            "retry_count": 0,
+            "fallback_count": 1,
+        },
+    ]
 
 
 def test_retry_exhaustion_preserves_rules_state_and_records_failure() -> None:

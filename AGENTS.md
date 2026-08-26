@@ -40,6 +40,10 @@ Tier 0  共演計劃可玩 Web App + 公私網段 + 私有資料層
 
 禁止為建立背景而遞迴讀取整個 `docs/`。同一 task 內已完整讀取且未變更的文件不得重讀；先用 `rg` 定位檔案與章節，再讀必要範圍。測試輸出只保留 pass／fail 摘要與失敗片段。若任務涉及 AWS 實作，仍必須確認目前 AWS 成本、安全與資源狀態，不可假設環境已準備完成。
 
+## 平行分支工作邊界
+
+若目前 branch 存在於 [`.agents/work-boundaries.json`](.agents/work-boundaries.json)，開工前必須完整讀取該 policy 與 [`docs/governance/parallel-branch-boundaries.md`](docs/governance/parallel-branch-boundaries.md)。只能修改該 branch 的 `allowed_paths`；`protected_paths` 與白名單外路徑一律禁止。需要擴張權限時停止工作並交回整合 task，不得自行修改 policy、checker 或治理文件。交付前必須執行 `scripts/check_branch_boundaries.py` 並取得 `branch_boundary=passed`。
+
 ## 風險式模型路由
 
 - R0（文件、格式、rename、inventory）：Luna；不可用時使用 Terra low。

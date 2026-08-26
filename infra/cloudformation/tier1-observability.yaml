@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Tier 1 Co-Story bounded application log group and single-instance write access.
+Description: Tier 1 Co-Story bounded logs, metrics, dashboard, alarm, and single-instance write access.
 
 Parameters:
   AppRoleName:
@@ -28,6 +28,22 @@ Resources:
         - Key: Tier
           Value: '1'
 
+  SystemLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName: /co-story/tier1/system
+      LogGroupClass: STANDARD
+      RetentionInDays: 7
+      Tags:
+        - Key: Name
+          Value: co-story-tier1-system
+        - Key: Project
+          Value: co-story
+        - Key: Tier
+          Value: '1'
+
   Application5xxMetricFilter:
     Type: AWS::Logs::MetricFilter
     DeletionPolicy: Delete
@@ -42,6 +58,96 @@ Resources:
           MetricName: Application5xx
           MetricNamespace: CoStory/Tier1
           MetricValue: '1'
+          Unit: Count
+
+  ApplicationLatencyMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      FilterName: co-story-tier1-application-latency
+      FilterPattern: '{ ($.request_id = *) && ($.latency_ms = *) }'
+      LogGroupName:
+        Ref: ApplicationLogGroup
+      MetricTransformations:
+        - MetricName: ApplicationLatencyMs
+          MetricNamespace: CoStory/Tier1
+          MetricValue: $.latency_ms
+          Unit: Milliseconds
+
+  StorytellerLatencyMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      FilterName: co-story-tier1-storyteller-latency
+      FilterPattern: '{ $.metric_type = "storyteller_usage" }'
+      LogGroupName:
+        Ref: ApplicationLogGroup
+      MetricTransformations:
+        - MetricName: StorytellerLatencyMs
+          MetricNamespace: CoStory/Tier1
+          MetricValue: $.latency_ms
+          Unit: Milliseconds
+
+  StorytellerInputTokenMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      FilterName: co-story-tier1-storyteller-input-tokens
+      FilterPattern: '{ $.metric_type = "storyteller_usage" }'
+      LogGroupName:
+        Ref: ApplicationLogGroup
+      MetricTransformations:
+        - MetricName: StorytellerInputTokens
+          MetricNamespace: CoStory/Tier1
+          MetricValue: $.input_tokens
+          Unit: Count
+
+  StorytellerOutputTokenMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      FilterName: co-story-tier1-storyteller-output-tokens
+      FilterPattern: '{ $.metric_type = "storyteller_usage" }'
+      LogGroupName:
+        Ref: ApplicationLogGroup
+      MetricTransformations:
+        - MetricName: StorytellerOutputTokens
+          MetricNamespace: CoStory/Tier1
+          MetricValue: $.output_tokens
+          Unit: Count
+
+  StorytellerRetryMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      FilterName: co-story-tier1-storyteller-retries
+      FilterPattern: '{ $.metric_type = "storyteller_recovery" }'
+      LogGroupName:
+        Ref: ApplicationLogGroup
+      MetricTransformations:
+        - MetricName: StorytellerRetries
+          MetricNamespace: CoStory/Tier1
+          MetricValue: $.retry_count
+          Unit: Count
+
+  StorytellerFallbackMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      FilterName: co-story-tier1-storyteller-fallbacks
+      FilterPattern: '{ $.metric_type = "storyteller_recovery" }'
+      LogGroupName:
+        Ref: ApplicationLogGroup
+      MetricTransformations:
+        - MetricName: StorytellerFallbacks
+          MetricNamespace: CoStory/Tier1
+          MetricValue: $.fallback_count
           Unit: Count
 
   Application5xxAlarm:
@@ -63,6 +169,91 @@ Resources:
       TreatMissingData: notBreaching
       Unit: Count
 
+  Tier1Dashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: co-story-tier1-observability
+      DashboardBody:
+        Fn::Sub: |
+          {
+            "widgets": [
+              {
+                "type": "metric",
+                "x": 0,
+                "y": 0,
+                "width": 12,
+                "height": 6,
+                "properties": {
+                  "title": "Application errors and latency",
+                  "region": "${AWS::Region}",
+                  "view": "timeSeries",
+                  "period": 60,
+                  "stat": "Sum",
+                  "metrics": [
+                    ["CoStory/Tier1", "Application5xx", {"label": "5xx", "stat": "Sum"}],
+                    ["CoStory/Tier1", "ApplicationLatencyMs", {"label": "HTTP latency p95", "stat": "p95", "yAxis": "right"}]
+                  ]
+                }
+              },
+              {
+                "type": "metric",
+                "x": 12,
+                "y": 0,
+                "width": 12,
+                "height": 6,
+                "properties": {
+                  "title": "Storyteller latency and token usage",
+                  "region": "${AWS::Region}",
+                  "view": "timeSeries",
+                  "period": 60,
+                  "metrics": [
+                    ["CoStory/Tier1", "StorytellerLatencyMs", {"label": "LLM latency p95", "stat": "p95", "yAxis": "right"}],
+                    ["CoStory/Tier1", "StorytellerInputTokens", {"id": "m_input", "label": "Input tokens", "stat": "Sum"}],
+                    ["CoStory/Tier1", "StorytellerOutputTokens", {"id": "m_output", "label": "Output tokens", "stat": "Sum"}],
+                    [{"expression": "(m_input*0.00006+m_output*0.00024)/1000", "id": "e_cost", "label": "EstimatedBedrockCostUsd", "yAxis": "right"}]
+                  ]
+                }
+              },
+              {
+                "type": "metric",
+                "x": 0,
+                "y": 6,
+                "width": 12,
+                "height": 6,
+                "properties": {
+                  "title": "Storyteller recovery",
+                  "region": "${AWS::Region}",
+                  "view": "timeSeries",
+                  "period": 60,
+                  "stat": "Sum",
+                  "metrics": [
+                    ["CoStory/Tier1", "StorytellerRetries", {"label": "Retries"}],
+                    ["CoStory/Tier1", "StorytellerFallbacks", {"label": "Fallbacks"}]
+                  ]
+                }
+              },
+              {
+                "type": "metric",
+                "x": 12,
+                "y": 6,
+                "width": 12,
+                "height": 6,
+                "properties": {
+                  "title": "EC2 memory and root disk",
+                  "region": "${AWS::Region}",
+                  "view": "timeSeries",
+                  "period": 60,
+                  "stat": "Average",
+                  "yAxis": {"left": {"min": 0, "max": 100}},
+                  "metrics": [
+                    ["CoStory/Tier1/System", "mem_used_percent", "InstanceId", "${AppInstanceId}", {"label": "Memory used %"}],
+                    ["CoStory/Tier1/System", "disk_used_percent", "InstanceId", "${AppInstanceId}", {"label": "Root disk used %"}]
+                  ]
+                }
+              }
+            ]
+          }
+
   ApplicationLogWritePolicy:
     Type: AWS::IAM::ManagedPolicy
     Properties:
@@ -77,7 +268,8 @@ Resources:
             Effect: Allow
             Action: logs:DescribeLogStreams
             Resource:
-              Fn::Sub: arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/co-story/tier1/application
+              - Fn::Sub: arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/co-story/tier1/application
+              - Fn::Sub: arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/co-story/tier1/system
           - Sid: WriteSingleInstanceApplicationLogStream
             Effect: Allow
             Action:
@@ -85,8 +277,27 @@ Resources:
               - logs:PutLogEvents
             Resource:
               Fn::Sub: arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/co-story/tier1/application:log-stream:${AppInstanceId}
+          - Sid: WriteSingleInstanceSystemLogStream
+            Effect: Allow
+            Action:
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Resource:
+              Fn::Sub: arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/co-story/tier1/system:log-stream:${AppInstanceId}
+          - Sid: PublishBoundedSystemMetrics
+            Effect: Allow
+            Action: cloudwatch:PutMetricData
+            Resource: '*'
+            Condition:
+              StringEquals:
+                cloudwatch:namespace: CoStory/Tier1/System
 
 Outputs:
   ApplicationLogGroupName:
     Value:
       Ref: ApplicationLogGroup
+  SystemLogGroupName:
+    Value:
+      Ref: SystemLogGroup
+  DashboardName:
+    Value: co-story-tier1-observability

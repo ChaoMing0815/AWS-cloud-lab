@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "protected_paths": [
+    ".agents/work-boundaries.json",
+    "AGENTS.md",
+    "README.md",
+    "docs/checkpoints.md",
+    "docs/deployment-log.md",
+    "docs/governance/parallel-branch-boundaries.md",
+    "docs/handoffs/CURRENT.md",
+    "docs/product/source-of-truth.md",
+    "docs/project-plan.md",
+    "docs/task-list.md",
+    "scripts/check_branch_boundaries.py"
+  ],
+  "branches": {
+    "codex/story-quality": {
+      "purpose": "改善玩家行為、危機、進度與結局的敘事品質及相關網頁體驗",
+      "allowed_paths": [
+        "backend/app/adapters/bedrock_storyteller.py",
+        "backend/app/adapters/mock_storyteller.py",
+        "backend/tests/test_bedrock_storyteller.py",
+        "backend/tests/test_ending_policy.py",
+        "backend/tests/test_story*.py",
+        "backend/tests/test_world_generation_api.py",
+        "web/**",
+        "docs/architecture/llm-integration.md",
+        "docs/features/story-quality.md",
+        "docs/evidence/2026-*-story-quality/**"
+      ]
+    },
+    "codex/tier3-delivery": {
+      "purpose": "建立容器、ECR、GitHub OIDC、CI/CD、SSM release 與 rollback 垂直切片",
+      "allowed_paths": [
+        ".dockerignore",
+        ".github/workflows/**",
+        "Dockerfile",
+        "Dockerfile.*",
+        "backend/requirements-prod.txt",
+        "backend/tests/test_container*.py",
+        "backend/tests/test_github_ci_workflow.py",
+        "backend/tests/test_tier3*.py",
+        "docker-compose*.yml",
+        "docs/architecture/tier3-*.md",
+        "docs/evidence/2026-*-tier3-*/**",
+        "docs/runbooks/tier3-*.md",
+        "infra/cloudformation/tier3-*.yaml",
+        "ops/container/**",
+        "ops/release/**",
+        "ops/systemd/co-story-container*.service"
+      ]
+    }
+  }
+}

@@ -1,0 +1,150 @@
+name: Tier 3 container release
+
+on:
+  workflow_dispatch:
+    inputs:
+      previous_image_digest:
+        description: Previously verified ECR image digest used for rollback
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tier3-production-release
+  cancel-in-progress: false
+
+jobs:
+  record-request:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      requested_epoch: ${{ steps.request.outputs.requested_epoch }}
+    steps:
+      - name: Record measurement start
+        id: request
+        run: echo "requested_epoch=$(date +%s)" >> "$GITHUB_OUTPUT"
+
+  approval-gate:
+    if: github.ref == 'refs/heads/main'
+    needs: record-request
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment: production
+    outputs:
+      requested_epoch: ${{ needs.record-request.outputs.requested_epoch }}
+      approved_epoch: ${{ steps.approval.outputs.approved_epoch }}
+    steps:
+      - name: Record bounded approval gate
+        id: approval
+        run: |
+          test "${{ github.ref }}" = refs/heads/main
+          echo "approved_epoch=$(date +%s)" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    needs: approval-gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Record automation start
+        id: deploy_timing
+        run: echo "started_epoch=$(date +%s)" >> "$GITHUB_OUTPUT"
+      - name: Check out approved source
+        uses: actions/checkout@v6.0.2
+        with:
+          persist-credentials: false
+      - name: Validate previous digest
+        env:
+          PREVIOUS_IMAGE_DIGEST: ${{ inputs.previous_image_digest }}
+        run: |
+          if [[ ! "$PREVIOUS_IMAGE_DIGEST" =~ ^sha256:[a-f0-9]{64}$ ]]; then
+            printf '%s\n' 'invalid previous image digest' >&2
+            exit 2
+          fi
+      - name: Configure bounded AWS credentials
+        uses: aws-actions/configure-aws-credentials@v5.1.0
+        with:
+          role-to-assume: ${{ vars.TIER3_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - name: Log in to the bounded ECR registry
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2.0.1
+      - name: Set up ARM64 emulation
+        uses: docker/setup-qemu-action@v3.6.0
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3.11.1
+      - name: Build and push immutable commit image
+        id: build
+        uses: docker/build-push-action@v6.18.0
+        with:
+          context: .
+          platforms: linux/arm64
+          push: true
+          tags: ${{ steps.ecr.outputs.registry }}/${{ vars.TIER3_ECR_REPOSITORY }}:${{ github.sha }}
+      - name: Scan the exact pushed digest
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          version: v0.70.0
+          image-ref: ${{ steps.ecr.outputs.registry }}/${{ vars.TIER3_ECR_REPOSITORY }}@${{ steps.build.outputs.digest }}
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: 1
+      - name: Record verified artifact timing
+        id: artifact_timing
+        run: echo "artifact_ready_epoch=$(date +%s)" >> "$GITHUB_OUTPUT"
+      - name: Release exact digest through bounded SSM document
+        id: release_timing
+        env:
+          IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
+          PREVIOUS_IMAGE_DIGEST: ${{ inputs.previous_image_digest }}
+          REPOSITORY_URI: ${{ steps.ecr.outputs.registry }}/${{ vars.TIER3_ECR_REPOSITORY }}
+        run: |
+          echo "release_started_epoch=$(date +%s)" >> "$GITHUB_OUTPUT"
+          command_id="$(aws ssm send-command \
+            --document-name CoStoryTier3ContainerRelease \
+            --targets "Key=InstanceIds,Values=${{ vars.TIER3_INSTANCE_ID }}" \
+            --parameters "RepositoryUri=$REPOSITORY_URI,ImageDigest=$IMAGE_DIGEST,PreviousImageDigest=$PREVIOUS_IMAGE_DIGEST" \
+            --comment "co-story tier3 ${{ github.sha }}" \
+            --cloud-watch-output-config CloudWatchOutputEnabled=false \
+            --query 'Command.CommandId' --output text)"
+          aws ssm wait command-executed \
+            --command-id "$command_id" \
+            --instance-id "${{ vars.TIER3_INSTANCE_ID }}"
+          aws ssm get-command-invocation \
+            --command-id "$command_id" \
+            --instance-id "${{ vars.TIER3_INSTANCE_ID }}" \
+            --query '{Status:Status,ResponseCode:ResponseCode}' --output json
+      - name: Write sanitized delivery metrics
+        if: always()
+        env:
+          REQUESTED_EPOCH: ${{ needs.approval-gate.outputs.requested_epoch }}
+          APPROVED_EPOCH: ${{ needs.approval-gate.outputs.approved_epoch }}
+          DEPLOY_STARTED_EPOCH: ${{ steps.deploy_timing.outputs.started_epoch }}
+          ARTIFACT_READY_EPOCH: ${{ steps.artifact_timing.outputs.artifact_ready_epoch }}
+          RELEASE_STARTED_EPOCH: ${{ steps.release_timing.outputs.release_started_epoch }}
+        run: >-
+          python3 ops/release/write_delivery_metrics.py
+          --output outputs/tier3-delivery-metrics.json
+          --status "${{ job.status }}"
+          --commit-sha "${{ github.sha }}"
+          --workflow-run-id "${{ github.run_id }}"
+          --request-epoch "$REQUESTED_EPOCH"
+          --approval-epoch "$APPROVED_EPOCH"
+          --deploy-start-epoch "$DEPLOY_STARTED_EPOCH"
+          --artifact-ready-epoch "$ARTIFACT_READY_EPOCH"
+          --release-start-epoch "$RELEASE_STARTED_EPOCH"
+          --completed-epoch "$(date +%s)"
+      - name: Preserve delivery metrics artifact
+        if: always()
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: tier3-delivery-metrics-${{ github.run_id }}
+          path: outputs/tier3-delivery-metrics.json
+          if-no-files-found: error
+          retention-days: 30

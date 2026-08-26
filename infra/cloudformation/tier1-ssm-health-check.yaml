@@ -1,0 +1,51 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Tier 1 Co-Story parameter-free SSM service, liveness, and readiness check.
+
+Resources:
+  HealthCheckDocument:
+    Type: AWS::SSM::Document
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      Name: CoStoryHealthCheck
+      DocumentType: Command
+      DocumentFormat: YAML
+      TargetType: /AWS::EC2::Instance
+      UpdateMethod: NewVersion
+      Content:
+        schemaVersion: '2.2'
+        description: Check the fixed Co-Story service, liveness, and readiness endpoints without exposing runtime configuration.
+        parameters: {}
+        mainSteps:
+          - action: aws:runShellScript
+            name: CheckCoStoryHealth
+            precondition:
+              StringEquals:
+                - platformType
+                - Linux
+            inputs:
+              timeoutSeconds: '30'
+              runCommand:
+                - '#!/bin/bash'
+                - 'set -euo pipefail'
+                - 'readonly runtime_env=''/etc/co-story/runtime.env'''
+                - 'readonly health_base_url=''http://127.0.0.1:8000'''
+                - 'test -r "$runtime_env"'
+                - 'host_header="$(awk -F= ''$1 == "CO_STORY_ALLOWED_HOSTS" { split($2, hosts, ","); print hosts[1]; exit }'' "$runtime_env")"'
+                - 'case "$host_header" in ''''|*[!A-Za-z0-9._:-]*) printf ''health_check=invalid_host_configuration\n'' >&2; exit 1 ;; esac'
+                - 'systemctl is-active --quiet co-story.service'
+                - 'curl --fail --silent --show-error --max-time 5 --header "Host: $host_header" "$health_base_url/api/v1/live" >/dev/null'
+                - 'curl --fail --silent --show-error --max-time 5 --header "Host: $host_header" "$health_base_url/api/v1/ready" >/dev/null'
+                - 'printf ''service=active\nlive=200\nready=200\n'''
+      Tags:
+        - Key: Name
+          Value: co-story-tier1-health-check
+        - Key: Project
+          Value: co-story
+        - Key: Tier
+          Value: '1'
+
+Outputs:
+  HealthCheckDocumentName:
+    Value:
+      Ref: HealthCheckDocument

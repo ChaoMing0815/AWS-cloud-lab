@@ -1,0 +1,12 @@
+[Unit]
+Description=Write bounded Co-Story system health telemetry every five minutes
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=5min
+AccuracySec=15s
+Persistent=false
+Unit=co-story-system-health.service
+
+[Install]
+WantedBy=timers.target

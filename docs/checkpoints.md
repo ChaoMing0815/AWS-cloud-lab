@@ -67,13 +67,13 @@ Demo 與每日進度依本清單逐項驗收。檔案存在不代表完成；必
 
 ## Tier 1：CloudWatch、AIOps、SSM
 
-- [ ] CloudWatch 可看到 application／system logs 與基本 metrics。
-- [ ] Dashboard 顯示 error、latency、LLM token／retry／fallback。
-- [ ] 至少一個 alarm 可觸發並留下證據。
-- [ ] EC2 不開 public SSH；Session Manager 可連線。
-- [ ] Run Command 可執行受控檢查或 restart。
-- [ ] AIOps Agent 可讀 logs，摘要 root cause 並提出 recovery action。
-- [ ] 已完成一次偵測→判讀→人工批准→修復 incident Demo。
+- [x] CloudWatch 可看到 application／system logs 與基本 metrics。
+- [x] Dashboard 顯示 error、latency、LLM token／retry／fallback。
+- [x] 至少一個 alarm 可觸發並留下證據。
+- [x] EC2 不開 public SSH；Session Manager 可連線。
+- [x] Run Command 可執行受控檢查或 restart。
+- [x] AIOps Agent 可讀 logs，摘要 root cause 並提出 recovery action。
+- [x] 已完成一次偵測→判讀→人工批准→修復 incident Demo。
 
 ## Tier 2：三組件與網段隔離
 

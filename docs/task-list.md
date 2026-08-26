@@ -83,12 +83,12 @@
 
 ## D. Tier 1：可觀測性、AIOps、SSM
 
-- [ ] 建立 CloudWatch application／system logs、metrics、dashboard 與 alarm。
-- [ ] 記錄 HTTP error、LLM latency、token、retry、fallback 與估計成本。
-- [ ] 以 Session Manager 登入，證明 `22/tcp` 未開放。
-- [ ] 以 Run Command 執行受控 health／restart 操作。
-- [ ] 建立最小 AIOps Agent，讀取 logs 並摘要 root cause／建議動作。
-- [ ] 模擬一次 500 或 DB 連線失敗，完成偵測→判讀→人工批准→修復 Demo。
+- [x] 建立 CloudWatch application／system logs、metrics、dashboard 與 alarm。
+- [x] 記錄 HTTP error、LLM latency、token、retry、fallback 與估計成本。
+- [x] 以 Session Manager 登入，證明 `22/tcp` 未開放。
+- [x] 以 Run Command 執行受控 health／restart 操作。
+- [x] 建立最小 AIOps Agent，讀取 logs 並摘要 root cause／建議動作。
+- [x] 模擬一次 500 或 DB 連線失敗，完成偵測→判讀→人工批准→修復 Demo。
 
 ## E. Tier 2：三組件切割
 

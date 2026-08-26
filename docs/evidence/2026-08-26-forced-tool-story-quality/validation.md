@@ -1,0 +1,13 @@
+# Forced-tool structured causal narrative 驗證摘要
+- Scope／risk：round／ending Bedrock output contract；R2；不改世界生成、port、domain 或 API。
+- Baseline：Backend `367 passed, 8 skipped`；Frontend `94 passed`；branch tip `bfb172b`。
+- Red commit：`9010bfa`；合法 toolUse 無法解析、request 未強制 tool、text JSON 仍被接受。
+- Green commit：`d2821e4`。
+- Request contract：每個 narrative request 恰好一個 output-only tool、指定 `toolChoice.tool`、`strict=true`。
+- Round schema：narrative、canonical per-player consequence、進度、危機與 next scene hook。
+- Ending schema：ending narrative、achieved outcome、paid cost／sacrifice、unresolved consequence。
+- Targeted verification：forced-tool／strict rejection／metrics／history／length共 `21 passed`。
+- Adapter suite：`57 passed`；affected Bedrock／recovery／ending／rooms／world generation `112 passed`。
+- Full Backend regression：`378 passed, 8 skipped`；Frontend：`94 passed`。
+- Sensitivity：放寬 single-block guard 後 extra-content test 如期失敗；還原後通過。
+- Residual risk：尚未以真實 Nova Lite 驗證 forced specific tool、strict schema 與 Guardrail 組合；目前只使用 fake Converse client。
