@@ -74,6 +74,8 @@ Resources:
     Properties:
       RoleName: AWSFinalProjectGitHubDeployRole
       Description: Main-branch GitHub OIDC role for one ECR repository and one bounded SSM release target.
+      PermissionsBoundary:
+        Fn::Sub: arn:${AWS::Partition}:iam::aws:policy/PowerUserAccess
       MaxSessionDuration: 3600
       AssumeRolePolicyDocument:
         Version: '2012-10-17'

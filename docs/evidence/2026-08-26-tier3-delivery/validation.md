@@ -1,8 +1,8 @@
 # Tier 3 delivery foundation 驗證摘要
 - Scope／risk／upstream source：current monolith container、CI、OIDC／ECR／SSM release；R3；CURRENT 與 IAM boundaries。
 - Baseline：Backend `363 passed, 8 skipped`；Frontend `94 passed`。
-- Red commits：`6d74a1a`、`2e095cb`、`42a2ca5`、`3c49733`、`1bbe71b`、`a1d4ce0`。
-- Green commits：delivery foundation `b1c8cb1`；metrics artifact 為本次 `feat(green)` commit。
+- Red commits：`6d74a1a`、`2e095cb`、`42a2ca5`、`3c49733`、`1bbe71b`、`a1d4ce0`、`9fd6fc8`。
+- Green commits：delivery foundation `b1c8cb1`；metrics artifact `aa2fe2b`；IAM boundary 為本次 `fix(green)` commit。
 - Targeted verification：Tier 3 delivery 11 passed；既有 affected release／runtime／observability suite 44 passed。
 - Container contract：image build passed；UID `10001`、Docker `healthy`、`/live`＋`/ready`、外部 env 與 safe JSONL bind mount passed。
 - CI contract：Backend／Frontend 完成後才 build；HIGH／CRITICAL scan fail closed；CI 無 AWS identity。
