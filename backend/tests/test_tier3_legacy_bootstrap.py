@@ -28,7 +28,7 @@ def _host_path(root: Path, absolute: str) -> Path:
 def _sandbox(tmp_path: Path) -> tuple[Path, dict[str, str], Path]:
     host = tmp_path / "host"
     fake_bin = tmp_path / "bin"
-    fake_bin.mkdir()
+    fake_bin.mkdir(parents=True)
     events = tmp_path / "events.log"
     legacy_release = _host_path(host, f"/opt/co-story/releases/{LEGACY}")
     legacy_unit = legacy_release / "ops/systemd/co-story.service"
@@ -225,6 +225,18 @@ def test_target_failure_restores_legacy_and_restore_failure_is_nonzero(tmp_path:
     assert "STATE=legacy-restore-failed" in state
 
 
+def test_target_restart_failure_restores_legacy(tmp_path: Path) -> None:
+    host, env, event_log = _sandbox(tmp_path)
+    original = _host_path(host, "/etc/systemd/system/co-story.service").read_text()
+    env["CO_STORY_TEST_FAIL"] = "target-restart"
+
+    result = _run(env, "legacy-bootstrap")
+
+    assert result.returncode != 0
+    assert _host_path(host, "/etc/systemd/system/co-story.service").read_text() == original
+    assert "health:legacy-restore:8000" in _events(event_log)
+
+
 def test_digest_release_fences_state_and_restores_previous_digest(tmp_path: Path) -> None:
     host, env, event_log = _sandbox(tmp_path)
     assert _run(env, "legacy-bootstrap").returncode == 0
@@ -261,6 +273,47 @@ def test_digest_release_fences_state_and_restores_previous_digest(tmp_path: Path
     env["CO_STORY_TEST_STALE_FENCE"] = "unit"
     stale = _run(env, "digest-release", target=third, previous=NEXT_TARGET, legacy="")
     assert stale.returncode != 0
+
+
+@pytest.mark.parametrize("mismatch", ("state", "checksum", "env", "previous"))
+def test_digest_release_preflight_mismatch_stops_before_migration(
+    tmp_path: Path, mismatch: str
+) -> None:
+    host, env, event_log = _sandbox(tmp_path)
+    assert _run(env, "legacy-bootstrap").returncode == 0
+    state = _host_path(host, "/etc/co-story/container-transition.state")
+    release_env = _host_path(host, "/etc/co-story/container-release.env")
+    previous = TARGET
+    if mismatch == "state":
+        state.write_text(state.read_text().replace("STATE=container-active", "STATE=stale"))
+    elif mismatch == "checksum":
+        state.write_text(
+            state.read_text().replace(
+                next(
+                    line
+                    for line in state.read_text().splitlines()
+                    if line.startswith("CONTAINER_UNIT_SHA256=")
+                ),
+                "CONTAINER_UNIT_SHA256=" + "0" * 64,
+            )
+        )
+    elif mismatch == "env":
+        release_env.write_text("CO_STORY_CONTAINER_IMAGE=invalid\n")
+    else:
+        previous = "sha256:" + "9" * 64
+    event_log.write_text("", encoding="utf-8")
+
+    result = _run(
+        env,
+        "digest-release",
+        target=NEXT_TARGET,
+        previous=previous,
+        legacy="",
+    )
+
+    assert result.returncode != 0
+    assert "migration" not in _events(event_log)
+    assert not any(event.startswith("mutation:") for event in _events(event_log))
 
 
 def test_manual_legacy_rollback_checks_candidate_and_restores_container_on_failure(
