@@ -1,11 +1,12 @@
 # CURRENT：目前工作交接
 
-- 更新日期：2026-08-25
-- 目前里程碑：Tier 1 已完整完成；下一階段為 Tier 2 Web／Story Worker／Data 切割。
-- 交付策略：保底完成 Tier 2 AWS E2E；若 2026-09-01 前穩定通過，再挑戰 Tier 3 Docker、ECR、GitHub Actions OIDC 與 SSM 自動部署垂直切片。
+- 更新日期：2026-08-26
+- 目前里程碑：Tier 1 已完整完成；先平行建立 Tier 3 delivery foundation 與改善 Storyteller／遊玩品質，再回到 Tier 2 Web／Story Worker／Data 切割。
+- 交付策略：`codex/story-quality` 與 `codex/tier3-delivery` 使用獨立 worktree 與路徑白名單；完成整合、完整 regression 與自動部署示範後，再以既有 pipeline 推進 Tier 2。
 - Branch：`codex/tier1-runtime-observability`
 - Tier 1 完成基準 commit：`07a986a`
-- Regression：Backend `358 passed, 8 skipped`、Frontend `94 passed`。
+- 平行分支治理基準：Red `6a76daf`／Green `b772116`。
+- Regression：Backend `363 passed, 8 skipped`、Frontend `94 passed`。
 - AWS active release：`tier1-20260825-4a51e0e`
 - 操作邊界：Console-first；使用者操作 AWS Console／SSM。Agent 未經新的 bounded batch 核准不得執行 AWS CLI，且不得執行 S3 讀取或 Bedrock 呼叫。
 
@@ -34,13 +35,14 @@
 
 ## Next
 
-Tier 2 先做 repo-local 設計與嚴格 TDD，不直接調整 AWS 部署：
+兩個平行 task 都從包含治理基準的同一 commit 建立：
 
-1. 讀取 `docs/testing-strategy.md`、Tier 2 直接相關 Project Plan／Checkpoints、既有 repository／Storyteller ports 與資料模型。
-2. 定義 Web／Story Worker／Data 的責任邊界，以及 queue、job、version、idempotency contract。
-3. 先以 Red tests 固定 enqueue、single-consumer processing、duplicate delivery 與 stale result 邊界。
-4. Green 完成最小可運作垂直切片，再跑 affected suites 與完整 regression。
-5. Repo-local gate 通過後，另提出一個含成本、安全、IAM、驗證與 rollback 的 Tier 2 AWS bounded batch，供使用者核准。
+1. `codex/story-quality`：以嚴格 TDD 定義敘事 contract，讓玩家行為、角色、骰點、進度、危機與結局產生可驗證的因果劇情；不得修改 delivery／AWS 路徑。
+2. `codex/tier3-delivery`：以嚴格 TDD 建立 current monolith 的 Docker、ECR、GitHub OIDC、CI/CD、SSM release、health gate 與 rollback；不得修改產品行為。
+3. 兩分支交付前執行 `scripts/check_branch_boundaries.py`，越界即停止並交回整合 task。
+4. 整合 task依序整合 delivery foundation 與 story quality，重跑 Backend／Frontend／container regression。
+5. Repo-local gate 全綠後，另提出含成本、安全、IAM、驗證與 rollback 的 Tier 3 AWS bounded batch，供使用者核准。
+6. 自動部署垂直切片完成後，再以相同 pipeline 推進 Tier 2 queue／job／idempotency 與三組件 AWS E2E。
 
 ## 操作護欄
 
