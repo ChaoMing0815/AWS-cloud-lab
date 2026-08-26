@@ -6,7 +6,7 @@
 - Branch：`codex/tier1-runtime-observability`
 - Tier 1 完成基準 commit：`07a986a`
 - 平行分支治理基準：Red `6a76daf`／Green `b772116`。
-- Regression：Backend `387 passed, 8 skipped`、Frontend `94 passed`；Tier 3＋Storyteller targeted `68 passed`；合併後本機 container build、non-root `10001:10001` 與 `/live`＋`/ready` health gate 通過。
+- Regression：Backend `388 passed, 8 skipped`、Frontend `94 passed`；Tier 3＋Storyteller targeted `68 passed`；Trivy workflow ref targeted `9 passed`；合併後本機 container build、non-root `10001:10001` 與 `/live`＋`/ready` health gate 通過。
 - AWS active release：`tier1-20260825-4a51e0e`
 - 操作邊界：Console-first；使用者操作 AWS Console／SSM。Agent 未經新的 bounded batch 核准不得執行 AWS CLI，且不得執行 S3 讀取或 Bedrock 呼叫。
 
