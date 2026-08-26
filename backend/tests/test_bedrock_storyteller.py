@@ -9,6 +9,8 @@ from app.domain.models import Character, DiceResult, Player, Room, StoryEntry, W
 
 
 MAX_BEDROCK_TOKENS = 1200
+ROUND_TOOL_NAME = "submit_round_narrative"
+ENDING_TOOL_NAME = "submit_ending_narrative"
 
 
 class FakeBedrockClient:
@@ -18,9 +20,12 @@ class FakeBedrockClient:
 
     def converse(self, **request):
         self.calls.append(request)
-        if isinstance(self.outcome, Exception):
-            raise self.outcome
-        return self.outcome
+        outcome = self.outcome
+        if isinstance(outcome, list):
+            outcome = outcome[len(self.calls) - 1]
+        if isinstance(outcome, Exception):
+            raise outcome
+        return outcome
 
 
 class FakeBedrockError(Exception):
@@ -60,6 +65,82 @@ def converse_response(text: str, **response_fields) -> dict:
         "output": {"message": {"content": [{"text": text}]}},
         **response_fields,
     }
+
+
+def round_tool_input(**overrides) -> dict:
+    return {
+        "narrative": "阿澈承接上一幕，在警報聲中比對交班表與監視器時間。",
+        "player_consequences": [
+            {
+                "player_id": "player-1",
+                "action_consequence": "阿澈找到被竄改的時間差，但驚動正在靠近的值班主管。",
+            }
+        ],
+        "progress_consequence": "時間差成為可追查的新證據，固定增加 2 點進度。",
+        "crisis_consequence": "值班主管開始封鎖監視器室，固定增加 1 點危機。",
+        "next_scene_hook": "眾人必須在主管抵達前決定要複製影像或追查交班表缺角。",
+        **overrides,
+    }
+
+
+def ending_tool_input(**overrides) -> dict:
+    return {
+        "ending_narrative": "團隊公開被改寫的盤點紀錄，迫使主管承認有人動過共用電腦。",
+        "achieved_outcome": "正確報表得以提交，但篡改者的完整動機尚未查明。",
+        "paid_cost_or_sacrifice": "阿澈失去值班主管的信任，必須離開原本班表。",
+        "unresolved_consequence": "缺失的監視器片段仍可能藏著另一名涉入者。",
+        **overrides,
+    }
+
+
+def tool_response(
+    name: str,
+    tool_input: object,
+    *,
+    extra_content: list[dict] | None = None,
+    **response_fields,
+) -> dict:
+    return {
+        "output": {
+            "message": {
+                "content": [
+                    tool_use_block(name, tool_input),
+                    *(extra_content or []),
+                ]
+            }
+        },
+        "stopReason": "tool_use",
+        **response_fields,
+    }
+
+
+def tool_use_block(name: str, tool_input: object, tool_use_id: str = "tool-use-1") -> dict:
+    return {
+        "toolUse": {
+            "toolUseId": tool_use_id,
+            "name": name,
+            "input": tool_input,
+        }
+    }
+
+
+def expected_round_text() -> str:
+    return (
+        "阿澈承接上一幕，在警報聲中比對交班表與監視器時間。\n"
+        "阿澈找到被竄改的時間差，但驚動正在靠近的值班主管。\n"
+        "進度後果：時間差成為可追查的新證據，固定增加 2 點進度。\n"
+        "危機後果：值班主管開始封鎖監視器室，固定增加 1 點危機。\n"
+        "下一幕：眾人必須在主管抵達前決定要複製影像或追查交班表缺角。"
+    )
+
+
+def expected_ending_text() -> str:
+    return (
+        "團隊公開被改寫的盤點紀錄，迫使主管承認有人動過共用電腦。\n"
+        "達成成果：正確報表得以提交，但篡改者的完整動機尚未查明。\n"
+        "付出代價：阿澈失去值班主管的信任，必須離開原本班表。\n"
+        "未解後果：缺失的監視器片段仍可能藏著另一名涉入者。"
+    )
 
 
 def expected_world_payload(**overrides) -> dict:
@@ -207,15 +288,16 @@ def test_generate_world_uses_injected_converse_client_with_bounded_tokens_guardr
 def test_successful_converse_emits_only_bounded_usage_metrics(caplog) -> None:
     secret_text = "固定規則已結算；模型回覆不得出現在 metrics。"
     client = FakeBedrockClient(
-        converse_response(
-            secret_text,
+        tool_response(
+            ROUND_TOOL_NAME,
+            round_tool_input(narrative=secret_text),
             usage={"inputTokens": 45, "outputTokens": 67, "totalTokens": 112},
             metrics={"latencyMs": 321},
         )
     )
 
     with caplog.at_level(logging.INFO, logger="co_story.storyteller_metrics"):
-        assert adapter(client).resolve_round(resolution_room()) == secret_text
+        assert adapter(client).resolve_round(resolution_room()).startswith(secret_text)
 
     events = [
         json.loads(record.message)
@@ -247,10 +329,12 @@ def test_missing_or_invalid_usage_metrics_never_breaks_storytelling_or_logs_forg
     response_fields: dict,
     caplog,
 ) -> None:
-    client = FakeBedrockClient(converse_response("安全敘事", **response_fields))
+    client = FakeBedrockClient(
+        tool_response(ROUND_TOOL_NAME, round_tool_input(), **response_fields)
+    )
 
     with caplog.at_level(logging.INFO, logger="co_story.storyteller_metrics"):
-        assert adapter(client).resolve_round(resolution_room()) == "安全敘事"
+        assert adapter(client).resolve_round(resolution_room()) == expected_round_text()
 
     assert not [
         record for record in caplog.records
@@ -472,21 +556,70 @@ def test_converse_guardrail_stop_reason_is_non_retryable_content_rejection() -> 
     assert str(captured.value) == "CONTENT_REJECTED"
 
 
-def test_round_and_ending_are_text_only_bounded_and_leave_canonical_room_state_unchanged() -> None:
+def test_round_and_ending_force_output_only_tools_and_leave_canonical_room_state_unchanged() -> None:
     room = resolution_room()
     before = (room.progress_points, room.danger_points, room.ending_result, room.ending_cost)
-    client = FakeBedrockClient(converse_response("固定規則已結算；故事只描述本回合後果。"))
+    client = FakeBedrockClient(
+        [
+            tool_response(ROUND_TOOL_NAME, round_tool_input()),
+            tool_response(ENDING_TOOL_NAME, ending_tool_input()),
+        ]
+    )
     storyteller = adapter(client)
 
     round_text = storyteller.resolve_round(room)
     ending_text = storyteller.resolve_ending(room)
 
-    assert round_text == "固定規則已結算；故事只描述本回合後果。"
-    assert ending_text == "固定規則已結算；故事只描述本回合後果。"
+    assert round_text == expected_round_text()
+    assert ending_text == expected_ending_text()
     assert len(round_text) <= 1200
     assert len(ending_text) <= 1200
     assert (room.progress_points, room.danger_points, room.ending_result, room.ending_cost) == before
     assert len(client.calls) == 2
+    round_tool_config = client.calls[0]["toolConfig"]
+    ending_tool_config = client.calls[1]["toolConfig"]
+    assert round_tool_config["toolChoice"] == {"tool": {"name": ROUND_TOOL_NAME}}
+    assert ending_tool_config["toolChoice"] == {"tool": {"name": ENDING_TOOL_NAME}}
+    assert len(round_tool_config["tools"]) == 1
+    assert len(ending_tool_config["tools"]) == 1
+    round_tool_spec = round_tool_config["tools"][0]["toolSpec"]
+    ending_tool_spec = ending_tool_config["tools"][0]["toolSpec"]
+    assert round_tool_spec["name"] == ROUND_TOOL_NAME
+    assert ending_tool_spec["name"] == ENDING_TOOL_NAME
+    assert round_tool_spec["strict"] is True
+    assert ending_tool_spec["strict"] is True
+    round_schema = round_tool_spec["inputSchema"]["json"]
+    ending_schema = ending_tool_spec["inputSchema"]["json"]
+    assert round_schema["additionalProperties"] is False
+    assert round_schema["required"] == [
+        "narrative",
+        "player_consequences",
+        "progress_consequence",
+        "crisis_consequence",
+        "next_scene_hook",
+    ]
+    assert round_schema["properties"]["player_consequences"]["items"] == {
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["player_id", "action_consequence"],
+        "properties": {
+            "player_id": {"type": "string", "minLength": 1, "maxLength": 64},
+            "action_consequence": {"type": "string", "minLength": 1, "maxLength": 240},
+        },
+    }
+    assert ending_schema["additionalProperties"] is False
+    assert ending_schema["required"] == [
+        "ending_narrative",
+        "achieved_outcome",
+        "paid_cost_or_sacrifice",
+        "unresolved_consequence",
+    ]
+    assert set(ending_schema["properties"]) == set(ending_schema["required"])
+    assert all(
+        "toolSpec" in tool and "systemTool" not in tool
+        for config in (round_tool_config, ending_tool_config)
+        for tool in config["tools"]
+    )
     round_guarded = client.calls[0]["messages"][0]["content"][0]["guardContent"]["text"]
     ending_guarded = client.calls[1]["messages"][0]["content"][0]["guardContent"]["text"]
     assert round_guarded["qualifiers"] == ["query"]
@@ -570,6 +703,89 @@ def test_round_and_ending_are_text_only_bounded_and_leave_canonical_room_state_u
     ]
 
 
+@pytest.mark.parametrize(
+    "case",
+    [
+        "text-json",
+        "wrong-tool-name",
+        "missing-field",
+        "extra-content-block",
+        "multiple-tool-use",
+        "extra-input-field",
+        "wrong-player-set",
+        "non-object-input",
+    ],
+)
+def test_round_rejects_any_response_other_than_one_exact_valid_output_tool(case: str) -> None:
+    secret = "raw model content must never leak"
+    tool_input = round_tool_input()
+    if case == "text-json":
+        response = converse_response(json.dumps(tool_input), stopReason="end_turn")
+    elif case == "wrong-tool-name":
+        response = tool_response("run_recovery_action", tool_input)
+    elif case == "missing-field":
+        tool_input.pop("crisis_consequence")
+        response = tool_response(ROUND_TOOL_NAME, tool_input)
+    elif case == "extra-content-block":
+        response = tool_response(
+            ROUND_TOOL_NAME,
+            tool_input,
+            extra_content=[{"text": secret}],
+        )
+    elif case == "multiple-tool-use":
+        response = tool_response(
+            ROUND_TOOL_NAME,
+            tool_input,
+            extra_content=[
+                tool_use_block(ROUND_TOOL_NAME, tool_input, "tool-use-2")
+            ],
+        )
+    elif case == "extra-input-field":
+        tool_input["state_delta"] = {"progress": 999}
+        response = tool_response(ROUND_TOOL_NAME, tool_input)
+    elif case == "wrong-player-set":
+        tool_input["player_consequences"][0]["player_id"] = "unknown-player"
+        response = tool_response(ROUND_TOOL_NAME, tool_input)
+    else:
+        response = tool_response(ROUND_TOOL_NAME, secret)
+
+    with pytest.raises(StorytellerFailure) as captured:
+        adapter(FakeBedrockClient(response)).resolve_round(resolution_room())
+
+    assert captured.value.code == "SCHEMA_INVALID"
+    assert str(captured.value) == "SCHEMA_INVALID"
+    assert secret not in str(captured.value)
+
+
+@pytest.mark.parametrize(
+    "case",
+    ["text-json", "wrong-tool-name", "missing-field", "extra-content-block"],
+)
+def test_ending_rejects_nonexclusive_or_invalid_output_tool(case: str) -> None:
+    secret = "raw ending must never leak"
+    tool_input = ending_tool_input()
+    if case == "text-json":
+        response = converse_response(json.dumps(tool_input), stopReason="end_turn")
+    elif case == "wrong-tool-name":
+        response = tool_response(ROUND_TOOL_NAME, tool_input)
+    elif case == "missing-field":
+        tool_input.pop("paid_cost_or_sacrifice")
+        response = tool_response(ENDING_TOOL_NAME, tool_input)
+    else:
+        response = tool_response(
+            ENDING_TOOL_NAME,
+            tool_input,
+            extra_content=[{"text": secret}],
+        )
+
+    with pytest.raises(StorytellerFailure) as captured:
+        adapter(FakeBedrockClient(response)).resolve_ending(resolution_room())
+
+    assert captured.value.code == "SCHEMA_INVALID"
+    assert str(captured.value) == "SCHEMA_INVALID"
+    assert secret not in str(captured.value)
+
+
 def test_round_prompt_limits_recent_story_to_latest_five_entries() -> None:
     room = resolution_room()
     room.entries = [
@@ -582,7 +798,7 @@ def test_round_prompt_limits_recent_story_to_latest_five_entries() -> None:
         )
         for round_number in range(1, 7)
     ]
-    client = FakeBedrockClient(converse_response("承接最近事件的安全敘事。"))
+    client = FakeBedrockClient(tool_response(ROUND_TOOL_NAME, round_tool_input()))
 
     adapter(client).resolve_round(room)
 
@@ -592,9 +808,21 @@ def test_round_prompt_limits_recent_story_to_latest_five_entries() -> None:
     assert "第 1 幕" not in guarded["text"]
 
 
-@pytest.mark.parametrize("method_name", ["resolve_round", "resolve_ending"])
-def test_overlong_narrative_output_is_schema_failure(method_name: str) -> None:
-    client = FakeBedrockClient(converse_response("x" * 1201))
+@pytest.mark.parametrize(
+    ("method_name", "response"),
+    [
+        (
+            "resolve_round",
+            tool_response(ROUND_TOOL_NAME, round_tool_input(narrative="x" * 1201)),
+        ),
+        (
+            "resolve_ending",
+            tool_response(ENDING_TOOL_NAME, ending_tool_input(ending_narrative="x" * 1201)),
+        ),
+    ],
+)
+def test_overlong_narrative_output_is_schema_failure(method_name: str, response: dict) -> None:
+    client = FakeBedrockClient(response)
 
     with pytest.raises(StorytellerFailure) as captured:
         getattr(adapter(client), method_name)(resolution_room())
