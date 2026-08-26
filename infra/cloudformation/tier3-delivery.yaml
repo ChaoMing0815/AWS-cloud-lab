@@ -1,0 +1,224 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Tier 3 immutable ECR, repository and main-branch GitHub OIDC deploy role, and bounded SSM container release.
+
+Parameters:
+  AppInstanceId:
+    Type: AWS::EC2::Instance::Id
+    Description: Existing Co-Story application instance targeted by the release document.
+  AppRoleName:
+    Type: String
+    Default: AWSFinalProjectAppRole
+    AllowedPattern: '^AWSFinalProject[A-Za-z0-9+=,.@_-]+$'
+    Description: Existing application role that receives repository-scoped ECR pull access.
+  GitHubOidcProviderArn:
+    Type: String
+    Default: ''
+    AllowedPattern: '^$|^arn:[a-z0-9-]+:iam::[0-9]{12}:oidc-provider/token[.]actions[.]githubusercontent[.]com$'
+    Description: Existing GitHub OIDC provider ARN; leave empty to create the account-wide provider.
+
+Conditions:
+  CreateGitHubOidcProvider:
+    Fn::Equals:
+      - Ref: GitHubOidcProviderArn
+      - ''
+
+Resources:
+  Tier3Repository:
+    Type: AWS::ECR::Repository
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      RepositoryName: co-story-tier3
+      ImageTagMutability: IMMUTABLE
+      ImageScanningConfiguration:
+        ScanOnPush: true
+      EncryptionConfiguration:
+        EncryptionType: AES256
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {
+            "rules": [
+              {
+                "rulePriority": 1,
+                "description": "Retain the newest ten release images",
+                "selection": {
+                  "tagStatus": "any",
+                  "countType": "imageCountMoreThan",
+                  "countNumber": 10
+                },
+                "action": {"type": "expire"}
+              }
+            ]
+          }
+      Tags:
+        - Key: Project
+          Value: co-story
+        - Key: Tier
+          Value: '3'
+
+  GitHubOidcProvider:
+    Type: AWS::IAM::OIDCProvider
+    Condition: CreateGitHubOidcProvider
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList:
+        - sts.amazonaws.com
+      Tags:
+        - Key: Project
+          Value: co-story
+        - Key: Tier
+          Value: '3'
+
+  GitHubDeployRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: AWSFinalProjectGitHubDeployRole
+      Description: Main-branch GitHub OIDC role for one ECR repository and one bounded SSM release target.
+      PermissionsBoundary:
+        Fn::Sub: arn:${AWS::Partition}:iam::aws:policy/PowerUserAccess
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated:
+                Fn::If:
+                  - CreateGitHubOidcProvider
+                  - Ref: GitHubOidcProvider
+                  - Ref: GitHubOidcProviderArn
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+                token.actions.githubusercontent.com:sub: repo:ChaoMing0815/AWS-cloud-lab:ref:refs/heads/main
+      Policies:
+        - PolicyName: CoStoryTier3PublishAndRelease
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: AuthorizeEcrLogin
+                Effect: Allow
+                Action: ecr:GetAuthorizationToken
+                Resource: '*'
+              - Sid: PublishOnlyCoStoryTier3Images
+                Effect: Allow
+                Action:
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:BatchGetImage
+                  - ecr:CompleteLayerUpload
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:InitiateLayerUpload
+                  - ecr:PutImage
+                  - ecr:UploadLayerPart
+                Resource:
+                  Fn::GetAtt:
+                    - Tier3Repository
+                    - Arn
+              - Sid: ReleaseOnlyThroughPinnedDocumentAndInstance
+                Effect: Allow
+                Action: ssm:SendCommand
+                Resource:
+                  - Fn::Sub: arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:document/CoStoryTier3ContainerRelease
+                  - Fn::Sub: arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/${AppInstanceId}
+              - Sid: ReadOnlyOwnCommandResult
+                Effect: Allow
+                Action:
+                  - ssm:GetCommandInvocation
+                  - ssm:ListCommandInvocations
+                Resource: '*'
+      Tags:
+        - Key: Project
+          Value: co-story
+        - Key: Tier
+          Value: '3'
+
+  AppEcrPullPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: AWSFinalProjectTier3EcrPull
+      Description: Lets the existing Co-Story instance authenticate and pull only Tier 3 images.
+      Roles:
+        - Ref: AppRoleName
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AuthorizeEcrPullLogin
+            Effect: Allow
+            Action: ecr:GetAuthorizationToken
+            Resource: '*'
+          - Sid: PullOnlyCoStoryTier3Images
+            Effect: Allow
+            Action:
+              - ecr:BatchCheckLayerAvailability
+              - ecr:BatchGetImage
+              - ecr:GetDownloadUrlForLayer
+            Resource:
+              Fn::GetAtt:
+                - Tier3Repository
+                - Arn
+
+  ContainerReleaseDocument:
+    Type: AWS::SSM::Document
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      Name: CoStoryTier3ContainerRelease
+      DocumentType: Command
+      DocumentFormat: YAML
+      TargetType: /AWS::EC2::Instance
+      UpdateMethod: NewVersion
+      Content:
+        schemaVersion: '2.2'
+        description: Release one immutable Co-Story image digest with fixed health and previous-digest rollback.
+        parameters:
+          RepositoryUri:
+            type: String
+            allowedPattern: '^[0-9]{12}[.]dkr[.]ecr[.]ap-northeast-1[.]amazonaws[.]com/co-story-tier3$'
+          ImageDigest:
+            type: String
+            allowedPattern: '^sha256:[a-f0-9]{64}$'
+          PreviousImageDigest:
+            type: String
+            allowedPattern: '^sha256:[a-f0-9]{64}$'
+        mainSteps:
+          - action: aws:runShellScript
+            name: ReleaseCoStoryContainer
+            precondition:
+              StringEquals:
+                - platformType
+                - Linux
+            inputs:
+              timeoutSeconds: '900'
+              runCommand:
+                - '#!/bin/bash'
+                - 'set -euo pipefail'
+                - 'readonly release_script=/opt/co-story/current/ops/release/deploy_container.sh'
+                - 'readonly runtime_env=/etc/co-story/runtime.env'
+                - 'health_host="$(awk -F= ''$1 == "CO_STORY_ALLOWED_HOSTS" { split($2, hosts, ","); print hosts[1]; exit }'' "$runtime_env")"'
+                - 'case "$health_host" in ''''|*[!A-Za-z0-9.-]*) printf ''container_release=invalid_host\n'' >&2; exit 2 ;; esac'
+                - 'test -x "$release_script"'
+                - '"$release_script" "{{ RepositoryUri }}" "{{ ImageDigest }}" "{{ PreviousImageDigest }}" "$health_host"'
+      Tags:
+        - Key: Project
+          Value: co-story
+        - Key: Tier
+          Value: '3'
+
+Outputs:
+  RepositoryName:
+    Value:
+      Ref: Tier3Repository
+  RepositoryUri:
+    Value:
+      Fn::GetAtt:
+        - Tier3Repository
+        - RepositoryUri
+  GitHubDeployRoleArn:
+    Value:
+      Fn::GetAtt:
+        - GitHubDeployRole
+        - Arn
+  ReleaseDocumentName:
+    Value:
+      Ref: ContainerReleaseDocument

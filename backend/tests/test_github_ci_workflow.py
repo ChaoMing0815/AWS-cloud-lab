@@ -25,7 +25,7 @@ def test_ci_runs_backend_and_frontend_regressions_for_pull_requests() -> None:
     assert "npm test" in workflow
 
 
-def test_ci_is_read_only_and_cannot_deploy_to_aws() -> None:
+def test_ci_is_read_only_and_builds_and_scans_only_after_test_gates() -> None:
     workflow = _workflow_text()
 
     assert "permissions:\n  contents: read" in workflow
@@ -34,3 +34,10 @@ def test_ci_is_read_only_and_cannot_deploy_to_aws() -> None:
     assert "aws-actions/" not in workflow
     assert "amazon-ecr" not in workflow.lower()
     assert "deploy" not in workflow.lower()
+    assert "container-build-scan:" in workflow
+    assert "needs: [backend-tests, frontend-tests]" in workflow
+    assert "docker/build-push-action@" in workflow
+    assert "push: false" in workflow
+    assert "aquasecurity/trivy-action@" in workflow
+    assert "severity: CRITICAL,HIGH" in workflow
+    assert "exit-code: 1" in workflow

@@ -1,0 +1,16 @@
+# Tier 3 delivery foundation 驗證摘要
+- Scope／risk／upstream source：current monolith container、CI、OIDC／ECR／SSM release；R3；CURRENT 與 IAM boundaries。
+- Baseline：Backend `363 passed, 8 skipped`；Frontend `94 passed`。
+- Red commits：`6d74a1a`、`2e095cb`、`42a2ca5`、`3c49733`、`1bbe71b`、`a1d4ce0`、`9fd6fc8`。
+- Green commits：delivery foundation `b1c8cb1`；metrics artifact `aa2fe2b`；IAM boundary 為本次 `fix(green)` commit。
+- Targeted verification：Tier 3 delivery 11 passed；既有 affected release／runtime／observability suite 44 passed。
+- Container contract：image build passed；UID `10001`、Docker `healthy`、`/live`＋`/ready`、外部 env 與 safe JSONL bind mount passed。
+- CI contract：Backend／Frontend 完成後才 build；HIGH／CRITICAL scan fail closed；CI 無 AWS identity。
+- IAM negative：OIDC 固定 repository／main；ECR 固定 repository；SSM 固定 document／instance；無 long-term key 或 `iam:PassRole`。
+- Release boundary：manual production approval、exact target／previous digest、candidate readiness、previous rollback。
+- Evidence contract：成功／失敗皆輸出去識別化 timing artifact；不含 account、instance、role、SSM output 或 token。
+- Sensitivity：OIDC subject 暫改 branch wildcard 時指定 IAM test 失敗；還原 main-only 後通過。
+- Full regression：Backend `372 passed, 8 skipped`；Frontend `94 passed`。
+- Rollback：不做 schema downgrade；migration 必須 backward compatible。
+- Residual risk：Docker Scout 因可能外傳 image／SBOM metadata而未獲准；正式 HIGH／CRITICAL 結果以 GitHub CI Trivy gate 為準。
+- AWS freeze：未執行 AWS CLI、S3、Bedrock 或 production deploy。
