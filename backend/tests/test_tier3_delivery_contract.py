@@ -53,6 +53,9 @@ def test_cloudformation_limits_oidc_ecr_and_ssm_to_repo_branch_and_instance() ->
     assert resources["Tier3Repository"]["Properties"]["ImageScanningConfiguration"]["ScanOnPush"] is True
     assert resources["Tier3Repository"]["Properties"]["ImageTagMutability"] == "IMMUTABLE"
     assert "GitHubDeployRole" in resources
+    assert resources["GitHubDeployRole"]["Properties"]["PermissionsBoundary"] == {
+        "Fn::Sub": "arn:${AWS::Partition}:iam::aws:policy/PowerUserAccess"
+    }
     assert "token.actions.githubusercontent.com:aud" in template_text
     assert "sts.amazonaws.com" in template_text
     assert "repo:ChaoMing0815/AWS-cloud-lab:ref:refs/heads/main" in template_text
