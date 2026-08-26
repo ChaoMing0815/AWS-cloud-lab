@@ -1,0 +1,13 @@
+# Storyteller 因果敘事品質驗證摘要
+- Scope／risk／upstream source：回合與結局 narrative contract；R2；正式 MVP Spec 第 11–13、20 節。
+- Baseline：Backend `363 passed, 8 skipped`；Frontend `94 passed`。
+- Red commits：`f3c0f1a`、`1401eca`；舊實作因缺少角色、完整骰點、最近場景與具體後果出現 4 個 assertion failures。
+- Green commits：原始 `b7d779d`；治理修正後以 `cad14a4` 恢復。
+- Governance base：`e1eac11`；adapter 精確白名單已由整合 task 修正。
+- Targeted verification：Bedrock prompt、五筆 history boundary、Mock 回合與結局共 4 tests passed。
+- Affected verification：Bedrock、Mock、recovery、ending policy 與 rooms API suites passed。
+- Full Backend regression：`367 passed, 8 skipped`。
+- Full Frontend regression：`94 passed`。
+- Sensitivity：移除 `recent_story[-5:]` 後 boundary test 依預期失敗；還原後通過。
+- State authority：只描述 rules engine 已鎖定的 DiceResult、delta 與 ending；沒有新增 state mutation。
+- Residual risk：text-only 模型輸出仍依 prompt 遵約；尚未導入 MVP Spec 完整 TurnResolution JSON schema，也未做真實 Bedrock 品質評估。
