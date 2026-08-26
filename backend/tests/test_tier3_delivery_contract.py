@@ -28,6 +28,8 @@ def test_release_workflow_is_manual_approved_main_only_and_digest_pinned() -> No
     assert "id-token: write" in workflow
     assert "contents: read" in workflow
     assert "aws-actions/configure-aws-credentials@" in workflow
+    assert "docker/setup-qemu-action@" in workflow
+    assert "platforms: linux/arm64" in workflow
     assert "role-to-assume: ${{ vars.TIER3_DEPLOY_ROLE_ARN }}" in workflow
     assert "aws-region: ${{ vars.AWS_REGION }}" in workflow
     assert "aws ssm send-command" in workflow
