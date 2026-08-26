@@ -136,6 +136,17 @@ def test_ssm_documents_bound_bootstrap_assets_and_keep_legacy_rollback_human_onl
     assert "CoStoryTier3LegacyRollback" not in str(send_command["Resource"])
     assert "ReleaseMode" in template_text
     assert "legacy-bootstrap" in template_text
+    bootstrap = template_text.index("legacy-bootstrap)")
+    first_pull = template_text.index('docker pull "$target_image"', bootstrap)
+    for preflight_guard in (
+        'readlink -f /opt/co-story/current',
+        'stat -c \'%U:%G:%a\' "$runtime_env"',
+        'test ! -e /etc/co-story/container-transition.state',
+        'test ! -e /etc/co-story/container-release.env',
+        'cmp -s /etc/systemd/system/co-story.service',
+        'legacy_preflight',
+    ):
+        assert bootstrap < template_text.index(preflight_guard, bootstrap) < first_pull
     assert "digest-release" in template_text
     assert "tier1-20260825-4a51e0e" in template_text
     assert "/usr/local/share/co-story/deploy_container.sh" in template_text

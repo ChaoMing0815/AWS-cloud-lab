@@ -57,6 +57,7 @@ def _sandbox(tmp_path: Path) -> tuple[Path, dict[str, str], Path]:
     _write_executable(
         fake_bin / "docker",
         "#!/bin/sh\nprintf 'docker:%s\\n' \"$*\" >>\"$CO_STORY_TEST_EVENT_LOG\"\n"
+        "if [ \"${1:-}\" = login ]; then cat >/dev/null; fi\n"
         "if [ \"${CO_STORY_TEST_FAIL:-}\" = migration ] && "
         "printf '%s' \"$*\" | grep -q app.commands.migrate; then exit 1; fi\n"
         "exit 0\n",
@@ -64,6 +65,10 @@ def _sandbox(tmp_path: Path) -> tuple[Path, dict[str, str], Path]:
     _write_executable(
         fake_bin / "systemctl",
         "#!/bin/sh\nprintf 'systemctl:%s\\n' \"$*\" >>\"$CO_STORY_TEST_EVENT_LOG\"\nexit 0\n",
+    )
+    _write_executable(
+        fake_bin / "systemd-run",
+        "#!/bin/sh\nprintf 'systemd-run:%s\\n' \"$*\" >>\"$CO_STORY_TEST_EVENT_LOG\"\nexit 0\n",
     )
     env = os.environ.copy()
     env.update(
@@ -332,6 +337,9 @@ def test_manual_legacy_rollback_checks_candidate_and_restores_container_on_failu
     event_log.write_text("", encoding="utf-8")
     rolled_back = _run(env, "legacy-rollback")
     assert rolled_back.returncode == 0, rolled_back.stderr
+    events = _events(event_log)
+    legacy_driver = f"/opt/co-story/releases/{LEGACY}/.venv/bin/uvicorn"
+    _assert_order(events, (f"systemd-run:", legacy_driver, "health:legacy-candidate:8001"))
     assert "STATE=legacy-active" in _host_path(
         host, "/etc/co-story/container-transition.state"
     ).read_text()
