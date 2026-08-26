@@ -14,6 +14,7 @@ Production GitHub environment 必須設定 required reviewer；repository variab
 4. Required reviewer 核對 commit、target／previous digest、instance、Region 與 rollback 後批准 production environment。
 5. Workflow 以 OIDC build／push immutable commit tag，掃描 exact digest，再透過 `CoStoryTier3ContainerRelease` 發送 bounded SSM command。
 6. 只有 SSM 回傳 `container_release=verified` 且 public Nginx edge 的 `/live`、`/ready` 都為 200 才算完成。
+7. 無論成功或失敗，下載 `tier3-delivery-metrics-<run-id>` artifact，依[量測方法](../evidence/2026-08-26-tier3-delivery/deployment-efficiency-method.md)保存原始值；artifact 不取代 AWS health evidence。
 
 ## 停止與 rollback
 
