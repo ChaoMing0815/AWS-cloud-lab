@@ -7,6 +7,7 @@ DOCKERFILE = ROOT / "Dockerfile"
 DOCKERIGNORE = ROOT / ".dockerignore"
 HEALTHCHECK = ROOT / "ops/container/healthcheck.py"
 SYSTEMD_UNIT = ROOT / "ops/systemd/co-story-container.service"
+PRODUCTION_REQUIREMENTS = ROOT / "backend/requirements-prod.txt"
 
 
 def _read(path: Path) -> str:
@@ -34,6 +35,20 @@ def test_image_is_non_root_secret_free_and_keeps_the_runtime_contract() -> None:
     assert ".env" in dockerignore
     assert ".git" in dockerignore
     assert "docs/evidence" in dockerignore
+
+
+def test_production_image_pins_fixed_versions_for_known_high_vulnerabilities() -> None:
+    requirements = {
+        line.strip()
+        for line in _read(PRODUCTION_REQUIREMENTS).splitlines()
+        if line.strip() and not line.startswith("#")
+    }
+    required_security_pins = {"msgpack==1.2.1", "setuptools==78.1.1"}
+
+    assert not (required_security_pins - requirements), (
+        "production image 缺少已修復版本的 exact security pins："
+        f"{sorted(required_security_pins - requirements)}"
+    )
 
 
 class _Response:
