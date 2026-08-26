@@ -55,7 +55,7 @@ flowchart LR
 
 輸出必須通過 JSON schema、玩家集合、成功等級、字數與 forbidden delta 驗證，通過後才提交。Timeout、retry 與 fallback 依正式 MVP Spec 執行。
 
-目前 text-only narrative adapter 的輸入 contract 已固定為以下順序：
+目前 narrative adapter 的輸入 contract 已固定為以下順序：
 
 1. 世界前提、不可變主要目標、開場、核心障礙與調性。
 2. 當前回合、回合上限、回合前進度／危機，以及規則引擎已鎖定的本回合 delta。
@@ -66,6 +66,22 @@ flowchart LR
 玩家與世界文字仍放在 Guardrail query data，system instruction 只定義不變 contract。`RoomService`／rules engine 保持唯一狀態權威；Storyteller 只能描述傳入的固定值，不能重新計算或提交任何 state transition。
 
 結局 contract 會傳入不可變 `ending_result`、`ending_cost`、最終進度／危機與最近故事，要求把分類轉成具體成果、犧牲和未解後果。`MockStoryteller` 使用同一組 canonical 資訊產生 deterministic 敘事，供本機 Demo 與 contract regression 使用。
+
+### Forced-tool output boundary
+
+Round 與 ending 不接受模型直接輸出文字或文字形式 JSON。每個 request 只提供一個沒有執行副作用的 output tool，並以 `toolChoice.tool` 指定名稱、`toolSpec.strict=true` 固定 JSON schema；這兩個 tool 只把驗證後的資料交回 adapter，不會執行 recovery、資料庫、AWS 或任何外部操作。[AWS ToolChoice API](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_ToolChoice.html)、[AWS ToolSpecification API](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_ToolSpecification.html)
+
+`submit_round_narrative` 固定提供：
+
+- `narrative`
+- 每位 canonical player 各一次的 `player_consequences`
+- `progress_consequence`
+- `crisis_consequence`
+- `next_scene_hook`
+
+`submit_ending_narrative` 固定提供 `ending_narrative`、`achieved_outcome`、`paid_cost_or_sacrifice` 與 `unresolved_consequence`。Adapter 仍在本地執行 exact key、型別、長度、玩家集合、唯一 tool block 與 1,200 字元總長驗證，再依固定標籤組成既有 string port。任何非單一 toolUse、錯誤名稱、額外 content block 或 schema 差異都只回 `SCHEMA_INVALID`，不包含 raw response。
+
+世界觀生成刻意不共用此 tool path，維持既有可編輯 `WorldDraft` text JSON contract。
 
 ## Bedrock 呼叫方式
 
