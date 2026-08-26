@@ -65,6 +65,7 @@
 - `CoStoryHealthCheck` 已通過正面 gate，尚未執行 Document 自身的代表性 failure gate。
 - Forced-tool Storyteller 已通過 fake Converse contract，但尚未以真實 Nova Lite 驗證 round／ending schema 與敘事品質。
 - Tier 3 repo-local／PR image 已通過 Trivy，但 ECR 仍為空，尚未取得 ECR scan 或 application release 證據；不得把 T3A 約 55 分鐘人工安全審查或 PR CI 時間當成應用程式部署時間。
+- 文件合併後 main CI run `32939820482` 全綠，但 GitHub 對 `docker/build-push-action@v6.18.0` 與 `docker/setup-buildx-action@v3.11.1` 顯示 Node.js 20 deprecated／forced Node.js 24 annotation。T3B 前以 bounded、test-first 方式確認 upstream 相容版本；目前不是 release failure，也不得無測試任意升版。
 - Idempotency store 目前仍為 process memory，不宣稱 multi-process exactly-once；這是 Tier 2 的核心設計缺口。
 - iPhone Safari 短期雙向同步已通過，但長時間 polling／visibility 行為仍需在下一次完整多人遊戲觀察。
 - 刪房後舊分頁 lifecycle 修正已部署，尚未以 `COMPLETED` 房間做 AWS 多分頁重驗。
