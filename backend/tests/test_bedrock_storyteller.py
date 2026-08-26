@@ -5,7 +5,7 @@ import logging
 import pytest
 
 from app.application.ports import StorytellerFailure
-from app.domain.models import DiceResult, Player, Room, World
+from app.domain.models import Character, DiceResult, Player, Room, StoryEntry, World
 
 
 MAX_BEDROCK_TOKENS = 1200
@@ -102,7 +102,12 @@ def resolution_room() -> Room:
             story_title="夜班盤點迷蹤",
             premise="凌晨盤點資料突然消失，夜班夥伴必須在店長抵達前找回被改寫的正確紀錄，同時查明是誰在監視器關閉時動過共用電腦。",
             objective="找回正確盤點紀錄並完成報表。",
+            opening_scene="凌晨兩點，收銀機重開機，交班紀錄變成空白。",
+            core_obstacle="備份硬碟被鎖在倉庫，密碼只剩一半線索。",
+            tone="mystery",
         ),
+        max_rounds=6,
+        initial_player_count=3,
         progress_points=2,
         danger_points=1,
         ending_result="PARTIAL_SUCCESS",
@@ -114,6 +119,24 @@ def resolution_room() -> Room:
                 role="夜班夥伴",
                 action="查閱交班紀錄並比對監視器時間",
                 action_approach="insight",
+                character=Character(
+                    name="阿澈",
+                    background="熟悉老式監視器的夜班工讀生",
+                    trait="觀察細膩",
+                    weakness="遇到權威時容易退縮",
+                    courage=0,
+                    insight=2,
+                    bond=1,
+                ),
+            )
+        ],
+        entries=[
+            StoryEntry(
+                id="entry-1",
+                type="narrator",
+                title="故事主持人",
+                round_number=1,
+                text="倉庫門在警報響起時自動上鎖，門縫滑出一張被撕去一角的交班表。",
             )
         ],
         dice_results=[
@@ -468,14 +491,105 @@ def test_round_and_ending_are_text_only_bounded_and_leave_canonical_room_state_u
     ending_guarded = client.calls[1]["messages"][0]["content"][0]["guardContent"]["text"]
     assert round_guarded["qualifiers"] == ["query"]
     assert ending_guarded["qualifiers"] == ["query"]
-    round_prompt = round_guarded["text"]
-    ending_prompt = ending_guarded["text"]
-    assert "查閱交班紀錄並比對監視器時間" in round_prompt
-    assert "PARTIAL_SUCCESS" in round_prompt
-    assert '"progress_delta": 2' in round_prompt
-    assert '"danger_delta": 1' in round_prompt
-    assert "PARTIAL_SUCCESS" in ending_prompt
-    assert "SIGNIFICANT" in ending_prompt
+    round_prompt = json.loads(round_guarded["text"])
+    ending_prompt = json.loads(ending_guarded["text"])
+    assert list(round_prompt) == [
+        "task",
+        "world",
+        "canonical_state",
+        "recent_story",
+        "resolved_actions",
+        "narrative_requirements",
+    ]
+    assert round_prompt["world"] == {
+        "title": "夜班盤點迷蹤",
+        "premise": "凌晨盤點資料突然消失，夜班夥伴必須在店長抵達前找回被改寫的正確紀錄，同時查明是誰在監視器關閉時動過共用電腦。",
+        "objective": "找回正確盤點紀錄並完成報表。",
+        "opening_scene": "凌晨兩點，收銀機重開機，交班紀錄變成空白。",
+        "core_obstacle": "備份硬碟被鎖在倉庫，密碼只剩一半線索。",
+        "tone": "mystery",
+        "custom_tone": None,
+    }
+    assert round_prompt["canonical_state"] == {
+        "round_number": 2,
+        "max_rounds": 6,
+        "progress_points_before_round": 2,
+        "danger_points_before_round": 1,
+        "progress_delta": 2,
+        "danger_delta": 1,
+    }
+    assert round_prompt["recent_story"] == [
+        {
+            "round_number": 1,
+            "type": "narrator",
+            "text": "倉庫門在警報響起時自動上鎖，門縫滑出一張被撕去一角的交班表。",
+        }
+    ]
+    assert round_prompt["resolved_actions"] == [
+        {
+            "player_id": "player-1",
+            "player_name": "小明",
+            "character": {
+                "name": "阿澈",
+                "background": "熟悉老式監視器的夜班工讀生",
+                "trait": "觀察細膩",
+                "weakness": "遇到權威時容易退縮",
+            },
+            "action": "查閱交班紀錄並比對監視器時間",
+            "approach": "insight",
+            "dice": {
+                "d6_1": 3,
+                "d6_2": 4,
+                "attribute_value": 1,
+                "base_total": 8,
+                "spark_used": 0,
+                "final_total": 8,
+                "result": "PARTIAL_SUCCESS",
+                "progress_delta": 2,
+                "danger_delta": 1,
+            },
+        }
+    ]
+    assert round_prompt["narrative_requirements"] == [
+        "承接 recent_story 的最後場景，不能重置時間線。",
+        "逐一描述每個 resolved action 如何因固定骰點結果成功、付出代價或失敗前進。",
+        "把 progress_delta 與 danger_delta 寫成具體事件及後果，不得另行計算或修改數值。",
+        "結尾提出由本回合後果自然形成的下一場景。",
+    ]
+    assert ending_prompt["canonical_ending"] == {
+        "result": "PARTIAL_SUCCESS",
+        "cost": "SIGNIFICANT",
+        "progress_points": 2,
+        "danger_points": 1,
+    }
+    assert ending_prompt["recent_story"] == round_prompt["recent_story"]
+    assert ending_prompt["narrative_requirements"] == [
+        "承接 recent_story 的最後事件，收束不可變主要目標。",
+        "把 canonical ending result 與 cost 寫成具體成果、犧牲及未解後果。",
+        "不得改判結局、進度、危機或其他規則狀態。",
+    ]
+
+
+def test_round_prompt_limits_recent_story_to_latest_five_entries() -> None:
+    room = resolution_room()
+    room.entries = [
+        StoryEntry(
+            id=f"entry-{round_number}",
+            type="narrator",
+            title="故事主持人",
+            round_number=round_number,
+            text=f"第 {round_number} 幕的固定事件。",
+        )
+        for round_number in range(1, 7)
+    ]
+    client = FakeBedrockClient(converse_response("承接最近事件的安全敘事。"))
+
+    adapter(client).resolve_round(room)
+
+    guarded = client.calls[0]["messages"][0]["content"][0]["guardContent"]["text"]
+    prompt = json.loads(guarded["text"])
+    assert [entry["round_number"] for entry in prompt["recent_story"]] == [2, 3, 4, 5, 6]
+    assert "第 1 幕" not in guarded["text"]
 
 
 @pytest.mark.parametrize("method_name", ["resolve_round", "resolve_ending"])
