@@ -49,7 +49,23 @@ def test_ci_is_read_only_and_builds_and_scans_only_after_test_gates() -> None:
     assert "exit-code: 1" in workflow
 
 
-def test_tier3_workflows_pin_trivy_to_the_resolvable_exact_release_tag() -> None:
-    for workflow in (_workflow_text(), _release_workflow_text()):
-        assert "aquasecurity/trivy-action@v0.33.1" in workflow
-        assert "aquasecurity/trivy-action@0.33.1" not in workflow
+def test_tier3_workflows_pin_compatible_exact_trivy_action_and_scanner_versions() -> None:
+    violations: list[str] = []
+    for name, workflow in (
+        ("ci", _workflow_text()),
+        ("release", _release_workflow_text()),
+    ):
+        if workflow.count("aquasecurity/trivy-action@") != 1:
+            violations.append(f"{name}: expected exactly one Trivy action step")
+        if "aquasecurity/trivy-action@v0.36.0" not in workflow:
+            violations.append(f"{name}: Trivy action is not pinned to v0.36.0")
+        if "version: v0.70.0" not in workflow:
+            violations.append(f"{name}: Trivy scanner is not pinned to v0.70.0")
+        if "aquasecurity/trivy-action@v0.33.1" in workflow:
+            violations.append(f"{name}: incompatible Trivy action v0.33.1 remains")
+        if "aquasecurity/trivy-action@0.33.1" in workflow:
+            violations.append(f"{name}: unresolvable Trivy action 0.33.1 remains")
+        if "version: v0.65.0" in workflow:
+            violations.append(f"{name}: unavailable Trivy scanner v0.65.0 remains")
+
+    assert not violations, "\n".join(violations)
