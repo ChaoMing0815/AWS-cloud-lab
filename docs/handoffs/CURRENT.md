@@ -1,12 +1,12 @@
 # CURRENT：目前工作交接
 
 - 更新日期：2026-08-26
-- 目前里程碑：Tier 1 已完整完成；Tier 3 delivery foundation、Storyteller 品質與 runtime-only container 已經 PR #8 合併 `main`，Batch T3A control plane 已建立並通過細部安全驗證，但尚未部署容器。
-- 交付策略：先完成 Tier 3 自動部署垂直切片，再以同一 pipeline 推進 Tier 2。PR／`main` CI 與 production release 分離；下一次 image push、ECR scan、SSM release 與 rollback 驗證必須另建 T3B bounded change。
-- Main 整合基準：PR #8 merge commit `030f11d`。
+- 目前里程碑：Tier 1 已完整完成；Tier 3 首次 container transition／legacy rollback 與 Tier 2 story-job local contract 已分別經 PR #14、#15 合併 `main`，Batch T3A control plane 已通過安全驗證，但尚未更新 SSM Documents或部署容器。
+- 交付策略：先以合併後 exact `main` 完成 Tier 3 Change Set、Docker preflight、production release與 rollback證據；Tier 2目前只保留未接 production flow的 local contract，後續再擴張 Data CAS／outbox與 durable queue。
+- Main 整合基準：PR #15 merge commit `900dbed`。
 - Tier 1 完成基準 commit：`07a986a`
 - 平行分支治理基準：Red `6a76daf`／Green `b772116`。
-- Regression：Backend `388 passed, 8 skipped`、Frontend `94 passed`；runtime-only image 的 Tier 3 affected suite `13 passed`。PR #8 四項 checks 全綠；merge commit `030f11d` 的 main CI run `32939458577` 亦通過 Backend、Frontend 與 container build／Trivy。Trivy v0.70.0 結果為 `HIGH=0`、`CRITICAL=0`。
+- Regression：整合後 Backend `439 passed, 8 skipped`、Frontend `94 passed`；Tier 3 corrective affected suite `46 passed`、Tier 2 targeted `15 passed`。PR #14、#15 的 branch boundary、Backend、Frontend與 container build／Trivy checks均全綠；Trivy v0.70.0結果為 `HIGH=0`、`CRITICAL=0`。
 - AWS active release：`tier1-20260825-4a51e0e`
 - 操作邊界：Console-first；使用者操作 AWS Console／SSM。Agent 未經新的 bounded batch 核准不得執行 AWS CLI，且不得執行 S3 讀取或 Bedrock 呼叫。
 
@@ -33,22 +33,24 @@
 - Storyteller recovery metric pipeline 以 exactly-one zero baseline 驗證 Retries `0`、Fallbacks `0`；此證據不代表真實 retry／fallback incident。
 - Tier 1 checkpoints、task list、deployment log 與 sanitized evidence 均已更新。正式證據入口：[`docs/evidence/2026-08-25-tier1-completion/validation.md`](../evidence/2026-08-25-tier1-completion/validation.md)。
 
-### Tier 3 delivery foundation、runtime image 與 Storyteller 品質
+### Tier 3 delivery foundation、runtime image、Storyteller 品質與 Tier 2 local contract
 
 - `codex/tier3-delivery` tip `e09327b` 與 `codex/story-quality` tip `ac18cd0` 已經 PR #8 合併 `main`；merge commit 為 `030f11d`。
 - Storyteller 現在以 canonical 玩家行動、角色、完整骰點、前景、進度／危機與最近五筆 history 形成因果敘事；round／ending 使用 forced output-only tool 與嚴格 schema，game engine 仍是狀態權威。
 - Container 採 runtime-only multi-stage build：digest-pinned Python 3.13 builder 安裝依賴後移除 `pip`／`setuptools`，final 使用 digest-pinned Debian bookworm slim，只保留必要 runtime；`msgpack` 固定為 `1.2.1`。
 - PR #8 與合併後 main CI 都在 GitHub runner 完成 Backend／Frontend、container build 與 Trivy HIGH／CRITICAL fail-closed gate；沒有使用 ignorefile、VEX、skip、降低 severity 或 `exit-code: 0`。
 - Batch T3A stack `co-story-tier3-delivery` 的 ECR、GitHub OIDC deploy role、AppRole pull policy與 SSM release document 共五項資源均為 `CREATE_COMPLETE`，OIDC trust、IAM 正負控制、ECR immutable／scan／lifecycle 與 SSM document 邊界已通過 Console 驗證。
+- PR #14 新增 fail-closed `legacy-bootstrap`／`digest-release`、target-bound driver／unit promotion、mutation rollback與人工限定的 legacy rollback Document；目前只存在於 repo，尚未套用 CloudFormation Change Set。
+- PR #15 合併 StoryJob identity、idempotency、UTC lease、fencing token、bounded retry與 dead-letter local contract。Memory adapter只作 contract double，尚未接入 `RoomService`、API、Data、SQS或 production composition。
 - ECR 仍為空；尚未 push／scan image、設定或執行 GitHub production release、執行 SSM command、bootstrap Docker 或變更 AWS active release。正式證據入口：[`docs/evidence/2026-08-26-tier3-control-plane/validation.md`](../evidence/2026-08-26-tier3-control-plane/validation.md)。
 
 ## Next
 
-1. 建立 Tier 3 production release 的 T3B change envelope，列出 GitHub environment／variables、previous digest、image push／ECR scan、Docker bootstrap、SSM readiness、rollback、成本與停止條件；目前尚未授權執行。
-2. T3B 核准後由使用者啟動 `workflow_dispatch` 並通過 GitHub `production` environment gate；不得用 push `main` 取代人工批准。
-3. 以 exact image digest 驗證 ECR scan、EC2 candidate `live`／`ready`、public edge、active release 與 previous digest rollback；成功與失敗都保存去識別化 timing evidence。
-4. 另行準備最小 Nova Lite bounded evaluation：round 與 ending 各一次；不得由 Agent 呼叫，且必須另行核准。
-5. 自動部署垂直切片完成後，再以相同 pipeline 推進 Tier 2 queue／job／idempotency 與三組件 AWS E2E。
+1. 以 exact `main` 與 template hash建立 `co-story-tier3-delivery` Change Set；只接受 `ContainerReleaseDocument` Modify與 `LegacyRollbackDocument` Add，其餘變更立即停止。
+2. Change Set完成後，由使用者執行一組 read-only SSM preflight；確認 legacy release／health／env metadata、Docker狀態與無殘留 container state。Docker若未安裝，另開 bounded bootstrap批次。
+3. T3B完整 envelope核准後，由使用者啟動 `workflow_dispatch`並通過GitHub `production` environment gate；不得以push `main`取代人工批准。
+4. 以 exact image digest驗證ECR scan、EC2 candidate `live`／`ready`、public edge、active release與legacy／previous rollback；成功與失敗都保存去識別化 timing evidence。
+5. Tier 3 production垂直切片完成後，再擴張Tier 2 Data CAS／outbox、durable queue／SQS與三組件AWS E2E；Nova Lite round／ending evaluation仍需另行bounded核准。
 
 ## 操作護欄
 
@@ -65,8 +67,8 @@
 - `CoStoryHealthCheck` 已通過正面 gate，尚未執行 Document 自身的代表性 failure gate。
 - Forced-tool Storyteller 已通過 fake Converse contract，但尚未以真實 Nova Lite 驗證 round／ending schema 與敘事品質。
 - Tier 3 repo-local／PR image 已通過 Trivy，但 ECR 仍為空，尚未取得 ECR scan 或 application release 證據；不得把 T3A 約 55 分鐘人工安全審查或 PR CI 時間當成應用程式部署時間。
-- 文件合併後 main CI run `32939820482` 全綠，但 GitHub 對 `docker/build-push-action@v6.18.0` 與 `docker/setup-buildx-action@v3.11.1` 顯示 Node.js 20 deprecated／forced Node.js 24 annotation。T3B 前以 bounded、test-first 方式確認 upstream 相容版本；目前不是 release failure，也不得無測試任意升版。
-- Idempotency store 目前仍為 process memory，不宣稱 multi-process exactly-once；這是 Tier 2 的核心設計缺口。
+- Docker actions的 Node.js 20 annotation已以test-first更新至官方 Node.js 24相容版本並通過PR #12、#14、#15 CI；後續仍不得無測試任意升版。
+- StoryJob memory adapter與既有 idempotency store都不宣稱 durable lease或multi-process exactly-once；Data CAS／outbox、SQS、真正DLQ與restart recovery仍是Tier 2核心缺口。
 - iPhone Safari 短期雙向同步已通過，但長時間 polling／visibility 行為仍需在下一次完整多人遊戲觀察。
 - 刪房後舊分頁 lifecycle 修正已部署，尚未以 `COMPLETED` 房間做 AWS 多分頁重驗。
 - 原始截圖若位於 TemporaryItems／Downloads，不算正式 evidence；入庫前必須去識別化。
