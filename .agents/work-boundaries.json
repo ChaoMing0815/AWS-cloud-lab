@@ -17,7 +17,8 @@
     "codex/story-quality": {
       "purpose": "改善玩家行為、危機、進度與結局的敘事品質及相關網頁體驗",
       "allowed_paths": [
-        "backend/co_story/**",
+        "backend/app/adapters/bedrock_storyteller.py",
+        "backend/app/adapters/mock_storyteller.py",
         "backend/tests/test_bedrock_storyteller.py",
         "backend/tests/test_ending_policy.py",
         "backend/tests/test_story*.py",

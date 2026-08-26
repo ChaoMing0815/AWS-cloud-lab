@@ -34,7 +34,8 @@ def test_policy_defines_exact_parallel_branches_and_protects_integration_state()
 def test_story_quality_branch_accepts_product_paths_and_rejects_delivery_paths() -> None:
     accepted = _check(
         "codex/story-quality",
-        "backend/co_story/application/storyteller.py",
+        "backend/app/adapters/bedrock_storyteller.py",
+        "backend/app/adapters/mock_storyteller.py",
         "backend/tests/test_story_narrative.py",
         "web/src/ui/pages/game-page.js",
         "docs/features/story-quality.md",
