@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import Any
 
 from app.domain.models import Room
+from app.domain.story_jobs import StoryJob
 
 
 RETRYABLE_STORYTELLER_FAILURES = {
@@ -61,6 +62,30 @@ class Storyteller(ABC):
 
     @abstractmethod
     def resolve_ending(self, room: Room) -> str: ...
+
+
+class StoryJobQueue(ABC):
+    @abstractmethod
+    def enqueue(self, job: StoryJob) -> StoryJob: ...
+
+    @abstractmethod
+    def claim(self, job_id: str, worker_id: str) -> StoryJob: ...
+
+    @abstractmethod
+    def complete(
+        self,
+        job_id: str,
+        ownership_token: str,
+        result: dict[str, Any],
+    ) -> StoryJob: ...
+
+    @abstractmethod
+    def fail(
+        self,
+        job_id: str,
+        ownership_token: str,
+        error_code: str,
+    ) -> StoryJob: ...
 
 
 class IdempotencyStore(ABC):
