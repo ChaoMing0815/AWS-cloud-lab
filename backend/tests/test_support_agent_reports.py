@@ -110,3 +110,21 @@ def test_report_draft_redacts_sensitive_data_before_persistence(
     assert "postgresql://" not in serialized
     assert "[REDACTED]" in serialized
 
+
+def test_sensitive_report_input_is_redacted_before_model_proposal() -> None:
+    application, adapters, model, reports = _support_types()
+    support_model = model.MockSupportModel()
+    agent = application.SupportAgent(
+        model=support_model,
+        rules_knowledge_base=adapters.StaticRulesKnowledgeBase.from_default_resource(),
+        report_repository=reports.MemorySupportReportRepository(),
+    )
+
+    agent.respond(
+        "問題回報：畫面錯誤，password=FAKE_PASSWORD_MARKER",
+        reporter_identity="player-local-001",
+    )
+
+    assert support_model.received_messages == (
+        "問題回報：畫面錯誤，password=[REDACTED]",
+    )
