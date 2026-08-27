@@ -1,5 +1,8 @@
+import os
 from pathlib import Path
+import subprocess
 
+import pytest
 import yaml
 
 
@@ -85,6 +88,114 @@ def test_release_workflow_scans_exact_pushed_digest_as_linux_arm64() -> None:
         "ignore-unfixed": True,
         "exit-code": 1,
     }
+
+
+def test_release_workflow_validates_one_canonical_instance_target_before_build(
+    tmp_path: Path,
+) -> None:
+    workflow_text = _read(RELEASE_WORKFLOW)
+    workflow = yaml.safe_load(workflow_text)
+    deploy_steps = workflow["jobs"]["deploy"]["steps"]
+    validation_index = next(
+        index
+        for index, step in enumerate(deploy_steps)
+        if step.get("name") == "Validate canonical deployment target"
+    )
+    credentials_index = next(
+        index
+        for index, step in enumerate(deploy_steps)
+        if step.get("name") == "Configure bounded AWS credentials"
+    )
+    build_index = next(
+        index
+        for index, step in enumerate(deploy_steps)
+        if step.get("name") == "Build and push immutable commit image"
+    )
+    validation = deploy_steps[validation_index]
+
+    assert validation_index < credentials_index < build_index
+    assert validation["env"] == {
+        "UNVALIDATED_TIER3_INSTANCE_ID": "${{ vars.TIER3_INSTANCE_ID }}"
+    }
+    assert workflow_text.count("${{ vars.TIER3_INSTANCE_ID }}") == 1
+    assert "xargs" not in validation["run"]
+    assert " sed " not in validation["run"]
+    assert " tr " not in validation["run"]
+
+    github_env = tmp_path / "github.env"
+    env = os.environ.copy()
+    env.update(
+        {
+            "UNVALIDATED_TIER3_INSTANCE_ID": "i-0123456789abcdef0",
+            "GITHUB_ENV": str(github_env),
+        }
+    )
+    result = subprocess.run(
+        ["bash", "-euo", "pipefail", "-c", validation["run"]],
+        cwd=ROOT,
+        env=env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert github_env.read_text(encoding="utf-8") == (
+        "VALIDATED_TIER3_INSTANCE_ID=i-0123456789abcdef0\n"
+    )
+
+    release_step = next(
+        step
+        for step in deploy_steps
+        if step.get("name") == "Release exact digest through bounded SSM document"
+    )
+    release_command = release_step["run"]
+    assert '--targets "Key=InstanceIds,Values=$VALIDATED_TIER3_INSTANCE_ID"' in (
+        release_command
+    )
+    assert release_command.count('$VALIDATED_TIER3_INSTANCE_ID"') == 3
+
+
+@pytest.mark.parametrize(
+    "invalid_instance_id",
+    (
+        " i-0123456789abcdef0",
+        "i-0123456789abcdef0 ",
+        "\ti-0123456789abcdef0",
+        "i-0123456789abcdef0\n",
+        "i-0123456789abcdef0\r\n",
+        "i-01234567",
+        "i-0123456789ABCDEf0",
+    ),
+)
+def test_release_workflow_rejects_noncanonical_instance_target_without_trimming(
+    tmp_path: Path, invalid_instance_id: str
+) -> None:
+    workflow = yaml.safe_load(_read(RELEASE_WORKFLOW))
+    validation = next(
+        step
+        for step in workflow["jobs"]["deploy"]["steps"]
+        if step.get("name") == "Validate canonical deployment target"
+    )
+    github_env = tmp_path / "github.env"
+    env = os.environ.copy()
+    env.update(
+        {
+            "UNVALIDATED_TIER3_INSTANCE_ID": invalid_instance_id,
+            "GITHUB_ENV": str(github_env),
+        }
+    )
+
+    result = subprocess.run(
+        ["bash", "-euo", "pipefail", "-c", validation["run"]],
+        cwd=ROOT,
+        env=env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode != 0
+    assert not github_env.exists() or github_env.read_text(encoding="utf-8") == ""
 
 
 def test_cloudformation_limits_oidc_ecr_and_ssm_to_repo_branch_and_instance() -> None:
@@ -198,3 +309,26 @@ def test_ssm_documents_bound_bootstrap_assets_and_keep_legacy_rollback_human_onl
     assert "https://raw." not in template_text
     assert "wget " not in template_text
     assert "aws s3" not in template_text.lower()
+
+
+def test_release_document_validates_host_ca_before_first_registry_login_and_pull() -> None:
+    template_text = _read(TEMPLATE)
+    release_document = template_text[
+        template_text.index("ContainerReleaseDocument:") : template_text.index(
+            "LegacyRollbackDocument:"
+        )
+    ]
+    first_login = release_document.index("aws ecr get-login-password")
+    first_pull = release_document.index('docker pull "$target_image"')
+
+    for guard in (
+        "validate_rds_ca()",
+        'test -f "$rds_ca"',
+        'test ! -L "$rds_ca"',
+        'readlink -f "$rds_ca"',
+        "root:root:",
+        "unsafe_rds_ca_permissions",
+        "rds_ca_not_app_readable",
+    ):
+        assert release_document.index(guard) < first_login < first_pull
+    assert release_document.count("validate_rds_ca") >= 3
