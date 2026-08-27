@@ -23,6 +23,8 @@ Change Set 執行完成後，使用者另開一批 Console／SSM read-only prefl
 
 Host 的 `/etc/pki/rds/rds-ca.pem` 必須是 canonical regular file、不得是 symlink、owner/group 為 `root:root`、app user 可讀，且 group／other 不可寫。SSM Document 在第一次 ECR login／pull 前及 release driver common preflight 都要再次檢查；不符合即停止。CA 不得 COPY／ADD 進 image，也不得降低 PostgreSQL `verify-full`。
 
+Container image的default user維持非root `10001:10001`，但production host的固定log allowlist沿用既有`co-story` identity。Release driver必須以`id -u/-g co-story`取得canonical非零numeric UID/GID，不得硬編host實際值。Candidate與stable runtime使用該identity；migration仍維持既有非root與TLS邊界。`/var/log/co-story`必須是非symlink canonical directory且numeric metadata精確為validated UID/GID與`750`；既有`candidate.jsonl`必須是regular、非symlink、同identity所有、`640`且該identity可寫。任何不符在candidate前停止。
+
 ## First transition gate
 
 1. 指定合併後、已全綠的 exact main SHA；production reviewer 必須核對 SHA、mode、固定 legacy release、Region、repository、instance 與 rollback envelope。
@@ -31,10 +33,11 @@ Host 的 `/etc/pki/rds/rds-ca.pem` 必須是 canonical regular file、不得是 
 4. Document 只從 exact scanned digest 建立暫時 container，複製 image 內固定 driver 與 container unit；不得下載任意 URL，也不得依賴 active legacy release 裡不存在的 Tier 3 script。Final image 只建立 root-owned `/etc/pki/rds` 空 mountpoint；migration、candidate `:8001` 與 stable systemd container都把 host CA readonly bind mount至相同 absolute path。
 5. 順序固定為 exact digest pull → migration → legacy `live`／`ready` 再驗證 → target candidate `:8001` `live`／`ready` → 原子保存 legacy unit、checksum、release 與 root-only transition state → 切換 target `:8000`。
 6. Migration 後 legacy 不再 ready，視為 backward-compatible gate 失敗；保持 legacy unit，不切換。Candidate 失敗亦不切換。
-7. Backup、stable asset、state、release env、unit install或 `daemon-reload`任何一步失敗，都要精確恢復 legacy unit、reload、restart並驗證 health，再逐一清除本次建立的五個 transaction files；乾淨恢復後可用相同 exact inputs安全重試。
-8. 若 mutation restore或精確 cleanup本身失敗，保留 mode `0600`的 `legacy-mutation-restore-failed` state與 nonzero結果；不得自動重試或刪除 failure state。程序 crash若留下 pending／checksum不一致也一律 fail closed，等待人工判讀。
-9. Target restart或 health失敗走相同 rollback；不得吞錯或宣告成功。
-10. 只有 SSM回傳 `container_release=verified`，且 public edge的 `/live`、`/ready`都是 200，才算完成；成功 state保存 exact active digest、legacy release、stable driver及 legacy／container unit checksum。
+7. Candidate失敗時，只能在移除container前用bounded inspect format輸出`running/exited`等sanitized state與numeric exit code；不得輸出raw logs、完整inspect、env、registry URI或secret。
+8. Backup、stable asset、state、release env、unit install或 `daemon-reload`任何一步失敗，都要精確恢復 legacy unit、reload、restart並驗證 health，再逐一清除本次建立的五個 transaction files；乾淨恢復後可用相同 exact inputs安全重試。
+9. 若 mutation restore或精確 cleanup本身失敗，保留 mode `0600`的 `legacy-mutation-restore-failed` state與 nonzero結果；不得自動重試或刪除 failure state。程序 crash若留下 pending／checksum不一致也一律 fail closed，等待人工判讀。
+10. Target restart或 health失敗走相同 rollback；不得吞錯或宣告成功。
+11. 只有 SSM回傳 `container_release=verified`，且 public edge的 `/live`、`/ready`都是 200，才算完成；成功 state保存 exact active digest、legacy release、stable driver及 legacy／container unit checksum。Root-only release env必須精確三行保存active image與validated UID/GID；missing、duplicate、額外key、非numeric、root值、metadata或host identity mismatch都在digest-release與legacy rollback mutation前停止。
 
 ## 後續 digest release
 
@@ -63,6 +66,8 @@ Host 的 `/etc/pki/rds/rds-ca.pem` 必須是 canonical regular file、不得是 
 - Docker 未安裝／未 active、ECR 沒有已掃描 target digest或 Change Set 未完成：停止。
 - `TIER3_INSTANCE_ID` 含前後空白、換行、Tab、長度或大小寫不符 canonical regex：在 credentials／build 前停止，不得 trim後繼續。
 - RDS CA 缺少、是 symlink、非 canonical regular file、app不可讀或 group／other可寫：在第一次 login／pull前停止，不得複製CA進image或降低TLS。
+- Host `co-story` UID/GID不是canonical非零numeric值，或log directory／candidate log的type、symlink、owner、`750/640` mode與實際可寫性不符：candidate前停止，不得改成`777`、group/other writable或關閉file logging。
+- Root-only release env不是精確image／UID／GID三行，metadata不是`root:root:600`，或identity不符host：digest-release與legacy rollback在mutation前停止。
 - migration、candidate 或 target health 失敗：停止；target 未啟用或自動恢復 previous digest。
 - legacy／previous restore health 仍失敗：保留 nonzero state並停止；不得覆寫 state、關閉 guard或直接重試 deploy。
 - `legacy-switch-pending`、`digest-switch-pending`、`asset-promotion-pending`、任何 `*-failed` state、previous asset backup殘留或 stable asset checksum漂移：停止並交由人工處置。
