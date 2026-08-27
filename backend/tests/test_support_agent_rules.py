@@ -50,6 +50,7 @@ def test_lookup_game_rules_returns_canonical_content_and_stable_citation() -> No
     ("query", "reason"),
     [
         ("可以交易裝備嗎？", "no_grounded_rule"),
+        ("星火可以復活角色嗎？", "no_grounded_rule"),
         ("星火和骰點分別怎麼算？", "ambiguous_rule_query"),
     ],
 )
@@ -63,6 +64,34 @@ def test_lookup_game_rules_fails_closed_without_one_grounded_record(
     assert answer.answer == "目前版本的規則資料沒有足夠證據回答這個問題。"
     assert answer.citations == ()
     assert answer.reason == reason
+
+
+def test_application_rejects_speculative_text_wrapped_as_unsupported() -> None:
+    application, _, model, reports = _support_types()
+    domain = importlib.import_module("app.domain.support_agent")
+
+    class MalformedKnowledgeBase:
+        def lookup(self, query: str):
+            return domain.RuleAnswer(
+                status="unsupported",
+                answer="星火其實可以復活角色。",
+                citations=(),
+                reason="no_grounded_rule",
+            )
+
+        def get(self, rule_id: str):
+            return None
+
+    agent = application.SupportAgent(
+        model=model.MockSupportModel(),
+        rules_knowledge_base=MalformedKnowledgeBase(),
+        report_repository=reports.MemorySupportReportRepository(),
+    )
+
+    with pytest.raises(application.SupportAgentRejected) as error:
+        agent.respond("星火可以復活角色嗎？")
+
+    assert error.value.code == "ungrounded_knowledge_answer"
 
 
 def test_static_rule_records_have_complete_versioned_source_metadata() -> None:

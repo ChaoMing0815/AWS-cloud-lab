@@ -78,6 +78,8 @@ def test_report_replay_is_idempotent_for_same_identity_and_normalized_content() 
     "sensitive_fragment",
     [
         "Cookie: session_token=FAKE_SESSION_MARKER",
+        "Cookie: benign=1; session_token=FAKE_COOKIE_CHAIN_MARKER",
+        "session_token=FAKE_STANDALONE_SESSION_MARKER",
         "X-CSRF-Token: FAKE_CSRF_MARKER",
         "password=FAKE_PASSWORD_MARKER",
         "AWS_ACCESS_KEY_ID=AKIAFAKEFAKEFAKEFAKE",
