@@ -32,6 +32,7 @@ class RuleAnswer:
 class ProblemReportDraft:
     report_id: str
     reporter_identity_hash: str
+    payload_fingerprint: str
     category: str
     summary: str
     reproduction_steps: tuple[str, ...]
@@ -40,3 +41,12 @@ class ProblemReportDraft:
     requires_human_confirmation: bool
     submission_status: str
     idempotency_key: str
+    payload_version: int = 1
+
+
+class SupportReportError(Exception):
+    """Base error for support report persistence contract."""
+
+
+class SupportReportConflict(SupportReportError):
+    pass

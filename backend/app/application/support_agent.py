@@ -1,4 +1,5 @@
 import hashlib
+import json
 import re
 import unicodedata
 
@@ -7,7 +8,14 @@ from app.application.support_ports import (
     SupportModel,
     SupportReportRepository,
 )
-from app.domain.support_agent import ProblemReportDraft, RuleAnswer
+from app.domain.support_agent import (
+    ProblemReportDraft,
+    RuleAnswer,
+    SupportReportConflict,
+)
+
+
+_PAYLOAD_VERSION = 1
 
 
 _TOOL_ARGUMENTS = {
@@ -185,6 +193,13 @@ class SupportAgent:
         draft = ProblemReportDraft(
             report_id=f"draft-{idempotency_key[:16]}",
             reporter_identity_hash=identity_hash,
+            payload_fingerprint=_compute_payload_fingerprint(
+                category=fields["category"],
+                summary=fields["summary"],
+                reproduction_steps=tuple(fields["reproduction_steps"]),
+                expected_behavior=fields["expected_behavior"],
+                actual_behavior=fields["actual_behavior"],
+            ),
             category=fields["category"],
             summary=fields["summary"],
             reproduction_steps=tuple(fields["reproduction_steps"]),
@@ -194,7 +209,43 @@ class SupportAgent:
             submission_status="local_draft_only",
             idempotency_key=idempotency_key,
         )
-        return self._reports.get_or_save(draft)
+        persisted = self._reports.get_or_save(draft)
+        self._validate_persisted_report(draft, persisted)
+        return persisted
+
+    def _validate_persisted_report(
+        self,
+        draft: ProblemReportDraft,
+        persisted: ProblemReportDraft,
+    ) -> None:
+        _validate_report(draft)
+        if persisted != draft:
+            raise SupportAgentRejected("corrupt_report_contract")
+        if persisted.payload_version != _PAYLOAD_VERSION:
+            raise SupportAgentRejected("report_payload_version_mismatch")
+
+
+def _compute_payload_fingerprint(
+    *,
+    category: str,
+    summary: str,
+    reproduction_steps: tuple[str, ...],
+    expected_behavior: str,
+    actual_behavior: str,
+) -> str:
+    payload = {
+        "category": category,
+        "summary": summary,
+        "reproduction_steps": reproduction_steps,
+        "expected_behavior": expected_behavior,
+        "actual_behavior": actual_behavior,
+        "requires_human_confirmation": True,
+        "submission_status": "local_draft_only",
+        "payload_version": _PAYLOAD_VERSION,
+    }
+    return _sha256(
+        json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    )
 
 
 def _contains_unsafe_instruction(message: str) -> bool:
@@ -267,6 +318,40 @@ def _parse_report_fields(description: str) -> dict[str, str | list[str]]:
     if not fields["actual_behavior"]:
         fields["actual_behavior"] = normalized_description
     return fields
+
+
+def _validate_report(draft: ProblemReportDraft) -> None:
+    expected_version = _PAYLOAD_VERSION
+    if draft.payload_version != expected_version:
+        raise SupportReportConflict("payload version mismatch")
+    if not draft.idempotency_key or len(draft.idempotency_key) != 64:
+        raise SupportReportConflict("invalid draft idempotency key")
+    if not draft.reporter_identity_hash or len(draft.reporter_identity_hash) != 64:
+        raise SupportReportConflict("invalid reporter identity hash")
+    if not draft.report_id.startswith("draft-") or len(draft.report_id) != 22:
+        raise SupportReportConflict("invalid report_id format")
+    if len(draft.payload_fingerprint) != 64:
+        raise SupportReportConflict("invalid payload fingerprint")
+    if not draft.requires_human_confirmation or draft.submission_status != "local_draft_only":
+        raise SupportReportConflict("invalid report state")
+    if not draft.category:
+        raise SupportReportConflict("invalid category")
+    if not draft.summary:
+        raise SupportReportConflict("invalid summary")
+    if not draft.reproduction_steps:
+        raise SupportReportConflict("invalid reproduction steps")
+    if not draft.expected_behavior:
+        raise SupportReportConflict("invalid expected behavior")
+    if not draft.actual_behavior:
+        raise SupportReportConflict("invalid actual behavior")
+    if draft.payload_fingerprint != _compute_payload_fingerprint(
+        category=draft.category,
+        summary=draft.summary,
+        reproduction_steps=draft.reproduction_steps,
+        expected_behavior=draft.expected_behavior,
+        actual_behavior=draft.actual_behavior,
+    ):
+        raise SupportReportConflict("report payload fingerprint mismatch")
 
 
 def _sha256(value: str) -> str:
