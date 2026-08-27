@@ -12,6 +12,7 @@ MAX_TOKENS = 1200
 MAX_NARRATIVE_LENGTH = 1200
 ROUND_TOOL_NAME = "submit_round_narrative"
 ENDING_TOOL_NAME = "submit_ending_narrative"
+ROUND_AND_ENDING_TOOL_NAME = "submit_round_and_ending_narrative"
 _TONES = {
     "light_comedy",
     "workplace_satire",
@@ -141,6 +142,90 @@ _ENDING_TOOL = {
         "strict": True,
     }
 }
+_ROUND_AND_ENDING_TOOL = {
+    "toolSpec": {
+        "name": ROUND_AND_ENDING_TOOL_NAME,
+        "description": "Submit a round narrative plus terminal ending narrative in output only.",
+        "inputSchema": {
+            "json": {
+                "type": "object",
+                "additionalProperties": False,
+                "required": [
+                    "narrative",
+                    "player_consequences",
+                    "progress_consequence",
+                    "crisis_consequence",
+                    "next_scene_hook",
+                    "ending_narrative",
+                    "achieved_outcome",
+                    "paid_cost_or_sacrifice",
+                    "unresolved_consequence",
+                ],
+                "properties": {
+                    "narrative": {"type": "string", "minLength": 1, "maxLength": 600},
+                    "player_consequences": {
+                        "type": "array",
+                        "minItems": 1,
+                        "maxItems": 5,
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "required": ["player_id", "action_consequence"],
+                            "properties": {
+                                "player_id": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 64,
+                                },
+                                "action_consequence": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 240,
+                                },
+                            },
+                        },
+                    },
+                    "progress_consequence": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 240,
+                    },
+                    "crisis_consequence": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 240,
+                    },
+                    "next_scene_hook": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 400,
+                    },
+                    "ending_narrative": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 600,
+                    },
+                    "achieved_outcome": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 300,
+                    },
+                    "paid_cost_or_sacrifice": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 300,
+                    },
+                    "unresolved_consequence": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 300,
+                    },
+                },
+            }
+        },
+        "strict": True,
+    }
+}
 _METRICS_LOGGER = logging.getLogger("co_story.storyteller_metrics")
 
 
@@ -239,6 +324,46 @@ class BedrockStoryteller(Storyteller):
             _ENDING_TOOL,
         )
 
+    def resolve_round_and_ending(self, room: Room) -> dict[str, str]:
+        current_results = [
+            result for result in room.dice_results if result.round_number == room.round_number
+        ]
+        players_by_id = {player.id: player for player in room.players}
+        prompt = {
+            "task": "resolve_round_and_ending_narrative",
+            "world": _world_context(room),
+            "canonical_state": {
+                "round_number": room.round_number,
+                "max_rounds": room.max_rounds,
+                "progress_points_before_round": room.progress_points,
+                "danger_points_before_round": room.danger_points,
+                "progress_delta": sum(result.progress_delta for result in current_results),
+                "danger_delta": sum(result.danger_delta for result in current_results),
+            },
+            "recent_story": _recent_story(room),
+            "resolved_actions": [
+                _resolved_action(players_by_id[result.player_id], result)
+                for result in current_results
+                if result.player_id in players_by_id
+            ],
+            "narrative_requirements": [
+                "承接 recent_story 的最後場景，不能重置時間線。",
+                "逐一描述每個 resolved action 如何因固定骰點結果成功、付出代價或失敗前進。",
+                "把 progress_delta 與 danger_delta 寫成具體事件及後果，不得另行計算或修改數值。",
+                "結尾提出本回合後果自然形成的下一場景並收束終局。",
+            ],
+        }
+        expected_player_ids = [result.player_id for result in current_results]
+        raw_input = self._converse_tool_input(
+            prompt,
+            _ROUND_AND_ENDING_TOOL,
+            expected_player_ids=expected_player_ids,
+        )
+        return {
+            "narration": _compose_round_narrative(raw_input["round_tool_input"]),
+            "ending_narration": _compose_ending_narrative(raw_input["ending_tool_input"]),
+        }
+
     def _converse_text(
         self,
         prompt: dict[str, Any],
@@ -266,7 +391,48 @@ class BedrockStoryteller(Storyteller):
         expected_player_ids: list[str] | None = None,
     ) -> str:
         response = self._invoke(prompt, _NARRATIVE_SYSTEM, tool)
+        _log_usage_metrics(response, prompt["task"])
         tool_name = tool["toolSpec"]["name"]
+        if tool_name == ROUND_TOOL_NAME:
+            return _compose_round_narrative(
+                self._extract_tool_output(
+                    response,
+                    tool_name,
+                    expected_player_ids=expected_player_ids,
+                )
+            )
+        if tool_name == ENDING_TOOL_NAME:
+            return _compose_ending_narrative(
+                self._extract_tool_output(
+                    response,
+                    tool_name,
+                    expected_player_ids=expected_player_ids,
+                )
+            )
+        raise StorytellerFailure("SCHEMA_INVALID")
+
+    def _converse_tool_input(
+        self,
+        prompt: dict[str, Any],
+        tool: dict[str, Any],
+        *,
+        expected_player_ids: list[str] | None = None,
+    ) -> dict[str, Any]:
+        response = self._invoke(prompt, _NARRATIVE_SYSTEM, tool)
+        _log_usage_metrics(response, prompt["task"])
+        return self._extract_tool_output(
+            response,
+            tool["toolSpec"]["name"],
+            expected_player_ids=expected_player_ids,
+        )
+
+    def _extract_tool_output(
+        self,
+        response: dict[str, Any],
+        tool_name: str,
+        *,
+        expected_player_ids: list[str] | None = None,
+    ) -> dict[str, Any]:
         try:
             content = response["output"]["message"]["content"]
             if response.get("stopReason") != "tool_use" or len(content) != 1:
@@ -286,20 +452,21 @@ class BedrockStoryteller(Storyteller):
                 raise ValueError("invalid tool use id")
             if tool_use["name"] != tool_name:
                 raise ValueError("wrong tool")
+
             if tool_name == ROUND_TOOL_NAME:
-                validated = _validate_round_tool_input(
+                return _validate_round_tool_input(
                     tool_use["input"], expected_player_ids or []
                 )
-                text = _compose_round_narrative(validated)
-            else:
-                validated = _validate_ending_tool_input(tool_use["input"])
-                text = _compose_ending_narrative(validated)
+            if tool_name == ENDING_TOOL_NAME:
+                return _validate_ending_tool_input(tool_use["input"])
+            if tool_name == ROUND_AND_ENDING_TOOL_NAME:
+                return _validate_round_and_ending_tool_input(
+                    tool_use["input"],
+                    expected_player_ids or [],
+                )
         except (KeyError, TypeError, ValueError):
             raise StorytellerFailure("SCHEMA_INVALID") from None
-        if not text or len(text) > MAX_NARRATIVE_LENGTH:
-            raise StorytellerFailure("SCHEMA_INVALID")
-        _log_usage_metrics(response, prompt["task"])
-        return text
+        raise StorytellerFailure("SCHEMA_INVALID")
 
     def _invoke(
         self,
@@ -512,6 +679,42 @@ def _log_usage_metrics(response: dict[str, Any], operation: str) -> None:
             separators=(",", ":"),
         )
     )
+
+
+def _validate_round_and_ending_tool_input(
+    value: object,
+    expected_player_ids: list[str],
+) -> dict[str, Any]:
+    if not isinstance(value, dict) or set(value) != {
+        "narrative",
+        "player_consequences",
+        "progress_consequence",
+        "crisis_consequence",
+        "next_scene_hook",
+        "ending_narrative",
+        "achieved_outcome",
+        "paid_cost_or_sacrifice",
+        "unresolved_consequence",
+    }:
+        raise ValueError("composite tool input")
+
+    round_input = {
+        "narrative": value["narrative"],
+        "player_consequences": value["player_consequences"],
+        "progress_consequence": value["progress_consequence"],
+        "crisis_consequence": value["crisis_consequence"],
+        "next_scene_hook": value["next_scene_hook"],
+    }
+    ending_input = {
+        "ending_narrative": value["ending_narrative"],
+        "achieved_outcome": value["achieved_outcome"],
+        "paid_cost_or_sacrifice": value["paid_cost_or_sacrifice"],
+        "unresolved_consequence": value["unresolved_consequence"],
+    }
+    return {
+        "round_tool_input": _validate_round_tool_input(round_input, expected_player_ids),
+        "ending_tool_input": _validate_ending_tool_input(ending_input),
+    }
 
 
 def _nonnegative_int(value: Any) -> int | None:
