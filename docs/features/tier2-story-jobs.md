@@ -1,13 +1,13 @@
-# Tier 2 Story Job 第一階段 Contract
+# Tier 2 Story Job Queue Contract
 
-- 狀態：Ready for TDD
-- 風險：R2（queue／跨組件 contract）
-- 範圍：純本機 domain、application port 與 memory adapter；不接入現行 request flow
+- 狀態：第二階段 local durable contract
+- 風險：R3（queue／migration／durable lease）
+- 範圍：純本機 domain、application port、memory與PostgreSQL adapter；不接入現行request flow
 - 上游依據：Tier 2 累積演進方向、既有 Room aggregate 與 Storyteller port
 
 ## 目的與非目標
 
-本切片先固定 Web／API、Story Worker 與 Data 之間的依賴方向，以及非同步 story job 的 identity、狀態與 replay 規則。它不改變玩家可見行為，不修改 `RoomService`、API route、Storyteller adapter、production composition 或資料庫 schema，也不宣稱已具備跨 process exactly-once。
+第一階段固定 Web／API、Story Worker與Data之間的依賴方向，以及非同步story job的identity、狀態與replay規則。第二階段以append-only `002_create_story_jobs.sql`與`PostgresStoryJobQueue`保存同一公開contract。它不改變玩家可見行為，不修改`RoomService`、API route、Storyteller adapter或production composition，也不宣稱distributed exactly-once。
 
 ## Cohesive contract
 
@@ -46,13 +46,18 @@ PENDING --claim(worker)--> CLAIMED --complete(token, result)--> COMPLETED
 ### 失敗、重試與 exactly-once 邊界
 
 - 目前 memory adapter 只模擬 lease timestamp 與 dead-letter 等價狀態，不提供 durable lease、外部 visibility timeout、durable dead-letter queue、process restart recovery 或 multi-process coordination。
+- PostgreSQL adapter把job identity、payload snapshot、status、attempt、UTC lease、fencing token、result與terminal failure保存於`story_jobs`；新adapter instance可讀取並以相同CAS規則繼續處理。
+- `enqueue`使用`ON CONFLICT DO NOTHING`後鎖定identity rows；claim／expired reclaim／complete／fail都在單一transaction內以`FOR UPDATE`與status、token、lease條件更新。DB constraint拒絕不合法state shape。
+- PostgreSQL的partial unique index保護非空ownership token，`job_id`與`idempotency_key`分別唯一；cross-identity collision與stale token一律fail closed。
 - transport 可 at-least-once 投遞；producer 負責穩定 idempotency key，queue adapter 負責同 key 去重，worker 負責 claim ownership 與 deterministic completion，Data integration 最終必須以 `room_version` 做 compare-and-set。
-- retry scheduling、Data transaction 與 durable queue 的 token／lease mapping 將在 SQS／durable store 接線前另定 contract；本切片刻意不以 process memory 模擬 production exactly-once。
+- 本地PostgreSQL persistence不是SQS visibility timeout或distributed exactly-once；SQS adapter、Data result CAS／inbox-outbox與production wiring仍需後續獨立contract。
 
 ## Acceptance criteria
 
 1. Domain 能表達 immutable job identity、Room／round／version 關聯、payload、狀態、owner、attempt 與 completion result。
 2. Application 提供 canonical idempotency key 與建立 `PENDING` job 的 factory。
 3. `StoryJobQueue` port 固定 enqueue／claim／complete／fail 邊界。
-4. Memory adapter 通過 identity collision、nested snapshot、lease、fencing token、bounded retry 與上述 replay 正負 contract。
-5. 現行 RoomService、API、Storyteller、repository 與 composition 完全不接線且 regression 全綠。
+4. Memory與PostgreSQL adapter都通過identity collision、nested snapshot、lease、fencing token、bounded retry與terminal replay正負contract。
+5. `002`完整約束identity、Room coordinates、payload、lifecycle、result／failure與UTC timestamps，且不修改`001`。
+6. PostgreSQL adapter的核心SQL／transaction contract可離線驗證；明確提供專用DSN時才額外執行restart integration。
+7. 現行RoomService、API、Storyteller、Room repository與composition完全不接線且regression全綠。
