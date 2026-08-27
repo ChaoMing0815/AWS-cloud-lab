@@ -43,11 +43,26 @@ file_metadata() {
       runtime) printf '%s\n' "${CO_STORY_TEST_RUNTIME_METADATA:-root:co-story:640}" ;;
       database) printf '%s\n' "${CO_STORY_TEST_DATABASE_METADATA:-root:co-story:640}" ;;
       ca) printf '%s\n' "${CO_STORY_TEST_CA_METADATA:-root:root:644}" ;;
+      release) printf '%s\n' "${CO_STORY_TEST_RELEASE_METADATA:-root:root:600}" ;;
       state) printf '%s\n' 'root:root:600' ;;
       *) printf '%s\n' 'root:root:600' ;;
     esac
   else
     stat -c '%U:%G:%a' "$path"
+  fi
+}
+
+numeric_file_metadata() {
+  kind="${1:?metadata kind required}"
+  path="${2:?metadata path required}"
+  if [ -n "$test_root" ]; then
+    case "$kind" in
+      log-dir) printf '%s\n' "${CO_STORY_TEST_LOG_DIR_METADATA:-992:992:750}" ;;
+      candidate-log) printf '%s\n' "${CO_STORY_TEST_CANDIDATE_LOG_METADATA:-992:992:640}" ;;
+      *) fail invalid_numeric_metadata_kind ;;
+    esac
+  else
+    stat -c '%u:%g:%a' "$path"
   fi
 }
 
@@ -128,7 +143,34 @@ restart_service() {
 write_release_env() {
   image="${1:?image required}"
   atomic_write "$release_env" 0600 "CO_STORY_CONTAINER_IMAGE=$image
+CO_STORY_CONTAINER_UID=$runtime_uid
+CO_STORY_CONTAINER_GID=$runtime_gid
 "
+}
+
+release_env_value() {
+  key="${1:?release env key required}"
+  value="$(awk -F= -v key="$key" '$1 == key {print substr($0, length(key) + 2)}' "$release_env")"
+  lines="$(awk -F= -v key="$key" '$1 == key {count++} END {print count + 0}' "$release_env")"
+  [ "$lines" -eq 1 ] || fail invalid_release_env_shape
+  printf '%s\n' "$value"
+}
+
+load_release_env() {
+  expected_image="${1:?expected release image required}"
+  [ -s "$release_env" ] || fail missing_release_env
+  [ "$(file_metadata release "$release_env")" = root:root:600 ] \
+    || fail invalid_release_env_metadata
+  [ "$(wc -l <"$release_env" | tr -d ' ')" -eq 3 ] || fail invalid_release_env_shape
+  release_image="$(release_env_value CO_STORY_CONTAINER_IMAGE)"
+  release_uid="$(release_env_value CO_STORY_CONTAINER_UID)"
+  release_gid="$(release_env_value CO_STORY_CONTAINER_GID)"
+  [[ "$release_uid" =~ ^[1-9][0-9]*$ ]] \
+    && [[ "$release_gid" =~ ^[1-9][0-9]*$ ]] \
+    || fail invalid_release_env_identity
+  [ "$release_uid" = "$runtime_uid" ] && [ "$release_gid" = "$runtime_gid" ] \
+    || fail release_env_identity_mismatch
+  [ "$release_image" = "$expected_image" ] || fail active_release_env_mismatch
 }
 
 write_transition_state() {
@@ -187,6 +229,34 @@ validate_rds_ca() {
   (( (8#$ca_mode & 0004) != 0 )) || fail rds_ca_not_app_readable
 }
 
+validate_runtime_identity_and_logs() {
+  record_event preflight:runtime-identity
+  runtime_uid="$(id -u co-story 2>/dev/null || true)"
+  runtime_gid="$(id -g co-story 2>/dev/null || true)"
+  [[ "$runtime_uid" =~ ^[1-9][0-9]*$ ]] \
+    && [[ "$runtime_gid" =~ ^[1-9][0-9]*$ ]] \
+    || fail invalid_container_runtime_identity
+
+  [ -d "$log_dir" ] || fail missing_log_directory
+  [ ! -L "$log_dir" ] || fail log_directory_must_not_be_symlink
+  [ "$(readlink -f "$log_dir" 2>/dev/null || true)" = "$log_dir" ] \
+    || fail invalid_log_directory_path
+  [ "$(numeric_file_metadata log-dir "$log_dir")" = "$runtime_uid:$runtime_gid:750" ] \
+    || fail invalid_log_directory_metadata
+
+  [ -f "$candidate_log" ] || fail missing_candidate_log
+  [ ! -L "$candidate_log" ] || fail candidate_log_must_not_be_symlink
+  [ "$(readlink -f "$candidate_log" 2>/dev/null || true)" = "$candidate_log" ] \
+    || fail invalid_candidate_log_path
+  [ "$(numeric_file_metadata candidate-log "$candidate_log")" = "$runtime_uid:$runtime_gid:640" ] \
+    || fail invalid_candidate_log_metadata
+  if [ -n "$test_root" ]; then
+    [ "${CO_STORY_TEST_LOG_WRITABLE:-no}" = yes ] || fail candidate_log_not_writable
+  else
+    runuser -u co-story -- test -w "$candidate_log" || fail candidate_log_not_writable
+  fi
+}
+
 validate_common_host() {
   validate_rds_ca
   [ -s "$runtime_env" ] || fail missing_runtime_env
@@ -195,7 +265,7 @@ validate_common_host() {
   [ "$(file_metadata database "$database_env")" = root:co-story:640 ] || fail invalid_database_env_metadata
   [ "$(readlink -f "$current_link" 2>/dev/null || true)" = "$legacy_release" ] || fail active_legacy_symlink_mismatch
   [ -f "$legacy_release/ops/systemd/co-story.service" ] || fail missing_legacy_unit
-  [ -d "$log_dir" ] || fail missing_log_directory
+  validate_runtime_identity_and_logs
   command -v docker >/dev/null 2>&1 || fail docker_not_installed
   systemctl is-active --quiet docker.service || fail docker_not_active
 }
@@ -239,10 +309,19 @@ check_target_candidate() {
     --env-file "$database_env" \
     --env CO_STORY_APPLICATION_LOG_PATH=/var/log/co-story/candidate.jsonl \
     --mount "type=bind,src=$rds_ca,dst=/etc/pki/rds/rds-ca.pem,readonly" \
-    --mount "type=bind,src=$log_dir,dst=/var/log/co-story" --user 10001:10001 \
+    --mount "type=bind,src=$log_dir,dst=/var/log/co-story" \
+    --user "$runtime_uid:$runtime_gid" \
     "$target_image" uvicorn app.main:create_app --factory --host 127.0.0.1 \
     --port 8001 --workers 1 >/dev/null
   if ! wait_for_health target-candidate 8001; then
+    candidate_state="$(docker inspect --format '{{.State.Status}} {{.State.ExitCode}}' \
+      co-story-candidate 2>/dev/null || true)"
+    if [[ "$candidate_state" =~ ^(created|running|paused|restarting|removing|exited|dead)\ ([0-9]+)$ ]]; then
+      printf 'container_candidate=unhealthy status=%s exit_code=%s\n' \
+        "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}" >&2
+    else
+      printf 'container_candidate=unhealthy status=unknown exit_code=unknown\n' >&2
+    fi
     docker rm -f co-story-candidate >/dev/null 2>&1 || true
     return 1
   fi
@@ -413,7 +492,7 @@ digest_release() {
   [ "$state_status" = container-active ] || fail container_state_not_active
   previous_image="$repository_uri@$previous_image_digest"
   [ "$state_container_image" = "$previous_image" ] || fail previous_digest_state_mismatch
-  [ "$(cat "$release_env" 2>/dev/null || true)" = "CO_STORY_CONTAINER_IMAGE=$previous_image" ] || fail active_release_env_mismatch
+  load_release_env "$previous_image"
   [ "$(file_sha256 "$installed_unit")" = "$state_container_unit_sha" ] || fail active_container_unit_mismatch
   [ "$(file_sha256 "$stable_driver")" = "$state_driver_sha" ] || fail active_driver_asset_mismatch
   [ "$(file_sha256 "$stable_container_unit")" = "$state_container_unit_sha" ] || fail active_unit_asset_mismatch
@@ -450,7 +529,7 @@ digest_release() {
   [ "$(file_sha256 "$installed_unit")" = "$unit_fence" ] || fail stale_container_unit
   [ "$(file_sha256 "$stable_driver")" = "$driver_fence" ] || fail stale_driver_asset
   [ "$(file_sha256 "$stable_container_unit")" = "$stable_unit_fence" ] || fail stale_unit_asset
-  [ "$(cat "$release_env")" = "CO_STORY_CONTAINER_IMAGE=$previous_image" ] || fail stale_release_env
+  load_release_env "$previous_image"
 
   if ! atomic_install "$stable_driver" "$previous_driver_backup" 0600 \
     || ! atomic_install "$stable_container_unit" "$previous_unit_backup" 0600; then
@@ -502,7 +581,7 @@ legacy_rollback() {
   load_container_state
   [ "$state_status" = container-active ] || fail container_state_not_active
   [ "$state_container_image" = "$target_image" ] || fail active_digest_state_mismatch
-  [ "$(cat "$release_env" 2>/dev/null || true)" = "CO_STORY_CONTAINER_IMAGE=$target_image" ] || fail active_release_env_mismatch
+  load_release_env "$target_image"
   [ "$(file_sha256 "$stable_driver")" = "$state_driver_sha" ] || fail active_driver_asset_mismatch
   [ "$(file_sha256 "$stable_container_unit")" = "$state_container_unit_sha" ] || fail active_unit_asset_mismatch
   [ "$(file_sha256 "$installed_unit")" = "$state_container_unit_sha" ] || fail active_container_unit_mismatch
@@ -522,7 +601,7 @@ legacy_rollback() {
   systemctl stop co-story-legacy-candidate.service
   [ "$(file_sha256 "$transition_state")" = "$state_fence" ] || fail stale_transition_state
   [ "$(file_sha256 "$installed_unit")" = "$unit_fence" ] || fail stale_container_unit
-  [ "$(cat "$release_env")" = "CO_STORY_CONTAINER_IMAGE=$target_image" ] || fail stale_release_env
+  load_release_env "$target_image"
 
   record_event mutation:install-legacy-unit
   atomic_install "$legacy_unit_backup" "$installed_unit" 0644
@@ -572,6 +651,7 @@ readonly installed_unit="$(host_path /etc/systemd/system/co-story.service)"
 readonly current_link="$(host_path /opt/co-story/current)"
 readonly legacy_release="$(host_path "/opt/co-story/releases/$expected_legacy_release")"
 readonly log_dir="$(host_path /var/log/co-story)"
+readonly candidate_log="$log_dir/candidate.jsonl"
 readonly stable_driver="$(host_path /usr/local/libexec/co-story-deploy-container)"
 readonly stable_container_unit="$(host_path /usr/local/share/co-story/co-story-container.service)"
 readonly previous_driver_backup="$(host_path /etc/co-story/previous-stable-driver)"

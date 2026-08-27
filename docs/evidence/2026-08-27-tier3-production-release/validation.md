@@ -115,3 +115,36 @@ GitHub run：[Tier 3 container release #1](https://github.com/ChaoMing0815/AWS-c
 - `git diff --check`與branch boundary將在此evidence commit後做最終核對。
 
 這批修正不是production deploy核准。合併後必須先套用只更新release Document新版本的bounded Change Set、由使用者把repository variable改成canonical exact值，再以新的exact `main` SHA形成並明確核准新的T3B envelope。Run `33030554303`與`33032162034`都不得re-run。
+
+## 第三次 T3B fail-closed 與 runtime identity corrective TDD
+
+- 第三次run：`33036267754`
+- Source：`2fbe3c8d4ee941d1dc51a22aab0239cc2a364dae`
+- OIDC、ARM64 build／immutable push與exact-digest Trivy：通過。
+- SSM：`ResponseCode=2`，reason為`target_candidate_unhealthy`；candidate `127.0.0.1:8001`未建立連線。Docker credential helper訊息只是warning，不是root cause。
+- Root cause：host固定`co-story` identity與`/var/log/co-story` numeric ownership一致，但candidate/stable container硬編image UID `10001`，無法寫入既有`750/640` log allowlist。未採用`777`、group/other writable、停用file logging或改CloudWatch allowlist。
+- 唯讀postflight確認application與public edge active、container service inactive、active release仍為`tier1-20260825-4a51e0e`，legacy unit吻合release，live／ready均為`200`；release env、transition state、legacy backup、stable assets與candidate／target container均無殘留。
+
+### Repo-local strict TDD
+
+- Base：`2fbe3c8d4ee941d1dc51a22aab0239cc2a364dae`
+- Red commit：`a06091e3515c8da4c7ea19ed33d63d11cbd1f57d`
+- Green commit：`5aa2b2640972885f8fd4ee5ce6181b707bc31e34`
+- Red：新增stable unit dynamic identity、legacy-bootstrap／digest-release／legacy rollback env contract、identity／log negative cases與sanitized candidate failure cleanup；失敗直接來自既有硬編UID與缺少guards。
+- Green：image default仍為非root`10001:10001`；driver動態取得host `co-story`非零numeric UID/GID，candidate與stable runtime使用該值。Root-only release env精確保存image／UID／GID三行並在後續release／rollback重新驗證。Log directory／candidate log維持`750/640`、非symlink與identity可寫；candidate失敗只輸出sanitized status／numeric exit code再清除。
+- [systemd官方`systemd.service`文件](https://github.com/systemd/systemd/blob/main/man/systemd.service.xml)定義`${FOO}`可作為argument的一部分並以exact value形成單一argument，因此unit的`${CO_STORY_CONTAINER_UID}:${CO_STORY_CONTAINER_GID}`會安全形成Docker `--user`的單一`UID:GID`值。
+- Rollback：legacy runtime仍以host`co-story` identity寫既有`application.jsonl`；digest rollback與manual legacy rollback既有state／checksum fences全數保留。Candidate成功前仍不寫release env、transition state或stable assets。
+- CloudFormation／CloudWatch：相對base皆無檔案差異；Document v3仍從exact target image擷取driver/unit，因此不需要Change Set，也未改IAM／OIDC／ECR／Trivy／approval contract。
+
+### Negative、sensitivity與驗證
+
+- Negative涵蓋root／空白／非numeric identity、log owner/mode/symlink/writability，以及release env missing／duplicate／root／mismatch；均在candidate或mutation前fail closed。
+- Sanitized failure case確認inspect發生在candidate cleanup前，stderr不含repository URI、runtime placeholder或raw logs。
+- Sensitivity 1：暫時放寬log directory mode guard後，`770`案例如預期讓測試失敗；恢復精確`750`後通過。
+- Sensitivity 2：暫時把stable unit退回`10001:10001`後，container contract如預期失敗；恢復dynamic env後通過。
+- Tier 3 affected：`78 passed`。Backend全套無失敗，`8 skipped`為既有optional案例；Frontend `94 passed`。
+- YAML parse、`bash -n`、CloudFormation zero-diff comparison與`git diff --check`通過。
+- 本機ARM64 build／inspect通過：image為`linux/arm64`、default user仍為`10001:10001`，且新driver/unit assets存在；未使用production env，因此不宣稱production health。本機無Trivy executable，PR CI exact ARM64 digest gate仍是必要merge條件。
+- Branch boundary將在本evidence commit後以base `2fbe3c8d4ee941d1dc51a22aab0239cc2a364dae`做最終核對。
+
+此批只修正repo-local runtime identity contract，不授權重跑run `33036267754`或任何舊run。PR合併、main CI全綠後，必須以新的exact main SHA重新形成並明確核准下一個T3B envelope；在此之前不得推送image或執行production release。
