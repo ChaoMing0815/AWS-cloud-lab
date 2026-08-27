@@ -38,6 +38,12 @@ def test_image_is_non_root_secret_free_and_keeps_the_runtime_contract() -> None:
     assert "COPY ops/release/deploy_container.sh /usr/local/share/co-story/deploy_container.sh" in dockerfile
     assert "COPY ops/systemd/co-story-container.service /usr/local/share/co-story/co-story-container.service" in dockerfile
     assert "chmod 0555 /usr/local/share/co-story/deploy_container.sh" in dockerfile
+    assert "install -d -m 0755 -o root -g root /etc/pki/rds" in dockerfile
+    assert not any(
+        line.startswith(("COPY ", "ADD "))
+        and ("rds-ca.pem" in line or line.rstrip().endswith(".pem"))
+        for line in dockerfile.splitlines()
+    )
 
 
 def test_production_image_uses_a_clean_runtime_stage_without_build_tooling() -> None:
@@ -120,6 +126,10 @@ def test_container_systemd_keeps_nginx_edge_and_external_runtime_injection() -> 
     assert "--env-file /etc/co-story/runtime.env" in unit
     assert "--env-file /etc/co-story/database.env" in unit
     assert "/var/log/co-story:/var/log/co-story" in unit
+    assert (
+        "--mount type=bind,src=/etc/pki/rds/rds-ca.pem,"
+        "dst=/etc/pki/rds/rds-ca.pem,readonly"
+    ) in unit
     assert "--host 127.0.0.1" in unit
     assert "--port 8000" in unit
     assert "--workers 1" in unit

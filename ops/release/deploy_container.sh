@@ -42,6 +42,7 @@ file_metadata() {
     case "$kind" in
       runtime) printf '%s\n' "${CO_STORY_TEST_RUNTIME_METADATA:-root:co-story:640}" ;;
       database) printf '%s\n' "${CO_STORY_TEST_DATABASE_METADATA:-root:co-story:640}" ;;
+      ca) printf '%s\n' "${CO_STORY_TEST_CA_METADATA:-root:root:644}" ;;
       state) printf '%s\n' 'root:root:600' ;;
       *) printf '%s\n' 'root:root:600' ;;
     esac
@@ -170,7 +171,24 @@ load_container_state() {
   [[ "$state_container_image" =~ ^${repository_uri}@sha256:[a-f0-9]{64}$ ]] || fail invalid_state_image
 }
 
+validate_rds_ca() {
+  record_event preflight:rds-ca
+  [ -f "$rds_ca" ] || fail missing_rds_ca
+  [ ! -L "$rds_ca" ] || fail rds_ca_must_not_be_symlink
+  [ "$(readlink -f "$rds_ca" 2>/dev/null || true)" = "$rds_ca" ] || fail invalid_rds_ca_path
+  [ -r "$rds_ca" ] || fail unreadable_rds_ca
+  ca_metadata="$(file_metadata ca "$rds_ca")"
+  case "$ca_metadata" in
+    root:root:[0-7][0-7][0-7]) ;;
+    *) fail invalid_rds_ca_metadata ;;
+  esac
+  ca_mode="${ca_metadata##*:}"
+  (( (8#$ca_mode & 0022) == 0 )) || fail unsafe_rds_ca_permissions
+  (( (8#$ca_mode & 0004) != 0 )) || fail rds_ca_not_app_readable
+}
+
 validate_common_host() {
+  validate_rds_ca
   [ -s "$runtime_env" ] || fail missing_runtime_env
   [ -s "$database_env" ] || fail missing_database_env
   [ "$(file_metadata runtime "$runtime_env")" = root:co-story:640 ] || fail invalid_runtime_env_metadata
@@ -208,6 +226,7 @@ run_migration() {
   docker run --rm --network host --read-only --cap-drop ALL \
     --security-opt no-new-privileges --tmpfs /tmp:rw,noexec,nosuid,size=64m \
     --env-file "$runtime_env" --env-file "$database_env" \
+    --mount "type=bind,src=$rds_ca,dst=/etc/pki/rds/rds-ca.pem,readonly" \
     --mount "type=bind,src=$log_dir,dst=/var/log/co-story" \
     --user 10001:10001 --entrypoint python "$target_image" -m app.commands.migrate
 }
@@ -219,6 +238,7 @@ check_target_candidate() {
     --tmpfs /tmp:rw,noexec,nosuid,size=64m --env-file "$runtime_env" \
     --env-file "$database_env" \
     --env CO_STORY_APPLICATION_LOG_PATH=/var/log/co-story/candidate.jsonl \
+    --mount "type=bind,src=$rds_ca,dst=/etc/pki/rds/rds-ca.pem,readonly" \
     --mount "type=bind,src=$log_dir,dst=/var/log/co-story" --user 10001:10001 \
     "$target_image" uvicorn app.main:create_app --factory --host 127.0.0.1 \
     --port 8001 --workers 1 >/dev/null
@@ -544,6 +564,7 @@ readonly registry="${repository_uri%%/*}"
 readonly target_image="$repository_uri@$image_digest"
 readonly runtime_env="$(host_path /etc/co-story/runtime.env)"
 readonly database_env="$(host_path /etc/co-story/database.env)"
+readonly rds_ca="$(host_path /etc/pki/rds/rds-ca.pem)"
 readonly release_env="$(host_path /etc/co-story/container-release.env)"
 readonly transition_state="$(host_path /etc/co-story/container-transition.state)"
 readonly legacy_unit_backup="$(host_path /etc/co-story/legacy-co-story.service)"

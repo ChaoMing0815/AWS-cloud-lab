@@ -36,11 +36,13 @@ def _sandbox(tmp_path: Path) -> tuple[Path, dict[str, str], Path]:
     installed_unit = _host_path(host, "/etc/systemd/system/co-story.service")
     runtime_env = _host_path(host, "/etc/co-story/runtime.env")
     database_env = _host_path(host, "/etc/co-story/database.env")
+    rds_ca = _host_path(host, "/etc/pki/rds/rds-ca.pem")
     current = _host_path(host, "/opt/co-story/current")
     for directory in (
         legacy_unit.parent,
         installed_unit.parent,
         runtime_env.parent,
+        rds_ca.parent,
         _host_path(host, "/var/log/co-story"),
         _host_path(host, "/usr/local/libexec"),
         _host_path(host, "/usr/local/share/co-story"),
@@ -51,6 +53,8 @@ def _sandbox(tmp_path: Path) -> tuple[Path, dict[str, str], Path]:
     installed_unit.write_text(legacy_text, encoding="utf-8")
     runtime_env.write_text("safe-runtime-placeholder\n", encoding="utf-8")
     database_env.write_text("safe-database-placeholder\n", encoding="utf-8")
+    rds_ca.write_text("safe-ca-placeholder\n", encoding="utf-8")
+    rds_ca.chmod(0o644)
     current.symlink_to(legacy_release)
 
     _write_executable(fake_bin / "id", "#!/bin/sh\necho 0\n")
@@ -81,6 +85,7 @@ def _sandbox(tmp_path: Path) -> tuple[Path, dict[str, str], Path]:
             "CO_STORY_TEST_EVENT_LOG": str(events),
             "CO_STORY_TEST_RUNTIME_METADATA": "root:co-story:640",
             "CO_STORY_TEST_DATABASE_METADATA": "root:co-story:640",
+            "CO_STORY_TEST_CA_METADATA": "root:root:644",
         }
     )
     return host, env, events
@@ -150,6 +155,65 @@ def test_legacy_bootstrap_checks_migration_and_candidate_before_switch(tmp_path:
     assert "STATE=container-active" in state
     assert f"LEGACY_RELEASE_ID={LEGACY}" in state
     assert f"CONTAINER_IMAGE={REPOSITORY}@{TARGET}" in state
+    ca_mount = (
+        f"type=bind,src={_host_path(host, '/etc/pki/rds/rds-ca.pem')},"
+        "dst=/etc/pki/rds/rds-ca.pem,readonly"
+    )
+    migration = next(event for event in events if "app.commands.migrate" in event)
+    candidate = next(event for event in events if "--name co-story-candidate" in event)
+    assert ca_mount in migration
+    assert ca_mount in candidate
+
+
+@pytest.mark.parametrize(
+    ("ca_failure", "metadata"),
+    (
+        ("missing", "root:root:644"),
+        ("directory", "root:root:644"),
+        ("symlink", "root:root:644"),
+        ("owner", "co-story:co-story:644"),
+        ("group-writable", "root:root:664"),
+        ("other-writable", "root:root:646"),
+        ("app-unreadable", "root:root:640"),
+    ),
+)
+def test_host_ca_preflight_failure_is_read_only_before_registry_or_pull(
+    tmp_path: Path, ca_failure: str, metadata: str
+) -> None:
+    host, env, event_log = _sandbox(tmp_path)
+    ca = _host_path(host, "/etc/pki/rds/rds-ca.pem")
+    original_unit = _host_path(host, "/etc/systemd/system/co-story.service").read_bytes()
+    if ca_failure == "missing":
+        ca.unlink()
+    elif ca_failure == "directory":
+        ca.unlink()
+        ca.mkdir()
+    elif ca_failure == "symlink":
+        target = ca.with_name("trusted-ca.pem")
+        target.write_text("safe-ca-placeholder\n", encoding="utf-8")
+        ca.unlink()
+        ca.symlink_to(target)
+    else:
+        env["CO_STORY_TEST_CA_METADATA"] = metadata
+
+    result = _run(env, "legacy-bootstrap")
+
+    assert result.returncode != 0
+    events = _events(event_log)
+    assert not any(event.startswith("docker:") for event in events)
+    assert "migration" not in events
+    assert not any(event.startswith("mutation:") for event in events)
+    assert _host_path(host, "/etc/systemd/system/co-story.service").read_bytes() == (
+        original_unit
+    )
+    for residual in (
+        "/etc/co-story/container-transition.state",
+        "/etc/co-story/container-release.env",
+        "/etc/co-story/legacy-co-story.service",
+        "/usr/local/libexec/co-story-deploy-container",
+        "/usr/local/share/co-story/co-story-container.service",
+    ):
+        assert not _host_path(host, residual).exists()
 
 
 @pytest.mark.parametrize(

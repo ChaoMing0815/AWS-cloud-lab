@@ -6,6 +6,8 @@
 
 Production GitHub environment 必須設定 required reviewer；repository variables 只放 `AWS_REGION=ap-northeast-1`、ECR repository name、instance ID 與 deploy role ARN，不放 secrets。AWS 帳號若已有 `token.actions.githubusercontent.com` provider，部署 template 時傳入其 ARN，避免建立第二個 account-wide provider。
 
+`TIER3_INSTANCE_ID` 必須是無任何前後空白的 canonical EC2 instance ID，且精確符合 `^i-[0-9a-f]{17}$`。Workflow 必須在取得 AWS credentials 與 build 之前驗證 raw repository variable；不得靜默 trim。只有通過驗證後寫入的 `VALIDATED_TIER3_INSTANCE_ID` 可供 SSM send／wait／get 共用。
+
 ## 兩種 release mode
 
 - `legacy-bootstrap`：只用於 `tier1-20260825-4a51e0e` 首次切換。`previous_image_digest` 必須空白，`expected_legacy_release` 必須精確相等；禁止假 digest、target digest 或相同 digest冒充 previous。
@@ -19,12 +21,14 @@ Production GitHub environment 必須設定 required reviewer；repository variab
 
 Change Set 執行完成後，使用者另開一批 Console／SSM read-only preflight：確認 Docker 已安裝且 active、固定 legacy symlink／unit／`live`／`ready` 正常、runtime 與 database env metadata 為 `root:co-story:640`，且 container state、release env、legacy backup 都不存在。Docker 未安裝、ECR 仍為空或 Change Set 未套用，都只是停止條件，不得跳過 guard。
 
+Host 的 `/etc/pki/rds/rds-ca.pem` 必須是 canonical regular file、不得是 symlink、owner/group 為 `root:root`、app user 可讀，且 group／other 不可寫。SSM Document 在第一次 ECR login／pull 前及 release driver common preflight 都要再次檢查；不符合即停止。CA 不得 COPY／ADD 進 image，也不得降低 PostgreSQL `verify-full`。
+
 ## First transition gate
 
 1. 指定合併後、已全綠的 exact main SHA；production reviewer 必須核對 SHA、mode、固定 legacy release、Region、repository、instance 與 rollback envelope。
 2. Workflow build／push ARM64 immutable image，對 build output 的 exact digest 執行 Trivy；scan 未通過即停止，不得新增 ignore／VEX／skip 或降低 gate。
 3. SSM bootstrap 在第一次 pull 前再次驗證 symlink、legacy unit checksum、legacy health、env metadata，以及沒有既有 container state、release env、legacy backup或 stable assets；任一不符即在 mutation 前 fail closed。
-4. Document 只從 exact scanned digest 建立暫時 container，複製 image 內固定 driver 與 container unit；不得下載任意 URL，也不得依賴 active legacy release 裡不存在的 Tier 3 script。
+4. Document 只從 exact scanned digest 建立暫時 container，複製 image 內固定 driver 與 container unit；不得下載任意 URL，也不得依賴 active legacy release 裡不存在的 Tier 3 script。Final image 只建立 root-owned `/etc/pki/rds` 空 mountpoint；migration、candidate `:8001` 與 stable systemd container都把 host CA readonly bind mount至相同 absolute path。
 5. 順序固定為 exact digest pull → migration → legacy `live`／`ready` 再驗證 → target candidate `:8001` `live`／`ready` → 原子保存 legacy unit、checksum、release 與 root-only transition state → 切換 target `:8000`。
 6. Migration 後 legacy 不再 ready，視為 backward-compatible gate 失敗；保持 legacy unit，不切換。Candidate 失敗亦不切換。
 7. Backup、stable asset、state、release env、unit install或 `daemon-reload`任何一步失敗，都要精確恢復 legacy unit、reload、restart並驗證 health，再逐一清除本次建立的五個 transaction files；乾淨恢復後可用相同 exact inputs安全重試。
@@ -57,6 +61,8 @@ Change Set 執行完成後，使用者另開一批 Console／SSM read-only prefl
 - previous digest 不符 active release：停止，不覆寫主機狀態。
 - legacy release、symlink、unit checksum、env metadata、transition state 或 release env 不符：在 mutation 前停止。
 - Docker 未安裝／未 active、ECR 沒有已掃描 target digest或 Change Set 未完成：停止。
+- `TIER3_INSTANCE_ID` 含前後空白、換行、Tab、長度或大小寫不符 canonical regex：在 credentials／build 前停止，不得 trim後繼續。
+- RDS CA 缺少、是 symlink、非 canonical regular file、app不可讀或 group／other可寫：在第一次 login／pull前停止，不得複製CA進image或降低TLS。
 - migration、candidate 或 target health 失敗：停止；target 未啟用或自動恢復 previous digest。
 - legacy／previous restore health 仍失敗：保留 nonzero state並停止；不得覆寫 state、關閉 guard或直接重試 deploy。
 - `legacy-switch-pending`、`digest-switch-pending`、`asset-promotion-pending`、任何 `*-failed` state、previous asset backup殘留或 stable asset checksum漂移：停止並交由人工處置。

@@ -213,12 +213,31 @@ Resources:
                   readonly expected_legacy_release='{{ ExpectedLegacyRelease }}'
                   readonly target_image="$repository_uri@$image_digest"
                   readonly runtime_env=/etc/co-story/runtime.env
+                  readonly rds_ca=/etc/pki/rds/rds-ca.pem
                   readonly stable_driver=/usr/local/libexec/co-story-deploy-container
                   readonly stable_unit=/usr/local/share/co-story/co-story-container.service
+                  validate_rds_ca() {
+                    test -f "$rds_ca" || { printf 'container_release=stopped reason=missing_rds_ca\n' >&2; return 2; }
+                    test ! -L "$rds_ca" || { printf 'container_release=stopped reason=rds_ca_must_not_be_symlink\n' >&2; return 2; }
+                    test "$(readlink -f "$rds_ca" 2>/dev/null || true)" = "$rds_ca" \
+                      || { printf 'container_release=stopped reason=invalid_rds_ca_path\n' >&2; return 2; }
+                    test -r "$rds_ca" || { printf 'container_release=stopped reason=unreadable_rds_ca\n' >&2; return 2; }
+                    ca_metadata="$(stat -c '%U:%G:%a' "$rds_ca")"
+                    case "$ca_metadata" in
+                      root:root:[0-7][0-7][0-7]) ;;
+                      *) printf 'container_release=stopped reason=invalid_rds_ca_metadata\n' >&2; return 2 ;;
+                    esac
+                    ca_mode="${ca_metadata##*:}"
+                    (( (8#$ca_mode & 0022) == 0 )) \
+                      || { printf 'container_release=stopped reason=unsafe_rds_ca_permissions\n' >&2; return 2; }
+                    (( (8#$ca_mode & 0004) != 0 )) \
+                      || { printf 'container_release=stopped reason=rds_ca_not_app_readable\n' >&2; return 2; }
+                  }
                   health_host="$(awk -F= '$1 == "CO_STORY_ALLOWED_HOSTS" { split($2, hosts, ","); print hosts[1]; exit }' "$runtime_env")"
                   case "$health_host" in ''|*[!A-Za-z0-9.-]*) printf 'container_release=invalid_host\n' >&2; exit 2 ;; esac
                   case "$release_mode" in
                     legacy-bootstrap)
+                      validate_rds_ca
                       test -z "$previous_image_digest"
                       test "$expected_legacy_release" = tier1-20260825-4a51e0e
                       readonly legacy_release=/opt/co-story/releases/tier1-20260825-4a51e0e
@@ -254,6 +273,7 @@ Resources:
                       legacy_preflight
                       ;;
                     digest-release)
+                      validate_rds_ca
                       test -x "$stable_driver"
                       test -f "$stable_unit"
                       test -z "$expected_legacy_release"
