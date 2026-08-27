@@ -82,6 +82,7 @@
 - `StoryJobQueue` port 與 memory adapter
 - story-job 專屬 tests
 - PostgreSQL story-job adapter、專屬migration與integration tests
+- 既有migration readiness test；只允許把current-schema fixture更新為包含`002_create_story_jobs`，不得改production readiness行為
 - Tier 2 component architecture、feature spec 與專屬 validation evidence
 
 禁止事項：

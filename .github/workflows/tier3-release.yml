@@ -104,6 +104,16 @@ jobs:
               exit 2
               ;;
           esac
+      - name: Validate canonical deployment target
+        env:
+          UNVALIDATED_TIER3_INSTANCE_ID: ${{ vars.TIER3_INSTANCE_ID }}
+        run: |
+          if [[ ! "$UNVALIDATED_TIER3_INSTANCE_ID" =~ ^i-[0-9a-f]{17}$ ]]; then
+            printf '%s\n' 'instance target must be one canonical EC2 instance ID' >&2
+            exit 2
+          fi
+          printf 'VALIDATED_TIER3_INSTANCE_ID=%s\n' \
+            "$UNVALIDATED_TIER3_INSTANCE_ID" >> "$GITHUB_ENV"
       - name: Configure bounded AWS credentials
         uses: aws-actions/configure-aws-credentials@v5.1.0
         with:
@@ -136,6 +146,8 @@ jobs:
           fi
       - name: Scan the exact pushed digest
         uses: aquasecurity/trivy-action@v0.36.0
+        env:
+          TRIVY_PLATFORM: linux/arm64
         with:
           version: v0.70.0
           image-ref: ${{ steps.ecr.outputs.registry }}/${{ vars.TIER3_ECR_REPOSITORY }}@${{ steps.build.outputs.digest }}
@@ -164,17 +176,17 @@ jobs:
             '{RepositoryUri:[$repository_uri],ImageDigest:[$image_digest],PreviousImageDigest:[$previous_image_digest],ReleaseMode:[$release_mode],ExpectedLegacyRelease:[$expected_legacy_release]}')"
           command_id="$(aws ssm send-command \
             --document-name CoStoryTier3ContainerRelease \
-            --targets "Key=InstanceIds,Values=${{ vars.TIER3_INSTANCE_ID }}" \
+            --targets "Key=InstanceIds,Values=$VALIDATED_TIER3_INSTANCE_ID" \
             --parameters "$parameters" \
             --comment "co-story tier3 ${{ github.sha }}" \
             --cloud-watch-output-config CloudWatchOutputEnabled=false \
             --query 'Command.CommandId' --output text)"
           aws ssm wait command-executed \
             --command-id "$command_id" \
-            --instance-id "${{ vars.TIER3_INSTANCE_ID }}"
+            --instance-id "$VALIDATED_TIER3_INSTANCE_ID"
           aws ssm get-command-invocation \
             --command-id "$command_id" \
-            --instance-id "${{ vars.TIER3_INSTANCE_ID }}" \
+            --instance-id "$VALIDATED_TIER3_INSTANCE_ID" \
             --query '{Status:Status,ResponseCode:ResponseCode}' --output json
       - name: Write sanitized delivery metrics
         if: always()
