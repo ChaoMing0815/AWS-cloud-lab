@@ -1,7 +1,7 @@
 import importlib
 
 import pytest
-from copy import replace
+from dataclasses import replace
 
 
 def _support_types():

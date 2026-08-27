@@ -52,14 +52,19 @@ def _load_repo_module():
     return importlib.import_module("app.adapters.postgres_support_report_repository")
 
 
-def _draft(*, report_id="draft-1122334455667788", content="操作失敗", idempotency_key="a" * 64):
+def _draft(
+    *,
+    report_id="draft-1122334455667788",
+    summary="操作失敗",
+    idempotency_key="a" * 64,
+):
     return ProblemReportDraft(
         report_id=report_id,
         payload_version=1,
         reporter_identity_hash="c" * 64,
         payload_fingerprint="f" * 64,
         category="general_issue",
-        summary=content,
+        summary=summary,
         reproduction_steps=("重現步驟一",),
         expected_behavior="待人工補充",
         actual_behavior="實際行為",
@@ -106,7 +111,9 @@ def test_insert_then_replay_same_draft_within_connection(monkeypatch) -> None:
     primary = _draft()
     connection = _ScriptedConnection(
         [
-            ("insert into support_report_drafts", [_row_for(primary)]),
+            ("insert into support_report_drafts", []),
+            ("for update", [_row_for(primary)]),
+            ("insert into support_report_drafts", []),
             ("for update", [_row_for(primary)]),
         ]
     )
