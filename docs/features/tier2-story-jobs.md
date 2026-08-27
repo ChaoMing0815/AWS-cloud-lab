@@ -21,7 +21,7 @@
 ### Payload ownership
 
 - Web／API producer 擁有 payload schema 與建立時點，enqueue 後 payload 視為 immutable snapshot。
-- Story Worker 只能讀取 job snapshot、產生結果，再透過未來的 Data integration 進行 version-checked commit；不得把 queue 當 Room 狀態權威。
+- Story Worker 只能讀取 job snapshot、產生結果，再透過[`tier2-story-resolution.md`](tier2-story-resolution.md)的Data contract進行version-checked commit；不得把queue當Room狀態權威。
 - Room repository／Data component 仍是 Room aggregate、round progression 與玩家可見結果的唯一權威。queue 只保存工作生命週期。
 - 第一階段 payload 只要求 JSON-compatible mapping；實際 Storyteller input schema 留待接線切片，避免把現行 `Room` aggregate 偷渡成跨組件共享 model。
 
@@ -50,7 +50,7 @@ PENDING --claim(worker)--> CLAIMED --complete(token, result)--> COMPLETED
 - `enqueue`使用`ON CONFLICT DO NOTHING`後鎖定identity rows；claim／expired reclaim／complete／fail都在單一transaction內以`FOR UPDATE`與status、token、lease條件更新。DB constraint拒絕不合法state shape。
 - PostgreSQL的partial unique index保護非空ownership token，`job_id`與`idempotency_key`分別唯一；cross-identity collision與stale token一律fail closed。
 - transport 可 at-least-once 投遞；producer 負責穩定 idempotency key，queue adapter 負責同 key 去重，worker 負責 claim ownership 與 deterministic completion，Data integration 最終必須以 `room_version` 做 compare-and-set。
-- 本地PostgreSQL persistence不是SQS visibility timeout或distributed exactly-once；SQS adapter、Data result CAS／inbox-outbox與production wiring仍需後續獨立contract。
+- 本地PostgreSQL persistence不是SQS visibility timeout或distributed exactly-once；Data result CAS／inbox-outbox已有未接線local contract，SQS adapter與production wiring仍需後續獨立contract。
 
 ## Acceptance criteria
 

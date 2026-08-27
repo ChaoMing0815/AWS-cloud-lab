@@ -1,8 +1,8 @@
-# Tier 2 三組件架構與第一階段邊界
+# Tier 2 三組件架構與本地一致性邊界
 
-- 狀態：第二階段 local durable queue contract
+- 狀態：第三階段 local result inbox／completion outbox contract
 - 範圍：Web／API → Story Worker → Data 的依賴方向；尚未 production 接線
-- 對應 Feature：[`tier2-story-jobs.md`](../features/tier2-story-jobs.md)
+- 對應 Feature：[`tier2-story-jobs.md`](../features/tier2-story-jobs.md)、[`tier2-story-resolution.md`](../features/tier2-story-resolution.md)
 
 ## Current monolith
 
@@ -35,7 +35,7 @@ flowchart LR
     Data --> DB[(Room authority)]
 ```
 
-第一階段實作`StoryJob` domain、`StoryJobQueue` application port與`MemoryStoryJobQueue` contract double。第二階段新增PostgreSQL `story_jobs` persistence與同一port adapter，但現行request flow與production composition仍完全不接線；圖是target dependency direction，不是已部署宣告。
+第一階段實作`StoryJob` domain與memory contract double，第二階段新增PostgreSQL durable queue。第三階段建立同DB producer transaction、sanitized snapshot、Story Worker application contract與result inbox／completion outbox，但現行request flow與production composition仍完全不接線；圖是target dependency direction，不是已部署宣告。
 
 ## 邊界與責任
 
@@ -57,15 +57,15 @@ flowchart LR
 - PostgreSQL adapter以單一transaction鎖定job row，再以status／ownership token／lease timestamp做條件UPDATE；transaction exception由driver rollback，不留下部分lifecycle mutation。
 - `002_create_story_jobs.sql`保存payload snapshot、Room／round／version關聯、attempt、result／failure與timestamps；state-shape CHECK與unique indexes是application guard以外的第二層防線。
 - Process restart後新adapter可延續未到期lease、到期reclaim及terminal replay；這仍是PostgreSQL-backed at-least-once contract，不等同SQS或distributed exactly-once。
-- Data component 在下一個 integration slice 以 Room version compare-and-set 防止 stale result；只有 Data commit 成功後才可形成玩家可見的 canonical state。
+- 第三階段local Data contract以Room version CAS、job fencing token與UTC lease防止stale result；只有Data commit成功後才可形成canonical state與queue completion intent。
 - SQS visibility timeout 與 ownership token 的 durable mapping、retry delay、真正 DLQ、poison payload 與 process restart recovery尚未定案。導入 durable queue／store 前必須另寫 integration contract 與 failure tests。
-- Queue completion 與 Data commit 的一致性仍是待解 integration point；下一切片需選擇 transactional outbox、result inbox 或等價 replay-safe 設計，不在此 memory adapter 假裝原子性。
+- `003_create_story_resolution_results.sql`將result fingerprint、terminal stale/applied/failed receipt與completion intent持久化。Data transaction必須先commit，再由Worker ack queue；commit後ack失敗可在reclaim後跳過Storyteller與Room mutation，只重送completion。
 
-## 第一階段刻意未接線項目
+## 刻意未接線項目
 
-- `RoomService.resolve_round` 與 world／ending flow
+- `RoomService.resolve_round`仍是同步public flow；只將既有round-result規則抽出共用
 - FastAPI routes 與 response schema
 - `main.create_app` production composition
 - Bedrock／mock Storyteller adapters
-- PostgreSQL Room repository與Room schema；`story_jobs` table尚未由production composition使用
+- PostgreSQL Room repository與production schema apply；`story_jobs`、inbox與outbox尚未由production composition使用
 - SQS、worker process、container、CI/CD 與 AWS E2E

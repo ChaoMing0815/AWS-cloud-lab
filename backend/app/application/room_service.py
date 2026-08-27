@@ -28,6 +28,7 @@ from app.application.rules import (
 )
 from app.application.security import hash_session_token
 from app.application.session_lifecycle import is_expired_at
+from app.application.story_resolution import apply_story_result
 from app.domain.errors import DomainError
 from app.domain.models import Character, DiceResult, Player, Room, StoryEntry, TransferCode, World
 
@@ -958,53 +959,15 @@ class RoomService:
 
             current.status = "RESOLVING"
             narration, attempts, failure_code = self._resolve_story(current)
-            current.resolution_attempts = attempts
-            current.resolution_failure_code = failure_code
-            if failure_code is not None:
-                current.resolution_mode = None
-                current.status = "RESOLUTION_FAILED"
-                current.version += 1
-                self._refresh_activity(current, host=True)
-                self.repository.save(current)
-                return current
-
-            current.resolution_mode = "storyteller"
-            current.progress_points += sum(result.progress_delta for result in results)
-            current.danger_points += sum(result.danger_delta for result in results)
-            for result in results:
-                player = next(item for item in current.players if item.id == result.player_id)
-                if player.character is None:
-                    raise DomainError("CHARACTER_REQUIRED", "找不到結算所需角色。", 409)
-                player.character.spark -= result.spark_used
-                if result.result == "FAILURE":
-                    player.character.spark = min(3, player.character.spark + 1)
-
-            current.entries.append(
-                StoryEntry(
-                    id=_new_id(),
-                    type="narrator",
-                    title="故事主持人",
-                    round_number=round_number,
-                    text=narration,
-                )
+            result = {"attempts": attempts, "failure_code": failure_code}
+            if failure_code is None:
+                result["narration"] = narration
+            _, completed = apply_story_result(
+                current,
+                result,
+                entry_id_factory=_new_id,
+                ending_narration_factory=self.storyteller.resolve_ending,
             )
-            for player in current.players:
-                player.action = ""
-                player.action_approach = ""
-            completed_round = current.round_number
-            target = target_points(current.initial_player_count, current.max_rounds)
-            progress_percent = points_percent(current.progress_points, target)
-            completed = completed_round >= current.max_rounds
-            if completed:
-                self._complete_game(current, target)
-            else:
-                current.round_number += 1
-                current.status = (
-                    "COMPLETION_AVAILABLE"
-                    if progress_percent >= 100
-                    else "COLLECTING_ACTIONS"
-                )
-            current.version += 1
             self._refresh_activity(current, host=True, completed=completed)
             self.repository.save(current)
             return current
