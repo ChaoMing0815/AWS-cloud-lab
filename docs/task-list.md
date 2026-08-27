@@ -92,7 +92,7 @@
 
 ## E. Tier 2：三組件切割
 
-- [ ] 建立 Web/API、Story Worker、Data 依賴圖。
+- [x] 建立 Web/API、Story Worker、Data 依賴圖，並完成PostgreSQL durable story-job local contract。
 - [ ] 將故事生成改為 queue／job 模式並保存 idempotency key。
 - [ ] 部署至少三個課程要求可辨識的 AWS 組件／compute，公私網段正確。
 - [ ] Data 與 Worker 不直接對外；SG 只允許必要流量。

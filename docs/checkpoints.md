@@ -77,7 +77,7 @@ Demo 與每日進度依本清單逐項驗收。檔案存在不代表完成；必
 
 ## Tier 2：三組件與網段隔離
 
-- [ ] Web/API、Story Worker、Data 組件與依賴圖完成。
+- [x] Web/API、Story Worker、Data 組件與依賴圖完成。
 - [ ] 至少三個課程要求可辨識的 AWS 組件／compute 已部署。
 - [ ] Web 在 public；Worker／Data 在 private。
 - [ ] SG 串接正確，Worker／Data 外網連不到。

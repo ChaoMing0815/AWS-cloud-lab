@@ -2,11 +2,11 @@
 
 - 更新日期：2026-08-27
 - 目前里程碑：Tier 1、Tier 3均已完整完成。第四次T3B首次成功把production從legacy systemd runtime切換至container；其後PR #21修正Docker HEALTHCHECK的production Host header，`digest-release`與唯讀postflight均通過。
-- 交付策略：已驗證的GitHub OIDC／ECR／Trivy／SSM pipeline作為後續唯一自動部署路徑。下一階段review並整合Tier 2 PR #19，再另行設計RoomService／API／Worker／SQS與AWS E2E，不把Tier 2接線混入已完成的Tier 3 gate。
-- Main 整合基準：PR #21 merge commit `e82c6839360e10e0cb91b43fa32df5d6a7b4cb69`。
+- 交付策略：已驗證的GitHub OIDC／ECR／Trivy／SSM pipeline作為後續唯一自動部署路徑。Tier 2 durable local contract已整合；下一階段另行設計RoomService／API／Worker接線，再規劃SQS與AWS E2E，不直接部署尚未被production composition使用的adapter。
+- Main 整合基準：PR #19 merge commit `92a96d4b06e1e4a700490b618d9afbc3ece18c57`。
 - Tier 1 完成基準 commit：`07a986a`
 - 平行分支治理基準：Red `6a76daf`／Green `b772116`。
-- Regression：PR #21 targeted／Tier 3 affected `24 passed`，Backend `474 passed, 8 skipped`，Frontend `94 passed`；PR CI與合併後main CI `33047227885`的Backend、Frontend、container build／Trivy全綠。PR #19 Backend `471 passed, 9 skipped`、Frontend `94 passed`、branch boundary與PR CI全綠；真實PostgreSQL restart integration因未提供專用測試DSN而明確skip。
+- Regression：PR #19 Backend `471 passed, 9 skipped`、Frontend `94 passed`；合併後main CI `33049531844`的Backend、Frontend、container build／Trivy全綠。真實PostgreSQL restart integration因未提供專用測試DSN而明確skip。
 - AWS active release：container digest `sha256:32bee84dac17983d867c3f8f8112a34c6380fc4082b1b0a1819312af0d8df106`；legacy release `tier1-20260825-4a51e0e`只作root-only rollback state。
 - 操作邊界：Console-first；使用者操作 AWS Console／SSM。Agent 未經新的 bounded batch 核准不得執行 AWS CLI，且不得執行 S3 讀取或 Bedrock 呼叫。
 
@@ -50,12 +50,12 @@
 - PR #20以strict TDD讓image default仍為non-root UID `10001`，但release driver動態驗證host `co-story`非root UID／GID，candidate與stable container使用同一identity；root-only release env固定image／UID／GID三行並拒絕missing、duplicate、root、invalid與identity mismatch。Candidate failure只輸出sanitized state／numeric exit code；CloudFormation template、CloudWatch、IAM、OIDC、ECR、TLS與rollback邊界均未變。
 - T3B run `33045168887`綁定exact main `1681736c…`，完整通過OIDC、ARM64 build／immutable push、exact-digest Trivy、SSM migration／candidate／target與public edge gate，首次成功切換container runtime；legacy rollback assets與root-only state均保留。
 - PR #21以strict TDD讓Docker HEALTHCHECK從既有runtime allowlist取得Host header，不改loopback probe、TrustedHost policy或release driver。Run `33048585714`綁定exact main `e82c683…`以`digest-release`成功部署；postflight確認四個services active、state `container-active`、Docker `healthy`／failing streak `0`、digest與runtime identity吻合、application log可寫、candidate `0`、live／ready `200`，state／release env精確為`7／3`行。
-- Tier 2 PR #19已完成append-only `002_create_story_jobs`、PostgreSQL durable queue、UTC lease、fencing、bounded retry與dead-letter contract；仍未接`RoomService`、API、production composition、SQS或AWS E2E。
+- Tier 2 PR #19已合併main：append-only `002_create_story_jobs`、PostgreSQL durable queue、UTC lease、fencing、bounded retry與dead-letter local contract完成；仍未接`RoomService`、API、production composition、SQS或AWS E2E，且production尚未執行`002`。
 
 ## Next
 
-1. Review Tier 2 PR #19相對最新main的diff、migration backward compatibility、boundary與CI；取得merge核准後才整合。
-2. 整合後先更新Tier 2本地完成基準，不立即部署；另建bounded切片接入RoomService／API與Story Worker composition。
+1. 以新的bounded branch定義RoomService／API producer、Story Worker與Data result CAS／replay-safe邊界；observable API差異先依既有Tier 2架構形成精確contract。
+2. 以strict TDD完成純本機producer→PostgreSQL job→worker→result integration與process restart測試，不修改AWS或立即部署。
 3. 再設計SQS、private Worker／Data網段、SG與至少三個可辨識AWS components，通過action→queue→worker→Bedrock→DB→result E2E及負面連線證據。
 4. 後續任何production更新一律使用新exact main SHA與`digest-release`；previous digest必須取當時verified active state，仍需每次人工核准。
 5. Nova Lite round／ending真實品質evaluation仍需另行bounded核准。
