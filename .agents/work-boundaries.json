@@ -139,6 +139,24 @@
         "docs/evidence/2026-*-tier2-async-flow/**"
       ]
     },
+    "codex/tier2-production-worker": {
+      "purpose": "將獨立 Story Worker 接入 strict production Bedrock composition，維持單次模型呼叫、Web process isolation 與本機 Mock 邊界，不部署 AWS",
+      "allowed_paths": [
+        "backend/app/adapters/bedrock_storyteller.py",
+        "backend/app/adapters/production_storyteller_factory.py",
+        "backend/app/adapters/story_resolution_narrator.py",
+        "backend/app/main.py",
+        "backend/app/workers/story_resolution_worker.py",
+        "backend/tests/test_bedrock_storyteller.py",
+        "backend/tests/test_production_composition.py",
+        "backend/tests/test_tier2_async_worker.py",
+        "backend/tests/test_tier2_async_process_e2e.py",
+        "backend/tests/test_tier2_production_worker.py",
+        "docs/features/tier2-async-flow.md",
+        "docs/architecture/tier2-components.md",
+        "docs/evidence/2026-*-tier2-production-worker/**"
+      ]
+    },
     "codex/support-agent-core": {
       "purpose": "建立規則說明與問題回報草稿的 bounded Support Agent 本地核心，不接 API、UI、資料庫或 AWS",
       "allowed_paths": [
@@ -153,6 +171,25 @@
         "docs/architecture/support-agent.md",
         "docs/features/support-agent.md",
         "docs/evidence/2026-*-support-agent/**"
+      ]
+    },
+    "codex/support-agent-persistence": {
+      "purpose": "以 append-only 004 migration 與 PostgreSQL repository 持久化已清理且需人工確認的 Support Agent 草稿，不接 API、UI、模型或外部提交",
+      "allowed_paths": [
+        "backend/app/domain/support_agent.py",
+        "backend/app/application/support_agent.py",
+        "backend/app/adapters/memory_support_report_repository.py",
+        "backend/app/adapters/postgres_support_report_repository.py",
+        "backend/migrations/004_create_support_report_drafts.sql",
+        "backend/tests/test_support_agent_reports.py",
+        "backend/tests/test_postgres_support_report_repository.py",
+        "backend/tests/test_postgres_support_report_migration.py",
+        "backend/tests/test_postgres_support_report_process_e2e.py",
+        "backend/tests/support_report_process_helper.py",
+        "backend/tests/test_migration_readiness.py",
+        "docs/architecture/support-agent.md",
+        "docs/features/support-agent-persistence.md",
+        "docs/evidence/2026-*-support-agent-persistence/**"
       ]
     }
   }

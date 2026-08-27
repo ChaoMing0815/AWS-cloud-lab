@@ -1,7 +1,7 @@
 # 平行分支工作邊界
 
 - 狀態：Active
-- 生效分支：`codex/story-quality`、`codex/tier3-delivery`、`codex/tier3-production-release`、`codex/tier3-healthcheck-correction`、`codex/tier2-components`、`codex/tier2-async-flow`、`codex/support-agent-core`
+- 生效分支：`codex/story-quality`、`codex/tier3-delivery`、`codex/tier3-production-release`、`codex/tier3-healthcheck-correction`、`codex/tier2-components`、`codex/tier2-async-flow`、`codex/tier2-production-worker`、`codex/support-agent-core`、`codex/support-agent-persistence`
 - 機器可讀規則：`.agents/work-boundaries.json`
 - 自動檢查：`scripts/check_branch_boundaries.py`
 
@@ -156,6 +156,46 @@
 - 不修改共用`ports.py`、`RoomService`、API routes／schemas、`main.py`、Web UI、migration、Storyteller adapters、dependency manifest、Docker、workflow、IaC或`ops/`。
 - 不呼叫Bedrock，不執行AWS CLI／SSM／S3，不接production；第一階段以Mock model與deterministic tests完成。
 - 完成後交回整合task。必須等Tier 2本地PR合併後，才可重新評估migration編號、API／UI、Bedrock adapter、observability與自動部署，且需要新的allowed paths與production核准。
+
+## `codex/tier2-production-worker`
+
+唯一目標是讓PR #24建立的獨立Story Worker在production組態使用既有Bedrock能力，同時保持Web process不啟動Worker、local/test固定Mock，以及每次delivery最多一次模型呼叫且沒有application或SDK隱式retry。本分支只做repo-local strict TDD，不呼叫真實Bedrock、不部署AWS。
+
+允許範圍以policy為準，主要包括：
+
+- strict production storyteller factory、Worker entrypoint與snapshot narrator
+- 既有Bedrock storyteller的單次複合round／ending輸出contract
+- production composition、Worker isolation與單次invocation專屬tests
+- Tier 2 async Feature／Architecture與短validation evidence
+
+強制邊界：
+
+- production缺少database、Region、model、guardrail或token設定時，必須在claim、client建立與model invocation前fail closed，且不得輸出設定值。
+- 非最終與最終delivery皆最多一次`converse`；最終回合的round與ending必須由同一次複合輸出完成。模型失敗只做一次queue failure transition，不在同一delivery重試。
+- Web application composition不得建立Worker thread、subprocess或background state；local/test不得建立Bedrock client。
+- 不修改API、RoomService、repository、migration、Web、Docker、workflow、IaC或`ops/`；不執行AWS CLI／SSM／S3／Bedrock，不觸發production deploy。
+- 真實PostgreSQL process/restart gate只能使用獨立、可清除且非production的測試DSN；缺少DSN時明確skip，不得以Mock冒充durable證據。
+- 完成後交回整合task；任何AWS Worker／SQS部署需新的change envelope與人工核准。
+
+## `codex/support-agent-persistence`
+
+唯一目標是以append-only `004` migration與PostgreSQL repository持久化Phase A已清理的Support Agent問題草稿，保留stable idempotency、divergent replay conflict、人工確認與local-draft-only邊界。本分支不提供API、UI、模型或外部submit能力。
+
+允許範圍以policy為準，主要包括：
+
+- Support Agent草稿domain／application持久化不變量與memory parity
+- `004_create_support_report_drafts.sql`與PostgreSQL repository
+- migration、repository、restart與migration readiness tests
+- Support Agent persistence Feature／Architecture與短validation evidence
+
+強制邊界：
+
+- 只保存sanitized structured fields；不得保存raw description、raw identity、cookie、token、credential、runtime secret或外部submission state。
+- `requires_human_confirmation`必須固定為true，submission狀態固定為`local_draft_only`；application、adapter與DB constraint均需fail closed。
+- 本批不新增內容長度產品限制；長度與rate limit留到未來API切片決定。
+- 不修改port、migration runner、`main.py`、routes、Web、Bedrock adapter、dependency、Docker、workflow、IaC或`ops/`；不執行AWS CLI／SSM／S3／Bedrock，不接production。
+- 真實restart證據只能使用獨立、可清除且非production的專用PostgreSQL測試DSN；缺少時明確skip。
+- `004`會改變全域migration readiness。分支可完成coding、push與PR，但在backward-compatible readiness／rollback策略另行完成前不得merge或部署；不得自行擴張至`postgres_room_repository.py`修正此問題。
 
 ## 共用檔案與交接
 
