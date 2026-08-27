@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 from app.adapters.memory_room_repository import MemoryRoomRepository
 from app.adapters.postgres_room_repository import PostgresRoomRepository
 from app.main import create_app
+import app.main as main_module
 
 
 class FakeProductionStoryteller:
@@ -177,6 +178,42 @@ def test_production_with_injected_dependencies_does_not_seed_bonus7_demo_room(mo
     create_app(room_repository=repository, storyteller=FakeProductionStoryteller())
 
     assert repository.get_by_code("BONUS7") is None
+
+
+def test_postgres_composition_enables_async_producer_without_worker_in_web_process(
+    monkeypatch,
+) -> None:
+    configure_production(monkeypatch)
+    repository = MemoryRoomRepository()
+    created = {}
+
+    class RecordingStore:
+        def __init__(self, dsn, *, clock):
+            created["store"] = (dsn, clock)
+
+    class RecordingProducer:
+        def __init__(self, store):
+            created["producer_store"] = store
+
+    monkeypatch.setattr(main_module, "PostgresRoomRepository", lambda dsn: repository)
+    monkeypatch.setattr(
+        main_module,
+        "PostgresStoryResolutionStore",
+        RecordingStore,
+        raising=False,
+    )
+    monkeypatch.setattr(
+        main_module,
+        "StoryResolutionProducer",
+        RecordingProducer,
+        raising=False,
+    )
+
+    app = create_app(storyteller=FakeProductionStoryteller())
+
+    assert app.state.room_service.async_story_resolution_enabled is True
+    assert created["producer_store"] is app.state.room_service.story_resolution_producer._store
+    assert not hasattr(app.state, "story_resolution_worker")
 
 
 def test_session_and_local_room_cookies_last_one_week() -> None:
