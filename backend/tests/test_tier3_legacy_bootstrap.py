@@ -66,8 +66,8 @@ def _sandbox(tmp_path: Path) -> tuple[Path, dict[str, str], Path]:
         "#!/bin/sh\n"
         "case \"$*\" in\n"
         "  -u) echo 0 ;;\n"
-        "  '-u co-story') printf '%s\\n' \"${CO_STORY_TEST_RUNTIME_UID:-992}\" ;;\n"
-        "  '-g co-story') printf '%s\\n' \"${CO_STORY_TEST_RUNTIME_GID:-992}\" ;;\n"
+        "  '-u co-story') printf '%s\\n' \"${CO_STORY_TEST_RUNTIME_UID-992}\" ;;\n"
+        "  '-g co-story') printf '%s\\n' \"${CO_STORY_TEST_RUNTIME_GID-992}\" ;;\n"
         "  *) exit 1 ;;\n"
         "esac\n",
     )
