@@ -62,6 +62,31 @@ def test_release_workflow_distinguishes_legacy_bootstrap_from_digest_release() -
     assert "ExpectedLegacyRelease" in workflow
 
 
+def test_release_workflow_scans_exact_pushed_digest_as_linux_arm64() -> None:
+    workflow = yaml.safe_load(_read(RELEASE_WORKFLOW))
+    deploy_steps = workflow["jobs"]["deploy"]["steps"]
+    scan_steps = [
+        step
+        for step in deploy_steps
+        if step.get("name") == "Scan the exact pushed digest"
+    ]
+
+    assert len(scan_steps) == 1
+    scan_step = scan_steps[0]
+    assert scan_step["uses"] == "aquasecurity/trivy-action@v0.36.0"
+    assert scan_step.get("env", {}).get("TRIVY_PLATFORM") == "linux/arm64"
+    assert scan_step["with"] == {
+        "version": "v0.70.0",
+        "image-ref": (
+            "${{ steps.ecr.outputs.registry }}/"
+            "${{ vars.TIER3_ECR_REPOSITORY }}@${{ steps.build.outputs.digest }}"
+        ),
+        "severity": "CRITICAL,HIGH",
+        "ignore-unfixed": True,
+        "exit-code": 1,
+    }
+
+
 def test_cloudformation_limits_oidc_ecr_and_ssm_to_repo_branch_and_instance() -> None:
     template_text = _read(TEMPLATE)
     template = yaml.safe_load(template_text)
