@@ -47,6 +47,8 @@ export class GamePage {
     schedule = (callback, delay) => globalThis.setTimeout(callback, delay),
     cancelSchedule = (id) => globalThis.clearTimeout(id),
     pollingIntervalMs = 3000,
+    now = () => Date.now(),
+    resolutionTimeoutMs = 60000,
   }) {
     this.useCases = {
       loadRoom,
@@ -71,6 +73,8 @@ export class GamePage {
     this.schedule = schedule;
     this.cancelSchedule = cancelSchedule;
     this.pollingIntervalMs = pollingIntervalMs;
+    this.now = now;
+    this.resolutionTimeoutMs = resolutionTimeoutMs;
     this.room = null;
     this.pollTimer = null;
     this.pollInFlight = false;
@@ -78,6 +82,8 @@ export class GamePage {
     this.pollFailureCount = 0;
     this.nextPollingDelayMs = pollingIntervalMs;
     this.busy = false;
+    this.resolutionStartedAtMs = null;
+    this.resolutionJobId = null;
   }
 
   async mount() {
@@ -114,6 +120,7 @@ export class GamePage {
     this.pollingStopped = false;
     this.pollFailureCount = 0;
     this.nextPollingDelayMs = this.pollingIntervalMs;
+    this.trackResolution(this.room);
     this.schedulePolling();
   }
 
@@ -202,7 +209,11 @@ export class GamePage {
   applyPolledRoom(room) {
     const maxRoundsInput = globalThis.document?.getElementById("maxRoundsInput");
     const selectedMaxRounds = room?.status === "DRAFT" ? maxRoundsInput?.value : null;
+    if (room?.status === "RESOLVING" && this.resolutionJobId) {
+      room = { ...room, resolutionJobId: this.resolutionJobId };
+    }
     this.room = room;
+    this.trackResolution(room);
     this.syncRoute();
     this.render();
     if (selectedMaxRounds && maxRoundsInput) maxRoundsInput.value = selectedMaxRounds;
@@ -211,11 +222,30 @@ export class GamePage {
   handlePollingSuccess() {
     const reconnected = this.pollFailureCount > 0;
     this.resetPollingBackoff();
-    if (reconnected) {
+    if (
+      this.room?.status === "RESOLVING"
+      && this.resolutionStartedAtMs !== null
+      && this.now() - this.resolutionStartedAtMs >= this.resolutionTimeoutMs
+    ) {
+      this.showPollingStatus(
+        "AI 仍在處理本回合；可以保留此頁，完成後會自動更新。",
+        "resolution-delayed",
+      );
+    } else if (reconnected) {
       this.showPollingStatus("已重新連線，資料已同步。", "reconnected");
     } else {
       this.showPollingStatus("");
     }
+  }
+
+  trackResolution(room) {
+    if (room?.status !== "RESOLVING") {
+      this.resolutionStartedAtMs = null;
+      this.resolutionJobId = null;
+      return;
+    }
+    if (room.resolutionJobId) this.resolutionJobId = room.resolutionJobId;
+    if (this.resolutionStartedAtMs === null) this.resolutionStartedAtMs = this.now();
   }
 
   advancePollingBackoff() {
@@ -418,10 +448,18 @@ export class GamePage {
   }
 
   async handleResolve(skipPendingSpark) {
-    await this.run(
+    const accepted = await this.run(
       () => this.useCases.resolveRound.execute({ skipPendingSpark }),
-      "本回合已結算，進入下一回合。",
+      "",
     );
+    if (!accepted) return false;
+    if (this.room?.status === "RESOLVING") {
+      this.trackResolution(this.room);
+      this.showFeedback("已送出回合結算，AI 正在整理劇情。", "pending");
+    } else {
+      this.showFeedback("本回合已結算，進入下一回合。", "success");
+    }
+    return true;
   }
 
   async handleFallback() {

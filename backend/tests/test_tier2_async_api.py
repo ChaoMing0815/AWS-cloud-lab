@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 
 from fastapi.testclient import TestClient
 
@@ -49,6 +50,7 @@ class ForbiddenSynchronousStoryteller:
 
 
 def resolving_room() -> Room:
+    expires_at = datetime.now(timezone.utc) + timedelta(days=1)
     return Room(
         id="room-async-1",
         room_code="ASYNC1",
@@ -63,6 +65,8 @@ def resolving_room() -> Room:
         ),
         host_session_hash=hash_session_token("host-token"),
         host_csrf_token="host-csrf",
+        expires_at=expires_at,
+        host_session_expires_at=expires_at,
         dice_results=[
             DiceResult(
                 player_id="player-1",

@@ -28,9 +28,10 @@ from app.application.rules import (
 )
 from app.application.security import hash_session_token
 from app.application.session_lifecycle import is_expired_at
-from app.application.story_resolution import apply_story_result
+from app.application.story_resolution import StoryResolutionProducer, apply_story_result
 from app.domain.errors import DomainError
 from app.domain.models import Character, DiceResult, Player, Room, StoryEntry, TransferCode, World
+from app.domain.story_resolution import StoryResolutionConflict, StoryResolutionStateConflict
 
 ROOM_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 STORYTELLER_LOGGER = logging.getLogger("co_story.storyteller")
@@ -92,6 +93,7 @@ class RoomService:
         clock: Clock,
         *,
         seed_demo_room: bool = True,
+        story_resolution_producer: StoryResolutionProducer | None = None,
     ) -> None:
         self.repository = repository
         self.storyteller = storyteller
@@ -99,7 +101,12 @@ class RoomService:
         self.token_factory = token_factory
         self.dice_roller = dice_roller
         self.clock = clock
+        self.story_resolution_producer = story_resolution_producer
         self.demo_room_id = self._create_demo_room() if seed_demo_room else None
+
+    @property
+    def async_story_resolution_enabled(self) -> bool:
+        return self.story_resolution_producer is not None
 
     def _create_demo_room(self) -> str:
         existing = self.repository.get_by_code("BONUS7")
@@ -974,6 +981,53 @@ class RoomService:
 
         return self.idempotency.execute(
             f"resolve-round:{room_id}:{round_number}",
+            idempotency_key,
+            {
+                "round_number": round_number,
+                "skip_pending_spark": skip_pending_spark,
+                "room_version": expected_version,
+            },
+            operation,
+        )
+
+    def begin_round_resolution(
+        self,
+        room_id: str,
+        round_number: int,
+        skip_pending_spark: bool,
+        expected_version: int,
+        host_token: str,
+        csrf_token: str,
+        idempotency_key: str,
+    ):
+        if self.story_resolution_producer is None:
+            raise RuntimeError("story resolution producer is not configured")
+        room = self._required_room(room_id)
+        self._authorize_host(room, host_token, csrf_token)
+
+        def operation():
+            try:
+                return self.story_resolution_producer.begin(
+                    room_id,
+                    round_number,
+                    expected_version,
+                    skip_pending_spark,
+                )
+            except StoryResolutionStateConflict as error:
+                raise DomainError(
+                    "RESOLUTION_STATE_CONFLICT",
+                    "回合狀態已更新，請重新載入。",
+                    409,
+                ) from error
+            except StoryResolutionConflict as error:
+                raise DomainError(
+                    "RESOLUTION_CONFLICT",
+                    "回合結算請求與既有工作不一致。",
+                    409,
+                ) from error
+
+        return self.idempotency.execute(
+            f"begin-round-resolution:{room_id}:{round_number}",
             idempotency_key,
             {
                 "round_number": round_number,

@@ -106,6 +106,29 @@ def create_api_router(service: RoomService, *, secure_cookies: bool = False) -> 
         host_token: str | None = Cookie(default=None, alias=HOST_SESSION_COOKIE),
         player_token: str | None = Cookie(default=None, alias=PLAYER_SESSION_COOKIE),
     ) -> dict:
+        if service.async_story_resolution_enabled:
+            job = service.begin_round_resolution(
+                room_id,
+                round_number,
+                request.skip_pending_spark,
+                request.room_version,
+                host_token or "",
+                csrf_token or "",
+                _required_idempotency_key(idempotency_key),
+            )
+            room = service.repository.get(room_id)
+            if room is None:
+                raise DomainError("ROOM_NOT_FOUND", "找不到房間。", 404)
+            return JSONResponse(
+                status_code=status.HTTP_202_ACCEPTED,
+                content={
+                    "jobId": job.job_id,
+                    "room": room_response(
+                        room,
+                        service.session_context(room, host_token, player_token),
+                    ),
+                },
+            )
         room = service.resolve_round(
             room_id,
             round_number,

@@ -104,7 +104,13 @@ def _production_bedrock_storyteller():
     )
 
 
-def create_app(dice_roller=None, room_repository=None, storyteller=None, clock=None) -> FastAPI:
+def create_app(
+    dice_roller=None,
+    room_repository=None,
+    storyteller=None,
+    clock=None,
+    story_resolution_producer=None,
+) -> FastAPI:
     configure_safe_application_file_logging(
         os.environ.get("CO_STORY_APPLICATION_LOG_PATH")
     )
@@ -131,6 +137,7 @@ def create_app(dice_roller=None, room_repository=None, storyteller=None, clock=N
         dice_roller or SecureDiceRoller(),
         clock or SystemClock(),
         seed_demo_room=not production,
+        story_resolution_producer=story_resolution_producer,
     )
     application.state.room_service = service
 
