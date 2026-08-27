@@ -193,6 +193,7 @@ def test_postgres_composition_enables_async_producer_without_worker_in_web_proce
 
     class RecordingProducer:
         def __init__(self, store):
+            self._store = store
             created["producer_store"] = store
 
     monkeypatch.setattr(main_module, "PostgresRoomRepository", lambda dsn: repository)

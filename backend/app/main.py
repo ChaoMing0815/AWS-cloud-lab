@@ -14,6 +14,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from app.adapters.memory_room_repository import MemoryRoomRepository
 from app.adapters.postgres_room_repository import PostgresRoomRepository
+from app.adapters.postgres_story_resolution_store import PostgresStoryResolutionStore
 from app.adapters.memory_idempotency_store import MemoryIdempotencyStore
 from app.adapters.mock_storyteller import MockStoryteller
 from app.adapters.session_security import HmacSessionTokenFactory
@@ -24,6 +25,7 @@ from app.adapters.system_clock import SystemClock
 from app.adapters.secure_dice_roller import SecureDiceRoller
 from app.api.routes import create_api_router
 from app.application.room_service import RoomService
+from app.application.story_resolution import StoryResolutionProducer
 from app.domain.errors import DomainError
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -122,12 +124,18 @@ def create_app(
     allowed_origins = _comma_separated_setting("CO_STORY_ALLOWED_ORIGINS")
     if production:
         application.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
+    database_url = os.environ.get("DATABASE_URL")
+    repository_from_database_url = room_repository is None and bool(database_url)
     if room_repository is None:
-        database_url = os.environ.get("DATABASE_URL")
         room_repository = (
             PostgresRoomRepository(database_url)
             if database_url
             else MemoryRoomRepository()
+        )
+    resolved_clock = clock or SystemClock()
+    if story_resolution_producer is None and repository_from_database_url:
+        story_resolution_producer = StoryResolutionProducer(
+            PostgresStoryResolutionStore(database_url, clock=resolved_clock)
         )
     service = RoomService(
         room_repository,
@@ -135,7 +143,7 @@ def create_app(
         MemoryIdempotencyStore(),
         HmacSessionTokenFactory(),
         dice_roller or SecureDiceRoller(),
-        clock or SystemClock(),
+        resolved_clock,
         seed_demo_room=not production,
         story_resolution_producer=story_resolution_producer,
     )
