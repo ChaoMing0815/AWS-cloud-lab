@@ -25,6 +25,7 @@ def test_policy_defines_exact_parallel_branches_and_protects_integration_state()
         "codex/story-quality",
         "codex/tier3-delivery",
         "codex/tier3-production-release",
+        "codex/tier3-healthcheck-correction",
         "codex/tier2-components",
     }
     assert "docs/handoffs/CURRENT.md" in policy["protected_paths"]
@@ -98,6 +99,30 @@ def test_tier3_production_release_accepts_release_paths_and_rejects_product_path
     assert "docs/handoffs/CURRENT.md" in rejected.stderr
 
 
+def test_tier3_healthcheck_correction_accepts_only_the_approved_slice() -> None:
+    accepted = _check(
+        "codex/tier3-healthcheck-correction",
+        "Dockerfile",
+        "ops/container/healthcheck.py",
+        "backend/tests/test_container_contract.py",
+        "docs/evidence/2026-08-27-tier3-production-release/validation.md",
+    )
+    rejected = _check(
+        "codex/tier3-healthcheck-correction",
+        ".github/workflows/tier3-release.yml",
+        "ops/release/deploy_container.sh",
+        "backend/app/main.py",
+        "docs/handoffs/CURRENT.md",
+    )
+
+    assert accepted.returncode == 0, accepted.stderr
+    assert rejected.returncode == 2
+    assert ".github/workflows/tier3-release.yml" in rejected.stderr
+    assert "ops/release/deploy_container.sh" in rejected.stderr
+    assert "backend/app/main.py" in rejected.stderr
+    assert "docs/handoffs/CURRENT.md" in rejected.stderr
+
+
 def test_tier2_components_accepts_first_local_slice_and_rejects_delivery_paths() -> None:
     accepted = _check(
         "codex/tier2-components",
@@ -136,6 +161,7 @@ def test_governance_guide_and_pull_request_gate_are_present() -> None:
     assert "codex/story-quality" in guide
     assert "codex/tier3-delivery" in guide
     assert "codex/tier3-production-release" in guide
+    assert "codex/tier3-healthcheck-correction" in guide
     assert "codex/tier2-components" in guide
     assert "單一部署 owner" in guide
     assert "branch-boundary:" in workflow
