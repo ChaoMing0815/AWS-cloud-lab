@@ -49,15 +49,34 @@ def build_local_runner(dsn: str, *, worker_id: str | None = None):
     )
 
 
-def main() -> int:
+def build_production_runner(dsn: str, *, worker_id: str | None = None):
+    from app.adapters.production_storyteller_factory import build_production_worker
+
+    return build_production_worker(
+        dsn,
+        worker_id=worker_id or f"production-worker-{uuid4().hex}",
+    )
+
+
+def _build_runner(dsn: str, *, worker_id: str | None = None):
     if os.environ.get("CO_STORY_ENV", "").lower() == "production":
-        print("worker_result=stopped:local_mock_forbidden_in_production")
-        return 2
+        return build_production_runner(dsn, worker_id=worker_id)
+    return build_local_runner(dsn, worker_id=worker_id)
+
+
+def main() -> int:
     dsn = os.environ.get("DATABASE_URL", "")
     if not dsn:
         print("worker_result=stopped:database_url_missing")
         return 2
-    result = build_local_runner(dsn).run_once()
+    try:
+        result = _build_runner(dsn).run_once()
+    except RuntimeError as error:
+        print(f"worker_result=stopped:{error}")
+        return 2
+    except Exception:
+        print("worker_result=stopped:worker_bootstrap_failure")
+        return 2
     print(f"worker_result={result}")
     return 0
 
