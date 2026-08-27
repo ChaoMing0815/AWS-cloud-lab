@@ -136,6 +136,8 @@ jobs:
           fi
       - name: Scan the exact pushed digest
         uses: aquasecurity/trivy-action@v0.36.0
+        env:
+          TRIVY_PLATFORM: linux/arm64
         with:
           version: v0.70.0
           image-ref: ${{ steps.ecr.outputs.registry }}/${{ vars.TIER3_ECR_REPOSITORY }}@${{ steps.build.outputs.digest }}
