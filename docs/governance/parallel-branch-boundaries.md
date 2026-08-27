@@ -93,21 +93,27 @@
 
 第二階段允許在相同邊界內新增PostgreSQL story-job queue adapter與`002_create_story_jobs.sql` migration，將既有lease／fencing／retry contract落到可重啟的資料層；仍不得接入現行request flow、production composition或AWS。
 
+第三階段允許建立尚未接入route與production composition的replay-safe story resolution application slice：以同一PostgreSQL transaction完成Room CAS與job建立，並以result inbox／completion outbox協調Data commit與queue completion。此階段只能從`RoomService`抽出並共用既有回合結果規則，不得把現行同步route改成非同步，也不得改變玩家可見行為。
+
 允許範圍以 policy 為準，主要包括：
 
 - `story_jobs` domain／application contract
 - `StoryJobQueue` port 與 memory adapter
 - story-job 專屬 tests
 - PostgreSQL story-job adapter、專屬migration與integration tests
+- Story resolution domain／application contract、memory transaction double、PostgreSQL coordinator、append-only `003` migration與專屬tests
+- `RoomService`只允許抽取既有round-result純規則供同步與未接線application slice共用；現行public method、retry與route行為必須由characterization tests保持不變
 - 既有migration readiness test；只允許把current-schema fixture更新為包含`002_create_story_jobs`，不得改production readiness行為
+- 第三階段可把同一current-schema fixture精確更新為`001_create_rooms`、`002_create_story_jobs`與`003_create_story_resolution_results`；empty、unknown與production readiness semantics不得改變
 - Tier 2 component architecture、feature spec 與專屬 validation evidence
 
 禁止事項：
 
-- 不修改 `RoomService`、API routes、Storyteller adapters、Web UI、database repository、Docker、workflow、IaC 或 `ops/`。
+- 除上述受限的`RoomService`純規則抽取外，不修改 API routes、schemas、`main.py` composition、Storyteller adapters、Web UI、database repository、Docker、workflow、IaC 或 `ops/`。
 - 不執行 AWS deploy、AWS CLI、SSM、S3 或 Bedrock。
 - 不更新 CURRENT、checkpoints、task list、deployment log、README、policy 或治理文件。
-- PostgreSQL durable contract完成後必須交回整合task；需要接入現行request flow、SQS或production時，再由整合task審查並明確擴張allowed paths。
+- Result transaction必須在queue completion前提交；Data rollback不得ack。Data commit後的completion failure必須可由inbox／outbox replay恢復，不得宣稱跨系統exactly-once。
+- Story resolution local contract完成後必須交回整合task；需要接入現行request flow、SQS或production時，再由整合task審查並明確擴張allowed paths。
 
 ## 共用檔案與交接
 

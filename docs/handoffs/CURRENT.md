@@ -2,7 +2,7 @@
 
 - 更新日期：2026-08-27
 - 目前里程碑：Tier 1、Tier 3均已完整完成。第四次T3B首次成功把production從legacy systemd runtime切換至container；其後PR #21修正Docker HEALTHCHECK的production Host header，`digest-release`與唯讀postflight均通過。
-- 交付策略：已驗證的GitHub OIDC／ECR／Trivy／SSM pipeline作為後續唯一自動部署路徑。Tier 2 durable local contract已整合；下一階段另行設計RoomService／API／Worker接線，再規劃SQS與AWS E2E，不直接部署尚未被production composition使用的adapter。
+- 交付策略：已驗證的GitHub OIDC／ECR／Trivy／SSM pipeline作為後續唯一自動部署路徑。Tier 2 durable local contract已整合；下一個bounded slice先依ADR-0004完成未接route／production composition的producer transaction與result inbox／completion outbox，再規劃玩家可見async API、SQS與AWS E2E。
 - Main 整合基準：PR #19 merge commit `92a96d4b06e1e4a700490b618d9afbc3ece18c57`。
 - Tier 1 完成基準 commit：`07a986a`
 - 平行分支治理基準：Red `6a76daf`／Green `b772116`。
@@ -51,12 +51,13 @@
 - T3B run `33045168887`綁定exact main `1681736c…`，完整通過OIDC、ARM64 build／immutable push、exact-digest Trivy、SSM migration／candidate／target與public edge gate，首次成功切換container runtime；legacy rollback assets與root-only state均保留。
 - PR #21以strict TDD讓Docker HEALTHCHECK從既有runtime allowlist取得Host header，不改loopback probe、TrustedHost policy或release driver。Run `33048585714`綁定exact main `e82c683…`以`digest-release`成功部署；postflight確認四個services active、state `container-active`、Docker `healthy`／failing streak `0`、digest與runtime identity吻合、application log可寫、candidate `0`、live／ready `200`，state／release env精確為`7／3`行。
 - Tier 2 PR #19已合併main：append-only `002_create_story_jobs`、PostgreSQL durable queue、UTC lease、fencing、bounded retry與dead-letter local contract完成；仍未接`RoomService`、API、production composition、SQS或AWS E2E，且production尚未執行`002`。
+- Tier 2 read-only integration design gate確認現有Room repository與StoryJob queue各自開transaction，直接串接會形成dual-write gap；完整Room亦含session／CSRF等資料，不得作為job payload。ADR-0004已接受同DB producer transaction與result inbox／completion outbox，第一批只建立未接線application slice，保持現行同步route與玩家行為不變。
 
 ## Next
 
-1. 以新的bounded branch定義RoomService／API producer、Story Worker與Data result CAS／replay-safe邊界；observable API差異先依既有Tier 2架構形成精確contract。
-2. 以strict TDD完成純本機producer→PostgreSQL job→worker→result integration與process restart測試，不修改AWS或立即部署。
-3. 再設計SQS、private Worker／Data網段、SG與至少三個可辨識AWS components，通過action→queue→worker→Bedrock→DB→result E2E及負面連線證據。
+1. 在`codex/tier2-components`依ADR-0004以strict TDD建立純本機Room CAS＋job producer transaction、sanitized immutable snapshot、Story Worker與result inbox／completion outbox；只允許抽取既有round-result純規則，不改route、UI或production composition。
+2. 通過PostgreSQL fault rollback、stale fencing/version、duplicate/divergent replay與跨adapter process-restart gate後，交回整合task review；再另行核准`202 + RESOLVING`、polling與fallback等玩家可見async API差異。
+3. API本地E2E完成後再設計SQS、private Worker／Data網段、SG與至少三個可辨識AWS components，通過action→queue→worker→Bedrock→DB→result E2E及負面連線證據。
 4. 後續任何production更新一律使用新exact main SHA與`digest-release`；previous digest必須取當時verified active state，仍需每次人工核准。
 5. Nova Lite round／ending真實品質evaluation仍需另行bounded核准。
 
@@ -76,7 +77,7 @@
 - Forced-tool Storyteller 已通過 fake Converse contract，但尚未以真實 Nova Lite 驗證 round／ending schema 與敘事品質。
 - 三次失敗T3B images與兩個成功release images均保留於immutable ECR並受lifecycle limit `10`管理；舊runs不得re-run，ECR storage／scan仍可能產生少量費用。
 - Docker actions的 Node.js 20 annotation已以test-first更新至官方 Node.js 24相容版本並通過PR #12、#14、#15 CI；後續仍不得無測試任意升版。
-- StoryJob memory adapter與既有 idempotency store都不宣稱 durable lease或multi-process exactly-once；Data CAS／outbox、SQS、真正DLQ與restart recovery仍是Tier 2核心缺口。
+- StoryJob memory adapter與既有 idempotency store都不宣稱 durable lease或multi-process exactly-once；ADR-0004的Data CAS／inbox／outbox、SQS、真正DLQ與restart recovery尚未實作，仍是Tier 2核心缺口。
 - iPhone Safari 短期雙向同步已通過，但長時間 polling／visibility 行為仍需在下一次完整多人遊戲觀察。
 - 刪房後舊分頁 lifecycle 修正已部署，尚未以 `COMPLETED` 房間做 AWS 多分頁重驗。
 - 原始截圖若位於 TemporaryItems／Downloads，不算正式 evidence；入庫前必須去識別化。

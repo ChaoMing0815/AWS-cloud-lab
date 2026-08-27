@@ -80,18 +80,30 @@
       "purpose": "建立 Web／Story Worker／Data 的本地組件邊界與第一個 queue／job contract，不部署 AWS",
       "allowed_paths": [
         "backend/app/application/ports.py",
+        "backend/app/application/room_service.py",
         "backend/app/application/story_jobs.py",
+        "backend/app/application/story_resolution.py",
         "backend/app/domain/story_jobs.py",
+        "backend/app/domain/story_resolution.py",
         "backend/app/adapters/memory_story_job_queue.py",
+        "backend/app/adapters/memory_story_resolution_store.py",
         "backend/app/adapters/postgres_story_job_queue.py",
+        "backend/app/adapters/postgres_story_resolution_store.py",
         "backend/migrations/002_create_story_jobs.sql",
+        "backend/migrations/003_create_story_resolution_results.sql",
         "backend/tests/test_story_job*.py",
+        "backend/tests/test_story_resolution*.py",
         "backend/tests/test_postgres_story_job_queue.py",
         "backend/tests/test_postgres_story_job_migration.py",
+        "backend/tests/test_postgres_story_resolution_store.py",
+        "backend/tests/test_postgres_story_resolution_migration.py",
         "backend/tests/test_migration_readiness.py",
+        "docs/decisions/0004-adopt-replay-safe-story-results.md",
         "docs/architecture/tier2-components.md",
         "docs/features/tier2-story-jobs.md",
-        "docs/evidence/2026-*-tier2-components/**"
+        "docs/features/tier2-story-resolution.md",
+        "docs/evidence/2026-*-tier2-components/**",
+        "docs/evidence/2026-*-tier2-story-resolution/**"
       ]
     }
   }

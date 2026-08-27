@@ -123,27 +123,36 @@ def test_tier3_healthcheck_correction_accepts_only_the_approved_slice() -> None:
     assert "docs/handoffs/CURRENT.md" in rejected.stderr
 
 
-def test_tier2_components_accepts_first_local_slice_and_rejects_delivery_paths() -> None:
+def test_tier2_components_accepts_replay_safe_slice_and_rejects_delivery_paths() -> None:
     accepted = _check(
         "codex/tier2-components",
         "backend/app/application/story_jobs.py",
+        "backend/app/application/room_service.py",
+        "backend/app/application/story_resolution.py",
         "backend/app/domain/story_jobs.py",
+        "backend/app/domain/story_resolution.py",
         "backend/app/adapters/memory_story_job_queue.py",
+        "backend/app/adapters/postgres_story_resolution_store.py",
+        "backend/migrations/003_create_story_resolution_results.sql",
         "backend/tests/test_story_jobs.py",
+        "backend/tests/test_story_resolution_workflow.py",
+        "docs/decisions/0004-adopt-replay-safe-story-results.md",
         "docs/architecture/tier2-components.md",
     )
     rejected = _check(
         "codex/tier2-components",
         ".github/workflows/tier3-release.yml",
         "infra/cloudformation/tier3-delivery.yaml",
-        "backend/app/application/room_service.py",
+        "backend/app/api/routes.py",
+        "backend/app/main.py",
         "docs/handoffs/CURRENT.md",
     )
 
     assert accepted.returncode == 0, accepted.stderr
     assert rejected.returncode == 2
     assert ".github/workflows/tier3-release.yml" in rejected.stderr
-    assert "backend/app/application/room_service.py" in rejected.stderr
+    assert "backend/app/api/routes.py" in rejected.stderr
+    assert "backend/app/main.py" in rejected.stderr
     assert "docs/handoffs/CURRENT.md" in rejected.stderr
 
 
