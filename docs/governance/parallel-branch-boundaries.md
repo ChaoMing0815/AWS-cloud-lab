@@ -1,7 +1,7 @@
 # 平行分支工作邊界
 
 - 狀態：Active
-- 生效分支：`codex/story-quality`、`codex/tier3-delivery`、`codex/tier3-production-release`、`codex/tier3-healthcheck-correction`、`codex/tier2-components`、`codex/tier2-async-flow`、`codex/tier2-production-worker`、`codex/support-agent-core`、`codex/support-agent-persistence`
+- 生效分支：`codex/story-quality`、`codex/tier3-delivery`、`codex/tier3-production-release`、`codex/tier3-healthcheck-correction`、`codex/tier2-components`、`codex/tier2-async-flow`、`codex/tier2-production-worker`、`codex/tier2-migration-bridge`、`codex/support-agent-core`、`codex/support-agent-persistence`
 - 機器可讀規則：`.agents/work-boundaries.json`
 - 自動檢查：`scripts/check_branch_boundaries.py`
 
@@ -196,6 +196,26 @@
 - 不修改port、migration runner、`main.py`、routes、Web、Bedrock adapter、dependency、Docker、workflow、IaC或`ops/`；不執行AWS CLI／SSM／S3／Bedrock，不接production。
 - 真實restart證據只能使用獨立、可清除且非production的專用PostgreSQL測試DSN；缺少時明確skip。
 - `004`會改變全域migration readiness。分支可完成coding、push與PR，但在backward-compatible readiness／rollback策略另行完成前不得merge或部署；不得自行擴張至`postgres_room_repository.py`修正此問題。
+
+## `codex/tier2-migration-bridge`
+
+唯一目標是在production套用`002`／`003`／`004`前，建立一個可驗證、可回復的過渡release。此bridge不套用新migration、不啟用async Worker，對外仍維持既有同步遊戲流程；待bridge成為verified active digest後，後續獨立batch才可套用append-only schema並啟用Tier 2 runtime。
+
+允許範圍以policy為準，主要包括：
+
+- migration inventory／readiness的明確向前相容contract
+- production composition與route的bridge feature flag及fail-closed tests
+- GitHub release input、release driver、stable unit與SSM Document的bounded bridge mode
+- ADR、Tier 2／Tier 3架構、release runbook與短validation evidence
+
+強制邊界：
+
+- bridge mode不得執行migration，也不得建立、claim或處理StoryJob；玩家行為維持目前同步request flow。
+- bridge readiness只能額外接受經audit的append-only版本`002`、`003`、`004`；任意未知、缺漏既有必要版本或重複／畸形migration state一律fail closed。
+- bridge release與後續Tier 2 activation必須是兩個分離的change envelope；PR #25在bridge設計、回歸與rollback證據完成前維持`DO NOT MERGE`。
+- release在任何guard失敗時不得切換target；rollback必須證明bridge可在newer schema下恢復既有同步服務，不得做schema downgrade。
+- 本分支只做repo-local strict TDD、ADR與runbook；不執行AWS CLI／SSM／S3／Bedrock、`workflow_dispatch`或production deploy，也不修改IAM、OIDC、ECR、成本與migration SQL。
+- 需要白名單外路徑時立即停止並交回整合task；完成後只可push／建立PR，不得自行merge。
 
 ## 共用檔案與交接
 

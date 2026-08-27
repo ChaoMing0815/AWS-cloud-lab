@@ -157,6 +157,33 @@
         "docs/evidence/2026-*-tier2-production-worker/**"
       ]
     },
+    "codex/tier2-migration-bridge": {
+      "purpose": "建立不套用新 migration 的 Tier 2 過渡 release，使既有同步 runtime 與後續 002 至 004 append-only schema 可安全 rollback，相容性完成前不部署 AWS",
+      "allowed_paths": [
+        ".github/workflows/tier3-release.yml",
+        "backend/app/adapters/postgres_migrations.py",
+        "backend/app/adapters/postgres_room_repository.py",
+        "backend/app/api/routes.py",
+        "backend/app/commands/migrate.py",
+        "backend/app/main.py",
+        "backend/tests/test_container_contract.py",
+        "backend/tests/test_github_ci_workflow.py",
+        "backend/tests/test_migration_readiness.py",
+        "backend/tests/test_production_composition.py",
+        "backend/tests/test_rooms_api.py",
+        "backend/tests/test_tier2_async_api.py",
+        "backend/tests/test_tier3_delivery_contract.py",
+        "backend/tests/test_tier3_legacy_bootstrap.py",
+        "infra/cloudformation/tier3-delivery.yaml",
+        "ops/release/deploy_container.sh",
+        "ops/systemd/co-story-container.service",
+        "docs/decisions/0006-adopt-tier2-migration-bridge.md",
+        "docs/architecture/tier2-components.md",
+        "docs/architecture/tier3-delivery-foundation.md",
+        "docs/runbooks/tier3-container-release.md",
+        "docs/evidence/2026-*-tier2-migration-bridge/**"
+      ]
+    },
     "codex/support-agent-core": {
       "purpose": "建立規則說明與問題回報草稿的 bounded Support Agent 本地核心，不接 API、UI、資料庫或 AWS",
       "allowed_paths": [
