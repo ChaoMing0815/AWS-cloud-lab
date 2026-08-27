@@ -1,7 +1,7 @@
 # 平行分支工作邊界
 
 - 狀態：Active
-- 生效分支：`codex/story-quality`、`codex/tier3-delivery`、`codex/tier3-production-release`、`codex/tier3-healthcheck-correction`、`codex/tier2-components`、`codex/support-agent-core`
+- 生效分支：`codex/story-quality`、`codex/tier3-delivery`、`codex/tier3-production-release`、`codex/tier3-healthcheck-correction`、`codex/tier2-components`、`codex/tier2-async-flow`、`codex/support-agent-core`
 - 機器可讀規則：`.agents/work-boundaries.json`
 - 自動檢查：`scripts/check_branch_boundaries.py`
 
@@ -114,6 +114,27 @@
 - 不更新 CURRENT、checkpoints、task list、deployment log、README、policy 或治理文件。
 - Result transaction必須在queue completion前提交；Data rollback不得ack。Data commit後的completion failure必須可由inbox／outbox replay恢復，不得宣稱跨系統exactly-once。
 - Story resolution local contract完成後必須交回整合task；需要接入現行request flow、SQS或production時，再由整合task審查並明確擴張allowed paths。
+
+## `codex/tier2-async-flow`
+
+唯一目標是把已合併的replay-safe Story Result接到玩家可見的非同步回合結算：API只建立job並回`202 Accepted`，獨立本機Worker處理敘事，Web透過既有房間讀取路徑觀察完成或失敗。此分支只驗證本機PostgreSQL與process邊界，不部署AWS。
+
+允許範圍以policy為準，主要包括：
+
+- resolve route／schema／serialization與production composition的必要接線
+- Story resolution producer、Worker、PostgreSQL queue／store與專屬本機worker entrypoint
+- Web API adapter、use case、presenter與玩家可見polling／timeout狀態
+- API、composition、process restart、Web與既有Story Result contract tests
+- Tier 2 async feature／architecture與短validation evidence
+
+強制邊界：
+
+- resolve POST只接受host授權、CSRF、room version與idempotency guard；成功回`202`、`RESOLVING`與opaque job ID，不在request內呼叫Storyteller。
+- Web polling只讀既有room endpoint；逾時不得取消或重送job，也不得自動啟用fallback。Worker終局失敗寫`RESOLUTION_FAILED`後，才顯示既有人工retry／fallback控制。
+- 同一idempotency key重送必須指向同一job；Room CAS與job建立保持單一PostgreSQL transaction。Data commit前不ack，completion replay invariant不得降級。
+- 本機process E2E必須證明Web process與Worker process可分離，並覆蓋restart／duplicate delivery；未提供專用PostgreSQL測試DSN時明確skip，不得以memory double冒充restart證據。
+- 不修改Docker、GitHub Actions、IaC、`ops/`、IAM、SQS或AWS資源；不執行AWS CLI／SSM／S3／Bedrock，不觸發production deploy。
+- 不更新CURRENT、checkpoints、task list、deployment log、README、policy或治理文件；完成後交回整合task。
 
 ## `codex/support-agent-core`
 

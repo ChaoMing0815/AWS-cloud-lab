@@ -9,7 +9,7 @@
 - Regression：最終整合樹 Backend `551 passed, 10 skipped`、Frontend `94 passed`；main CI `33055651405`的Backend、Frontend、container build／Trivy全綠。真實PostgreSQL story-resolution restart integration因未提供專用測試DSN而明確skip，離線transaction／rollback／fault injection均已執行。
 - AWS active release：container digest `sha256:32bee84dac17983d867c3f8f8112a34c6380fc4082b1b0a1819312af0d8df106`；legacy release `tier1-20260825-4a51e0e`只作root-only rollback state。
 - 操作邊界：Console-first；使用者操作 AWS Console／SSM。Agent 未經新的 bounded batch 核准不得執行 AWS CLI，且不得執行 S3 讀取或 Bedrock 呼叫。
-- 平行工作：`codex/tier2-components`與`codex/support-agent-core`均已完成、通過CI並依序合併。兩個task目前可封存；任何API／UI／migration／Bedrock／AWS擴張需建立新的bounded branch與核准。
+- 平行工作：`codex/tier2-components`與`codex/support-agent-core`均已合併並可封存。使用者已核准下一個玩家可見async切片；整合task正建立`codex/tier2-async-flow`，只接API／本機Worker／Web polling與process E2E，不含AWS或production deploy。
 
 ## Current
 
@@ -58,8 +58,8 @@
 
 ## Next
 
-1. 先形成Tier 2玩家可見async API的精確差異並取得核准：resolve POST是否改為`202 + RESOLVING`、是否暴露job ID、polling／timeout、Storyteller failure與host fallback時點；未核准前不改route／UI。
-2. 核准後以新bounded branch接API／composition／Web polling，完成producer→PostgreSQL job→獨立Worker→result的本機process E2E與restart gate，不立即部署production。
+1. 在`codex/tier2-async-flow`以strict TDD接API／composition／Web polling：resolve POST回`202 + RESOLVING + opaque job ID`，前端只poll room；逾時不取消或重送，Worker終局失敗後才顯示人工retry／fallback。
+2. 完成producer→PostgreSQL job→獨立Worker→result的本機process E2E、restart／duplicate delivery gate與完整regression，交回整合task；不立即部署production。
 3. 再設計SQS、private Worker／Data網段、SG與至少三個可辨識AWS components，通過action→queue→worker→Bedrock→DB→result E2E及負面連線證據。
 4. Tier 2本地API穩定後，另行評估Support Agent的`004` migration、PostgreSQL repository、API／UI、Nova Lite adapter、rate limiting與observability；外部submit tool仍需獨立核准。
 5. 後續任何production更新一律使用新exact main SHA與`digest-release`；previous digest必須取當時verified active state，仍需每次人工核准。

@@ -106,6 +106,39 @@
         "docs/evidence/2026-*-tier2-story-resolution/**"
       ]
     },
+    "codex/tier2-async-flow": {
+      "purpose": "將已合併的 replay-safe Story Result 接入玩家可見 async API、本機獨立 Worker 與 Web polling，不部署 AWS",
+      "allowed_paths": [
+        "backend/app/api/routes.py",
+        "backend/app/api/schemas.py",
+        "backend/app/api/serialization.py",
+        "backend/app/main.py",
+        "backend/app/application/ports.py",
+        "backend/app/application/room_service.py",
+        "backend/app/application/story_jobs.py",
+        "backend/app/application/story_resolution.py",
+        "backend/app/domain/story_jobs.py",
+        "backend/app/domain/story_resolution.py",
+        "backend/app/adapters/postgres_room_repository.py",
+        "backend/app/adapters/postgres_story_job_queue.py",
+        "backend/app/adapters/postgres_story_resolution_store.py",
+        "backend/app/adapters/story_resolution_narrator.py",
+        "backend/app/workers/**",
+        "backend/tests/test_rooms_api.py",
+        "backend/tests/test_production_composition.py",
+        "backend/tests/test_story_job*.py",
+        "backend/tests/test_story_resolution*.py",
+        "backend/tests/test_postgres_story_job_queue.py",
+        "backend/tests/test_postgres_story_resolution_store.py",
+        "backend/tests/test_tier2_async*.py",
+        "web/**",
+        "docs/decisions/0004-adopt-replay-safe-story-results.md",
+        "docs/architecture/tier2-components.md",
+        "docs/features/tier2-story-resolution.md",
+        "docs/features/tier2-async-flow.md",
+        "docs/evidence/2026-*-tier2-async-flow/**"
+      ]
+    },
     "codex/support-agent-core": {
       "purpose": "建立規則說明與問題回報草稿的 bounded Support Agent 本地核心，不接 API、UI、資料庫或 AWS",
       "allowed_paths": [
