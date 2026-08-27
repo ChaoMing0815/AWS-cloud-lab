@@ -133,6 +133,8 @@ def test_container_systemd_keeps_nginx_edge_and_external_runtime_injection() -> 
     assert "--host 127.0.0.1" in unit
     assert "--port 8000" in unit
     assert "--workers 1" in unit
+    assert "--user ${CO_STORY_CONTAINER_UID}:${CO_STORY_CONTAINER_GID}" in unit
+    assert "--user 10001:10001" not in unit
     assert "DATABASE_URL=" not in unit
     assert "--privileged" not in unit
     assert "--network bridge" not in unit

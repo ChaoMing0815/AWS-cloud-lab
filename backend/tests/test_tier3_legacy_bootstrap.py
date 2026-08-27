@@ -37,6 +37,7 @@ def _sandbox(tmp_path: Path) -> tuple[Path, dict[str, str], Path]:
     runtime_env = _host_path(host, "/etc/co-story/runtime.env")
     database_env = _host_path(host, "/etc/co-story/database.env")
     rds_ca = _host_path(host, "/etc/pki/rds/rds-ca.pem")
+    candidate_log = _host_path(host, "/var/log/co-story/candidate.jsonl")
     current = _host_path(host, "/opt/co-story/current")
     for directory in (
         legacy_unit.parent,
@@ -55,14 +56,28 @@ def _sandbox(tmp_path: Path) -> tuple[Path, dict[str, str], Path]:
     database_env.write_text("safe-database-placeholder\n", encoding="utf-8")
     rds_ca.write_text("safe-ca-placeholder\n", encoding="utf-8")
     rds_ca.chmod(0o644)
+    candidate_log.write_text("", encoding="utf-8")
+    candidate_log.chmod(0o640)
+    candidate_log.parent.chmod(0o750)
     current.symlink_to(legacy_release)
 
-    _write_executable(fake_bin / "id", "#!/bin/sh\necho 0\n")
+    _write_executable(
+        fake_bin / "id",
+        "#!/bin/sh\n"
+        "case \"$*\" in\n"
+        "  -u) echo 0 ;;\n"
+        "  '-u co-story') printf '%s\\n' \"${CO_STORY_TEST_RUNTIME_UID:-992}\" ;;\n"
+        "  '-g co-story') printf '%s\\n' \"${CO_STORY_TEST_RUNTIME_GID:-992}\" ;;\n"
+        "  *) exit 1 ;;\n"
+        "esac\n",
+    )
     _write_executable(fake_bin / "aws", "#!/bin/sh\nprintf 'test-password\\n'\n")
     _write_executable(
         fake_bin / "docker",
         "#!/bin/sh\nprintf 'docker:%s\\n' \"$*\" >>\"$CO_STORY_TEST_EVENT_LOG\"\n"
         "if [ \"${1:-}\" = login ]; then cat >/dev/null; fi\n"
+        "if [ \"${1:-}\" = inspect ]; then printf '%s\\n' "
+        "\"${CO_STORY_TEST_CANDIDATE_INSPECT:-exited 13}\"; fi\n"
         "if [ \"${CO_STORY_TEST_FAIL:-}\" = migration ] && "
         "printf '%s' \"$*\" | grep -q app.commands.migrate; then exit 1; fi\n"
         "exit 0\n",
@@ -86,6 +101,12 @@ def _sandbox(tmp_path: Path) -> tuple[Path, dict[str, str], Path]:
             "CO_STORY_TEST_RUNTIME_METADATA": "root:co-story:640",
             "CO_STORY_TEST_DATABASE_METADATA": "root:co-story:640",
             "CO_STORY_TEST_CA_METADATA": "root:root:644",
+            "CO_STORY_TEST_RUNTIME_UID": "992",
+            "CO_STORY_TEST_RUNTIME_GID": "992",
+            "CO_STORY_TEST_LOG_DIR_METADATA": "992:992:750",
+            "CO_STORY_TEST_CANDIDATE_LOG_METADATA": "992:992:640",
+            "CO_STORY_TEST_RELEASE_METADATA": "root:root:600",
+            "CO_STORY_TEST_LOG_WRITABLE": "yes",
         }
     )
     return host, env, events
@@ -163,6 +184,69 @@ def test_legacy_bootstrap_checks_migration_and_candidate_before_switch(tmp_path:
     candidate = next(event for event in events if "--name co-story-candidate" in event)
     assert ca_mount in migration
     assert ca_mount in candidate
+    assert "--user 992:992" in candidate
+    assert _host_path(host, "/etc/co-story/container-release.env").read_text() == (
+        f"CO_STORY_CONTAINER_IMAGE={REPOSITORY}@{TARGET}\n"
+        "CO_STORY_CONTAINER_UID=992\n"
+        "CO_STORY_CONTAINER_GID=992\n"
+    )
+
+
+@pytest.mark.parametrize(
+    ("uid", "gid"),
+    (("0", "992"), ("992", "0"), ("not-numeric", "992"), ("", "992")),
+)
+def test_invalid_host_runtime_identity_stops_before_candidate_or_mutation(
+    tmp_path: Path, uid: str, gid: str
+) -> None:
+    host, env, event_log = _sandbox(tmp_path)
+    env["CO_STORY_TEST_RUNTIME_UID"] = uid
+    env["CO_STORY_TEST_RUNTIME_GID"] = gid
+
+    result = _run(env, "legacy-bootstrap")
+
+    assert result.returncode != 0
+    events = _events(event_log)
+    assert not any("--name co-story-candidate" in event for event in events)
+    assert not any(event.startswith("mutation:") for event in events)
+    assert not _host_path(host, "/etc/co-story/container-release.env").exists()
+
+
+@pytest.mark.parametrize(
+    ("failure", "metadata"),
+    (
+        ("directory-owner", "10001:992:750"),
+        ("directory-mode", "992:992:770"),
+        ("candidate-owner", "10001:992:640"),
+        ("candidate-mode", "992:992:660"),
+        ("candidate-symlink", "992:992:640"),
+        ("not-writable", "992:992:640"),
+    ),
+)
+def test_candidate_log_guard_stops_before_candidate_or_release_mutation(
+    tmp_path: Path, failure: str, metadata: str
+) -> None:
+    host, env, event_log = _sandbox(tmp_path)
+    candidate_log = _host_path(host, "/var/log/co-story/candidate.jsonl")
+    if failure.startswith("directory"):
+        env["CO_STORY_TEST_LOG_DIR_METADATA"] = metadata
+    elif failure == "candidate-symlink":
+        target = candidate_log.with_name("candidate-target.jsonl")
+        target.write_text("", encoding="utf-8")
+        candidate_log.unlink()
+        candidate_log.symlink_to(target)
+    elif failure == "not-writable":
+        env["CO_STORY_TEST_LOG_WRITABLE"] = "no"
+    else:
+        env["CO_STORY_TEST_CANDIDATE_LOG_METADATA"] = metadata
+
+    result = _run(env, "legacy-bootstrap")
+
+    assert result.returncode != 0
+    events = _events(event_log)
+    assert not any("--name co-story-candidate" in event for event in events)
+    assert not any(event.startswith("mutation:") for event in events)
+    assert not _host_path(host, "/etc/co-story/container-release.env").exists()
 
 
 @pytest.mark.parametrize(
@@ -281,6 +365,27 @@ def test_bootstrap_failure_before_switch_keeps_legacy_unit(
     assert result.returncode != 0
     assert _host_path(host, "/etc/systemd/system/co-story.service").read_text() == original
     assert "mutation:install-container-unit" not in _events(event_log)
+
+
+def test_candidate_failure_emits_only_sanitized_state_before_cleanup(tmp_path: Path) -> None:
+    _, env, event_log = _sandbox(tmp_path)
+    env["CO_STORY_TEST_FAIL"] = "target-candidate"
+    env["CO_STORY_TEST_CANDIDATE_INSPECT"] = "exited 13"
+
+    result = _run(env, "legacy-bootstrap")
+
+    assert result.returncode != 0
+    assert "container_candidate=unhealthy status=exited exit_code=13" in result.stderr
+    assert REPOSITORY not in result.stderr
+    assert "safe-runtime-placeholder" not in result.stderr
+    events = _events(event_log)
+    inspect = next(i for i, event in enumerate(events) if "docker:inspect" in event)
+    cleanup = next(
+        i
+        for i, event in enumerate(events[inspect + 1 :], start=inspect + 1)
+        if "docker:rm -f co-story-candidate" in event
+    )
+    assert inspect < cleanup
 
 
 def test_target_failure_restores_legacy_and_restore_failure_is_nonzero(tmp_path: Path) -> None:
@@ -404,6 +509,65 @@ def test_digest_release_fences_state_and_restores_previous_digest(tmp_path: Path
     env["CO_STORY_TEST_STALE_FENCE"] = "unit"
     stale = _run(env, "digest-release", target=third, previous=NEXT_TARGET, legacy="")
     assert stale.returncode != 0
+
+
+@pytest.mark.parametrize(
+    ("release_content", "reason"),
+    (
+        (f"CO_STORY_CONTAINER_IMAGE={REPOSITORY}@{TARGET}\n", "invalid_release_env_shape"),
+        (
+            f"CO_STORY_CONTAINER_IMAGE={REPOSITORY}@{TARGET}\n"
+            "CO_STORY_CONTAINER_UID=0\nCO_STORY_CONTAINER_GID=992\n",
+            "invalid_release_env_identity",
+        ),
+        (
+            f"CO_STORY_CONTAINER_IMAGE={REPOSITORY}@{TARGET}\n"
+            "CO_STORY_CONTAINER_UID=992\nCO_STORY_CONTAINER_UID=992\n"
+            "CO_STORY_CONTAINER_GID=992\n",
+            "invalid_release_env_shape",
+        ),
+        (
+            f"CO_STORY_CONTAINER_IMAGE={REPOSITORY}@{TARGET}\n"
+            "CO_STORY_CONTAINER_UID=10001\nCO_STORY_CONTAINER_GID=10001\n",
+            "release_env_identity_mismatch",
+        ),
+    ),
+)
+def test_digest_release_rejects_invalid_root_only_runtime_identity_env(
+    tmp_path: Path, release_content: str, reason: str
+) -> None:
+    host, env, event_log = _sandbox(tmp_path)
+    assert _run(env, "legacy-bootstrap").returncode == 0
+    _host_path(host, "/etc/co-story/container-release.env").write_text(
+        release_content, encoding="utf-8"
+    )
+    event_log.write_text("", encoding="utf-8")
+
+    result = _run(
+        env, "digest-release", target=NEXT_TARGET, previous=TARGET, legacy=""
+    )
+
+    assert result.returncode != 0
+    assert reason in result.stderr
+    assert "migration" not in _events(event_log)
+    assert not any(event.startswith("mutation:") for event in _events(event_log))
+
+
+def test_legacy_rollback_rejects_missing_runtime_identity_before_candidate(
+    tmp_path: Path,
+) -> None:
+    host, env, event_log = _sandbox(tmp_path)
+    assert _run(env, "legacy-bootstrap").returncode == 0
+    _host_path(host, "/etc/co-story/container-release.env").write_text(
+        f"CO_STORY_CONTAINER_IMAGE={REPOSITORY}@{TARGET}\n", encoding="utf-8"
+    )
+    event_log.write_text("", encoding="utf-8")
+
+    result = _run(env, "legacy-rollback")
+
+    assert result.returncode != 0
+    assert "invalid_release_env_shape" in result.stderr
+    assert not any(event.startswith("systemd-run:") for event in _events(event_log))
 
 
 def test_digest_release_promotes_target_bound_assets_only_after_target_health(
