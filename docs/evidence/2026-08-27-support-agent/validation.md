@@ -1,0 +1,15 @@
+# Bounded Support Agent Phase A 驗證摘要
+- Scope／risk／upstream：未接產品的規則查詢與問題草稿核心；R2，安全邊界採 R3 深度；ADR-0005／正式 MVP Spec。
+- Governance base：`2f1ebd5ab138b6bfe37e1635e971d401799ca3e4`；branch preflight `branch_boundary=passed`。
+- Baseline：Backend `490 passed, 9 skipped`；Frontend `94 passed`。
+- Red commit：`72630c6`；Support Agent targeted `23 failed`，均為缺少 Phase A core 的 assertion failure。
+- Green commits：`6ca5acb`；Sol review Red `800780e`（6 個安全 assertion failures）；安全 Green `ba55bbe`。
+- Targeted／affected：最終 Support Agent `30 passed`；Support Agent＋rules＋boundary affected `45 passed`。
+- Grounding／negative：canonical content 與 stable citation；查無與多筆命中皆 unsupported；未知 tool、extra／missing args、malformed output fail closed。
+- Injection：忽略指令、system prompt、unknown tool 與規則改寫要求均拒絕。
+- Report：結構化欄位、`requires_human_confirmation=true`、local-only status、caller identity replay 與 non-durable memory contract已驗證。
+- Sensitive data：fake multi-pair cookie、standalone session／CSRF、password、AWS key、`DATABASE_URL`、runtime secret、Bearer marker在 model 前與 persistence 前清理。
+- Sensitivity：canonical answer改寫、allowlist擴張、human confirmation關閉、redaction繞過、同義injection gate移除、answer-intent gate移除與unsupported放寬皆使對應測試失敗；mutation已還原。
+- Full regression：Backend `520 passed, 9 skipped`；Frontend `94 passed`。
+- Merge gate：`git diff --check`與branch boundary在evidence commit後執行；PR只建立不合併。
+- Rollback／residual：revert Red／Green／evidence commits即可移除；static keyword retrieval不保證所有問法，memory adapter不耐 process restart，Phase A 尚未接 API／UI／PostgreSQL／Bedrock／AWS。
