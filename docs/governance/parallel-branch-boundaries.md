@@ -1,7 +1,7 @@
 # 平行分支工作邊界
 
 - 狀態：Active
-- 生效分支：`codex/story-quality`、`codex/tier3-delivery`、`codex/tier3-production-release`、`codex/tier2-components`
+- 生效分支：`codex/story-quality`、`codex/tier3-delivery`、`codex/tier3-production-release`、`codex/tier3-healthcheck-correction`、`codex/tier2-components`
 - 機器可讀規則：`.agents/work-boundaries.json`
 - 自動檢查：`scripts/check_branch_boundaries.py`
 
@@ -69,6 +69,23 @@
 - 未取得新的 T3B change envelope 明確核准前，只能做 repo-local 準備，不得觸發 `workflow_dispatch`、push image、執行 SSM 或部署 production。
 - Agent 不執行 AWS CLI、S3 讀取或 Bedrock 呼叫；Console／SSM 由使用者操作。
 - 不更新 CURRENT、checkpoints、task list、deployment log、README、policy 或治理文件。
+
+## `codex/tier3-healthcheck-correction`
+
+唯一目標是修正首次容器切換後已確認的 Docker HEALTHCHECK Host header 不相容：production runtime 必須以既有 allowlist 中的 Host 探測固定 live／ready endpoint，且不得輸出 allowlist 或其他 runtime configuration。
+
+允許範圍以 policy 為準，限於：
+
+- `Dockerfile` 與 `ops/container/healthcheck.py`
+- container contract tests
+- 同一 Tier 3 production release validation evidence
+
+禁止事項：
+
+- 不修改應用程式 TrustedHost policy、IAM、OIDC、CloudFormation、SSM Document、release／rollback driver、Tier 2 或產品行為。
+- 不更新 CURRENT、checkpoints、task list、deployment log、README、policy或治理文件。
+- 分支只做 repo-local strict TDD 與 CI；不得觸發 workflow、push image、執行 SSM、AWS CLI、S3 或 Bedrock。
+- 修正合併後只能以新 exact `main` SHA、現有 active digest 與 `digest-release` 形成新的人工核准 envelope；禁止重跑既有 workflow run。
 
 ## `codex/tier2-components`
 

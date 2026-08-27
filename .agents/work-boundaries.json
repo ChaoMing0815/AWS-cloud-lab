@@ -67,6 +67,15 @@
         "ops/systemd/co-story-container.service"
       ]
     },
+    "codex/tier3-healthcheck-correction": {
+      "purpose": "修正首次容器切換後 Docker HEALTHCHECK 的 production Host header 相容性，並準備後續 digest-release 驗證",
+      "allowed_paths": [
+        "Dockerfile",
+        "ops/container/healthcheck.py",
+        "backend/tests/test_container*.py",
+        "docs/evidence/2026-*-tier3-production-release/**"
+      ]
+    },
     "codex/tier2-components": {
       "purpose": "建立 Web／Story Worker／Data 的本地組件邊界與第一個 queue／job contract，不部署 AWS",
       "allowed_paths": [
