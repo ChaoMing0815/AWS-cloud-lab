@@ -1,13 +1,13 @@
 # CURRENT：目前工作交接
 
 - 更新日期：2026-08-27
-- 目前里程碑：Tier 1 已完整完成；Tier 3三次T3B均安全fail closed。第一次停在Trivy平台解析，第二次停在migration缺少container RDS CA mount，第三次通過migration後因container固定UID `10001`無法寫入host `co-story` UID擁有的candidate log而停在candidate health；三次均未切換production，active release仍為Tier 1。PR #20已合併runtime identity修正。
-- 交付策略：以PR #20合併後的新exact `main` SHA重新形成並核准`legacy-bootstrap` T3B；template相對已部署SSM Document version 3沒有差異，本輪不需要CloudFormation Change Set。Tier 2 PostgreSQL durable contract PR #19已完成且CI全綠，但在首次container transition成功前不合併。
-- Main 整合基準：PR #20 merge commit `a9da8d671e396d17c1c72b5b173a32ca30d3d872`。
+- 目前里程碑：Tier 1、Tier 3均已完整完成。第四次T3B首次成功把production從legacy systemd runtime切換至container；其後PR #21修正Docker HEALTHCHECK的production Host header，`digest-release`與唯讀postflight均通過。
+- 交付策略：已驗證的GitHub OIDC／ECR／Trivy／SSM pipeline作為後續唯一自動部署路徑。下一階段review並整合Tier 2 PR #19，再另行設計RoomService／API／Worker／SQS與AWS E2E，不把Tier 2接線混入已完成的Tier 3 gate。
+- Main 整合基準：PR #21 merge commit `e82c6839360e10e0cb91b43fa32df5d6a7b4cb69`。
 - Tier 1 完成基準 commit：`07a986a`
 - 平行分支治理基準：Red `6a76daf`／Green `b772116`。
-- Regression：PR #20 Tier 3 affected `78 passed`，Backend全數通過、`8 skipped`，Frontend `94 passed`；PR與合併後main CI `33044510163`的Backend、Frontend及container build／Trivy全綠。PR #19 Backend `471 passed, 9 skipped`、Frontend `94 passed`、branch boundary與PR CI全綠；真實PostgreSQL restart integration因未提供專用測試DSN而明確skip。
-- AWS active release：`tier1-20260825-4a51e0e`
+- Regression：PR #21 targeted／Tier 3 affected `24 passed`，Backend `474 passed, 8 skipped`，Frontend `94 passed`；PR CI與合併後main CI `33047227885`的Backend、Frontend、container build／Trivy全綠。PR #19 Backend `471 passed, 9 skipped`、Frontend `94 passed`、branch boundary與PR CI全綠；真實PostgreSQL restart integration因未提供專用測試DSN而明確skip。
+- AWS active release：container digest `sha256:32bee84dac17983d867c3f8f8112a34c6380fc4082b1b0a1819312af0d8df106`；legacy release `tier1-20260825-4a51e0e`只作root-only rollback state。
 - 操作邊界：Console-first；使用者操作 AWS Console／SSM。Agent 未經新的 bounded batch 核准不得執行 AWS CLI，且不得執行 S3 讀取或 Bedrock 呼叫。
 
 ## Current
@@ -48,15 +48,17 @@
 - PR #18以strict TDD加入credentials／build前canonical instance target gate、Document首次login／pull前與driver common CA guard、image空mountpoint，以及migration／candidate／stable runtime三處host CA readonly bind；TLS仍為`verify-full`，IAM／OIDC／ECR／rollback權限未變。CloudFormation相對前版只修改`ContainerReleaseDocument.Properties.Content`。
 - T3B run `33036267754` 綁定 exact main `2fbe3c8…`：canonical target、OIDC、ARM64 build／immutable push、exact-digest Trivy、RDS CA與migration均通過；candidate因image UID `10001`無法寫入host UID `992`持有的`candidate.jsonl`而回`target_candidate_unhealthy`。唯讀postflight確認legacy application／public edge active、container service inactive、unit／symlink未變、health Document `live=200`／`ready=200`，沒有release env、transition state、backup、stable assets或container殘留。
 - PR #20以strict TDD讓image default仍為non-root UID `10001`，但release driver動態驗證host `co-story`非root UID／GID，candidate與stable container使用同一identity；root-only release env固定image／UID／GID三行並拒絕missing、duplicate、root、invalid與identity mismatch。Candidate failure只輸出sanitized state／numeric exit code；CloudFormation template、CloudWatch、IAM、OIDC、ECR、TLS與rollback邊界均未變。
+- T3B run `33045168887`綁定exact main `1681736c…`，完整通過OIDC、ARM64 build／immutable push、exact-digest Trivy、SSM migration／candidate／target與public edge gate，首次成功切換container runtime；legacy rollback assets與root-only state均保留。
+- PR #21以strict TDD讓Docker HEALTHCHECK從既有runtime allowlist取得Host header，不改loopback probe、TrustedHost policy或release driver。Run `33048585714`綁定exact main `e82c683…`以`digest-release`成功部署；postflight確認四個services active、state `container-active`、Docker `healthy`／failing streak `0`、digest與runtime identity吻合、application log可寫、candidate `0`、live／ready `200`，state／release env精確為`7／3`行。
 - Tier 2 PR #19已完成append-only `002_create_story_jobs`、PostgreSQL durable queue、UTC lease、fencing、bounded retry與dead-letter contract；仍未接`RoomService`、API、production composition、SQS或AWS E2E。
 
 ## Next
 
-1. 本次protected狀態文件commit推送並通過main CI後，以當時`origin/main`的完整exact SHA形成新的T3B `legacy-bootstrap` envelope；PR #20程式整合基準為`a9da8d671e396d17c1c72b5b173a32ca30d3d872`。由於template沒有差異，不建立Change Set。舊runs `33030554303`、`33032162034`、`33036267754`均不得re-run。
-2. 使用者明確核准新envelope後才可從GitHub UI啟動workflow；previous digest保持空白、expected legacy仍為`tier1-20260825-4a51e0e`。任何input、SHA、reviewer、build、scan、SSM或health異常立即停止。
-3. 新run成功後另批唯讀驗證container service、public edge、active digest、legacy rollback state、application log delivery與delivery metrics，再判定Tier 3 gate。
-4. Tier 3首次transition完成後才review／merge Tier 2 PR #19；其migration與production接線必須另建deployment決策，不得混入本次legacy-bootstrap。
-5. Tier 3完成後再決定Tier 2 production接線、SQS與三組件AWS E2E；Nova Lite round／ending evaluation仍需另行bounded核准。
+1. Review Tier 2 PR #19相對最新main的diff、migration backward compatibility、boundary與CI；取得merge核准後才整合。
+2. 整合後先更新Tier 2本地完成基準，不立即部署；另建bounded切片接入RoomService／API與Story Worker composition。
+3. 再設計SQS、private Worker／Data網段、SG與至少三個可辨識AWS components，通過action→queue→worker→Bedrock→DB→result E2E及負面連線證據。
+4. 後續任何production更新一律使用新exact main SHA與`digest-release`；previous digest必須取當時verified active state，仍需每次人工核准。
+5. Nova Lite round／ending真實品質evaluation仍需另行bounded核准。
 
 ## 操作護欄
 
@@ -72,7 +74,7 @@
 - EC2 與 RDS 最近一次已知狀態均為運行中。若預估超過 48 小時不使用，依既定清理計畫由使用者手動停止 RDS；storage／backup 仍可能計費，且 RDS 最長 7 天會自動啟動。
 - `CoStoryHealthCheck` 已通過正面 gate，尚未執行 Document 自身的代表性 failure gate。
 - Forced-tool Storyteller 已通過 fake Converse contract，但尚未以真實 Nova Lite 驗證 round／ending schema 與敘事品質。
-- 三次失敗T3B已在ECR留下immutable ARM64 images；第一個未通過workflow Trivy，第二個通過scan但migration前fail closed，第三個通過migration但candidate health前fail closed。三者都不是production release且不得re-run；ECR storage／scan仍可能產生少量費用。
+- 三次失敗T3B images與兩個成功release images均保留於immutable ECR並受lifecycle limit `10`管理；舊runs不得re-run，ECR storage／scan仍可能產生少量費用。
 - Docker actions的 Node.js 20 annotation已以test-first更新至官方 Node.js 24相容版本並通過PR #12、#14、#15 CI；後續仍不得無測試任意升版。
 - StoryJob memory adapter與既有 idempotency store都不宣稱 durable lease或multi-process exactly-once；Data CAS／outbox、SQS、真正DLQ與restart recovery仍是Tier 2核心缺口。
 - iPhone Safari 短期雙向同步已通過，但長時間 polling／visibility 行為仍需在下一次完整多人遊戲觀察。

@@ -54,5 +54,7 @@
 | 平行Tier 2 bounded切片 | 交付順序補充 | Tier 3修正期間可平行建立PostgreSQL story-job durable adapter／migration contract；不得接入現行request flow、SQS或AWS，也不得改變玩家可見行為。 | Tier 2 branch boundary、Data contract、後續SQS接線 |
 | 第二次T3B envelope | Production核准 | 核准 exact main `d81e4d7313d42bdec503305d588e782d6272c8f9`的`legacy-bootstrap`；previous digest空白，expected legacy release維持`tier1-20260825-4a51e0e`。 | GitHub Actions、ECR exact digest、SSM release |
 | Migration fail-closed處置 | 安全補充 | 第二次run的scan通過，但container migration因缺少host RDS CA mount而在mutation前停止；不得降低TLS或re-run同SHA。修正採canonical instance gate、Document／driver雙重CA preflight與三個runtime路徑readonly bind，之後必須以新SHA重新核准。 | TLS verify-full、SSM Document、container runtime、T3B retry boundary |
+| 首次成功container transition | Production核准 | 核准 exact main `1681736c59f5e96ff460cda1239168fc7219ee04`的`legacy-bootstrap`；完整自動鏈成功切換container並保留legacy rollback state。 | GitHub Actions、ECR、SSM、production runtime |
+| HEALTHCHECK digest release | Production核准 | 核准 exact main `e82c6839360e10e0cb91b43fa32df5d6a7b4cb69`與verified previous digest `sha256:bab8a1bbbdc5160e5a0ac50546a174ec209cb7187cf79491473654e285fd312a`的`digest-release`；部署後Docker與公開health均通過。 | Tier 3完成gate、後續只使用digest-release |
 
-核准方式：使用者於對話中先核准首次T3B，失敗後另核准platform修正，並要求整合文件後同步續推Tier 3與Tier 2兩個隔離task。
+核准方式：使用者於對話中逐次核准bounded envelope；前三次失敗均fail closed，第四次完成首次container transition，後續HEALTHCHECK digest release通過並完成Tier 3。

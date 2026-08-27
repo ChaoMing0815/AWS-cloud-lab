@@ -87,10 +87,10 @@ Demo 與每日進度依本清單逐項驗收。檔案存在不代表完成；必
 ## Tier 3：CI/CD
 
 - [x] Current monolith 具有 runtime-only Dockerfile、自動測試與 GitHub Trivy HIGH／CRITICAL gate。
-- [ ] GitHub Actions 使用 OIDC，不使用長期 AWS key。
-- [ ] Pipeline 自動 test、build、push ECR。
-- [ ] Deployment 有 environment gate／最小權限 role。
-- [ ] 改一行 code 可自動部署並由公開頁面驗證。
+- [x] GitHub Actions 使用 OIDC，不使用長期 AWS key。
+- [x] Pipeline 自動 test、build、push ECR。
+- [x] Deployment 有 environment gate／最小權限 role。
+- [x] 改一行 code 可自動部署並由公開頁面驗證。
 
 ## Tier 4：微服務
 

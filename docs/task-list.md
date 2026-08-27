@@ -102,11 +102,11 @@
 ## F. Tier 3：CI/CD
 
 - [x] 建立 runtime-only multi-stage Dockerfile 與本機 container tests；PR #8 的 GitHub container build／Trivy gate 通過。
-- [x] 建立 immutable、scan-on-push ECR repository 與 lifecycle policy；兩次fail-closed T3B已留下ARM64 images，均尚未成為active release。
+- [x] 建立 immutable、scan-on-push ECR repository 與 lifecycle policy；failed與successful ARM64 images均可由exact digest追溯，lifecycle limit為10。
 - [x] 建立 GitHub OIDC deploy role，trust policy 限定 exact repository／`main`，並通過正負控制。
-- [x] GitHub Actions已完成test、OIDC、ARM64 build、immutable push與exact-digest Trivy；第二次run在後續SSM migration因缺少CA mount而fail closed。
-- [ ] 自動部署至 EC2／ECS，保留人工批准或 environment gate。
-- [ ] Demo 改一行版本資訊後自動上線，保存 pipeline 證據。
+- [x] GitHub Actions已完成test、OIDC、ARM64 build、immutable push與exact-digest Trivy，並以三次fail-closed驗證安全停止。
+- [x] 自動部署至 EC2 container runtime，保留GitHub `production`人工批准、最小權限OIDC role與SSM health／rollback gate。
+- [x] HEALTHCHECK程式修正以`digest-release`自動上線，公開live／ready與Docker `healthy` postflight均通過並保存pipeline證據。
 
 ## G. Tier 4：五個微服務
 
