@@ -7,6 +7,7 @@ from typing import Any
 
 from app.domain.models import Room
 from app.domain.story_jobs import StoryJob
+from app.domain.story_resolution import StoryResolutionReceipt
 
 
 RETRYABLE_STORYTELLER_FAILURES = {
@@ -86,6 +87,39 @@ class StoryJobQueue(ABC):
         ownership_token: str,
         error_code: str,
     ) -> StoryJob: ...
+
+
+class StoryResolutionStore(ABC):
+    @abstractmethod
+    def begin_resolution(
+        self,
+        room_id: str,
+        round_number: int,
+        expected_version: int,
+        skip_pending_spark: bool,
+    ) -> StoryJob: ...
+
+    @abstractmethod
+    def result_for_claim(self, job: StoryJob) -> StoryResolutionReceipt | None: ...
+
+    @abstractmethod
+    def commit_result(
+        self,
+        job: StoryJob,
+        result: dict[str, Any],
+    ) -> StoryResolutionReceipt: ...
+
+    @abstractmethod
+    def mark_completion_dispatched(
+        self,
+        job_id: str,
+        ownership_token: str,
+    ) -> None: ...
+
+
+class StoryResolutionNarrator(ABC):
+    @abstractmethod
+    def resolve(self, snapshot: dict[str, Any]) -> dict[str, Any]: ...
 
 
 class IdempotencyStore(ABC):

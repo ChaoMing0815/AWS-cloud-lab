@@ -77,9 +77,14 @@ class ScriptedStore:
         if self.commit_error:
             raise self.commit_error
         self.committed = deepcopy(result)
+        outcome = (
+            self.module.StoryResolutionOutcome.FAILED
+            if result.get("failure_code")
+            else self.module.StoryResolutionOutcome.APPLIED
+        )
         return self.module.StoryResolutionReceipt.create(
             job=job,
-            outcome=self.module.StoryResolutionOutcome.APPLIED,
+            outcome=outcome,
             result=result,
             room_version_after=9,
         )
