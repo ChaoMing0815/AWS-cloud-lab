@@ -27,6 +27,7 @@ def test_policy_defines_exact_parallel_branches_and_protects_integration_state()
         "codex/tier3-production-release",
         "codex/tier3-healthcheck-correction",
         "codex/tier2-components",
+        "codex/tier2-async-flow",
         "codex/support-agent-core",
     }
     assert "docs/handoffs/CURRENT.md" in policy["protected_paths"]
@@ -191,6 +192,34 @@ def test_support_agent_core_accepts_isolated_paths_and_rejects_integration_paths
     assert "docs/handoffs/CURRENT.md" in rejected.stderr
 
 
+def test_tier2_async_flow_accepts_integration_slice_and_rejects_delivery_paths() -> None:
+    accepted = _check(
+        "codex/tier2-async-flow",
+        "backend/app/api/routes.py",
+        "backend/app/main.py",
+        "backend/app/adapters/story_resolution_narrator.py",
+        "backend/app/workers/story_resolution_worker.py",
+        "backend/tests/test_tier2_async_process_e2e.py",
+        "web/src/ui/pages/game-page.js",
+        "docs/features/tier2-async-flow.md",
+    )
+    rejected = _check(
+        "codex/tier2-async-flow",
+        ".github/workflows/tier3-release.yml",
+        "Dockerfile",
+        "infra/cloudformation/tier3-delivery.yaml",
+        "backend/migrations/004_create_support_reports.sql",
+        "docs/handoffs/CURRENT.md",
+    )
+
+    assert accepted.returncode == 0, accepted.stderr
+    assert rejected.returncode == 2
+    assert ".github/workflows/tier3-release.yml" in rejected.stderr
+    assert "Dockerfile" in rejected.stderr
+    assert "infra/cloudformation/tier3-delivery.yaml" in rejected.stderr
+    assert "docs/handoffs/CURRENT.md" in rejected.stderr
+
+
 def test_unknown_branch_fails_closed() -> None:
     result = _check("codex/unregistered-work", "README.md")
 
@@ -207,6 +236,7 @@ def test_governance_guide_and_pull_request_gate_are_present() -> None:
     assert "codex/tier3-production-release" in guide
     assert "codex/tier3-healthcheck-correction" in guide
     assert "codex/tier2-components" in guide
+    assert "codex/tier2-async-flow" in guide
     assert "codex/support-agent-core" in guide
     assert "單一部署 owner" in guide
     assert "branch-boundary:" in workflow
