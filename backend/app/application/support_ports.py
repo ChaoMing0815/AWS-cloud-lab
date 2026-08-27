@@ -15,4 +15,3 @@ class RulesKnowledgeBase(Protocol):
 
 class SupportReportRepository(Protocol):
     def get_or_save(self, draft: ProblemReportDraft) -> ProblemReportDraft: ...
-

@@ -25,4 +25,3 @@ Phase A 建立尚未接入產品的 Support Agent 核心，只提供兩個固定
 ## 延後整合
 
 必須等 Tier 2 PR 合併並取得新的 path policy 後，才能設計 migration、PostgreSQL repository、API schema／route、production composition、Web UI、Bedrock adapter、observability、rate limiting 或正式 submit tool。任何外部提交仍須獨立授權與再次人工確認。
-

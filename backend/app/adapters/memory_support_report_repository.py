@@ -23,4 +23,3 @@ class MemorySupportReportRepository:
     @property
     def count(self) -> int:
         return len(self._drafts_by_key)
-
