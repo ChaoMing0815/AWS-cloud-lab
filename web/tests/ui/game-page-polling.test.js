@@ -217,6 +217,52 @@ test("GamePage 重新連線後更新 canonical state 並恢復 3 秒 polling", a
   }
 });
 
+test("AI 結算超過 60 秒仍只讀 polling，不取消、不重送或自動 fallback", async () => {
+  const scheduler = createScheduler();
+  const statusDocument = installPollingStatusDocument();
+  let nowMs = 0;
+  let loadCount = 0;
+  let resolveCount = 0;
+  let fallbackCount = 0;
+  const page = new GamePage({
+    loadRoom: {
+      async execute() {
+        loadCount += 1;
+        return { status: "RESOLVING", version: 8 };
+      },
+    },
+    resolveRound: { async execute() { resolveCount += 1; } },
+    fallbackRound: { async execute() { fallbackCount += 1; } },
+    schedule: scheduler.schedule,
+    cancelSchedule: scheduler.cancel,
+    now: () => nowMs,
+    resolutionTimeoutMs: 60000,
+  });
+  page.room = {
+    status: "RESOLVING",
+    version: 8,
+    resolutionJobId: "job-opaque-7f2c",
+  };
+  page.render = () => {};
+  page.syncRoute = () => {};
+
+  try {
+    page.startPolling();
+    nowMs = 60001;
+    await scheduler.tasks[0].callback();
+
+    assert.equal(loadCount, 1);
+    assert.equal(resolveCount, 0);
+    assert.equal(fallbackCount, 0);
+    assert.equal(page.pollingStopped, false);
+    assert.equal(scheduler.tasks.length, 2, "逾時後仍維持 bounded room polling");
+    assert.equal(statusDocument.pollingStatus.dataset.kind, "resolution-delayed");
+    assert.match(statusDocument.pollingStatus.textContent, /仍在處理/);
+  } finally {
+    statusDocument.restore();
+  }
+});
+
 test("GamePage 遇到 401 或 403 時停止 polling 並顯示 session 下一步", async () => {
   for (const status of [401, 403]) {
     const scheduler = createScheduler();

@@ -243,6 +243,32 @@ test("星火決策與房主結算使用各自 CSRF 邊界", async () => {
   });
 });
 
+test("非同步結算解開 202 envelope 並保留 opaque job ID", async () => {
+  const acceptedRoom = {
+    id: "room-async",
+    version: 8,
+    round: 2,
+    status: "RESOLVING",
+    players: [],
+    session: { isHost: true, hostCsrfToken: "host-resolve-csrf" },
+  };
+  const responses = [
+    acceptedRoom,
+    { jobId: "job-opaque-7f2c", room: acceptedRoom },
+  ];
+  const api = new FetchGameApi({
+    idempotencyKeyFactory: () => "async-round-key",
+    fetchImpl: async () => jsonResponse(responses.shift(), 202),
+  });
+  await api.loadRoom();
+
+  const room = await api.resolveRound();
+
+  assert.equal(room.status, "RESOLVING");
+  assert.equal(room.resolutionJobId, "job-opaque-7f2c");
+  assert.strictEqual(api.room, room);
+});
+
 test("房主 fallback 使用鎖定回合版本與 host CSRF", async () => {
   const requests = [];
   const room = {
