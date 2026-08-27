@@ -39,6 +39,6 @@ USER 10001:10001
 EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD ["python", "/usr/local/bin/co-story-healthcheck", "127.0.0.1", "8000"]
+  CMD ["python", "/usr/local/bin/co-story-healthcheck"]
 
 CMD ["uvicorn", "app.main:create_app", "--factory", "--host", "127.0.0.1", "--port", "8000", "--workers", "1"]

@@ -9,13 +9,27 @@ from collections.abc import Callable
 from urllib.request import Request, urlopen
 
 
+def _runtime_health_host() -> str:
+    explicit_host = os.environ.get("CO_STORY_HEALTH_HOST", "").strip()
+    if explicit_host:
+        return explicit_host
+
+    allowed_hosts = os.environ.get("CO_STORY_ALLOWED_HOSTS", "")
+    for candidate in allowed_hosts.split(","):
+        normalized = candidate.strip()
+        if normalized:
+            return normalized
+
+    return "localhost"
+
+
 def main(
     *,
     open_url: Callable = urlopen,
     host: str | None = None,
     port: int | None = None,
 ) -> int:
-    health_host = host or os.environ.get("CO_STORY_HEALTH_HOST", "localhost")
+    health_host = host or _runtime_health_host()
     health_port = port or int(os.environ.get("CO_STORY_HEALTH_PORT", "8000"))
     for endpoint in ("live", "ready"):
         request = Request(

@@ -27,8 +27,8 @@ def test_image_is_non_root_secret_free_and_keeps_the_runtime_contract() -> None:
     assert "USER 10001:10001" in dockerfile
     assert "EXPOSE 8000" in dockerfile
     assert "HEALTHCHECK" in dockerfile
-    assert '"127.0.0.1"' in dockerfile
-    assert '"8000"' in dockerfile
+    assert 'CMD ["python", "/usr/local/bin/co-story-healthcheck"]' in dockerfile
+    assert 'CMD ["python", "/usr/local/bin/co-story-healthcheck", "127.0.0.1"' not in dockerfile
     assert '\"--workers\", \"1\"' in dockerfile
     assert "DATABASE_URL=" not in dockerfile
     assert "CO_STORY_BEDROCK_GUARDRAIL_ID=" not in dockerfile
@@ -115,6 +115,36 @@ def test_container_healthcheck_requires_both_live_and_ready_without_leaking_body
     captured = capsys.readouterr()
     assert "sensitive-response-must-not-be-logged" not in captured.out
     assert "sensitive-response-must-not-be-logged" not in captured.err
+
+
+def test_container_healthcheck_uses_first_runtime_allowlisted_host_by_default(
+    monkeypatch, capsys
+) -> None:
+    module = _healthcheck_module()
+    requested_hosts: list[str] = []
+    monkeypatch.delenv("CO_STORY_HEALTH_HOST", raising=False)
+    monkeypatch.setenv(
+        "CO_STORY_ALLOWED_HOSTS",
+        "app.example.test, secondary.example.test",
+    )
+
+    def healthy(request, timeout):
+        assert timeout == 5
+        requested_hosts.append(request.get_header("Host"))
+        return _Response()
+
+    assert module.main(open_url=healthy, port=8000) == 0
+    assert requested_hosts == ["app.example.test", "app.example.test"]
+
+    monkeypatch.setenv("CO_STORY_ALLOWED_HOSTS", "secret-host.example.test")
+
+    def unavailable(_request, _timeout):
+        raise OSError("sensitive-response-must-not-be-logged")
+
+    assert module.main(open_url=unavailable, port=8000) == 1
+    captured = capsys.readouterr()
+    assert "secret-host.example.test" not in captured.out
+    assert "secret-host.example.test" not in captured.err
 
 
 def test_container_systemd_keeps_nginx_edge_and_external_runtime_injection() -> None:
