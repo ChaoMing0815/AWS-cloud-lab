@@ -109,4 +109,3 @@ def build_production_worker(
         database_url=database_url,
         worker_id=worker_id or "production-story-resolution-worker",
     )
-
