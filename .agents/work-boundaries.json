@@ -74,7 +74,11 @@
         "backend/app/application/story_jobs.py",
         "backend/app/domain/story_jobs.py",
         "backend/app/adapters/memory_story_job_queue.py",
+        "backend/app/adapters/postgres_story_job_queue.py",
+        "backend/migrations/002_create_story_jobs.sql",
         "backend/tests/test_story_job*.py",
+        "backend/tests/test_postgres_story_job_queue.py",
+        "backend/tests/test_postgres_story_job_migration.py",
         "docs/architecture/tier2-components.md",
         "docs/features/tier2-story-jobs.md",
         "docs/evidence/2026-*-tier2-components/**"

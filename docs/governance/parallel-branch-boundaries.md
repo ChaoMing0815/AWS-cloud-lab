@@ -74,11 +74,14 @@
 
 第一階段唯一目標是建立 Web／Story Worker／Data 的本地組件依賴圖，以及 queue／job／idempotency 的純本機 contract。這個切片先新增 domain、port、memory adapter 與 tests，不接入現行 `RoomService`、API 或 production composition，因此不改變已部署行為。
 
+第二階段允許在相同邊界內新增PostgreSQL story-job queue adapter與`002_create_story_jobs.sql` migration，將既有lease／fencing／retry contract落到可重啟的資料層；仍不得接入現行request flow、production composition或AWS。
+
 允許範圍以 policy 為準，主要包括：
 
 - `story_jobs` domain／application contract
 - `StoryJobQueue` port 與 memory adapter
 - story-job 專屬 tests
+- PostgreSQL story-job adapter、專屬migration與integration tests
 - Tier 2 component architecture、feature spec 與專屬 validation evidence
 
 禁止事項：
@@ -86,7 +89,7 @@
 - 不修改 `RoomService`、API routes、Storyteller adapters、Web UI、database repository、Docker、workflow、IaC 或 `ops/`。
 - 不執行 AWS deploy、AWS CLI、SSM、S3 或 Bedrock。
 - 不更新 CURRENT、checkpoints、task list、deployment log、README、policy 或治理文件。
-- 第一個 contract 切片完成後必須交回整合 task；需要接入現行 request flow 時，再由整合 task審查並明確擴張 allowed paths。
+- PostgreSQL durable contract完成後必須交回整合task；需要接入現行request flow、SQS或production時，再由整合task審查並明確擴張allowed paths。
 
 ## 共用檔案與交接
 

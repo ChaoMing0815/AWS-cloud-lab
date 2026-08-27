@@ -1,9 +1,9 @@
 # CURRENT：目前工作交接
 
-- 更新日期：2026-08-26
-- 目前里程碑：Tier 1 已完整完成；Tier 3 首次 container transition／legacy rollback 與 Tier 2 story-job local contract 已分別經 PR #14、#15 合併 `main`，Batch T3A control plane 已通過安全驗證，但尚未更新 SSM Documents或部署容器。
-- 交付策略：先以合併後 exact `main` 完成 Tier 3 Change Set、Docker preflight、production release與 rollback證據；Tier 2目前只保留未接 production flow的 local contract，後續再擴張 Data CAS／outbox與 durable queue。
-- Main 整合基準：PR #15 merge commit `900dbed`。
+- 更新日期：2026-08-27
+- 目前里程碑：Tier 1 已完整完成；Tier 3 Batch T3A control plane、release／legacy rollback Documents 更新、Docker bootstrap與 GitHub production gate均完成。首次 T3B run 已 build／push ARM64 image，但在 exact-digest Trivy scan 因 runner 平台選擇錯誤而 fail closed，SSM release 明確 skipped，production仍維持 Tier 1。
+- 交付策略：先以嚴格 TDD修正 Trivy明確選擇 `linux/arm64`，經PR／CI合併後使用新的 exact `main` SHA重新形成並核准 T3B envelope；Tier 2可平行建立 PostgreSQL story-job durable contract，但不得接入 production flow或操作AWS。
+- Main 整合基準：PR #16 merge commit `0add833c10414b1b51cb4733b12b669bdb04f85b`。
 - Tier 1 完成基準 commit：`07a986a`
 - 平行分支治理基準：Red `6a76daf`／Green `b772116`。
 - Regression：整合後 Backend `439 passed, 8 skipped`、Frontend `94 passed`；Tier 3 corrective affected suite `46 passed`、Tier 2 targeted `15 passed`。PR #14、#15 的 branch boundary、Backend、Frontend與 container build／Trivy checks均全綠；Trivy v0.70.0結果為 `HIGH=0`、`CRITICAL=0`。
@@ -40,17 +40,18 @@
 - Container 採 runtime-only multi-stage build：digest-pinned Python 3.13 builder 安裝依賴後移除 `pip`／`setuptools`，final 使用 digest-pinned Debian bookworm slim，只保留必要 runtime；`msgpack` 固定為 `1.2.1`。
 - PR #8 與合併後 main CI 都在 GitHub runner 完成 Backend／Frontend、container build 與 Trivy HIGH／CRITICAL fail-closed gate；沒有使用 ignorefile、VEX、skip、降低 severity 或 `exit-code: 0`。
 - Batch T3A stack `co-story-tier3-delivery` 的 ECR、GitHub OIDC deploy role、AppRole pull policy與 SSM release document 共五項資源均為 `CREATE_COMPLETE`，OIDC trust、IAM 正負控制、ECR immutable／scan／lifecycle 與 SSM document 邊界已通過 Console 驗證。
-- PR #14 新增 fail-closed `legacy-bootstrap`／`digest-release`、target-bound driver／unit promotion、mutation rollback與人工限定的 legacy rollback Document；目前只存在於 repo，尚未套用 CloudFormation Change Set。
+- PR #14 新增 fail-closed `legacy-bootstrap`／`digest-release`、target-bound driver／unit promotion、mutation rollback與人工限定的 legacy rollback Document；CloudFormation Change Set已套用，stack為 `UPDATE_COMPLETE`。
 - PR #15 合併 StoryJob identity、idempotency、UTC lease、fencing token、bounded retry與 dead-letter local contract。Memory adapter只作 contract double，尚未接入 `RoomService`、API、Data、SQS或 production composition。
-- ECR 仍為空；尚未 push／scan image、設定或執行 GitHub production release、執行 SSM command、bootstrap Docker 或變更 AWS active release。正式證據入口：[`docs/evidence/2026-08-26-tier3-control-plane/validation.md`](../evidence/2026-08-26-tier3-control-plane/validation.md)。
+- Production host已完成 bounded Docker bootstrap：Amazon Linux 2023／aarch64、Docker active、legacy live／ready均為`200`；GitHub `production` environment採required reviewer、main-only且禁止administrator bypass，四項repository variables已設定，未建立長期AWS憑證。
+- T3B run `33030554303` 綁定 exact main `0add833c…`：OIDC、ARM64 build與immutable ECR push成功；Trivy v0.70.0在amd64 runner預設選擇`linux/amd64`，無法解析ARM64-only image，故exact-digest scan失敗。`Release exact digest through bounded SSM document`為`skipped`，migration、container啟動與流量切換均未執行；ECR現有一個未通過此workflow scan gate的image，active release仍為Tier 1。正式證據入口：[`docs/evidence/2026-08-27-tier3-production-release/validation.md`](../evidence/2026-08-27-tier3-production-release/validation.md)。
 
 ## Next
 
-1. 以 exact `main` 與 template hash建立 `co-story-tier3-delivery` Change Set；只接受 `ContainerReleaseDocument` Modify與 `LegacyRollbackDocument` Add，其餘變更立即停止。
-2. Change Set完成後，由使用者執行一組 read-only SSM preflight；確認 legacy release／health／env metadata、Docker狀態與無殘留 container state。Docker若未安裝，另開 bounded bootstrap批次。
-3. T3B完整 envelope核准後，由使用者啟動 `workflow_dispatch`並通過GitHub `production` environment gate；不得以push `main`取代人工批准。
-4. 以 exact image digest驗證ECR scan、EC2 candidate `live`／`ready`、public edge、active release與legacy／previous rollback；成功與失敗都保存去識別化 timing evidence。
-5. Tier 3 production垂直切片完成後，再擴張Tier 2 Data CAS／outbox、durable queue／SQS與三組件AWS E2E；Nova Lite round／ending evaluation仍需另行bounded核准。
+1. `codex/tier3-production-release`以嚴格TDD要求exact-digest Trivy step明確指定`linux/arm64`；不得改scan digest、severity、ignore-unfixed、exit code或使用VEX／skip。完成PR／CI後交回整合task。
+2. `codex/tier2-components`平行建立PostgreSQL story-job queue／lease／fencing persistence contract與migration；只做本機adapter及整合測試，不接`RoomService`、API、composition、SQS或AWS。
+3. Tier 3修正合併後，以新的exact `main` SHA建立新的T3B envelope並重新人工核准；不得re-run失敗的舊SHA，也不得手動執行SSM release Document。
+4. 新run通過exact-digest scan及SSM release後，再以另一組唯讀驗證確認EC2 candidate／target、public edge、active release與rollback state，保存去識別化timing evidence。
+5. Tier 3 production垂直切片完成後，再決定Tier 2 production接線、SQS與三組件AWS E2E；Nova Lite round／ending evaluation仍需另行bounded核准。
 
 ## 操作護欄
 
@@ -66,7 +67,7 @@
 - EC2 與 RDS 最近一次已知狀態均為運行中。若預估超過 48 小時不使用，依既定清理計畫由使用者手動停止 RDS；storage／backup 仍可能計費，且 RDS 最長 7 天會自動啟動。
 - `CoStoryHealthCheck` 已通過正面 gate，尚未執行 Document 自身的代表性 failure gate。
 - Forced-tool Storyteller 已通過 fake Converse contract，但尚未以真實 Nova Lite 驗證 round／ending schema 與敘事品質。
-- Tier 3 repo-local／PR image 已通過 Trivy，但 ECR 仍為空，尚未取得 ECR scan 或 application release 證據；不得把 T3A 約 55 分鐘人工安全審查或 PR CI 時間當成應用程式部署時間。
+- 首次T3B已在ECR留下ARM64 image，但workflow因Trivy未明確選擇ARM64而在SSM前停止；該image不得視為scan通過或production release，也不得直接re-run舊SHA。ECR storage／scan仍可能產生少量費用。
 - Docker actions的 Node.js 20 annotation已以test-first更新至官方 Node.js 24相容版本並通過PR #12、#14、#15 CI；後續仍不得無測試任意升版。
 - StoryJob memory adapter與既有 idempotency store都不宣稱 durable lease或multi-process exactly-once；Data CAS／outbox、SQS、真正DLQ與restart recovery仍是Tier 2核心缺口。
 - iPhone Safari 短期雙向同步已通過，但長時間 polling／visibility 行為仍需在下一次完整多人遊戲觀察。

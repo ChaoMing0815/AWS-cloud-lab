@@ -102,9 +102,9 @@
 ## F. Tier 3：CI/CD
 
 - [x] 建立 runtime-only multi-stage Dockerfile 與本機 container tests；PR #8 的 GitHub container build／Trivy gate 通過。
-- [x] 建立 immutable、scan-on-push ECR repository 與 lifecycle policy；目前 repository 仍為空。
+- [x] 建立 immutable、scan-on-push ECR repository 與 lifecycle policy；首次T3B已push一個ARM64 image，但workflow scan gate未通過，尚不可部署。
 - [x] 建立 GitHub OIDC deploy role，trust policy 限定 exact repository／`main`，並通過正負控制。
-- [ ] GitHub Actions 執行 test、build、scan、push。
+- [ ] GitHub Actions 執行 test、build、scan、push；首次run已完成OIDC、ARM64 build／push，但exact-digest scan因未指定ARM64平台而fail closed，待TDD修正後重驗。
 - [ ] 自動部署至 EC2／ECS，保留人工批准或 environment gate。
 - [ ] Demo 改一行版本資訊後自動上線，保存 pipeline 證據。
 
