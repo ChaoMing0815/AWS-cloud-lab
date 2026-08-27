@@ -9,6 +9,7 @@ class RuleRecord:
     source_section: str
     source_version: str
     keywords: tuple[str, ...]
+    answer_terms: tuple[str, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,4 +40,3 @@ class ProblemReportDraft:
     requires_human_confirmation: bool
     submission_status: str
     idempotency_key: str
-

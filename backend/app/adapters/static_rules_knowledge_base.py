@@ -33,7 +33,8 @@ class StaticRulesKnowledgeBase:
                 content=_required_text(raw, "content"),
                 source_section=_required_text(raw, "source_section"),
                 source_version=version,
-                keywords=_required_keywords(raw),
+                keywords=_required_text_list(raw, "keywords"),
+                answer_terms=_required_text_list(raw, "answer_terms"),
             )
             for raw in raw_rules
             if isinstance(raw, dict)
@@ -51,6 +52,7 @@ class StaticRulesKnowledgeBase:
             record
             for record in self.records
             if any(keyword.casefold() in normalized for keyword in record.keywords)
+            and any(term.casefold() in normalized for term in record.answer_terms)
         )
         if len(matches) != 1:
             return RuleAnswer(
@@ -81,12 +83,11 @@ def _required_text(mapping: dict[str, object], key: str) -> str:
     return value.strip()
 
 
-def _required_keywords(mapping: dict[str, object]) -> tuple[str, ...]:
-    value = mapping.get("keywords")
+def _required_text_list(mapping: dict[str, object], key: str) -> tuple[str, ...]:
+    value = mapping.get(key)
     if not isinstance(value, list) or not value:
-        raise ValueError("keywords must be a non-empty list")
-    keywords = tuple(item.strip() for item in value if isinstance(item, str) and item.strip())
-    if len(keywords) != len(value):
-        raise ValueError("keywords must contain non-empty text")
-    return keywords
-
+        raise ValueError(f"{key} must be a non-empty list")
+    items = tuple(item.strip() for item in value if isinstance(item, str) and item.strip())
+    if len(items) != len(value):
+        raise ValueError(f"{key} must contain non-empty text")
+    return items

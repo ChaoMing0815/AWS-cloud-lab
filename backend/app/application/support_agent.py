@@ -1,5 +1,6 @@
 import hashlib
 import re
+import unicodedata
 
 from app.application.support_ports import (
     RulesKnowledgeBase,
@@ -22,10 +23,48 @@ _UNSAFE_INSTRUCTIONS = (
     "ignore previous",
     "rewrite the",
 )
+_BYPASS_MARKERS = ("忽略", "無視", "跳過", "ignore", "disregard", "bypass")
+_INSTRUCTION_TARGETS = (
+    "指示",
+    "規則",
+    "前述",
+    "先前",
+    "instruction",
+    "rule",
+    "previous",
+    "prior",
+)
+_RULE_REWRITE_MARKERS = (
+    "改寫",
+    "重寫",
+    "改成",
+    "修改規則",
+    "變更規則",
+    "rewrite",
+    "change the",
+    "override",
+)
+_RULE_TARGETS = (
+    "規則",
+    "星火",
+    "骰",
+    "進度",
+    "危機",
+    "結局",
+    "rule",
+    "spark",
+    "dice",
+    "progress",
+    "crisis",
+    "ending",
+)
+_UNSUPPORTED_ANSWER = "目前版本的規則資料沒有足夠證據回答這個問題。"
+_UNSUPPORTED_REASONS = frozenset({"no_grounded_rule", "ambiguous_rule_query"})
 _LABELED_SECRET_PATTERNS = tuple(
     re.compile(pattern, re.IGNORECASE)
     for pattern in (
-        r"(cookie\s*:\s*)[^\s,，;；]+",
+        r"(cookie\s*:\s*)[^\r\n，]+",
+        r"((?:session|csrf)(?:[_-]?token)?\s*[=:]\s*)[^\s,，;；]+",
         r"(x-csrf-token\s*:\s*)[^\s,，;；]+",
         r"(csrf(?:_token)?\s*[=:]\s*)[^\s,，;；]+",
         r"(password\s*[=:]\s*)[^\s,，;；]+",
@@ -112,7 +151,11 @@ class SupportAgent:
 
     def _validate_grounded_answer(self, answer: RuleAnswer) -> None:
         if answer.status == "unsupported":
-            if answer.citations:
+            if (
+                answer.citations
+                or answer.answer != _UNSUPPORTED_ANSWER
+                or answer.reason not in _UNSUPPORTED_REASONS
+            ):
                 raise SupportAgentRejected("ungrounded_knowledge_answer")
             return
         if answer.status != "supported" or len(answer.citations) != 1:
@@ -155,8 +198,15 @@ class SupportAgent:
 
 
 def _contains_unsafe_instruction(message: str) -> bool:
-    lowered = message.casefold()
-    return any(marker in lowered for marker in _UNSAFE_INSTRUCTIONS)
+    lowered = unicodedata.normalize("NFKC", message).casefold()
+    direct_match = any(marker in lowered for marker in _UNSAFE_INSTRUCTIONS)
+    bypass_attempt = any(marker in lowered for marker in _BYPASS_MARKERS) and any(
+        target in lowered for target in _INSTRUCTION_TARGETS
+    )
+    rewrite_attempt = any(marker in lowered for marker in _RULE_REWRITE_MARKERS) and any(
+        target in lowered for target in _RULE_TARGETS
+    )
+    return direct_match or bypass_attempt or rewrite_attempt
 
 
 def _normalize_text(value: str) -> str:
