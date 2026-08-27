@@ -2,14 +2,14 @@
 
 - 更新日期：2026-08-27
 - 目前里程碑：Tier 1、Tier 3均已完整完成。第四次T3B首次成功把production從legacy systemd runtime切換至container；其後PR #21修正Docker HEALTHCHECK的production Host header，`digest-release`與唯讀postflight均通過。
-- 交付策略：已驗證的GitHub OIDC／ECR／Trivy／SSM pipeline作為後續唯一自動部署路徑。Tier 2 producer／Worker／Data replay-safe local contract與Support Agent Phase A均已整合；下一步先核准玩家可見async API差異，再接本地composition與process E2E，之後才規劃SQS、Support Agent persistence／UI及AWS部署。
-- Main 整合基準：PR #22 merge commit `23ee7fabb7d9ac3a637ee3c57927f965f9917be7`；PR #23 merge commit `3bb16d74952992d8d6d42366788ffbd7c0710ae4`。
+- 交付策略：已驗證的GitHub OIDC／ECR／Trivy／SSM pipeline作為後續唯一自動部署路徑。Tier 2 producer／Worker／Data replay-safe local contract、玩家可見async API與Support Agent Phase A均已整合；下一步補齊production Worker／Bedrock adapter與真實PostgreSQL process gate，再規劃SQS、Support Agent persistence／UI及AWS部署。
+- Main 整合基準：PR #22 merge commit `23ee7fabb7d9ac3a637ee3c57927f965f9917be7`；PR #23 merge commit `3bb16d74952992d8d6d42366788ffbd7c0710ae4`；PR #24 merge commit `85990b439a24840778acc8e5c3d48a87528aaebc`。
 - Tier 1 完成基準 commit：`07a986a`
 - 平行分支治理基準：Red `6a76daf`／Green `b772116`。
-- Regression：最終整合樹 Backend `551 passed, 10 skipped`、Frontend `94 passed`；main CI `33055651405`的Backend、Frontend、container build／Trivy全綠。真實PostgreSQL story-resolution restart integration因未提供專用測試DSN而明確skip，離線transaction／rollback／fault injection均已執行。
+- Regression：PR #24整合前完整驗證為Backend `558 passed, 11 skipped`、Frontend `96 passed`；merge commit `85990b4…`的main CI `33060850469`之Backend、Frontend、container build／Trivy全綠。真實PostgreSQL story-resolution process/restart integration因未提供專用測試DSN而明確skip，離線transaction／rollback／fault injection均已執行。
 - AWS active release：container digest `sha256:32bee84dac17983d867c3f8f8112a34c6380fc4082b1b0a1819312af0d8df106`；legacy release `tier1-20260825-4a51e0e`只作root-only rollback state。
 - 操作邊界：Console-first；使用者操作 AWS Console／SSM。Agent 未經新的 bounded batch 核准不得執行 AWS CLI，且不得執行 S3 讀取或 Bedrock 呼叫。
-- 平行工作：`codex/tier2-components`與`codex/support-agent-core`均已合併並可封存。使用者已核准下一個玩家可見async切片；整合task正建立`codex/tier2-async-flow`，只接API／本機Worker／Web polling與process E2E，不含AWS或production deploy。
+- 平行工作：`codex/tier2-components`、`codex/support-agent-core`與`codex/tier2-async-flow`均已合併並可封存；目前沒有進行中的production deployment task。
 
 ## Current
 
@@ -55,13 +55,14 @@
 - Tier 2 read-only integration design gate確認現有Room repository與StoryJob queue各自開transaction，直接串接會形成dual-write gap；完整Room亦含session／CSRF等資料，不得作為job payload。ADR-0004已接受同DB producer transaction與result inbox／completion outbox，第一批只建立未接線application slice，保持現行同步route與玩家行為不變。
 - Tier 2 PR #22已合併main：Tx P以單一PostgreSQL transaction完成Room CAS、`RESOLVING`與sanitized immutable StoryJob；Worker每次delivery最多呼叫Storyteller一次；Tx R驗證claim／fencing／lease／Room version並同transaction寫Room、result inbox與completion outbox。Data commit前不ack，commit後ack failure可reclaim並只重送completion；`003`為append-only。現行同步route與production composition仍未接此切片。
 - Support Agent PR #23已合併main：Phase A提供allowlisted規則回答與stable citations、unsupported fail-closed、人工確認前問題回報草稿、idempotency、prompt-injection／tool guard與model前敏感資料清理。它只使用靜態knowledge、Mock model與memory repository，尚無API、UI、PostgreSQL、Bedrock、外部提交或AWS部署。
+- Tier 2 PR #24已合併main：PostgreSQL production composition的resolve route改為回傳`202`、opaque job ID與canonical `RESOLVING` Room；Web沿用room endpoint polling，60秒只顯示延遲提示，不自動取消、重送或fallback。獨立本機Worker runner以session-free snapshot narrator處理job；本機只允許Mock storyteller並在`CO_STORY_ENV=production` fail closed。這批程式尚未部署AWS，production仍使用上述verified container digest，且production尚未執行`002`／`003` migrations。
 
 ## Next
 
-1. 在`codex/tier2-async-flow`以strict TDD接API／composition／Web polling：resolve POST回`202 + RESOLVING + opaque job ID`，前端只poll room；逾時不取消或重送，Worker終局失敗後才顯示人工retry／fallback。
-2. 完成producer→PostgreSQL job→獨立Worker→result的本機process E2E、restart／duplicate delivery gate與完整regression，交回整合task；不立即部署production。
-3. 再設計SQS、private Worker／Data網段、SG與至少三個可辨識AWS components，通過action→queue→worker→Bedrock→DB→result E2E及負面連線證據。
-4. Tier 2本地API穩定後，另行評估Support Agent的`004` migration、PostgreSQL repository、API／UI、Nova Lite adapter、rate limiting與observability；外部submit tool仍需獨立核准。
+1. 以strict TDD完成production Worker／Bedrock storyteller adapter接線與fail-closed設定；不得把本機Mock Worker當成production能力。
+2. 提供獨立測試PostgreSQL DSN，執行producer→job→獨立Worker→result的真實process／restart／duplicate-delivery gate與完整regression；不使用production DB作測試。
+3. 設計SQS／DLQ、private Worker／Data網段、SG、成本與CloudFormation change envelope，通過action→queue→worker→Bedrock→DB→result E2E及負面連線證據後才提production部署核准。
+4. Tier 2 runtime穩定後，另行評估Support Agent的`004` migration、PostgreSQL repository、API／UI、Nova Lite adapter、rate limiting與observability；外部submit tool仍需獨立核准。
 5. 後續任何production更新一律使用新exact main SHA與`digest-release`；previous digest必須取當時verified active state，仍需每次人工核准。
 6. Nova Lite round／ending真實品質evaluation仍需另行bounded核准。
 
@@ -81,7 +82,7 @@
 - Forced-tool Storyteller 已通過 fake Converse contract，但尚未以真實 Nova Lite 驗證 round／ending schema 與敘事品質。
 - 三次失敗T3B images與兩個成功release images均保留於immutable ECR並受lifecycle limit `10`管理；舊runs不得re-run，ECR storage／scan仍可能產生少量費用。
 - Docker actions的 Node.js 20 annotation已以test-first更新至官方 Node.js 24相容版本並通過PR #12、#14、#15 CI；後續仍不得無測試任意升版。
-- Story result的PostgreSQL CAS／inbox／outbox已完成本地contract，但尚未接route／composition，也未執行真實PostgreSQL restart gate；SQS、真正DLQ、lease heartbeat、private Worker與AWS E2E仍是Tier 2核心缺口。
+- Story result的PostgreSQL CAS／inbox／outbox與async route／composition／Web polling已完成本地contract，但真實PostgreSQL process/restart gate仍因缺少專用測試DSN而skip；production Worker／Bedrock adapter、SQS、真正DLQ、lease heartbeat、private Worker與AWS E2E仍是Tier 2核心缺口。
 - Support Agent static retrieval無法涵蓋所有自然語言問法；identity digest未加鹽、草稿尚無API層長度／rate limit，memory repository不耐restart或多process。接線前不得宣稱線上客服、RAG、Bedrock或問題提交已完成。
 - iPhone Safari 短期雙向同步已通過，但長時間 polling／visibility 行為仍需在下一次完整多人遊戲觀察。
 - 刪房後舊分頁 lifecycle 修正已部署，尚未以 `COMPLETED` 房間做 AWS 多分頁重驗。
