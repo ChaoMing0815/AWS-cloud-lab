@@ -28,7 +28,9 @@ def test_policy_defines_exact_parallel_branches_and_protects_integration_state()
         "codex/tier3-healthcheck-correction",
         "codex/tier2-components",
         "codex/tier2-async-flow",
+        "codex/tier2-production-worker",
         "codex/support-agent-core",
+        "codex/support-agent-persistence",
     }
     assert "docs/handoffs/CURRENT.md" in policy["protected_paths"]
     assert "docs/checkpoints.md" in policy["protected_paths"]
@@ -220,6 +222,66 @@ def test_tier2_async_flow_accepts_integration_slice_and_rejects_delivery_paths()
     assert "docs/handoffs/CURRENT.md" in rejected.stderr
 
 
+def test_tier2_production_worker_accepts_only_worker_and_storyteller_paths() -> None:
+    accepted = _check(
+        "codex/tier2-production-worker",
+        "backend/app/adapters/bedrock_storyteller.py",
+        "backend/app/adapters/production_storyteller_factory.py",
+        "backend/app/adapters/story_resolution_narrator.py",
+        "backend/app/main.py",
+        "backend/app/workers/story_resolution_worker.py",
+        "backend/tests/test_tier2_production_worker.py",
+        "docs/features/tier2-async-flow.md",
+    )
+    rejected = _check(
+        "codex/tier2-production-worker",
+        "backend/app/api/routes.py",
+        "backend/migrations/004_create_support_report_drafts.sql",
+        "web/src/ui/pages/game-page.js",
+        "Dockerfile",
+        "infra/cloudformation/tier2-components.yaml",
+        "docs/handoffs/CURRENT.md",
+    )
+
+    assert accepted.returncode == 0, accepted.stderr
+    assert rejected.returncode == 2
+    assert "backend/app/api/routes.py" in rejected.stderr
+    assert "backend/migrations/004_create_support_report_drafts.sql" in rejected.stderr
+    assert "Dockerfile" in rejected.stderr
+    assert "docs/handoffs/CURRENT.md" in rejected.stderr
+
+
+def test_support_agent_persistence_accepts_only_local_draft_storage_paths() -> None:
+    accepted = _check(
+        "codex/support-agent-persistence",
+        "backend/app/domain/support_agent.py",
+        "backend/app/application/support_agent.py",
+        "backend/app/adapters/memory_support_report_repository.py",
+        "backend/app/adapters/postgres_support_report_repository.py",
+        "backend/migrations/004_create_support_report_drafts.sql",
+        "backend/tests/test_postgres_support_report_repository.py",
+        "backend/tests/test_migration_readiness.py",
+        "docs/features/support-agent-persistence.md",
+    )
+    rejected = _check(
+        "codex/support-agent-persistence",
+        "backend/app/application/support_ports.py",
+        "backend/app/main.py",
+        "backend/app/api/routes.py",
+        "web/src/ui/pages/support-page.js",
+        "backend/app/adapters/bedrock_storyteller.py",
+        "infra/cloudformation/tier5-agent.yaml",
+        "docs/handoffs/CURRENT.md",
+    )
+
+    assert accepted.returncode == 0, accepted.stderr
+    assert rejected.returncode == 2
+    assert "backend/app/main.py" in rejected.stderr
+    assert "backend/app/api/routes.py" in rejected.stderr
+    assert "backend/app/adapters/bedrock_storyteller.py" in rejected.stderr
+    assert "docs/handoffs/CURRENT.md" in rejected.stderr
+
+
 def test_unknown_branch_fails_closed() -> None:
     result = _check("codex/unregistered-work", "README.md")
 
@@ -237,7 +299,9 @@ def test_governance_guide_and_pull_request_gate_are_present() -> None:
     assert "codex/tier3-healthcheck-correction" in guide
     assert "codex/tier2-components" in guide
     assert "codex/tier2-async-flow" in guide
+    assert "codex/tier2-production-worker" in guide
     assert "codex/support-agent-core" in guide
+    assert "codex/support-agent-persistence" in guide
     assert "單一部署 owner" in guide
     assert "branch-boundary:" in workflow
     assert "scripts/check_branch_boundaries.py" in workflow
