@@ -1,8 +1,8 @@
 # Tier 2 三組件架構與本地一致性邊界
 
-- 狀態：第三階段 local result inbox／completion outbox contract
-- 範圍：Web／API → Story Worker → Data 的依賴方向；尚未 production 接線
-- 對應 Feature：[`tier2-story-jobs.md`](../features/tier2-story-jobs.md)、[`tier2-story-resolution.md`](../features/tier2-story-resolution.md)
+- 狀態：第四階段 local async API／Worker process contract
+- 範圍：Web／API → Story Worker → Data 的本機接線；尚未 production 部署
+- 對應 Feature：[`tier2-story-jobs.md`](../features/tier2-story-jobs.md)、[`tier2-story-resolution.md`](../features/tier2-story-resolution.md)、[`tier2-async-flow.md`](../features/tier2-async-flow.md)
 
 ## Current monolith
 
@@ -35,7 +35,7 @@ flowchart LR
     Data --> DB[(Room authority)]
 ```
 
-第一階段實作`StoryJob` domain與memory contract double，第二階段新增PostgreSQL durable queue。第三階段建立同DB producer transaction、sanitized snapshot、Story Worker application contract與result inbox／completion outbox，但現行request flow與production composition仍完全不接線；圖是target dependency direction，不是已部署宣告。
+第一階段實作`StoryJob` domain與memory contract double，第二階段新增PostgreSQL durable queue。第三階段建立同DB producer transaction、sanitized snapshot、Story Worker application contract與result inbox／completion outbox。第四階段讓PostgreSQL Web composition以`202`接producer，並提供獨立local Worker process與Web polling；圖仍不是AWS已部署宣告。
 
 ## 邊界與責任
 
@@ -61,11 +61,9 @@ flowchart LR
 - SQS visibility timeout 與 ownership token 的 durable mapping、retry delay、真正 DLQ、poison payload 與 process restart recovery尚未定案。導入 durable queue／store 前必須另寫 integration contract 與 failure tests。
 - `003_create_story_resolution_results.sql`將result fingerprint、terminal stale/applied/failed receipt與completion intent持久化。Data transaction必須先commit，再由Worker ack queue；commit後ack失敗可在reclaim後跳過Storyteller與Room mutation，只重送completion。
 
-## 刻意未接線項目
+## 第四階段接線與刻意保留項目
 
-- `RoomService.resolve_round`仍是同步public flow；只將既有round-result規則抽出共用
-- FastAPI routes 與 response schema
-- `main.create_app` production composition
-- Bedrock／mock Storyteller adapters
-- PostgreSQL Room repository與production schema apply；`story_jobs`、inbox與outbox尚未由production composition使用
-- SQS、worker process、container、CI/CD 與 AWS E2E
+- PostgreSQL composition的FastAPI resolve route已接producer並回`202`；memory／Demo composition維持同步路徑。
+- local Worker process使用session-free snapshot narrator與`MockStoryteller`，Web process不內嵌Worker。
+- PostgreSQL Room、`story_jobs`、result inbox與completion outbox已具本機process gate；production尚未執行`002`／`003`。
+- Bedrock Worker adapter、SQS、DLQ、visibility heartbeat、private subnet Worker、container／CI/CD調整與AWS E2E仍未接線。

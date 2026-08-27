@@ -24,11 +24,16 @@ Tier 2下一個本地切片採用下列邊界，且第一批不接API route、We
 
 ## 不在本決策內
 
-- 不決定public resolve route是否改回`202 Accepted`、是否公開`jobId`、Web polling／timeout／fallback UX。
 - 不接SQS receipt handle、visibility timeout、lease heartbeat、真正DLQ或private Worker AWS部署。
 - 不執行production migration或部署，也不改變現行同步遊玩流程。
 
-上述玩家可見API差異與AWS資源會在本地一致性contract全綠後分別形成新的核准批次。
+AWS資源會在本地一致性與玩家可見contract全綠後形成新的核准批次。
+
+## 玩家可見接線決策（2026-08-27）
+
+使用者在本地一致性contract合併後核准下一個R2切片：PostgreSQL composition的resolve POST改回`202 Accepted`，回傳opaque `jobId`與`RESOLVING` Room；Web只poll既有Room query。60秒逾時只提示仍在處理，不取消、不重送、不自動fallback。Worker terminal failure寫`RESOLUTION_FAILED`後，才由房主明確選擇retry或deterministic fallback。
+
+此接線只涵蓋本機PostgreSQL producer、獨立Mock Worker process與Web polling；不等於production migration、Bedrock Worker、SQS或AWS部署核准。memory／Demo composition仍保留既有同步結算，以免沒有durable queue時製造永遠停留的`RESOLVING`狀態。
 
 ## 結果與取捨
 
@@ -39,3 +44,5 @@ Tier 2下一個本地切片採用下列邊界，且第一批不接API route、We
 ## 本地實作結果
 
 第三階段以`StoryResolutionStore`、未接線`StoryResolutionWorker`、memory transaction double與`PostgresStoryResolutionStore`實作本決策。`003_create_story_resolution_results.sql`是append-only migration；現行同步`RoomService.resolve_round`只抽出並共用既有round-result規則，route、retry與玩家可見結果不變。此狀態仍是repo-local at-least-once contract，不代表production migration、SQS或distributed exactly-once已完成。
+
+第四階段以`codex/tier2-async-flow`接入上述玩家可見決策：PostgreSQL Web composition建立producer，獨立local Worker runner消費job，Web解開`202` envelope並持續poll Room。production active release仍未包含此變更。
