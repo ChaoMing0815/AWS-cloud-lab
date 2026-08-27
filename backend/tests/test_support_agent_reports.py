@@ -1,6 +1,7 @@
 import importlib
 
 import pytest
+from copy import replace
 
 
 def _support_types():
@@ -48,6 +49,9 @@ def test_draft_problem_report_is_structured_and_requires_human_confirmation() ->
     assert draft.actual_behavior == "按鈕沒有反應"
     assert draft.requires_human_confirmation is True
     assert draft.submission_status == "local_draft_only"
+    assert draft.payload_version == 1
+    assert len(draft.payload_fingerprint) == 64
+    assert len(draft.idempotency_key) == 64
     assert repository.count == 1
 
 
@@ -72,6 +76,39 @@ def test_report_replay_is_idempotent_for_same_identity_and_normalized_content() 
     assert another_identity.report_id != first.report_id
     assert repository.count == 2
     assert repository.is_durable is False
+
+
+def test_application_detects_corrupt_persisted_draft_before_return() -> None:
+    application, _, _, reports = _support_types()
+
+    class MutatingRepository(reports.MemorySupportReportRepository):
+        def __init__(self) -> None:
+            super().__init__()
+            self._mutate = True
+
+        def get_or_save(self, draft):
+            persisted = super().get_or_save(draft)
+            if self._mutate:
+                self._mutate = False
+                return replace(
+                    persisted,
+                    summary="外部更改過的摘要",
+                )
+            return persisted
+
+    repository = MutatingRepository()
+    agent, _ = _agent(repository=repository)
+    with pytest.raises(application.SupportAgentRejected) as error:
+        agent.respond("問題回報：操作失敗。", reporter_identity="player-local-001")
+    assert error.value.code == "corrupt_report_contract"
+
+
+def test_draft_report_contains_stable_16_hex_prefix_for_report_id() -> None:
+    agent, _ = _agent()
+    draft = agent.respond("問題回報：進入房間後畫面沒有更新。", reporter_identity="player-local-001")
+
+    assert draft.report_id.startswith("draft-")
+    assert len(draft.report_id) == 22
 
 
 @pytest.mark.parametrize(
