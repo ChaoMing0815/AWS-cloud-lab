@@ -230,6 +230,60 @@ def test_expired_claim_restarts_with_new_token_and_old_token_is_fenced(monkeypat
         queue.complete("job-1", "old-token", {"narration": "stale"})
 
 
+@pytest.mark.parametrize("operation", ["complete", "fail"])
+def test_exact_expiry_fences_terminal_mutation(monkeypatch, operation) -> None:
+    expired = replace(
+        _job(),
+        status=StoryJobStatus.CLAIMED,
+        claimed_by="worker-a",
+        ownership_token="expired-token",
+        lease_expires_at=NOW,
+        attempt_count=1,
+    )
+    connection = ScriptedConnection([("for update", [_row(expired)])])
+    queue, _ = _queue(monkeypatch, connection)
+
+    with pytest.raises(StoryJobOwnershipConflict):
+        if operation == "complete":
+            queue.complete("job-1", "expired-token", {"narration": "too late"})
+        else:
+            queue.fail("job-1", "expired-token", "TOO_LATE")
+
+    assert len(connection.statements) == 1
+
+
+def test_expired_lease_dead_letters_when_attempts_are_exhausted(monkeypatch) -> None:
+    exhausted = replace(
+        _job(),
+        status=StoryJobStatus.CLAIMED,
+        claimed_by="worker-a",
+        ownership_token="expired-token",
+        lease_expires_at=NOW,
+        attempt_count=2,
+    )
+    terminal = replace(
+        exhausted,
+        status=StoryJobStatus.DEAD_LETTERED,
+        claimed_by=None,
+        ownership_token=None,
+        lease_expires_at=None,
+        terminal_error="LEASE_EXPIRED",
+    )
+    connection = ScriptedConnection(
+        [
+            ("for update", [_row(exhausted)]),
+            ("update story_jobs", [_row(terminal)]),
+        ]
+    )
+    queue, _ = _queue(monkeypatch, connection, max_attempts=2)
+
+    assert queue.claim("job-1", "worker-b") == terminal
+    update_sql = connection.statements[1][0]
+    assert "ownership_token = %s" in update_sql
+    assert "lease_expires_at <= %s" in update_sql
+    assert "attempt_count >= %s" in update_sql
+
+
 def test_complete_is_transactional_and_terminal_replay_is_fail_closed(monkeypatch) -> None:
     claimed = replace(
         _job(),
