@@ -9,6 +9,7 @@
 - Regression：PR #19 Backend `471 passed, 9 skipped`、Frontend `94 passed`；合併後main CI `33049531844`的Backend、Frontend、container build／Trivy全綠。真實PostgreSQL restart integration因未提供專用測試DSN而明確skip。
 - AWS active release：container digest `sha256:32bee84dac17983d867c3f8f8112a34c6380fc4082b1b0a1819312af0d8df106`；legacy release `tier1-20260825-4a51e0e`只作root-only rollback state。
 - 操作邊界：Console-first；使用者操作 AWS Console／SSM。Agent 未經新的 bounded batch 核准不得執行 AWS CLI，且不得執行 S3 讀取或 Bedrock 呼叫。
+- 平行工作：`codex/tier2-components`執行ADR-0004 replay-safe Story Result切片；`codex/support-agent-core`只建立ADR-0005規則說明與問題回報草稿的本地核心。兩者路徑隔離，Support Agent不得接API／UI／migration／AWS，待Tier 2 PR合併後才重新評估整合。
 
 ## Current
 
@@ -58,8 +59,9 @@
 1. 在`codex/tier2-components`依ADR-0004以strict TDD建立純本機Room CAS＋job producer transaction、sanitized immutable snapshot、Story Worker與result inbox／completion outbox；只允許抽取既有round-result純規則，不改route、UI或production composition。
 2. 通過PostgreSQL fault rollback、stale fencing/version、duplicate/divergent replay與跨adapter process-restart gate後，交回整合task review；再另行核准`202 + RESOLVING`、polling與fallback等玩家可見async API差異。
 3. API本地E2E完成後再設計SQS、private Worker／Data網段、SG與至少三個可辨識AWS components，通過action→queue→worker→Bedrock→DB→result E2E及負面連線證據。
-4. 後續任何production更新一律使用新exact main SHA與`digest-release`；previous digest必須取當時verified active state，仍需每次人工核准。
-5. Nova Lite round／ending真實品質evaluation仍需另行bounded核准。
+4. 平行完成`codex/support-agent-core`的allowlisted規則回答、unsupported query、prompt-injection拒絕、敏感資料隔離、人工確認前report draft與tool contract；只建立PR，不與Tier 2同批部署。
+5. 後續任何production更新一律使用新exact main SHA與`digest-release`；previous digest必須取當時verified active state，仍需每次人工核准。
+6. Nova Lite round／ending真實品質evaluation仍需另行bounded核准。
 
 ## 操作護欄
 

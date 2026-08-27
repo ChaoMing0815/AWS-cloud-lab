@@ -105,6 +105,22 @@
         "docs/evidence/2026-*-tier2-components/**",
         "docs/evidence/2026-*-tier2-story-resolution/**"
       ]
+    },
+    "codex/support-agent-core": {
+      "purpose": "建立規則說明與問題回報草稿的 bounded Support Agent 本地核心，不接 API、UI、資料庫或 AWS",
+      "allowed_paths": [
+        "backend/app/domain/support_agent.py",
+        "backend/app/application/support_agent.py",
+        "backend/app/application/support_ports.py",
+        "backend/app/adapters/static_rules_knowledge_base.py",
+        "backend/app/adapters/memory_support_report_repository.py",
+        "backend/app/adapters/mock_support_model.py",
+        "backend/app/resources/game_rules.json",
+        "backend/tests/test_support_agent*.py",
+        "docs/architecture/support-agent.md",
+        "docs/features/support-agent.md",
+        "docs/evidence/2026-*-support-agent/**"
+      ]
     }
   }
 }

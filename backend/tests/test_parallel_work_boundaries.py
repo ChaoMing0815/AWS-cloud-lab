@@ -27,6 +27,7 @@ def test_policy_defines_exact_parallel_branches_and_protects_integration_state()
         "codex/tier3-production-release",
         "codex/tier3-healthcheck-correction",
         "codex/tier2-components",
+        "codex/support-agent-core",
     }
     assert "docs/handoffs/CURRENT.md" in policy["protected_paths"]
     assert "docs/checkpoints.md" in policy["protected_paths"]
@@ -156,6 +157,40 @@ def test_tier2_components_accepts_replay_safe_slice_and_rejects_delivery_paths()
     assert "docs/handoffs/CURRENT.md" in rejected.stderr
 
 
+def test_support_agent_core_accepts_isolated_paths_and_rejects_integration_paths() -> None:
+    accepted = _check(
+        "codex/support-agent-core",
+        "backend/app/domain/support_agent.py",
+        "backend/app/application/support_agent.py",
+        "backend/app/application/support_ports.py",
+        "backend/app/adapters/static_rules_knowledge_base.py",
+        "backend/app/adapters/memory_support_report_repository.py",
+        "backend/app/adapters/mock_support_model.py",
+        "backend/app/resources/game_rules.json",
+        "backend/tests/test_support_agent_contract.py",
+        "docs/features/support-agent.md",
+    )
+    rejected = _check(
+        "codex/support-agent-core",
+        "backend/app/application/ports.py",
+        "backend/app/application/room_service.py",
+        "backend/app/api/routes.py",
+        "backend/app/main.py",
+        "backend/migrations/004_create_support_reports.sql",
+        "web/src/ui/pages/support-page.js",
+        "infra/cloudformation/tier5-agent.yaml",
+        "docs/handoffs/CURRENT.md",
+    )
+
+    assert accepted.returncode == 0, accepted.stderr
+    assert rejected.returncode == 2
+    assert "backend/app/application/room_service.py" in rejected.stderr
+    assert "backend/app/api/routes.py" in rejected.stderr
+    assert "backend/migrations/004_create_support_reports.sql" in rejected.stderr
+    assert "web/src/ui/pages/support-page.js" in rejected.stderr
+    assert "docs/handoffs/CURRENT.md" in rejected.stderr
+
+
 def test_unknown_branch_fails_closed() -> None:
     result = _check("codex/unregistered-work", "README.md")
 
@@ -172,6 +207,7 @@ def test_governance_guide_and_pull_request_gate_are_present() -> None:
     assert "codex/tier3-production-release" in guide
     assert "codex/tier3-healthcheck-correction" in guide
     assert "codex/tier2-components" in guide
+    assert "codex/support-agent-core" in guide
     assert "單一部署 owner" in guide
     assert "branch-boundary:" in workflow
     assert "scripts/check_branch_boundaries.py" in workflow

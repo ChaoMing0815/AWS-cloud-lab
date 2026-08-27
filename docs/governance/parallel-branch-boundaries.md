@@ -1,7 +1,7 @@
 # 平行分支工作邊界
 
 - 狀態：Active
-- 生效分支：`codex/story-quality`、`codex/tier3-delivery`、`codex/tier3-production-release`、`codex/tier3-healthcheck-correction`、`codex/tier2-components`
+- 生效分支：`codex/story-quality`、`codex/tier3-delivery`、`codex/tier3-production-release`、`codex/tier3-healthcheck-correction`、`codex/tier2-components`、`codex/support-agent-core`
 - 機器可讀規則：`.agents/work-boundaries.json`
 - 自動檢查：`scripts/check_branch_boundaries.py`
 
@@ -114,6 +114,27 @@
 - 不更新 CURRENT、checkpoints、task list、deployment log、README、policy 或治理文件。
 - Result transaction必須在queue completion前提交；Data rollback不得ack。Data commit後的completion failure必須可由inbox／outbox replay恢復，不得宣稱跨系統exactly-once。
 - Story resolution local contract完成後必須交回整合task；需要接入現行request flow、SQS或production時，再由整合task審查並明確擴張allowed paths。
+
+## `codex/support-agent-core`
+
+唯一目標是建立尚未接入產品的bounded Support Agent核心：以靜態、版本化規則知識庫回答遊戲規則問題，並將問題整理成需要人工確認的本機report草稿。此分支不提供public API或UI，也不寫入PostgreSQL、GitHub、Email或其他外部系統。
+
+允許範圍以policy為準，主要包括：
+
+- Support Agent domain、application use case與專屬ports
+- 靜態規則知識庫、Mock support model與memory report repository
+- 不含secret的版本化`game_rules.json`
+- 專屬tests、Feature／Architecture與validation evidence
+
+強制邊界：
+
+- 規則回答只能根據allowlisted rule records，必須附rule ID／title；無根據時明確回覆未定義，不得創造或修改canonical game rules。
+- 問題回報第一階段只能建立草稿，必須經人工確認後才能在未來接正式submit tool；不得自動建立GitHub Issue、寄信或外部傳輸。
+- 輸入與report必須拒絕或移除cookie、session／CSRF token、password、credential、runtime secret及其他敏感資料；測試不得使用真實secret。
+- Tool selection固定allowlist；未知tool、額外參數、prompt injection與企圖改寫規則必須fail closed。
+- 不修改共用`ports.py`、`RoomService`、API routes／schemas、`main.py`、Web UI、migration、Storyteller adapters、dependency manifest、Docker、workflow、IaC或`ops/`。
+- 不呼叫Bedrock，不執行AWS CLI／SSM／S3，不接production；第一階段以Mock model與deterministic tests完成。
+- 完成後交回整合task。必須等Tier 2本地PR合併後，才可重新評估migration編號、API／UI、Bedrock adapter、observability與自動部署，且需要新的allowed paths與production核准。
 
 ## 共用檔案與交接
 
