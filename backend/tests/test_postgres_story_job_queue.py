@@ -389,6 +389,24 @@ def test_adapter_source_contains_transactional_cas_guards() -> None:
     assert "returning" in source
 
 
+def test_postgres_queue_exposes_only_available_job_identity_for_local_worker(
+    monkeypatch,
+) -> None:
+    connection = ScriptedConnection(
+        [("select job_id", [("job-oldest",)])]
+    )
+    queue, _ = _queue(monkeypatch, connection, max_attempts=2)
+
+    assert queue.next_available_job_id() == "job-oldest"
+    sql, params = connection.statements[-1]
+    normalized = " ".join(sql.lower().split())
+    assert "status = 'pending'" in normalized
+    assert "lease_expires_at <= %s" in normalized
+    assert "attempt_count < %s" in normalized
+    assert "order by created_at, job_id" in normalized
+    assert params[-1] == 2
+
+
 @pytest.mark.skipif(
     "CO_STORY_TEST_DATABASE_URL" not in os.environ,
     reason="需要明確指定專題 PostgreSQL 測試資料庫",

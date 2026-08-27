@@ -190,7 +190,7 @@ export class FetchGameApi extends GameApi {
 
   async resolveRound({ skipPendingSpark = false } = {}) {
     this.requireRoom();
-    this.room = await this.request(
+    const response = await this.request(
       `/rooms/${this.room.id}/rounds/${this.room.round}:resolve`,
       {
         method: "POST",
@@ -202,6 +202,9 @@ export class FetchGameApi extends GameApi {
         },
       },
     );
+    this.room = response?.room && typeof response?.jobId === "string"
+      ? { ...response.room, resolutionJobId: response.jobId }
+      : response;
     return this.room;
   }
 

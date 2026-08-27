@@ -101,6 +101,26 @@ class PostgresStoryJobQueue(StoryJobQueue):
                 raise StoryJobConflict("job id or idempotency key reused")
             return existing[0]
 
+    def next_available_job_id(self) -> str | None:
+        now = self._utc_now()
+        with psycopg.connect(self._dsn) as connection:
+            row = connection.execute(
+                """
+                SELECT job_id
+                FROM story_jobs
+                WHERE status = 'pending'
+                   OR (
+                       status = 'claimed'
+                       AND lease_expires_at <= %s
+                       AND attempt_count < %s
+                   )
+                ORDER BY created_at, job_id
+                LIMIT 1
+                """,
+                (now, self._max_attempts),
+            ).fetchone()
+        return str(row[0]) if row is not None else None
+
     def claim(self, job_id: str, worker_id: str) -> StoryJob:
         if not worker_id:
             raise ValueError("worker_id must not be empty")
