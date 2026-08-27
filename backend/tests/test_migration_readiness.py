@@ -174,7 +174,11 @@ def test_create_app_does_not_apply_migrations_during_web_boot(monkeypatch) -> No
 class _ReadinessConnection:
     def __init__(
         self,
-        versions=("001_create_rooms", "002_create_story_jobs"),
+        versions=(
+            "001_create_rooms",
+            "002_create_story_jobs",
+            "003_create_story_resolution_results",
+        ),
         failure=None,
     ):
         self.versions = versions

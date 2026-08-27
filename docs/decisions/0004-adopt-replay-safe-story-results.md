@@ -35,3 +35,7 @@ Tier 2下一個本地切片採用下列邊界，且第一批不接API route、We
 - 優點：明確涵蓋duplicate delivery、stale worker、Data rollback、commit後ack失敗與process restart；未來SQS adapter可沿用相同application contract。
 - 代價：新增inbox／outbox schema、replay與cleanup責任，測試需涵蓋transaction fault injection與跨adapter restart。
 - Producer現階段可利用Room與story_jobs位於同一PostgreSQL的原子transaction；未來改由SQS承接transport時，producer端需再加入transactional outbox／dispatcher，但不改授權與snapshot contract。
+
+## 本地實作結果
+
+第三階段以`StoryResolutionStore`、未接線`StoryResolutionWorker`、memory transaction double與`PostgresStoryResolutionStore`實作本決策。`003_create_story_resolution_results.sql`是append-only migration；現行同步`RoomService.resolve_round`只抽出並共用既有round-result規則，route、retry與玩家可見結果不變。此狀態仍是repo-local at-least-once contract，不代表production migration、SQS或distributed exactly-once已完成。
