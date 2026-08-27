@@ -52,5 +52,7 @@
 | 首次T3B envelope | Production核准 | 核准 exact main `0add833c10414b1b51cb4733b12b669bdb04f85b`、`legacy-bootstrap`、空白previous digest與expected legacy release `tier1-20260825-4a51e0e`的完整自動鏈；仍須通過GitHub `production` environment人工gate。 | GitHub Actions、OIDC、ECR、SSM release |
 | Scan fail-closed處置 | 安全補充 | ARM64 image成功push後，Trivy因amd64 runner平台選擇錯誤而停止；SSM step為skipped。禁止re-run舊SHA或手動執行SSM，必須先test-first明確指定`linux/arm64`，合併後以新exact SHA重新核准。 | Workflow contract、T3B retry boundary、production安全 |
 | 平行Tier 2 bounded切片 | 交付順序補充 | Tier 3修正期間可平行建立PostgreSQL story-job durable adapter／migration contract；不得接入現行request flow、SQS或AWS，也不得改變玩家可見行為。 | Tier 2 branch boundary、Data contract、後續SQS接線 |
+| 第二次T3B envelope | Production核准 | 核准 exact main `d81e4d7313d42bdec503305d588e782d6272c8f9`的`legacy-bootstrap`；previous digest空白，expected legacy release維持`tier1-20260825-4a51e0e`。 | GitHub Actions、ECR exact digest、SSM release |
+| Migration fail-closed處置 | 安全補充 | 第二次run的scan通過，但container migration因缺少host RDS CA mount而在mutation前停止；不得降低TLS或re-run同SHA。修正採canonical instance gate、Document／driver雙重CA preflight與三個runtime路徑readonly bind，之後必須以新SHA重新核准。 | TLS verify-full、SSM Document、container runtime、T3B retry boundary |
 
 核准方式：使用者於對話中先核准首次T3B，失敗後另核准platform修正，並要求整合文件後同步續推Tier 3與Tier 2兩個隔離task。

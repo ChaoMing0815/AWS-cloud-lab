@@ -79,6 +79,7 @@
         "backend/tests/test_story_job*.py",
         "backend/tests/test_postgres_story_job_queue.py",
         "backend/tests/test_postgres_story_job_migration.py",
+        "backend/tests/test_migration_readiness.py",
         "docs/architecture/tier2-components.md",
         "docs/features/tier2-story-jobs.md",
         "docs/evidence/2026-*-tier2-components/**"
