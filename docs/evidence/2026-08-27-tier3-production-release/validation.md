@@ -148,3 +148,21 @@ GitHub run：[Tier 3 container release #1](https://github.com/ChaoMing0815/AWS-c
 - Branch boundary將在本evidence commit後以base `2fbe3c8d4ee941d1dc51a22aab0239cc2a364dae`做最終核對。
 
 此批只修正repo-local runtime identity contract，不授權重跑run `33036267754`或任何舊run。PR合併、main CI全綠後，必須以新的exact main SHA重新形成並明確核准下一個T3B envelope；在此之前不得推送image或執行production release。
+
+## 第四次 T3B 成功切換與 Docker HEALTHCHECK corrective TDD
+
+- 第四次run：`33045168887`；source為`1681736c59f5e96ff460cda1239168fc7219ee04`。
+- `legacy-bootstrap`自動鏈的OIDC、ARM64 build、immutable push、exact-digest Trivy、SSM release與公開edge驗證均成功；active container digest為`sha256:bab8a1bbbdc5160e5a0ac50546a174ec209cb7187cf79491473654e285fd312a`，legacy rollback assets保留。
+- 唯讀postflight確認application、public edge、CloudWatch Agent與system-health timer active，公開live／ready均為`200`，transition state為`container-active`，runtime identity與log writability正確。
+- 唯一殘留缺口：Docker HEALTHCHECK硬編`127.0.0.1`作為HTTP Host header，被production TrustedHost allowlist拒絕；literal probe失敗、同endpoint使用既有allowlisted Host成功，故不需要rollback或restart。
+
+### Repo-local strict TDD
+
+- Base：`7a1851b`；Red commit：`66f95be`；Green commit：`ebf3b41`。
+- Red精確失敗兩項：Dockerfile仍傳入literal Host，以及healthcheck未從`CO_STORY_ALLOWED_HOSTS`選取production Host。
+- Green移除Dockerfile硬編Host參數；healthcheck依序採顯式參數、`CO_STORY_HEALTH_HOST`、既有allowlist第一個非空值，最後才回退`localhost`。固定連線目標仍是loopback，live／ready路徑、timeout與無response body輸出均未變。
+- Negative確認錯誤輸出不包含allowlisted Host或底層exception；未修改TrustedHost policy、IAM、IaC、SSM Document、release driver或rollback。
+- Sensitivity：暫時移除allowlist選擇後，production Host contract精確失敗；還原後targeted／Tier 3 affected `24 passed`。
+- Backend regression：`474 passed, 8 skipped`；Frontend：`94 passed`；`git diff --check`通過。
+
+此修正只準備新的image source，不授權重跑任何舊run。合併與main CI全綠後，下一次只能使用`digest-release`，previous digest必須為上述active digest，並綁定新的exact main SHA取得人工核准。
