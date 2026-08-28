@@ -25,7 +25,7 @@
 - Corrective Red：`6fb9631`。rendered SSM Document harness以只接受`digest-release`的fake old driver證明舊routing錯誤，並定義temporary asset、image-ID、preflight／release ordering、TOCTOU與schema stable-driver contract。
 - Corrective Green：`8e636fc`。migration bridge pull前改用stable `digest-release preflight-only`；exact target image asset container經image-ID、root-only temporary asset metadata與SHA-256 fences後，使用同一temporary target driver做bridge preflight與release。schema activation仍由upgraded stable driver執行。
 - Additional contract evidence：`4a8689d`使替換案例只改content並保留metadata，精確覆蓋second-hash fence；`64a1436`覆蓋target activation失敗時不寫verified marker且恢復previous runtime。
-- Targeted／affected verification：new Document harness `10 passed`；Tier 2／Tier 3 affected suites與YAML parse通過。
+- Targeted／affected verification：new Document harness `10 passed`；Tier 2／Tier 3 affected suites `188 passed`，YAML parse通過。
 - Full regression：Backend `620 passed, 11 skipped`；Frontend `96 passed`。
 - Sensitivity：old preflight改回`migration-bridge`、target release置於target preflight前、移除regular／symlink gate、移除mode gate、略過asset-container image-ID比較、略過second-hash比較、恢復bridge migration call、提前寫marker、schema activation改用temporary driver；每一項對應目標測試皆失敗後立即還原。
 - Rollback／residual risk：temporary assets只防替換／TOCTOU，不能限制已被main-only exact digest／scan／approval授權而以root執行的target driver。pre-mutation failure不改active state或marker；mutation後依driver恢復previous runtime，restore failure保留root-only forensic state。未建立或執行Change Set，未操作AWS／SSM／workflow dispatch／production deploy；PR #25仍為`DO NOT MERGE`。
