@@ -10,11 +10,184 @@ ROOT = Path(__file__).parents[2]
 RELEASE_WORKFLOW = ROOT / ".github/workflows/tier3-release.yml"
 TEMPLATE = ROOT / "infra/cloudformation/tier3-delivery.yaml"
 RELEASE_SCRIPT = ROOT / "ops/release/deploy_container.sh"
+REPOSITORY = "123456789012.dkr.ecr.ap-northeast-1.amazonaws.com/co-story-tier3"
+TARGET_DIGEST = "sha256:" + "2" * 64
+PREVIOUS_DIGEST = "sha256:" + "1" * 64
+TARGET_IMAGE_ID = "sha256:" + "a" * 64
 
 
 def _read(path: Path) -> str:
     assert path.is_file(), f"Tier 3 asset 尚未建立：{path.relative_to(ROOT)}"
     return path.read_text(encoding="utf-8")
+
+
+def _write_executable(path: Path, content: str, mode: int = 0o755) -> None:
+    path.write_text(content, encoding="utf-8")
+    path.chmod(mode)
+
+
+def _release_document_command() -> str:
+    template = yaml.safe_load(_read(TEMPLATE))
+    return template["Resources"]["ContainerReleaseDocument"]["Properties"]["Content"][
+        "mainSteps"
+    ][0]["inputs"]["runCommand"][0]
+
+
+def _document_harness(
+    tmp_path: Path,
+    *,
+    mode: str,
+    stable_modes: str = "digest-release",
+    asset_kind: str = "regular",
+    asset_metadata: str = "",
+    container_image_id: str = TARGET_IMAGE_ID,
+    target_preflight_failure: bool = False,
+    target_release_failure: bool = False,
+    target_mutation: str = "",
+) -> tuple[subprocess.CompletedProcess[str], list[str], Path, Path, Path]:
+    """Run the rendered SSM command against a bounded fake host and registry."""
+
+    host = tmp_path / "host"
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    events = tmp_path / "events.log"
+    runtime_env = host / "etc/co-story/runtime.env"
+    rds_ca = host / "etc/pki/rds/rds-ca.pem"
+    stable_driver = host / "usr/local/libexec/co-story-deploy-container"
+    stable_unit = host / "usr/local/share/co-story/co-story-container.service"
+    marker = host / "etc/co-story/migration-bridge.state"
+    active_state = host / "etc/co-story/container-transition.state"
+    for directory in (
+        runtime_env.parent,
+        rds_ca.parent,
+        stable_driver.parent,
+        stable_unit.parent,
+    ):
+        directory.mkdir(parents=True, exist_ok=True)
+    runtime_env.write_text("CO_STORY_ALLOWED_HOSTS=localhost\n", encoding="utf-8")
+    rds_ca.write_text("test-ca\n", encoding="utf-8")
+    stable_unit.write_text("[Service]\n", encoding="utf-8")
+
+    _write_executable(
+        stable_driver,
+        "#!/bin/sh\n"
+        "printf 'stable:%s:%s\\n' \"$1\" \"${9:-release}\" >>\"$TEST_EVENTS\"\n"
+        "case \",$TEST_STABLE_MODES,\" in *\",$1,\"*) exit 0 ;; *) exit 42 ;; esac\n",
+        0o500,
+    )
+    target_driver = tmp_path / "target-deploy-container.sh"
+    _write_executable(
+        target_driver,
+        "#!/bin/sh\n"
+        "printf 'target:%s:%s:%s:%s\\n' \"$1\" \"${9:-release}\" \"$7\" \"$8\" >>\"$TEST_EVENTS\"\n"
+        "test \"$1\" = migration-bridge || exit 43\n"
+        "if test \"${9:-release}\" = preflight-only; then\n"
+        "  test \"$TEST_TARGET_PREFLIGHT_FAILURE\" = 1 && exit 44\n"
+        "  case \"$TEST_TARGET_MUTATION\" in\n"
+        "    driver) chmod 0700 \"$8\"; printf '# replaced\\n' >>\"$8\" ;;\n"
+        "    unit) chmod 0600 \"$7\"; printf '# replaced\\n' >>\"$7\" ;;\n"
+        "  esac\n"
+        "  exit 0\n"
+        "fi\n"
+        "test \"$TEST_TARGET_RELEASE_FAILURE\" = 1 && exit 45\n"
+        "mkdir -p \"$(dirname \"$TEST_ACTIVE_STATE\")\"\n"
+        "printf 'STATE=container-active\\n' >\"$TEST_ACTIVE_STATE\"\n"
+        "printf 'STATE=verified-bridge\\n' >\"$TEST_MARKER\"\n",
+        0o500,
+    )
+    target_unit = tmp_path / "target-container.service"
+    target_unit.write_text("[Service]\n", encoding="utf-8")
+    target_unit.chmod(0o400)
+
+    _write_executable(fake_bin / "aws", "#!/bin/sh\nprintf 'registry-login\\n'\n")
+    _write_executable(
+        fake_bin / "readlink",
+        "#!/bin/sh\n"
+        "if test \"$1\" = -f; then shift; fi\n"
+        "printf '%s\\n' \"$1\"\n",
+    )
+    _write_executable(
+        fake_bin / "stat",
+        "#!/bin/sh\n"
+        "for path; do :; done\n"
+        "case \"$path\" in\n"
+        "  *rds-ca.pem) printf 'root:root:644\\n' ;;\n"
+        "  *deploy_container.sh) printf '%s\\n' \"${TEST_ASSET_METADATA:-root:root:500}\" ;;\n"
+        "  *co-story-container.service) printf '%s\\n' \"${TEST_ASSET_METADATA:-root:root:400}\" ;;\n"
+        "  *) printf 'root:root:700\\n' ;;\n"
+        "esac\n",
+    )
+    _write_executable(
+        fake_bin / "docker",
+        "#!/bin/sh\n"
+        "printf 'docker:%s\\n' \"$*\" >>\"$TEST_EVENTS\"\n"
+        "case \"$1\" in\n"
+        "  login) cat >/dev/null ;;\n"
+        "  pull|create|rm) ;;\n"
+        "  image) test \"$2\" = inspect && printf '%s\\n' \"$TEST_TARGET_IMAGE_ID\" ;;\n"
+        "  inspect) printf '%s\\n' \"$TEST_CONTAINER_IMAGE_ID\" ;;\n"
+        "  cp)\n"
+        "    destination=\"$3\"\n"
+        "    case \"$2\" in\n"
+        "      *deploy_container.sh) source=\"$TEST_TARGET_DRIVER\" ;;\n"
+        "      *co-story-container.service) source=\"$TEST_TARGET_UNIT\" ;;\n"
+        "      *) exit 61 ;;\n"
+        "    esac\n"
+        "    case \"$TEST_ASSET_KIND\" in\n"
+        "      missing) : ;;\n"
+        "      symlink) ln -s \"$source\" \"$destination\" ;;\n"
+        "      directory) mkdir \"$destination\" ;;\n"
+        "      *) cp -p \"$source\" \"$destination\" ;;\n"
+        "    esac\n"
+        "    ;;\n"
+        "  *) exit 62 ;;\n"
+        "esac\n",
+    )
+
+    replacements = {
+        "{{ RepositoryUri }}": REPOSITORY,
+        "{{ ImageDigest }}": TARGET_DIGEST,
+        "{{ PreviousImageDigest }}": PREVIOUS_DIGEST,
+        "{{ ReleaseMode }}": mode,
+        "{{ ExpectedLegacyRelease }}": "",
+        "/etc/co-story/runtime.env": str(runtime_env),
+        "/etc/pki/rds/rds-ca.pem": str(rds_ca),
+        "/usr/local/libexec/co-story-deploy-container": str(stable_driver),
+        "/usr/local/share/co-story/co-story-container.service": str(stable_unit),
+    }
+    command = _release_document_command()
+    for source, destination in replacements.items():
+        command = command.replace(source, destination)
+    document = tmp_path / "release-document.sh"
+    _write_executable(document, command)
+    env = os.environ.copy()
+    env.update(
+        {
+            "PATH": f"{fake_bin}:{env['PATH']}",
+            "TEST_EVENTS": str(events),
+            "TEST_STABLE_MODES": stable_modes,
+            "TEST_TARGET_DRIVER": str(target_driver),
+            "TEST_TARGET_UNIT": str(target_unit),
+            "TEST_TARGET_IMAGE_ID": TARGET_IMAGE_ID,
+            "TEST_CONTAINER_IMAGE_ID": container_image_id,
+            "TEST_ASSET_KIND": asset_kind,
+            "TEST_ASSET_METADATA": asset_metadata,
+            "TEST_TARGET_PREFLIGHT_FAILURE": "1" if target_preflight_failure else "0",
+            "TEST_TARGET_RELEASE_FAILURE": "1" if target_release_failure else "0",
+            "TEST_TARGET_MUTATION": target_mutation,
+            "TEST_MARKER": str(marker),
+            "TEST_ACTIVE_STATE": str(active_state),
+        }
+    )
+    result = subprocess.run(
+        ["bash", str(document)],
+        cwd=ROOT,
+        env=env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    return result, events.read_text(encoding="utf-8").splitlines() if events.exists() else [], marker, active_state, tmp_path
 
 
 def test_release_workflow_is_manual_approved_main_only_and_digest_pinned() -> None:
@@ -357,3 +530,129 @@ def test_release_document_validates_host_ca_before_first_registry_login_and_pull
     ):
         assert release_document.index(guard) < first_login < first_pull
     assert release_document.count("validate_rds_ca") >= 3
+
+
+def _event_index(events: list[str], prefix: str) -> int:
+    return next(index for index, event in enumerate(events) if event.startswith(prefix))
+
+
+def test_migration_bridge_bootstraps_an_old_stable_driver_with_the_target_driver(
+    tmp_path: Path,
+) -> None:
+    result, events, marker, active_state, _ = _document_harness(
+        tmp_path, mode="migration-bridge"
+    )
+
+    assert result.returncode == 0, result.stderr
+    ordered = (
+        "stable:digest-release:preflight-only",
+        "docker:login",
+        f"docker:pull {REPOSITORY}@{TARGET_DIGEST}",
+        "docker:create",
+        "docker:cp",
+        "target:migration-bridge:preflight-only",
+        "target:migration-bridge:release",
+    )
+    positions = [_event_index(events, prefix) for prefix in ordered]
+    assert positions == sorted(positions)
+    preflight = events[_event_index(events, "target:migration-bridge:preflight-only")]
+    release = events[_event_index(events, "target:migration-bridge:release")]
+    assert preflight.split(":", 3)[3] == release.split(":", 3)[3]
+    assert "app.commands.migrate" not in "\n".join(events)
+    assert marker.is_file()
+    assert active_state.is_file()
+
+
+def test_schema_activation_keeps_using_the_upgraded_stable_driver(tmp_path: Path) -> None:
+    result, events, marker, active_state, _ = _document_harness(
+        tmp_path,
+        mode="schema-activation",
+        stable_modes="schema-activation",
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert events.count("stable:schema-activation:preflight-only") == 1
+    assert events.count("stable:schema-activation:release") == 1
+    assert not any(event.startswith("target:") for event in events)
+    assert not marker.exists()
+    assert not active_state.exists()
+
+
+@pytest.mark.parametrize(
+    ("asset_kind", "asset_metadata"),
+    (
+        ("missing", ""),
+        ("symlink", ""),
+        ("directory", ""),
+        ("regular", "root:root:700"),
+        ("regular", "root:co-story:500"),
+    ),
+)
+def test_migration_bridge_rejects_unsafe_temporary_assets_before_target_execution(
+    tmp_path: Path, asset_kind: str, asset_metadata: str
+) -> None:
+    result, events, marker, active_state, _ = _document_harness(
+        tmp_path,
+        mode="migration-bridge",
+        stable_modes="digest-release,migration-bridge",
+        asset_kind=asset_kind,
+        asset_metadata=asset_metadata,
+    )
+
+    assert result.returncode != 0
+    assert not any(event.startswith("target:") for event in events)
+    assert not marker.exists()
+    assert not active_state.exists()
+
+
+def test_migration_bridge_rejects_an_asset_container_not_bound_to_target_image(
+    tmp_path: Path,
+) -> None:
+    result, events, marker, active_state, _ = _document_harness(
+        tmp_path,
+        mode="migration-bridge",
+        stable_modes="digest-release,migration-bridge",
+        container_image_id="sha256:" + "b" * 64,
+    )
+
+    assert result.returncode != 0
+    assert not any(event.startswith("target:") for event in events)
+    assert not marker.exists()
+    assert not active_state.exists()
+
+
+@pytest.mark.parametrize("target_mutation", ("driver", "unit"))
+def test_migration_bridge_rejects_asset_substitution_after_target_preflight(
+    tmp_path: Path, target_mutation: str
+) -> None:
+    result, events, marker, active_state, _ = _document_harness(
+        tmp_path,
+        mode="migration-bridge",
+        stable_modes="digest-release,migration-bridge",
+        target_mutation=target_mutation,
+    )
+
+    assert result.returncode != 0
+    assert any(event.startswith("target:migration-bridge:preflight-only") for event in events)
+    assert not any(event.startswith("target:migration-bridge:release") for event in events)
+    assert not marker.exists()
+    assert not active_state.exists()
+
+
+@pytest.mark.parametrize("failure", ("preflight", "release"))
+def test_migration_bridge_failure_does_not_declare_a_verified_bridge(
+    tmp_path: Path, failure: str
+) -> None:
+    result, events, marker, active_state, _ = _document_harness(
+        tmp_path,
+        mode="migration-bridge",
+        stable_modes="digest-release,migration-bridge",
+        target_preflight_failure=failure == "preflight",
+        target_release_failure=failure == "release",
+    )
+
+    assert result.returncode != 0
+    if failure == "preflight":
+        assert not any(event.startswith("target:migration-bridge:release") for event in events)
+    assert not marker.exists()
+    assert not active_state.exists()
