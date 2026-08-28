@@ -419,6 +419,26 @@ restore_previous_assets_and_container() {
   fi
 }
 
+prepare_migration_bridge_target_unit() {
+  [ "$release_mode" = migration-bridge ] || return 0
+  if [ "${CO_STORY_TEST_STALE_FENCE:-}" = bridge-target-unit-source ]; then
+    printf '# stale target unit source\n' >>"$container_unit_source"
+  fi
+  [ "$(file_sha256 "$container_unit_source")" = "$target_unit_sha" ] || return 1
+  record_event mutation:install-bridge-target-unit
+  if ! mutation_guard bridge-target-unit-install \
+    || ! atomic_install "$container_unit_source" "$installed_unit" 0644; then
+    return 1
+  fi
+  if [ "${CO_STORY_TEST_STALE_FENCE:-}" = bridge-target-unit-destination ]; then
+    printf '# stale target unit destination\n' >>"$installed_unit"
+  fi
+  [ "$(file_sha256 "$installed_unit")" = "$target_unit_sha" ] || return 1
+  if ! mutation_guard bridge-target-daemon-reload || ! systemctl daemon-reload; then
+    return 1
+  fi
+}
+
 legacy_bootstrap() {
   [ -z "$previous_image_digest" ] || fail bootstrap_must_not_have_previous_digest
   [ "$legacy_release_id" = "$expected_legacy_release" ] || fail unexpected_legacy_release
@@ -555,6 +575,10 @@ digest_release() {
     || ! write_release_env "$target_image"; then
     if ! restore_previous_assets_and_container; then fail previous_asset_restore_failed; fi
     fail digest_switch_prepare_failed
+  fi
+  if ! prepare_migration_bridge_target_unit; then
+    if ! restore_previous_assets_and_container; then fail previous_asset_restore_failed; fi
+    fail bridge_target_unit_prepare_failed
   fi
   if ! restart_service target-restart || ! wait_for_health target-active 8000; then
     if ! restore_previous_assets_and_container; then fail previous_container_restore_failed; fi
