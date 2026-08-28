@@ -44,6 +44,7 @@ def _document_harness(
     target_preflight_failure: bool = False,
     target_release_failure: bool = False,
     target_mutation: str = "",
+    bridge_image_digest: str = PREVIOUS_DIGEST,
 ) -> tuple[subprocess.CompletedProcess[str], list[str], Path, Path, Path]:
     """Run the rendered SSM command against a bounded fake host and registry."""
 
@@ -69,7 +70,7 @@ def _document_harness(
     stable_unit.write_text("[Service]\n", encoding="utf-8")
     if mode == "schema-activation":
         marker.write_text(
-            f"STATE=verified-bridge\nBRIDGE_IMAGE={REPOSITORY}@{PREVIOUS_DIGEST}\n",
+            f"STATE=verified-bridge\nBRIDGE_IMAGE={REPOSITORY}@{bridge_image_digest}\n",
             encoding="utf-8",
         )
 
@@ -122,6 +123,7 @@ def _document_harness(
         "for path; do :; done\n"
         "case \"$path\" in\n"
         "  *rds-ca.pem) printf 'root:root:644\\n' ;;\n"
+        "  *migration-bridge.state) printf 'root:root:600\\n' ;;\n"
         "  *deploy_container.sh) printf '%s\\n' \"${TEST_ASSET_METADATA:-root:root:500}\" ;;\n"
         "  *co-story-container.service) printf '%s\\n' \"${TEST_ASSET_METADATA:-root:root:400}\" ;;\n"
         "  *) printf 'root:root:700\\n' ;;\n"
@@ -164,6 +166,7 @@ def _document_harness(
         "/etc/pki/rds/rds-ca.pem": str(rds_ca),
         "/usr/local/libexec/co-story-deploy-container": str(stable_driver),
         "/usr/local/share/co-story/co-story-container.service": str(stable_unit),
+        "/etc/co-story/migration-bridge.state": str(marker),
     }
     command = _release_document_command()
     for source, destination in replacements.items():
@@ -599,6 +602,63 @@ def test_schema_activation_uses_the_exact_target_driver_when_stable_driver_is_ol
     assert preflight.split(":", 3)[3] == release.split(":", 3)[3]
     assert not marker.exists()
     assert active_state.is_file()
+
+
+def test_schema_activation_rejects_stale_marker_before_registry_access(tmp_path: Path) -> None:
+    result, events, marker, active_state, _ = _document_harness(
+        tmp_path,
+        mode="schema-activation",
+        stable_modes="digest-release",
+        bridge_image_digest="sha256:" + "f" * 64,
+    )
+
+    assert result.returncode != 0
+    assert not any(event.startswith("docker:login") for event in events)
+    assert not any(event.startswith("docker:pull") for event in events)
+    assert not any(event.startswith("target:") for event in events)
+    assert marker.is_file()
+    assert not active_state.exists()
+
+
+@pytest.mark.parametrize(
+    ("asset_kind", "asset_metadata"),
+    (
+        ("symlink", ""),
+        ("regular", "root:root:700"),
+    ),
+)
+def test_schema_activation_rejects_unsafe_target_assets_without_consuming_marker(
+    tmp_path: Path, asset_kind: str, asset_metadata: str
+) -> None:
+    result, events, marker, active_state, _ = _document_harness(
+        tmp_path,
+        mode="schema-activation",
+        stable_modes="digest-release",
+        asset_kind=asset_kind,
+        asset_metadata=asset_metadata,
+    )
+
+    assert result.returncode != 0
+    assert not any(event.startswith("target:") for event in events)
+    assert marker.is_file()
+    assert not active_state.exists()
+
+
+def test_schema_activation_rejects_target_asset_substitution_without_consuming_marker(
+    tmp_path: Path,
+) -> None:
+    result, events, marker, active_state, _ = _document_harness(
+        tmp_path,
+        mode="schema-activation",
+        stable_modes="digest-release",
+        target_mutation="driver",
+    )
+
+    assert result.returncode != 0
+    assert any(event.startswith("target:schema-activation:preflight-only") for event in events)
+    assert not any(event.startswith("target:schema-activation:release") for event in events)
+    assert marker.is_file()
+    assert not active_state.exists()
 
 
 @pytest.mark.parametrize(

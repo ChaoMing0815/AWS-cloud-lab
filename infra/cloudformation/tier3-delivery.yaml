@@ -218,6 +218,7 @@ Resources:
                   readonly rds_ca=/etc/pki/rds/rds-ca.pem
                   readonly stable_driver=/usr/local/libexec/co-story-deploy-container
                   readonly stable_unit=/usr/local/share/co-story/co-story-container.service
+                  readonly bridge_marker=/etc/co-story/migration-bridge.state
                   stop_release() {
                     printf 'container_release=stopped reason=%s\n' "${1:?reason required}" >&2
                     exit 2
@@ -269,6 +270,21 @@ Resources:
                       || { printf 'container_release=stopped reason=unsafe_rds_ca_permissions\n' >&2; return 2; }
                     (( (8#$ca_mode & 0004) != 0 )) \
                       || { printf 'container_release=stopped reason=rds_ca_not_app_readable\n' >&2; return 2; }
+                  }
+                  validate_bridge_marker() {
+                    test -f "$bridge_marker" || stop_release missing_bridge_marker
+                    test ! -L "$bridge_marker" || stop_release bridge_marker_must_not_be_symlink
+                    test "$(readlink -f "$bridge_marker" 2>/dev/null || true)" = "$bridge_marker" \
+                      || stop_release invalid_bridge_marker_path
+                    test "$(stat -c '%U:%G:%a' "$bridge_marker")" = root:root:600 \
+                      || stop_release invalid_bridge_marker_metadata
+                    test "$(wc -l <"$bridge_marker" | tr -d ' ')" -eq 2 \
+                      || stop_release invalid_bridge_marker_shape
+                    bridge_state="$(awk -F= '$1 == "STATE" {count++; value=substr($0, 7)} END {if (count == 1) print value}' "$bridge_marker")"
+                    bridge_image="$(awk -F= '$1 == "BRIDGE_IMAGE" {count++; value=substr($0, 14)} END {if (count == 1) print value}' "$bridge_marker")"
+                    test "$bridge_state" = verified-bridge || stop_release invalid_bridge_marker_state
+                    test "$bridge_image" = "$repository_uri@$previous_image_digest" \
+                      || stop_release bridge_marker_digest_mismatch
                   }
                   health_host="$(awk -F= '$1 == "CO_STORY_ALLOWED_HOSTS" { split($2, hosts, ","); print hosts[1]; exit }' "$runtime_env")"
                   case "$health_host" in ''|*[!A-Za-z0-9.-]*) printf 'container_release=invalid_host\n' >&2; exit 2 ;; esac
@@ -328,7 +344,7 @@ Resources:
                       test -x "$stable_driver"
                       test -f "$stable_unit"
                       test -z "$expected_legacy_release"
-                      "$stable_driver" schema-activation "$repository_uri" "$image_digest" "$previous_image_digest" '' "$health_host" "$stable_unit" "$stable_driver" preflight-only
+                      validate_bridge_marker
                       ;;
                     *)
                       printf 'container_release=invalid_mode\n' >&2
@@ -345,12 +361,12 @@ Resources:
                   trap cleanup EXIT
                   aws ecr get-login-password --region ap-northeast-1 | docker login --username AWS --password-stdin "$registry" >/dev/null
                   docker pull "$target_image" >/dev/null
-                  if [ "$release_mode" = migration-bridge ]; then
+                  if [ "$release_mode" = migration-bridge ] || [ "$release_mode" = schema-activation ]; then
                     target_image_id="$(docker image inspect --format '{{.Id}}' "$target_image")"
                     [[ "$target_image_id" =~ ^sha256:[a-f0-9]{64}$ ]] || stop_release invalid_target_image_id
                   fi
                   docker create --name "$asset_container" "$target_image" >/dev/null
-                  if [ "$release_mode" = migration-bridge ]; then
+                  if [ "$release_mode" = migration-bridge ] || [ "$release_mode" = schema-activation ]; then
                     asset_container_image_id="$(docker inspect --format '{{.Image}}' "$asset_container")"
                     test "$asset_container_image_id" = "$target_image_id" \
                       || stop_release asset_container_image_mismatch
@@ -364,7 +380,7 @@ Resources:
                     digest-release)
                       "$stable_driver" digest-release "$repository_uri" "$image_digest" "$previous_image_digest" '' "$health_host" "$temporary/co-story-container.service" "$temporary/deploy_container.sh"
                       ;;
-                    migration-bridge)
+                    migration-bridge|schema-activation)
                       validate_temporary_directory
                       validate_regular_temporary_asset "$temporary/deploy_container.sh" driver
                       validate_regular_temporary_asset "$temporary/co-story-container.service" unit
@@ -375,7 +391,7 @@ Resources:
                       validate_temporary_asset_metadata "$temporary/co-story-container.service" root:root:400 unit
                       target_driver_sha="$(file_sha256 "$temporary/deploy_container.sh")"
                       target_unit_sha="$(file_sha256 "$temporary/co-story-container.service")"
-                      "$temporary/deploy_container.sh" migration-bridge "$repository_uri" "$image_digest" "$previous_image_digest" '' "$health_host" "$temporary/co-story-container.service" "$temporary/deploy_container.sh" preflight-only
+                      "$temporary/deploy_container.sh" "$release_mode" "$repository_uri" "$image_digest" "$previous_image_digest" '' "$health_host" "$temporary/co-story-container.service" "$temporary/deploy_container.sh" preflight-only
                       validate_temporary_directory
                       validate_regular_temporary_asset "$temporary/deploy_container.sh" driver
                       validate_regular_temporary_asset "$temporary/co-story-container.service" unit
@@ -385,10 +401,7 @@ Resources:
                         || stop_release target_driver_asset_changed_after_preflight
                       test "$(file_sha256 "$temporary/co-story-container.service")" = "$target_unit_sha" \
                         || stop_release target_unit_asset_changed_after_preflight
-                      "$temporary/deploy_container.sh" migration-bridge "$repository_uri" "$image_digest" "$previous_image_digest" '' "$health_host" "$temporary/co-story-container.service" "$temporary/deploy_container.sh"
-                      ;;
-                    schema-activation)
-                      "$stable_driver" schema-activation "$repository_uri" "$image_digest" "$previous_image_digest" '' "$health_host" "$temporary/co-story-container.service" "$temporary/deploy_container.sh"
+                      "$temporary/deploy_container.sh" "$release_mode" "$repository_uri" "$image_digest" "$previous_image_digest" '' "$health_host" "$temporary/co-story-container.service" "$temporary/deploy_container.sh"
                       ;;
                   esac
       Tags:
