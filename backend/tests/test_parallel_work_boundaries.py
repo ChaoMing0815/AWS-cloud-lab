@@ -30,6 +30,7 @@ def test_policy_defines_exact_parallel_branches_and_protects_integration_state()
         "codex/tier2-async-flow",
         "codex/tier2-migration-bridge",
         "codex/tier2-production-worker",
+        "codex/tier2-aws-worker-foundation",
         "codex/support-agent-core",
         "codex/support-agent-durability",
         "codex/support-agent-persistence",
@@ -253,6 +254,34 @@ def test_tier2_production_worker_accepts_only_worker_and_storyteller_paths() -> 
     assert "docs/handoffs/CURRENT.md" in rejected.stderr
 
 
+def test_tier2_aws_worker_foundation_accepts_only_iac_design_paths() -> None:
+    accepted = _check(
+        "codex/tier2-aws-worker-foundation",
+        "infra/cloudformation/tier2-worker-foundation.yaml",
+        "backend/tests/test_tier2_worker_infrastructure.py",
+        "docs/decisions/0007-adopt-sqs-worker-foundation.md",
+        "docs/architecture/tier2-aws-worker.md",
+        "docs/runbooks/tier2-worker-foundation.md",
+        "docs/evidence/2026-08-28-tier2-aws-worker-foundation/validation.md",
+    )
+    rejected = _check(
+        "codex/tier2-aws-worker-foundation",
+        "backend/app/main.py",
+        "backend/app/adapters/postgres_story_job_queue.py",
+        ".github/workflows/tier3-release.yml",
+        "infra/cloudformation/tier3-delivery.yaml",
+        "ops/release/deploy_container.sh",
+        "docs/handoffs/CURRENT.md",
+    )
+
+    assert accepted.returncode == 0, accepted.stderr
+    assert rejected.returncode == 2
+    assert "backend/app/main.py" in rejected.stderr
+    assert ".github/workflows/tier3-release.yml" in rejected.stderr
+    assert "infra/cloudformation/tier3-delivery.yaml" in rejected.stderr
+    assert "docs/handoffs/CURRENT.md" in rejected.stderr
+
+
 def test_tier2_migration_bridge_accepts_only_compatibility_release_paths() -> None:
     accepted = _check(
         "codex/tier2-migration-bridge",
@@ -365,6 +394,7 @@ def test_governance_guide_and_pull_request_gate_are_present() -> None:
     assert "codex/tier2-async-flow" in guide
     assert "codex/tier2-migration-bridge" in guide
     assert "codex/tier2-production-worker" in guide
+    assert "codex/tier2-aws-worker-foundation" in guide
     assert "codex/support-agent-core" in guide
     assert "codex/support-agent-durability" in guide
     assert "codex/support-agent-persistence" in guide
