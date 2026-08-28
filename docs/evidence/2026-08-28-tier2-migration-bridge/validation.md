@@ -82,3 +82,11 @@
 - Negative／rollback：stale marker在login／pull前停止；symlink／錯誤metadata、asset-container image mismatch或preflight後asset替換均不執行target release、不消耗marker、不產生active state。target driver內既有migration、candidate、target activation與previous bridge rollback語意不變。
 - Validation：bridge／schema targeted contract `17 passed`，Tier 2／Tier 3 affected suites、Backend full regression、Frontend `96 passed`、YAML parse與`git diff --check`均通過；只有既有Starlette deprecation warning與既有非production PostgreSQL skips。
 - AWS stop point：未恢復marker、未建立或執行Change Set、未操作AWS／SSM／ECR／Bedrock、未dispatch workflow。corrective merge與exact-main CI後，必須先建立只修改`ContainerReleaseDocument.Content`的新Change Set envelope；Document更新完成後才可重新核准bounded marker recovery與新的schema-activation deployment。
+
+## Production schema activation完成（2026-08-28）
+
+- PR #33 merge後exact main為`2472e49385978db15f3e7af54da30b3ed9f2a93d`；main CI run `33169157552`之Backend、Frontend與container build／Trivy全綠。CloudFormation Change Set只修改`ContainerReleaseDocument.Content`，stack `UPDATE_COMPLETE`，SSM Document version 5/default 5。
+- 第一次marker recovery因Session使用者直接`test -f`無法traverse root-only目錄而在任何寫入前停止；唯讀audit確認transition／release均canonical regular、non-symlink、`root:root:600`，marker與backup皆不存在。修正版全面使用`sudo test/readlink`，在digest、inventory、asset checksum、container identity與health fences下原子恢復精確兩行marker，結果`recovered_once`。
+- 使用者核准exact main `2472e49…`、previous digest `sha256:b9272ee…`的`schema-activation`；production run `33170836289`通過approval、OIDC、ARM64 build／immutable push、exact-digest Trivy與bounded SSM。SSM response code `0`，回`container_release=verified mode=schema-activation image_digest=sha256:6d0d732d7bb436d68d56123da1c84800b31effcaaba96b22629334cb5d28dd69`。
+- 唯讀postflight為`pass`：state／release env精確`7／3`行且digest吻合，marker與asset backups absent，stable driver／unit checksum吻合，container running／healthy／failing streak `0`、runtime mode仍為`sync`、candidate `0`，migration inventory精確為`001_create_rooms,002_create_story_jobs,003_create_story_resolution_results,004_create_support_report_drafts`，四項services active、live／ready均`200`。
+- 此batch只前進append-only schema並更新同步Web image；沒有啟用async Worker、SQS或玩家可見async flow。Runtime rollback只能回verified bridge digest且不做schema downgrade。
