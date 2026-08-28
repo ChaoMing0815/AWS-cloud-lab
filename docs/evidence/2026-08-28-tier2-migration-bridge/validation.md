@@ -17,3 +17,15 @@
 - Release evidence：preflight與verified output均輸出實際 `release_mode`，不含 secret、ARN、instance ID或環境內容。
 - Sensitivity：恢復 production default `async`、略過 applied inventory validator、重寫 output 為 `mode=digest-release`，三個目標測試皆失敗後立即還原。
 - Final validation：targeted Tier 2／Tier 3 contract、Backend full regression、Frontend `96 passed`、YAML parse、`git diff --check`與branch boundary均通過；PostgreSQL process/restart需專用非production DSN的既有 cases維持 skip。
+
+## Bootstrap compatibility corrective（2026-08-28）
+
+- Scope／risk／upstream source：R3 repo-local corrective；Sol safety gate確認舊production stable driver僅理解`digest-release`，而`migration-bridge`必須由exact scanned target image中的新driver完成。
+- Baseline：Tier 3 delivery `16 passed`、legacy bootstrap `56 passed`、GitHub workflow `4 passed`；系統Python缺少`PyYAML`時只出現collection environment error，改用repo `.venv`後baseline全綠。
+- Corrective Red：`6fb9631`。rendered SSM Document harness以只接受`digest-release`的fake old driver證明舊routing錯誤，並定義temporary asset、image-ID、preflight／release ordering、TOCTOU與schema stable-driver contract。
+- Corrective Green：`8e636fc`。migration bridge pull前改用stable `digest-release preflight-only`；exact target image asset container經image-ID、root-only temporary asset metadata與SHA-256 fences後，使用同一temporary target driver做bridge preflight與release。schema activation仍由upgraded stable driver執行。
+- Additional contract evidence：`4a8689d`使替換案例只改content並保留metadata，精確覆蓋second-hash fence；`64a1436`覆蓋target activation失敗時不寫verified marker且恢復previous runtime。
+- Targeted／affected verification：new Document harness `10 passed`；Tier 2／Tier 3 affected suites與YAML parse通過。
+- Full regression：Backend `620 passed, 11 skipped`；Frontend `96 passed`。
+- Sensitivity：old preflight改回`migration-bridge`、target release置於target preflight前、移除regular／symlink gate、移除mode gate、略過asset-container image-ID比較、略過second-hash比較、恢復bridge migration call、提前寫marker、schema activation改用temporary driver；每一項對應目標測試皆失敗後立即還原。
+- Rollback／residual risk：temporary assets只防替換／TOCTOU，不能限制已被main-only exact digest／scan／approval授權而以root執行的target driver。pre-mutation failure不改active state或marker；mutation後依driver恢復previous runtime，restore failure保留root-only forensic state。未建立或執行Change Set，未操作AWS／SSM／workflow dispatch／production deploy；PR #25仍為`DO NOT MERGE`。

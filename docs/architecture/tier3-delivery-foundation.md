@@ -46,11 +46,13 @@ Release 只接受 `sha256:<64 hex>` target 與 previous digest。首次容器切
 ```mermaid
 stateDiagram-v2
     [*] --> ActiveSync001
-    ActiveSync001 --> BridgeCandidate: migration-bridge\nzero migration + sync candidate
+    ActiveSync001 --> OldStableFence: digest-release preflight-only\nold stable driver
+    OldStableFence --> TargetAssetsFenced: exact digest pull + image-ID\nroot-only temporary assets
+    TargetAssetsFenced --> BridgeCandidate: temporary target driver\nzero migration + sync candidate
     BridgeCandidate --> VerifiedBridge: active health + verified digest marker
     VerifiedBridge --> SchemaActivation: marker matches previous digest
     SchemaActivation --> VerifiedBridge: migration/candidate/target failure\nno schema downgrade
     SchemaActivation --> ActiveSchema: migration + bridge recheck + promotion
 ```
 
-`migration-bridge`與`schema-activation`都是 explicit release mode。前者要求 canonical active previous digest且不得提供 legacy input；不呼叫 migration，成功後才寫 root-only、exact-shape、digest-bound marker。後者只接受該 marker 綁定的 previous bridge digest，在 migration 後重新驗證 marker，再驗 bridge與candidate。一般`digest-release`碰到仍存在的 bridge marker即停止，避免誤把 schema activation 當成普通 digest promotion。
+`migration-bridge`與`schema-activation`都是 explicit release mode。前者要求 canonical active previous digest且不得提供 legacy input；不呼叫 migration，成功後才寫 root-only、exact-shape、digest-bound marker。production尚未升級的stable driver只執行`digest-release preflight-only`，作為不會mutation的common fence；Document從exact target image擷取並驗證root-owned temporary driver／unit後，才由同一target driver執行bridge的preflight與release。asset container必須綁定pulled image ID，temporary directory與assets必須canonical、non-symlink、嚴格metadata，且target preflight後重驗SHA-256以拒絕替換。後者只接受marker綁定的previous bridge digest，在migration後重新驗證marker，再驗bridge與candidate，且始終由已升級stable driver執行。一般`digest-release`碰到仍存在的bridge marker即停止，避免誤把schema activation當成普通digest promotion。
