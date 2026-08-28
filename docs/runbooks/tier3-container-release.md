@@ -27,6 +27,8 @@ Document之後才pull exact scanned digest、以該digest建立asset container�
 
 bridge candidate通過後，target driver先保存previous stable driver／unit、寫入pending state與target release env；只有`migration-bridge`才可在首次target restart前重新驗target unit source SHA-256、原子安裝已驗證target unit到installed systemd unit（`root:root:0644`）、再驗destination SHA-256並執行`daemon-reload`。首次target health前stable driver與stable unit仍維持previous版本。health通過後才promotion stable assets、再次restart／health、寫canonical active state，最後才寫verified bridge marker。handoff、hash、reload、restart、promotion或health任一步失敗都必須由previous backups恢復installed／stable assets、release env與previous runtime；restore失敗保留既有root-only forensic state。`digest-release`與`schema-activation`不得採用此handoff。
 
+container unit 的唯一resolution mode來源是精確的`Environment=CO_STORY_RESOLUTION_MODE=sync`。systemd 的Environment只影響Docker CLI process，並不會自動進入container，因此同一個`ExecStart`必須以相鄰token `--env CO_STORY_RESOLUTION_MODE=${CO_STORY_RESOLUTION_MODE}`顯式傳入allowlisted、非秘密值。不得把此值放進`runtime.env`或`container-release.env`，也不得在Docker參數再硬編第二份`sync`；否則production composition仍會在建立producer／store前fail closed。
+
 ## Change Set 與主機 preflight
 
 使用者先在 CloudFormation Console 建立 Change Set，只接受下列預期變更：更新 `CoStoryTier3ContainerRelease` 的新 document version，並新增 `CoStoryTier3LegacyRollback`。若出現 GitHub role 權限擴張、App role 擴張、ECR replacement、instance replacement 或其他資源，立即停止且不執行 Change Set。GitHub deploy role 只能執行 release document，不能執行 legacy rollback document。
