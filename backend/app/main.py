@@ -94,7 +94,6 @@ def create_app(
         os.environ.get("CO_STORY_APPLICATION_LOG_PATH")
     )
     production = _production_configuration_is_valid()
-    resolution_mode = _story_resolution_mode(production=production)
     if storyteller is None:
         storyteller = _production_bedrock_storyteller() if production else MockStoryteller()
     application = FastAPI(title="共演計劃 API", version="0.1.0")
@@ -104,6 +103,11 @@ def create_app(
         application.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
     database_url = os.environ.get("DATABASE_URL")
     repository_from_database_url = room_repository is None and bool(database_url)
+    resolution_mode = (
+        _story_resolution_mode(production=production)
+        if repository_from_database_url
+        else "sync"
+    )
     if room_repository is None:
         room_repository = (
             PostgresRoomRepository(database_url)
