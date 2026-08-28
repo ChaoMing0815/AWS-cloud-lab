@@ -47,10 +47,16 @@ def apply_migrations(dsn: str) -> None:
     validate_migration_inventory(version for version, _ in migrations)
     with psycopg.connect(dsn) as connection:
         connection.execute(_BOOTSTRAP_SCHEMA_MIGRATIONS)
-        applied_versions = {
+        applied_versions = tuple(
             row[0]
-            for row in connection.execute("SELECT version FROM schema_migrations").fetchall()
-        }
+            for row in connection.execute(
+                "SELECT version FROM schema_migrations ORDER BY version"
+            ).fetchall()
+        )
+        if applied_versions:
+            validate_migration_inventory(applied_versions)
+        elif not migrations or migrations[0][0] != "001_create_rooms":
+            raise ValueError("invalid migration inventory")
         for version, migration in migrations:
             if version in applied_versions:
                 continue
@@ -64,7 +70,7 @@ def apply_migrations(dsn: str) -> None:
                     """,
                     (version,),
                 )
-            applied_versions.add(version)
+            applied_versions += (version,)
 
 
 def _discover_migrations() -> list[tuple[str, Path]]:

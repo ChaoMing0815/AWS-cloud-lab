@@ -519,7 +519,7 @@ digest_release() {
   target_driver_sha="$(file_sha256 "$driver_asset_source")"
   target_unit_sha="$(file_sha256 "$container_unit_source")"
   if [ "$release_action" = preflight-only ]; then
-    printf 'container_release=preflight-verified mode=digest-release previous_image_digest=%s\n' "$previous_image_digest"
+    printf 'container_release=preflight-verified mode=%s previous_image_digest=%s\n' "$release_mode" "$previous_image_digest"
     return 0
   fi
   [ "$release_action" = release ] || fail invalid_release_action
@@ -592,8 +592,8 @@ digest_release() {
     write_transition_state asset-backup-cleanup-failed "$target_image" || true
     fail asset_backup_cleanup_failed
   fi
-  printf 'container_release=verified mode=digest-release image_digest=%s previous_image_digest=%s\n' \
-    "$image_digest" "$previous_image_digest"
+  printf 'container_release=verified mode=%s image_digest=%s previous_image_digest=%s\n' \
+    "$release_mode" "$image_digest" "$previous_image_digest"
 }
 
 write_bridge_marker() {

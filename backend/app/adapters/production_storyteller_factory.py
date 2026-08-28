@@ -104,7 +104,7 @@ def build_production_worker(
         raise RuntimeError("DATABASE_URL")
     if os.environ.get("CO_STORY_ENV", "").lower() != "production":
         raise RuntimeError("CO_STORY_ENV")
-    if os.environ.get("CO_STORY_RESOLUTION_MODE", "async").strip().lower() != "async":
+    if os.environ.get("CO_STORY_RESOLUTION_MODE") != "async":
         raise RuntimeError("CO_STORY_RESOLUTION_MODE")
 
     return build_production_worker_runner(

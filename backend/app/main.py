@@ -71,7 +71,12 @@ def _production_bedrock_storyteller():
     return create_production_bedrock_storyteller()
 
 
-def _story_resolution_mode() -> str:
+def _story_resolution_mode(*, production: bool) -> str:
+    if production:
+        mode = os.environ.get("CO_STORY_RESOLUTION_MODE")
+        if mode not in {"async", "sync"}:
+            raise RuntimeError("CO_STORY_RESOLUTION_MODE")
+        return mode
     mode = os.environ.get("CO_STORY_RESOLUTION_MODE", "async").strip().lower()
     if mode not in {"async", "sync"}:
         raise RuntimeError("CO_STORY_RESOLUTION_MODE")
@@ -89,6 +94,7 @@ def create_app(
         os.environ.get("CO_STORY_APPLICATION_LOG_PATH")
     )
     production = _production_configuration_is_valid()
+    resolution_mode = _story_resolution_mode(production=production)
     if storyteller is None:
         storyteller = _production_bedrock_storyteller() if production else MockStoryteller()
     application = FastAPI(title="共演計劃 API", version="0.1.0")
@@ -108,7 +114,7 @@ def create_app(
     if (
         story_resolution_producer is None
         and repository_from_database_url
-        and _story_resolution_mode() == "async"
+        and resolution_mode == "async"
     ):
         story_resolution_producer = StoryResolutionProducer(
             PostgresStoryResolutionStore(database_url, clock=resolved_clock)

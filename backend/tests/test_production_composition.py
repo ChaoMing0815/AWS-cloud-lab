@@ -42,6 +42,7 @@ def configure_production(monkeypatch, *, database_url: str | None = None) -> Non
     monkeypatch.setenv("CO_STORY_COOKIE_SECURE", "true")
     monkeypatch.setenv("CO_STORY_ALLOWED_HOSTS", "app.example.test")
     monkeypatch.setenv("CO_STORY_ALLOWED_ORIGINS", "https://app.example.test")
+    monkeypatch.setenv("CO_STORY_RESOLUTION_MODE", "async")
 
 
 def configure_bedrock(monkeypatch, *, max_tokens: str = "800") -> None:

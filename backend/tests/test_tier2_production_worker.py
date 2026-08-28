@@ -78,6 +78,7 @@ def _configure_production_env(monkeypatch, *, dsn: str = "postgresql://app:secre
     monkeypatch.setenv("CO_STORY_BEDROCK_GUARDRAIL_ID", "gr-story-safety")
     monkeypatch.setenv("CO_STORY_BEDROCK_GUARDRAIL_VERSION", "7")
     monkeypatch.setenv("CO_STORY_BEDROCK_MAX_TOKENS", "800")
+    monkeypatch.setenv("CO_STORY_RESOLUTION_MODE", "async")
 
 
 @pytest.mark.parametrize(
