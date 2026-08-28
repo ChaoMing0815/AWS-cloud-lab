@@ -200,6 +200,28 @@ def test_web_and_worker_roles_have_separate_least_privilege_queue_access() -> No
             assert _actions(statement) == {"ecr:GetAuthorizationToken"}
 
 
+def test_worker_log_policy_uses_the_log_group_arn_without_an_extra_wildcard() -> None:
+    resources = _template()["Resources"]
+    worker_policies = {
+        policy["PolicyName"]: policy["PolicyDocument"]
+        for policy in resources["WorkerRole"]["Properties"]["Policies"]
+    }
+
+    log_statements = _statements(worker_policies["CoStoryTier2WorkerLogs"])
+    assert log_statements == [
+        {
+            "Sid": "WriteOnlyWorkerLogGroup",
+            "Effect": "Allow",
+            "Action": [
+                "logs:CreateLogStream",
+                "logs:DescribeLogStreams",
+                "logs:PutLogEvents",
+            ],
+            "Resource": {"Fn::Sub": "${WorkerLogGroup.Arn}"},
+        }
+    ]
+
+
 def test_foundation_is_bounded_and_exports_only_deployment_identifiers() -> None:
     template = _template()
     resources = template["Resources"]

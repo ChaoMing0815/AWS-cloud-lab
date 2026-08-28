@@ -11,3 +11,12 @@
 - Rollback：尚未建立AWS資源；首次Change Set預期20 Add、0 Modify／Remove／Replacement。
 - Residual risk：同AZ不涵蓋AZ failure；NAT 443 egress尚未收斂為service endpoints；SQS runtime／heartbeat／dual-write reconciliation尚未實作。
 - Full regression：corrective後branch tip的Backend 685 tests collected、command exit 0（既有環境型skip）；Frontend 96 passed。
+
+## Worker log ARN corrective validation
+
+- Finding：執行前IAM檢查發現`AWS::Logs::LogGroup.Arn`已含結尾`:*`，template再附加`:*`會產生非canonical`:*:*`。
+- Red：`105138c`新增精確contract，因實際`${WorkerLogGroup.Arn}:*`與預期`${WorkerLogGroup.Arn}`不同而失敗。
+- Green：`f557d9f`只移除額外wildcard；專屬test 1 passed，Tier 2 Worker IaC suite 6 passed。
+- Sensitivity：暫時恢復額外`:*`後專屬test精確失敗；還原後重新通過。
+- Full regression：Backend 686 tests collected／exit 0；Frontend 96 passed。
+- AWS freeze：既有Change Set使用舊template SHA，不得執行；必須待修正合併後以新exact HEAD與template SHA重建20-Add Change Set，並重做IAM Access Analyzer。
