@@ -11,7 +11,7 @@ Group=root
 EnvironmentFile=/etc/co-story/container-release.env
 Environment=CO_STORY_RESOLUTION_MODE=sync
 ExecStartPre=-/usr/bin/docker rm -f co-story
-ExecStart=/usr/bin/docker run --name co-story --network host --read-only --cap-drop ALL --security-opt no-new-privileges --tmpfs /tmp:rw,noexec,nosuid,size=64m --env-file /etc/co-story/runtime.env --env-file /etc/co-story/database.env --mount type=bind,src=/etc/pki/rds/rds-ca.pem,dst=/etc/pki/rds/rds-ca.pem,readonly --volume /var/log/co-story:/var/log/co-story --user ${CO_STORY_CONTAINER_UID}:${CO_STORY_CONTAINER_GID} ${CO_STORY_CONTAINER_IMAGE} uvicorn app.main:create_app --factory --host 127.0.0.1 --port 8000 --workers 1
+ExecStart=/usr/bin/docker run --name co-story --network host --read-only --cap-drop ALL --security-opt no-new-privileges --tmpfs /tmp:rw,noexec,nosuid,size=64m --env-file /etc/co-story/runtime.env --env-file /etc/co-story/database.env --env CO_STORY_RESOLUTION_MODE=${CO_STORY_RESOLUTION_MODE} --mount type=bind,src=/etc/pki/rds/rds-ca.pem,dst=/etc/pki/rds/rds-ca.pem,readonly --volume /var/log/co-story:/var/log/co-story --user ${CO_STORY_CONTAINER_UID}:${CO_STORY_CONTAINER_GID} ${CO_STORY_CONTAINER_IMAGE} uvicorn app.main:create_app --factory --host 127.0.0.1 --port 8000 --workers 1
 ExecStop=/usr/bin/docker stop --time 20 co-story
 ExecStopPost=-/usr/bin/docker rm -f co-story
 Restart=on-failure
