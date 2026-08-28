@@ -1,0 +1,516 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Tier 2 Co-Story private Story Worker foundation with two EC2 workers, SQS/DLQ, one NAT gateway, and least-privilege IAM. It does not activate async runtime.
+
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: Existing Co-Story VPC from co-story-tier0-network.
+  PublicAppSubnetId:
+    Type: AWS::EC2::Subnet::Id
+    Description: Existing public app subnet used only to host the single NAT gateway.
+  DbSecurityGroupId:
+    Type: AWS::EC2::SecurityGroup::Id
+    Description: Existing private RDS security group.
+  AppRoleName:
+    Type: String
+    Default: AWSFinalProjectAppRole
+    AllowedPattern: ^AWSFinalProjectAppRole$
+    Description: Existing Web EC2 role that receives queue producer access only.
+  PrivateWorkerSubnetCidr:
+    Type: String
+    Default: 10.20.20.0/24
+    AllowedPattern: ^([0-9]{1,3}\.){3}[0-9]{1,3}/(24)$
+  LatestAmiId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-arm64
+  WorkerInstanceType:
+    Type: String
+    Default: t4g.micro
+    AllowedValues:
+      - t4g.micro
+  Tier3RepositoryArn:
+    Type: String
+    AllowedPattern: ^arn:[a-z0-9-]+:ecr:[a-z0-9-]+:[0-9]{12}:repository/co-story-tier3$
+    Description: Existing immutable ECR repository ARN; no image is pulled by this foundation.
+  RuntimeSecretArn:
+    Type: String
+    AllowedPattern: ^arn:[a-z0-9-]+:secretsmanager:[a-z0-9-]+:[0-9]{12}:secret:[A-Za-z0-9/_+=.@-]+$
+    Description: Existing Co-Story runtime secret ARN; the value is never embedded in this template.
+  BedrockModelId:
+    Type: String
+    Default: amazon.nova-lite-v1:0
+    AllowedValues:
+      - amazon.nova-lite-v1:0
+  BedrockGuardrailId:
+    Type: String
+    AllowedPattern: ^[a-z0-9]+$
+  BedrockGuardrailVersion:
+    Type: String
+    Default: '1'
+    AllowedValues:
+      - '1'
+
+Resources:
+  PrivateWorkerSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:
+        Ref: VpcId
+      CidrBlock:
+        Ref: PrivateWorkerSubnetCidr
+      AvailabilityZone:
+        Fn::Select:
+          - 0
+          - Fn::GetAZs: ''
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: co-story-tier2-private-worker
+        - Key: Project
+          Value: co-story
+        - Key: Tier
+          Value: '2'
+
+  WorkerNatEip:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: co-story-tier2-worker-nat
+        - Key: Project
+          Value: co-story
+        - Key: Tier
+          Value: '2'
+
+  WorkerNatGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId:
+        Fn::GetAtt:
+          - WorkerNatEip
+          - AllocationId
+      SubnetId:
+        Ref: PublicAppSubnetId
+      Tags:
+        - Key: Name
+          Value: co-story-tier2-worker
+        - Key: Project
+          Value: co-story
+        - Key: Tier
+          Value: '2'
+
+  PrivateWorkerRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId:
+        Ref: VpcId
+      Tags:
+        - Key: Name
+          Value: co-story-tier2-private-worker
+        - Key: Project
+          Value: co-story
+        - Key: Tier
+          Value: '2'
+
+  PrivateWorkerDefaultRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId:
+        Ref: PrivateWorkerRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId:
+        Ref: WorkerNatGateway
+
+  PrivateWorkerRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId:
+        Ref: PrivateWorkerRouteTable
+      SubnetId:
+        Ref: PrivateWorkerSubnet
+
+  WorkerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Co-Story Tier 2 private Story Worker with no inbound access
+      VpcId:
+        Ref: VpcId
+      SecurityGroupEgress:
+        - Description: Suppress the AWS default allow-all egress rule
+          IpProtocol: '-1'
+          CidrIp: 127.0.0.1/32
+      Tags:
+        - Key: Name
+          Value: co-story-tier2-worker
+        - Key: Project
+          Value: co-story
+        - Key: Tier
+          Value: '2'
+
+  WorkerHttpsEgress:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId:
+        Ref: WorkerSecurityGroup
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+      CidrIp: 0.0.0.0/0
+
+  WorkerToDbEgress:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId:
+        Ref: WorkerSecurityGroup
+      IpProtocol: tcp
+      FromPort: 5432
+      ToPort: 5432
+      DestinationSecurityGroupId:
+        Ref: DbSecurityGroupId
+
+  DbFromWorkerIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId:
+        Ref: DbSecurityGroupId
+      IpProtocol: tcp
+      FromPort: 5432
+      ToPort: 5432
+      SourceSecurityGroupId:
+        Ref: WorkerSecurityGroup
+
+  StoryDeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: co-story-tier2-story-dlq
+      SqsManagedSseEnabled: true
+      MessageRetentionPeriod: 1209600
+      Tags:
+        - Key: Project
+          Value: co-story
+        - Key: Tier
+          Value: '2'
+
+  StoryQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: co-story-tier2-story
+      SqsManagedSseEnabled: true
+      VisibilityTimeout: 180
+      ReceiveMessageWaitTimeSeconds: 20
+      MessageRetentionPeriod: 345600
+      RedrivePolicy:
+        deadLetterTargetArn:
+          Fn::GetAtt:
+            - StoryDeadLetterQueue
+            - Arn
+        maxReceiveCount: 3
+      Tags:
+        - Key: Project
+          Value: co-story
+        - Key: Tier
+          Value: '2'
+
+  StoryQueueTlsPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - Ref: StoryQueue
+        - Ref: StoryDeadLetterQueue
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: '*'
+            Action: sqs:*
+            Resource:
+              - Fn::GetAtt:
+                  - StoryQueue
+                  - Arn
+              - Fn::GetAtt:
+                  - StoryDeadLetterQueue
+                  - Arn
+            Condition:
+              Bool:
+                aws:SecureTransport: 'false'
+
+  WebStoryQueueProducerPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: AWSFinalProjectTier2WebStoryQueueProducer
+      Description: Allow the existing Web role to enqueue opaque StoryJob identifiers only.
+      Roles:
+        - Ref: AppRoleName
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: ProduceOnlyToStoryQueue
+            Effect: Allow
+            Action:
+              - sqs:GetQueueAttributes
+              - sqs:GetQueueUrl
+              - sqs:SendMessage
+            Resource:
+              Fn::GetAtt:
+                - StoryQueue
+                - Arn
+
+  WorkerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: AWSFinalProjectTier2WorkerRole
+      Description: Co-Story private Story Worker role with SSM and bounded runtime access.
+      PermissionsBoundary:
+        Fn::Sub: arn:${AWS::Partition}:iam::aws:policy/PowerUserAccess
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - Fn::Sub: arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore
+      Policies:
+        - PolicyName: CoStoryTier2QueueConsumer
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: ConsumeOnlyFromStoryQueue
+                Effect: Allow
+                Action:
+                  - sqs:ReceiveMessage
+                  - sqs:DeleteMessage
+                  - sqs:ChangeMessageVisibility
+                  - sqs:GetQueueAttributes
+                Resource:
+                  Fn::GetAtt:
+                    - StoryQueue
+                    - Arn
+        - PolicyName: CoStoryTier2EcrPull
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: AuthenticateToEcr
+                Effect: Allow
+                Action: ecr:GetAuthorizationToken
+                Resource: '*'
+              - Sid: PullOnlyFromCoStoryTier3
+                Effect: Allow
+                Action:
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:BatchGetImage
+                  - ecr:GetDownloadUrlForLayer
+                Resource:
+                  Ref: Tier3RepositoryArn
+        - PolicyName: CoStoryTier2RuntimeSecret
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: ReadOnlyExactRuntimeSecret
+                Effect: Allow
+                Action: secretsmanager:GetSecretValue
+                Resource:
+                  Ref: RuntimeSecretArn
+        - PolicyName: CoStoryTier2BedrockRuntime
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: InvokePinnedNovaLiteWithGuardrail
+                Effect: Allow
+                Action: bedrock:InvokeModel
+                Resource:
+                  Fn::Sub: arn:${AWS::Partition}:bedrock:${AWS::Region}::foundation-model/${BedrockModelId}
+                Condition:
+                  StringEquals:
+                    bedrock:GuardrailIdentifier:
+                      Fn::Sub: arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:guardrail/${BedrockGuardrailId}:${BedrockGuardrailVersion}
+              - Sid: DenyPinnedNovaLiteWithoutGuardrail
+                Effect: Deny
+                Action: bedrock:InvokeModel
+                Resource:
+                  Fn::Sub: arn:${AWS::Partition}:bedrock:${AWS::Region}::foundation-model/${BedrockModelId}
+                Condition:
+                  StringNotEquals:
+                    bedrock:GuardrailIdentifier:
+                      Fn::Sub: arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:guardrail/${BedrockGuardrailId}:${BedrockGuardrailVersion}
+              - Sid: ApplyExactGuardrail
+                Effect: Allow
+                Action: bedrock:ApplyGuardrail
+                Resource:
+                  Fn::Sub: arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:guardrail/${BedrockGuardrailId}
+        - PolicyName: CoStoryTier2WorkerLogs
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: WriteOnlyWorkerLogGroup
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:DescribeLogStreams
+                  - logs:PutLogEvents
+                Resource:
+                  Fn::Sub: ${WorkerLogGroup.Arn}:*
+      Tags:
+        - Key: Project
+          Value: co-story
+        - Key: Tier
+          Value: '2'
+
+  WorkerInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: AWSFinalProjectTier2WorkerInstanceProfile
+      Roles:
+        - Ref: WorkerRole
+
+  WorkerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /co-story/tier2/worker
+      RetentionInDays: 7
+      Tags:
+        - Key: Project
+          Value: co-story
+        - Key: Tier
+          Value: '2'
+
+  WorkerLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName: co-story-tier2-worker
+      LaunchTemplateData:
+        ImageId:
+          Ref: LatestAmiId
+        InstanceType:
+          Ref: WorkerInstanceType
+        IamInstanceProfile:
+          Name:
+            Ref: WorkerInstanceProfile
+        CreditSpecification:
+          CpuCredits: standard
+        Monitoring:
+          Enabled: false
+        MetadataOptions:
+          HttpEndpoint: enabled
+          HttpTokens: required
+          HttpPutResponseHopLimit: 1
+          InstanceMetadataTags: disabled
+        NetworkInterfaces:
+          - AssociatePublicIpAddress: false
+            DeviceIndex: 0
+            Groups:
+              - Ref: WorkerSecurityGroup
+        BlockDeviceMappings:
+          - DeviceName: /dev/xvda
+            Ebs:
+              DeleteOnTermination: true
+              Encrypted: true
+              VolumeSize: 8
+              VolumeType: gp3
+        UserData:
+          Fn::Base64:
+            Fn::Sub: |
+              #!/bin/bash
+              set -eu
+              dnf install -y docker
+              systemctl enable --now docker
+              install -d -m 0750 -o root -g root /etc/co-story
+        TagSpecifications:
+          - ResourceType: instance
+            Tags:
+              - Key: Name
+                Value: co-story-tier2-worker
+              - Key: Project
+                Value: co-story
+              - Key: Tier
+                Value: '2'
+          - ResourceType: volume
+            Tags:
+              - Key: Project
+                Value: co-story
+              - Key: Tier
+                Value: '2'
+
+  WorkerAutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    DependsOn:
+      - PrivateWorkerDefaultRoute
+      - PrivateWorkerRouteTableAssociation
+    Properties:
+      AutoScalingGroupName: co-story-tier2-worker
+      MinSize: '2'
+      MaxSize: '2'
+      DesiredCapacity: '2'
+      HealthCheckType: EC2
+      HealthCheckGracePeriod: 300
+      VPCZoneIdentifier:
+        - Ref: PrivateWorkerSubnet
+      LaunchTemplate:
+        LaunchTemplateId:
+          Ref: WorkerLaunchTemplate
+        Version:
+          Fn::GetAtt:
+            - WorkerLaunchTemplate
+            - LatestVersionNumber
+      Tags:
+        - Key: Project
+          Value: co-story
+          PropagateAtLaunch: true
+        - Key: Tier
+          Value: '2'
+          PropagateAtLaunch: true
+
+  StoryDeadLetterAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: co-story-tier2-story-dlq-visible
+      AlarmDescription: At least one StoryJob is visible in the Tier 2 DLQ.
+      Namespace: AWS/SQS
+      MetricName: ApproximateNumberOfMessagesVisible
+      Dimensions:
+        - Name: QueueName
+          Value:
+            Fn::GetAtt:
+              - StoryDeadLetterQueue
+              - QueueName
+      Statistic: Maximum
+      Period: 60
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      ActionsEnabled: false
+
+Outputs:
+  PrivateWorkerSubnetId:
+    Value:
+      Ref: PrivateWorkerSubnet
+  WorkerSecurityGroupId:
+    Value:
+      Ref: WorkerSecurityGroup
+  WorkerAutoScalingGroupName:
+    Value:
+      Ref: WorkerAutoScalingGroup
+  WorkerRoleName:
+    Value:
+      Ref: WorkerRole
+  StoryQueueArn:
+    Value:
+      Fn::GetAtt:
+        - StoryQueue
+        - Arn
+  StoryQueueUrl:
+    Value:
+      Ref: StoryQueue
+  StoryDeadLetterQueueArn:
+    Value:
+      Fn::GetAtt:
+        - StoryDeadLetterQueue
+        - Arn
+  WorkerLogGroupName:
+    Value:
+      Ref: WorkerLogGroup
