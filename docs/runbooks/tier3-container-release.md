@@ -25,6 +25,8 @@ Document之後才pull exact scanned digest、以該digest建立asset container�
 
 任何extract或preflight失敗只清除Document自己的asset container與temporary directory，不得變更active runtime、verified marker或release state。target driver已進入mutation後的失敗仍依既有rollback恢復previous runtime；restore失敗保留root-only forensic state並停止。這個repo-local corrective合併與CI完成前，不得建立或執行Change Set。
 
+bridge candidate通過後，target driver先保存previous stable driver／unit、寫入pending state與target release env；只有`migration-bridge`才可在首次target restart前重新驗target unit source SHA-256、原子安裝已驗證target unit到installed systemd unit（`root:root:0644`）、再驗destination SHA-256並執行`daemon-reload`。首次target health前stable driver與stable unit仍維持previous版本。health通過後才promotion stable assets、再次restart／health、寫canonical active state，最後才寫verified bridge marker。handoff、hash、reload、restart、promotion或health任一步失敗都必須由previous backups恢復installed／stable assets、release env與previous runtime；restore失敗保留既有root-only forensic state。`digest-release`與`schema-activation`不得採用此handoff。
+
 ## Change Set 與主機 preflight
 
 使用者先在 CloudFormation Console 建立 Change Set，只接受下列預期變更：更新 `CoStoryTier3ContainerRelease` 的新 document version，並新增 `CoStoryTier3LegacyRollback`。若出現 GitHub role 權限擴張、App role 擴張、ECR replacement、instance replacement 或其他資源，立即停止且不執行 Change Set。GitHub deploy role 只能執行 release document，不能執行 legacy rollback document。
