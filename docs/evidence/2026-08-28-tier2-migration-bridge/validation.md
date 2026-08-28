@@ -29,3 +29,16 @@
 - Full regression：Backend `620 passed, 11 skipped`；Frontend `96 passed`。
 - Sensitivity：old preflight改回`migration-bridge`、target release置於target preflight前、移除regular／symlink gate、移除mode gate、略過asset-container image-ID比較、略過second-hash比較、恢復bridge migration call、提前寫marker、schema activation改用temporary driver；每一項對應目標測試皆失敗後立即還原。
 - Rollback／residual risk：temporary assets只防替換／TOCTOU，不能限制已被main-only exact digest／scan／approval授權而以root執行的target driver。pre-mutation failure不改active state或marker；mutation後依driver恢復previous runtime，restore failure保留root-only forensic state。未建立或執行Change Set，未操作AWS／SSM／workflow dispatch／production deploy；PR #25仍為`DO NOT MERGE`。
+
+## First-activation unit handoff corrective（2026-08-28）
+
+- Scope／risk／upstream source：R3 repo-local corrective；production run `33139101239` 的完整rollback evidence與Sol safety gate確認，舊installed／stable unit缺少literal `CO_STORY_RESOLUTION_MODE=sync`，而candidate由target driver明確注入sync，首次target restart才會讀取舊installed unit。舊run與source SHA `cffc85e887f17789396e328d71bbfc42e3630831`均未重跑。
+- Baseline：repo `.venv` 的Tier 3 legacy bootstrap與delivery contract全綠；系統Python缺少`PyYAML`僅為collection environment error，未作為Red或產品失敗。
+- Corrective Red：`7a5ecb8`（`test(red): define bridge first-activation unit handoff contract`）。不同fixture精確重現舊unit無mode、target unit有literal sync；現行driver第一次restart觀察到舊installed-unit hash，並缺少bridge unit install／reload與source／destination hash failure處理，五項皆為assertion failure。
+- Corrective Green：`4701a1c`。只在`migration-bridge`的candidate、previous backups、pending state與target release env後，再驗target unit source SHA-256、原子安裝到installed unit、驗destination SHA-256並`daemon-reload`，再進行第一次target restart。首次health前stable driver／unit維持previous；既有promotion、第二次health、canonical state與最後marker流程不變。
+- Additional regression：`86aba88`鎖定`digest-release`與`schema-activation`仍以previous installed／stable unit完成第一次target health，禁止取得bridge-only handoff。
+- Targeted／affected verification：Tier 2 readiness／production composition／Worker／async API／rooms API，以及Tier 3 container／workflow／legacy bootstrap／delivery contract為`195 passed`；只有既有Starlette deprecation warning。
+- Full regression：Backend `627 passed, 11 skipped`；Frontend `96 passed, 0 skipped`。PostgreSQL process／restart的既有非production DSN缺口維持skip，未以memory double冒充durable證據。
+- YAML／syntax／boundary：未修改CloudFormation template；既有Tier 3 YAML parse、`bash -n ops/release/deploy_container.sh`、`git diff --check`與branch boundary均通過。
+- Sensitivity：移除bridge-only條件、把unit install移到首次health後、略過`daemon-reload`、略過source／destination SHA、提前stable unit promotion、略過previous installed-unit restore、提前寫marker、恢復bridge migration call；八項各自使對應target test精確失敗後立即還原。
+- Rollback／residual risk：handoff或target activation失敗都走既有previous asset／runtime restore；restore失敗維持root-only forensic state。尚未建立／執行CloudFormation Change Set、未操作AWS／SSM／S3／Bedrock／ECR push／workflow dispatch或production deploy；PR #25仍`DO NOT MERGE`。下一個production batch仍需新的人工change envelope、exact scanned image與完整health／rollback postflight。
