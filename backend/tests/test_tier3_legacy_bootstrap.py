@@ -172,6 +172,7 @@ def _unit_without_resolution_mode(tmp_path: Path) -> Path:
 
 
 def _target_unit_with_sync(tmp_path: Path) -> Path:
+    tmp_path.mkdir(parents=True, exist_ok=True)
     target_unit = tmp_path / "target-container.service"
     target_unit.write_bytes(UNIT.read_bytes())
     target_unit.chmod(0o644)
@@ -204,11 +205,14 @@ def test_migration_bridge_handoffs_target_unit_before_first_target_restart(
     assert released.returncode == 0, released.stderr
     target_sha = hashlib.sha256(target_unit.read_bytes()).hexdigest()
     old_sha = hashlib.sha256(old_unit.read_bytes()).hexdigest()
-    restart_units = _restart_unit_events(_events(event_log))
+    events = _events(event_log)
+    restart_units = _restart_unit_events(events)
     assert restart_units[0] == f"restart-unit:installed={target_sha} stable={old_sha}"
     assert restart_units[1] == f"restart-unit:installed={target_sha} stable={target_sha}"
-    assert "--env CO_STORY_RESOLUTION_MODE=sync" in "\n".join(_events(event_log))
-    assert "app.commands.migrate" not in "\n".join(_events(event_log))
+    first_restart = next(index for index, event in enumerate(events) if event.startswith("restart-unit:"))
+    assert next(index for index, event in enumerate(events) if event == "systemctl:daemon-reload") < first_restart
+    assert "--env CO_STORY_RESOLUTION_MODE=sync" in "\n".join(events)
+    assert "app.commands.migrate" not in "\n".join(events)
 
 
 @pytest.mark.parametrize("failure", ("bridge-target-unit-install", "bridge-target-daemon-reload"))
@@ -269,6 +273,51 @@ def test_migration_bridge_target_unit_hash_mismatch_restores_previous_assets(
     assert _host_path(host, "/usr/local/share/co-story/co-story-container.service").read_bytes() == old_unit.read_bytes()
     assert TARGET in _host_path(host, "/etc/co-story/container-release.env").read_text()
     assert "health:previous-restore:8000" in _events(event_log)
+
+
+@pytest.mark.parametrize("release_mode", ("digest-release", "schema-activation"))
+def test_non_bridge_release_keeps_previous_unit_until_target_health(
+    tmp_path: Path, release_mode: str
+) -> None:
+    _host, env, event_log = _sandbox(tmp_path)
+    previous_unit = _target_unit_with_sync(tmp_path)
+    previous_unit.write_bytes(previous_unit.read_bytes() + b"# previous-unit-version\n")
+    target_unit = _target_unit_with_sync(tmp_path / "next")
+    target_unit.write_bytes(target_unit.read_bytes() + b"# target-unit-version\n")
+    assert _run(env, "legacy-bootstrap", unit_asset=previous_unit).returncode == 0
+    previous_digest = TARGET
+    target_digest = NEXT_TARGET
+    if release_mode == "schema-activation":
+        assert (
+            _run(
+                env,
+                "migration-bridge",
+                target=NEXT_TARGET,
+                previous=TARGET,
+                legacy="",
+                unit_asset=previous_unit,
+            ).returncode
+            == 0
+        )
+        previous_digest = NEXT_TARGET
+        target_digest = "sha256:" + "3" * 64
+    event_log.write_text("", encoding="utf-8")
+
+    released = _run(
+        env,
+        release_mode,
+        target=target_digest,
+        previous=previous_digest,
+        legacy="",
+        unit_asset=target_unit,
+    )
+
+    assert released.returncode == 0, released.stderr
+    previous_sha = hashlib.sha256(previous_unit.read_bytes()).hexdigest()
+    target_sha = hashlib.sha256(target_unit.read_bytes()).hexdigest()
+    restart_units = _restart_unit_events(_events(event_log))
+    assert restart_units[0] == f"restart-unit:installed={previous_sha} stable={previous_sha}"
+    assert restart_units[1] == f"restart-unit:installed={target_sha} stable={target_sha}"
 
 
 def test_migration_bridge_never_runs_migration_and_marks_verified_digest(tmp_path: Path) -> None:
