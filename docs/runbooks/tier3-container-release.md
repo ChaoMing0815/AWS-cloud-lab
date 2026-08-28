@@ -17,6 +17,14 @@ Production GitHub environment 必須設定 required reviewer；repository variab
 
 所有 mode 都只接受 main、production environment 人工核准、OIDC 短期憑證、ARM64 image、exact digest scan，Trivy 保持 `HIGH,CRITICAL` 與 `exit-code: 1`。未知 mode 或互斥 input 必須在 credentials、build、registry、migration 或 mutation 前停止。Migration 不提供 downgrade；每個 migration 在 release 前必須證明 verified bridge runtime 可讀取新 schema，否則不得批准。
 
+## Migration bridge bootstrap compatibility
+
+已存在的舊stable driver只理解`digest-release`，因此migration bridge的pull前只能以該mode和`preflight-only`執行common host／active digest／checksum fence；target digest仍是新image digest，previous仍是canonical active digest，asset參數只能是既有stable driver與unit。此步不登入registry、不pull、不遷移也不改寫host state。
+
+Document之後才pull exact scanned digest、以該digest建立asset container，並在root-owned `0700` temporary directory擷取target driver與unit。bridge限定檢查temporary directory、兩個asset的canonical regular-file／non-symlink／`root:root:0500`或`root:root:0400`metadata、container image ID與pulled image ID一致，並在target preflight前後比對兩個SHA-256。只有同一份temporary target driver可執行`migration-bridge`的preflight與release；schema activation的preflight與release仍只能由已升級stable driver執行。
+
+任何extract或preflight失敗只清除Document自己的asset container與temporary directory，不得變更active runtime、verified marker或release state。target driver已進入mutation後的失敗仍依既有rollback恢復previous runtime；restore失敗保留root-only forensic state並停止。這個repo-local corrective合併與CI完成前，不得建立或執行Change Set。
+
 ## Change Set 與主機 preflight
 
 使用者先在 CloudFormation Console 建立 Change Set，只接受下列預期變更：更新 `CoStoryTier3ContainerRelease` 的新 document version，並新增 `CoStoryTier3LegacyRollback`。若出現 GitHub role 權限擴張、App role 擴張、ECR replacement、instance replacement 或其他資源，立即停止且不執行 Change Set。GitHub deploy role 只能執行 release document，不能執行 legacy rollback document。

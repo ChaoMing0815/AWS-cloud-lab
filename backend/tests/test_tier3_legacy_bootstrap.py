@@ -165,6 +165,22 @@ def test_migration_bridge_never_runs_migration_and_marks_verified_digest(tmp_pat
     assert marker == "STATE=verified-bridge\n" f"BRIDGE_IMAGE={REPOSITORY}@{NEXT_TARGET}\n"
 
 
+def test_migration_bridge_target_failure_restores_previous_without_verified_marker(
+    tmp_path: Path,
+) -> None:
+    host, env, event_log = _sandbox(tmp_path)
+    assert _run(env, "legacy-bootstrap").returncode == 0
+    event_log.write_text("", encoding="utf-8")
+    env["CO_STORY_TEST_FAIL"] = "target-active"
+
+    failed = _run(env, "migration-bridge", target=NEXT_TARGET, previous=TARGET, legacy="")
+
+    assert failed.returncode != 0
+    assert not _host_path(host, "/etc/co-story/migration-bridge.state").exists()
+    assert TARGET in _host_path(host, "/etc/co-story/container-release.env").read_text()
+    assert "health:previous-restore:8000" in _events(event_log)
+
+
 def test_schema_activation_reports_its_actual_release_mode(tmp_path: Path) -> None:
     _host, env, _event_log = _sandbox(tmp_path)
     assert _run(env, "legacy-bootstrap").returncode == 0
