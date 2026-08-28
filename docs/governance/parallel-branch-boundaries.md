@@ -1,7 +1,7 @@
 # 平行分支工作邊界
 
 - 狀態：Active
-- 生效分支：`codex/story-quality`、`codex/tier3-delivery`、`codex/tier3-production-release`、`codex/tier3-healthcheck-correction`、`codex/tier2-components`、`codex/tier2-async-flow`、`codex/tier2-production-worker`、`codex/tier2-migration-bridge`、`codex/support-agent-core`、`codex/support-agent-persistence`、`codex/support-agent-durability`
+- 生效分支：`codex/story-quality`、`codex/tier3-delivery`、`codex/tier3-production-release`、`codex/tier3-healthcheck-correction`、`codex/tier2-components`、`codex/tier2-async-flow`、`codex/tier2-production-worker`、`codex/tier2-aws-worker-foundation`、`codex/tier2-migration-bridge`、`codex/support-agent-core`、`codex/support-agent-persistence`、`codex/support-agent-durability`
 - 機器可讀規則：`.agents/work-boundaries.json`
 - 自動檢查：`scripts/check_branch_boundaries.py`
 
@@ -176,6 +176,26 @@
 - 不修改API、RoomService、repository、migration、Web、Docker、workflow、IaC或`ops/`；不執行AWS CLI／SSM／S3／Bedrock，不觸發production deploy。
 - 真實PostgreSQL process/restart gate只能使用獨立、可清除且非production的測試DSN；缺少DSN時明確skip，不得以Mock冒充durable證據。
 - 完成後交回整合task；任何AWS Worker／SQS部署需新的change envelope與人工核准。
+
+## `codex/tier2-aws-worker-foundation`
+
+唯一目標是準備已核准的Tier 2 AWS基礎：兩台無public IP的private Story Worker、SQS Standard Queue與DLQ、單一NAT Gateway、private subnet／route、SG、獨立Worker role與最小權限。此分支只做repo-local strict TDD、CloudFormation、ADR、架構與runbook；不得建立或修改AWS資源。
+
+允許範圍以policy為準，主要包括：
+
+- 單一`infra/cloudformation/tier2-worker-foundation.yaml`及其專屬contract tests。
+- SQS／DLQ與private Worker的ADR、架構、部署runbook及短validation evidence。
+- 課程驗收所需的三compute拓樸：既有public Web EC2加兩台private Worker EC2；RDS仍是private Data authority。
+
+強制邊界：
+
+- Worker數量固定為2，無public IPv4、無inbound規則，透過同一NAT Gateway進行必要outbound；不得新增ALB、ECS、EKS、Lambda、第二個NAT Gateway或Multi-AZ RDS。
+- Queue使用SSE-SQS，不建立customer KMS key；DLQ必須有bounded redrive，訊息只含opaque job identifier與schema version，不放玩家文字、runtime secret或DB credential。
+- Worker使用獨立IAM role；Web只取得指定Queue的最小producer權限，Worker只取得指定Queue consumer、既有ECR pull、SSM、CloudWatch、指定secret與既有Bedrock資源所需權限。禁止萬用`iam:PassRole`、管理員、SSH與任意secret讀取。
+- DB SG只新增來自Worker SG的TLS PostgreSQL `5432`；Worker SG不得開inbound，NAT不得改變DB private/public狀態。
+- 本分支不得修改產品Python、API、Web、migration、Docker、GitHub Actions、既有Tier 3 release template／driver、CURRENT、deployment log、checkpoints或其他protected path。
+- 不執行AWS CLI／SSM／S3／Bedrock、CloudFormation Change Set、`workflow_dispatch`或production deploy。完成並合併後仍須由整合task形成獨立change envelope，由使用者在Console檢查與核准。
+- 任何SQS adapter、visibility heartbeat、Worker runtime接線或玩家可見`async`切換都屬後續獨立分支，不得提前實作。
 
 ## `codex/support-agent-persistence`
 

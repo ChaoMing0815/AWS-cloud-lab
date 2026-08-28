@@ -157,6 +157,17 @@
         "docs/evidence/2026-*-tier2-production-worker/**"
       ]
     },
+    "codex/tier2-aws-worker-foundation": {
+      "purpose": "設計並以CloudFormation建立兩台private Story Worker、SQS/DLQ、單一NAT Gateway與最小權限網路/IAM基礎；只做repo-local準備，不部署AWS",
+      "allowed_paths": [
+        "infra/cloudformation/tier2-worker-foundation.yaml",
+        "backend/tests/test_tier2_worker_infrastructure.py",
+        "docs/decisions/0007-adopt-sqs-worker-foundation.md",
+        "docs/architecture/tier2-aws-worker.md",
+        "docs/runbooks/tier2-worker-foundation.md",
+        "docs/evidence/2026-*-tier2-aws-worker-foundation/**"
+      ]
+    },
     "codex/tier2-migration-bridge": {
       "purpose": "建立不套用新 migration 的 Tier 2 過渡 release，使既有同步 runtime 與後續 002 至 004 append-only schema 可安全 rollback，相容性完成前不部署 AWS",
       "allowed_paths": [
