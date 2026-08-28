@@ -42,3 +42,13 @@
 - YAML／syntax／boundary：未修改CloudFormation template；既有Tier 3 YAML parse、`bash -n ops/release/deploy_container.sh`、`git diff --check`與branch boundary均通過。
 - Sensitivity：移除bridge-only條件、把unit install移到首次health後、略過`daemon-reload`、略過source／destination SHA、提前stable unit promotion、略過previous installed-unit restore、提前寫marker、恢復bridge migration call；八項各自使對應target test精確失敗後立即還原。
 - Rollback／residual risk：handoff或target activation失敗都走既有previous asset／runtime restore；restore失敗維持root-only forensic state。尚未建立／執行CloudFormation Change Set、未操作AWS／SSM／S3／Bedrock／ECR push／workflow dispatch或production deploy；PR #25仍`DO NOT MERGE`。下一個production batch仍需新的人工change envelope、exact scanned image與完整health／rollback postflight。
+
+## Systemd container mode propagation corrective（2026-08-28）
+
+- Scope／root cause：R3 repo-local corrective。production evidence顯示target unit雖有`Environment=CO_STORY_RESOLUTION_MODE=sync`，但systemd Environment只提供Docker CLI process，不會自動傳進container；candidate因本來就明確傳入literal sync而通過，正式target才在production composition的fail-closed guard停止。failed runs `33139101239`、`33143814648`均未重跑。
+- Baseline：container contract、Tier 3 legacy bootstrap、production composition與Tier 2 Worker直接相關suite為`112 passed`，僅既有Starlette deprecation warning。
+- Corrective Red：`24a2c4d`（`test(red): require systemd container mode propagation`）。unit token contract精確在缺少Docker `--env`相鄰token時assertion failure，不依賴candidate event log。
+- Corrective Green：`60bce44`。唯一production修改是在container unit的`ExecStart`加入`--env CO_STORY_RESOLUTION_MODE=${CO_STORY_RESOLUTION_MODE}`；唯一來源仍為精確systemd `sync` Environment，沒有修改`runtime.env`、release env、driver、candidate、migration、schema、CloudFormation或IAM。
+- Negative／sensitivity：移除Docker env、把source改為`async`、Docker硬編`sync`與移除candidate literal sync，均使各自target contract failure後立即還原；permanent unit negatives亦拒絕empty、uppercase、前後空白、runtime-env-only與非canonical source。
+- Final validation：Tier 2／Tier 3 affected contract為`204 passed`；Backend full regression為`636 passed, 11 skipped`（既有非production PostgreSQL process／restart cases），Frontend為`96 passed, 0 skipped`。YAML parse、`bash -n ops/release/deploy_container.sh`、`git diff --check`與branch boundary均通過。
+- 未建立／執行Change Set，未操作AWS／SSM／S3／Bedrock／ECR push／workflow dispatch或production deploy；PR #25仍`DO NOT MERGE`。
