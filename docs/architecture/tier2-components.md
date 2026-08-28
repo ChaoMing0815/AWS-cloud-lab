@@ -67,3 +67,9 @@ flowchart LR
 - local Worker process使用session-free snapshot narrator與`MockStoryteller`，Web process不內嵌Worker。
 - PostgreSQL Room、`story_jobs`、result inbox與completion outbox已具本機process gate；production尚未執行`002`／`003`。
 - Bedrock Worker adapter、SQS、DLQ、visibility heartbeat、private subnet Worker、container／CI/CD調整與AWS E2E仍未接線。
+
+## Migration bridge runtime boundary
+
+在任何 production `002`／`003`／`004` activation 前，bridge image 將 `CO_STORY_RESOLUTION_MODE=sync` 固定注入 Web candidate 與 stable service。因此PostgreSQL composition不建立 `StoryResolutionProducer`，resolve route 繼續走既有同步 `200` path；Worker factory 同時在 queue、Bedrock client 與 claim 前拒絕 `sync`。這是過渡相容性模式，不是 async feature 的停用開關或產品行為變更。
+
+資料庫 readiness 與 migration runner共用 canonical inventory validator，只接受完整已審核前綴 `001`、`001+002`、`001+002+003`、`001+002+003+004`；任何空白、gap、unknown、duplicate、malformed 或 DB 不可用均不可 ready。詳細的 release state machine 見 [ADR-0006](../decisions/0006-adopt-tier2-migration-bridge.md)。

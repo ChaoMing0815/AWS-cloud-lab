@@ -34,7 +34,7 @@ class _Transaction:
 
 class _MigrationConnection:
     def __init__(self, applied_versions=()):
-        self.applied_versions = set(applied_versions)
+        self.applied_versions = list(applied_versions)
         self.statements = []
         self.transaction_count = 0
 
@@ -51,9 +51,10 @@ class _MigrationConnection:
         self.statements.append((sql, params))
         normalized = " ".join(sql.lower().split())
         if "select version from schema_migrations" in normalized:
-            return _Result([(version,) for version in sorted(self.applied_versions)])
+            assert "order by version" in normalized
+            return _Result([(version,) for version in self.applied_versions])
         if "insert into schema_migrations" in normalized:
-            self.applied_versions.add(params[0])
+            self.applied_versions.append(params[0])
         return _Result()
 
 
@@ -71,8 +72,8 @@ def test_migration_runner_discovers_sorted_unapplied_files_and_records_each_vers
     tmp_path, monkeypatch
 ) -> None:
     _write_migration(tmp_path, "001_create_rooms.sql", "one")
-    _write_migration(tmp_path, "010_add_story_index.sql", "ten")
-    connection = _MigrationConnection(applied_versions={"001_create_rooms"})
+    _write_migration(tmp_path, "002_create_story_jobs.sql", "two")
+    connection = _MigrationConnection(applied_versions=("001_create_rooms",))
     module = _migration_module()
     monkeypatch.setattr(module, "MIGRATIONS_ROOT", tmp_path)
     monkeypatch.setattr(
@@ -85,15 +86,15 @@ def test_migration_runner_discovers_sorted_unapplied_files_and_records_each_vers
     module.apply_migrations("postgresql://test/ignored")
 
     executed_sql = [sql for sql, _ in connection.statements]
-    assert connection.applied_versions == {"001_create_rooms", "010_add_story_index"}
-    assert sum("-- ten" in sql for sql in executed_sql) == 1
+    assert connection.applied_versions == ["001_create_rooms", "002_create_story_jobs"]
+    assert sum("-- two" in sql for sql in executed_sql) == 1
     assert not any("-- one" in sql for sql in executed_sql)
     version_inserts = [
         params
         for sql, params in connection.statements
         if "insert into schema_migrations" in sql.lower()
     ]
-    assert version_inserts == [("010_add_story_index",)]
+    assert version_inserts == [("002_create_story_jobs",)]
     assert connection.transaction_count == 1
 
 
@@ -121,6 +122,66 @@ def test_migration_runner_rejects_duplicate_versions_and_invalid_filenames(
 
     with pytest.raises(ValueError):
         module.apply_migrations("postgresql://test/ignored")
+
+
+@pytest.mark.parametrize(
+    "applied_inventory",
+    (
+        ("001_create_rooms", "999_unknown"),
+        ("001_create_rooms", "003_create_story_resolution_results"),
+        ("001_create_rooms", "001_create_rooms"),
+        ("001_create_rooms.sql",),
+    ),
+)
+def test_migration_runner_rejects_invalid_applied_inventory_before_migration_sql_or_insert(
+    tmp_path, monkeypatch, applied_inventory
+) -> None:
+    _write_migration(tmp_path, "001_create_rooms.sql", "one")
+    _write_migration(tmp_path, "002_create_story_jobs.sql", "two")
+    connection = _MigrationConnection(applied_versions=applied_inventory)
+    module = _migration_module()
+    monkeypatch.setattr(module, "MIGRATIONS_ROOT", tmp_path)
+    monkeypatch.setattr(module, "psycopg", SimpleNamespace(connect=lambda _dsn: connection))
+
+    with pytest.raises(ValueError, match="migration inventory"):
+        module.apply_migrations("postgresql://test/ignored")
+
+    statements = [sql for sql, _params in connection.statements]
+    assert not any("-- one" in sql or "-- two" in sql for sql in statements)
+    assert not any("insert into schema_migrations" in sql.lower() for sql in statements)
+
+
+@pytest.mark.parametrize(
+    "inventory",
+    (
+        ("001_create_rooms",),
+        ("001_create_rooms", "002_create_story_jobs"),
+        ("001_create_rooms", "002_create_story_jobs", "003_create_story_resolution_results"),
+        ("001_create_rooms", "002_create_story_jobs", "003_create_story_resolution_results", "004_create_support_report_drafts"),
+    ),
+)
+def test_canonical_inventory_validator_accepts_only_complete_append_only_prefixes(inventory) -> None:
+    module = _migration_module()
+
+    assert module.validate_migration_inventory(inventory) == inventory
+
+
+@pytest.mark.parametrize(
+    "inventory",
+    (
+        (),
+        ("002_create_story_jobs",),
+        ("001_create_rooms", "003_create_story_resolution_results"),
+        ("001_create_rooms", "002_create_story_jobs", "999_unknown"),
+        ("001_create_rooms", "001_create_rooms"),
+        ("001_create_rooms.sql",),
+    ),
+)
+def test_canonical_inventory_validator_rejects_empty_gap_unknown_duplicate_and_malformed(inventory) -> None:
+    module = _migration_module()
+
+    with pytest.raises(ValueError, match="migration inventory"):
+        module.validate_migration_inventory(inventory)
 
 
 def test_migration_cli_requires_database_url_without_echoing_a_dsn() -> None:

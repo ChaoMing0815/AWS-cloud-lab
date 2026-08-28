@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 import psycopg
 from psycopg.types.json import Jsonb
 
-from app.adapters.postgres_migrations import expected_migration_versions
+from app.adapters.postgres_migrations import validate_migration_inventory
 from app.application.ports import RoomRepository
 from app.domain.models import Character, DiceResult, Player, Room, StoryEntry, TransferCode, World
 
@@ -66,16 +66,16 @@ class PostgresRoomRepository(RoomRepository):
 
     def is_ready(self) -> bool:
         try:
-            expected_versions = set(expected_migration_versions())
             with psycopg.connect(self.dsn) as connection:
                 connection.execute("SELECT 1")
-                applied_versions = {
+                applied_versions = tuple(
                     row[0]
                     for row in connection.execute(
-                        "SELECT version FROM schema_migrations"
+                        "SELECT version FROM schema_migrations ORDER BY version"
                     ).fetchall()
-                }
-            return expected_versions == applied_versions
+                )
+            validate_migration_inventory(applied_versions)
+            return True
         except Exception:
             return False
 

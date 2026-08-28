@@ -177,6 +177,8 @@ Resources:
             allowedValues:
               - legacy-bootstrap
               - digest-release
+              - migration-bridge
+              - schema-activation
           RepositoryUri:
             type: String
             allowedPattern: '^[0-9]{12}[.]dkr[.]ecr[.]ap-northeast-1[.]amazonaws[.]com/co-story-tier3$'
@@ -279,6 +281,13 @@ Resources:
                       test -z "$expected_legacy_release"
                       "$stable_driver" digest-release "$repository_uri" "$image_digest" "$previous_image_digest" '' "$health_host" "$stable_unit" "$stable_driver" preflight-only
                       ;;
+                    migration-bridge|schema-activation)
+                      validate_rds_ca
+                      test -x "$stable_driver"
+                      test -f "$stable_unit"
+                      test -z "$expected_legacy_release"
+                      "$stable_driver" "$release_mode" "$repository_uri" "$image_digest" "$previous_image_digest" '' "$health_host" "$stable_unit" "$stable_driver" preflight-only
+                      ;;
                     *)
                       printf 'container_release=invalid_mode\n' >&2
                       exit 2
@@ -304,6 +313,9 @@ Resources:
                       ;;
                     digest-release)
                       "$stable_driver" digest-release "$repository_uri" "$image_digest" "$previous_image_digest" '' "$health_host" "$temporary/co-story-container.service" "$temporary/deploy_container.sh"
+                      ;;
+                    migration-bridge|schema-activation)
+                      "$stable_driver" "$release_mode" "$repository_uri" "$image_digest" "$previous_image_digest" '' "$health_host" "$temporary/co-story-container.service" "$temporary/deploy_container.sh"
                       ;;
                   esac
       Tags:

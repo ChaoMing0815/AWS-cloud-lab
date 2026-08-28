@@ -71,6 +71,18 @@ def _production_bedrock_storyteller():
     return create_production_bedrock_storyteller()
 
 
+def _story_resolution_mode(*, production: bool) -> str:
+    if production:
+        mode = os.environ.get("CO_STORY_RESOLUTION_MODE")
+        if mode not in {"async", "sync"}:
+            raise RuntimeError("CO_STORY_RESOLUTION_MODE")
+        return mode
+    mode = os.environ.get("CO_STORY_RESOLUTION_MODE", "async").strip().lower()
+    if mode not in {"async", "sync"}:
+        raise RuntimeError("CO_STORY_RESOLUTION_MODE")
+    return mode
+
+
 def create_app(
     dice_roller=None,
     room_repository=None,
@@ -91,6 +103,11 @@ def create_app(
         application.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
     database_url = os.environ.get("DATABASE_URL")
     repository_from_database_url = room_repository is None and bool(database_url)
+    resolution_mode = (
+        _story_resolution_mode(production=production)
+        if repository_from_database_url
+        else "sync"
+    )
     if room_repository is None:
         room_repository = (
             PostgresRoomRepository(database_url)
@@ -98,7 +115,11 @@ def create_app(
             else MemoryRoomRepository()
         )
     resolved_clock = clock or SystemClock()
-    if story_resolution_producer is None and repository_from_database_url:
+    if (
+        story_resolution_producer is None
+        and repository_from_database_url
+        and resolution_mode == "async"
+    ):
         story_resolution_producer = StoryResolutionProducer(
             PostgresStoryResolutionStore(database_url, clock=resolved_clock)
         )
