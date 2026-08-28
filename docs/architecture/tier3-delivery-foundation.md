@@ -40,3 +40,17 @@ PR #8 已以 merge commit `030f11d` 進入 `main`，PR 四項 checks 全綠；ma
 ## Rollback boundary
 
 Release 只接受 `sha256:<64 hex>` target 與 previous digest。首次容器切換先以 previous digest 取代原生 systemd runtime並通過 `/live`、`/ready`，才遷移與驗證 candidate。正式 target restart 或 health gate 失敗時，release script 原子改回 previous digest；不做 schema downgrade，因此 migration 必須維持 backward compatibility。
+
+## Tier 2 migration bridge state machine
+
+```mermaid
+stateDiagram-v2
+    [*] --> ActiveSync001
+    ActiveSync001 --> BridgeCandidate: migration-bridge\nzero migration + sync candidate
+    BridgeCandidate --> VerifiedBridge: active health + verified digest marker
+    VerifiedBridge --> SchemaActivation: marker matches previous digest
+    SchemaActivation --> VerifiedBridge: migration/candidate/target failure\nno schema downgrade
+    SchemaActivation --> ActiveSchema: migration + bridge recheck + promotion
+```
+
+`migration-bridge`與`schema-activation`都是 explicit release mode。前者要求 canonical active previous digest且不得提供 legacy input；不呼叫 migration，成功後才寫 root-only、exact-shape、digest-bound marker。後者只接受該 marker 綁定的 previous bridge digest，在 migration 後重新驗證 marker，再驗 bridge與candidate。一般`digest-release`碰到仍存在的 bridge marker即停止，避免誤把 schema activation 當成普通 digest promotion。

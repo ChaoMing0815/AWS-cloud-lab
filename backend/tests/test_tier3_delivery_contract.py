@@ -83,10 +83,11 @@ def test_release_workflow_validates_bridge_and_schema_activation_before_credenti
     )
 
     assert input_validation < credentials < build
-    assert "migration-bridge" in workflow_text
-    assert "schema-activation" in workflow_text
-    assert "bridge requires a previous digest" in workflow_text
-    assert "schema activation requires a previous digest" in workflow_text
+    validation = steps[input_validation]["run"]
+    assert "migration-bridge)" in validation
+    assert "schema-activation)" in validation
+    assert "bridge requires a previous digest" in validation
+    assert "schema activation requires a previous digest" in validation
 
 
 def test_release_workflow_scans_exact_pushed_digest_as_linux_arm64() -> None:

@@ -8,12 +8,14 @@ Production GitHub environment 必須設定 required reviewer；repository variab
 
 `TIER3_INSTANCE_ID` 必須是無任何前後空白的 canonical EC2 instance ID，且精確符合 `^i-[0-9a-f]{17}$`。Workflow 必須在取得 AWS credentials 與 build 之前驗證 raw repository variable；不得靜默 trim。只有通過驗證後寫入的 `VALIDATED_TIER3_INSTANCE_ID` 可供 SSM send／wait／get 共用。
 
-## 兩種 release mode
+## 四種 release mode
 
 - `legacy-bootstrap`：只用於 `tier1-20260825-4a51e0e` 首次切換。`previous_image_digest` 必須空白，`expected_legacy_release` 必須精確相等；禁止假 digest、target digest 或相同 digest冒充 previous。
 - `digest-release`：只用於已有 verified container state 的後續版本。必須提供與 target 不同、且同時吻合 root-only state 與 active release env 的 previous digest；不得提供 legacy release input。
+- `migration-bridge`：只用於將 active digest 切換成可讀舊 schema的同步 bridge。previous 必須是 canonical active digest、legacy input 必須空白；全程不執行 migration，candidate 與 stable runtime 都固定 sync。成功後才寫入 root-only digest-bound bridge marker。
+- `schema-activation`：只能以 marker 綁定的 verified bridge digest 為 previous；先驗 marker，再 migration、重驗 marker、驗 bridge runtime與candidate。任何失敗只回復 bridge runtime，不做 schema downgrade。
 
-兩種模式都只接受 main、production environment 人工核准、OIDC 短期憑證、ARM64 image、exact digest scan，Trivy 保持 `HIGH,CRITICAL` 與 `exit-code: 1`。Migration 不提供 downgrade；每個 migration 在 release 前必須證明舊 runtime 可讀取新 schema，否則不得批准。
+所有 mode 都只接受 main、production environment 人工核准、OIDC 短期憑證、ARM64 image、exact digest scan，Trivy 保持 `HIGH,CRITICAL` 與 `exit-code: 1`。未知 mode 或互斥 input 必須在 credentials、build、registry、migration 或 mutation 前停止。Migration 不提供 downgrade；每個 migration 在 release 前必須證明 verified bridge runtime 可讀取新 schema，否則不得批准。
 
 ## Change Set 與主機 preflight
 

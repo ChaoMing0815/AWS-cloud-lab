@@ -12,15 +12,39 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
     applied_at timestamptz NOT NULL DEFAULT now()
 )
 """
+_CANONICAL_INVENTORIES = (
+    ("001_create_rooms",),
+    ("001_create_rooms", "002_create_story_jobs"),
+    (
+        "001_create_rooms",
+        "002_create_story_jobs",
+        "003_create_story_resolution_results",
+    ),
+    (
+        "001_create_rooms",
+        "002_create_story_jobs",
+        "003_create_story_resolution_results",
+        "004_create_support_report_drafts",
+    ),
+)
+
+
+def validate_migration_inventory(inventory) -> tuple[str, ...]:
+    """Accept only an exact, ordered prefix of the audited migration inventory."""
+    values = tuple(inventory)
+    if values not in _CANONICAL_INVENTORIES:
+        raise ValueError("invalid migration inventory")
+    return values
 
 
 def expected_migration_versions() -> tuple[str, ...]:
     """Return the ordered migration versions required by this release."""
-    return tuple(version for version, _ in _discover_migrations())
+    return validate_migration_inventory(version for version, _ in _discover_migrations())
 
 
 def apply_migrations(dsn: str) -> None:
     migrations = _discover_migrations()
+    validate_migration_inventory(version for version, _ in migrations)
     with psycopg.connect(dsn) as connection:
         connection.execute(_BOOTSTRAP_SCHEMA_MIGRATIONS)
         applied_versions = {

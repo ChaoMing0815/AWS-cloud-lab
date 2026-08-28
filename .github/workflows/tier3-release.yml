@@ -10,8 +10,10 @@ on:
         options:
           - legacy-bootstrap
           - digest-release
+          - migration-bridge
+          - schema-activation
       previous_image_digest:
-        description: Required only for digest-release; must be the active verified digest
+        description: Required for digest, bridge, and schema activation; must be the verified active digest
         required: false
         default: ""
         type: string
@@ -99,6 +101,26 @@ jobs:
                 exit 2
               fi
               ;;
+            migration-bridge)
+              if [[ ! "$PREVIOUS_IMAGE_DIGEST" =~ ^sha256:[a-f0-9]{64}$ ]]; then
+                printf '%s\n' 'bridge requires a previous digest' >&2
+                exit 2
+              fi
+              if [[ -n "$EXPECTED_LEGACY_RELEASE" ]]; then
+                printf '%s\n' 'bridge must not provide a legacy release' >&2
+                exit 2
+              fi
+              ;;
+            schema-activation)
+              if [[ ! "$PREVIOUS_IMAGE_DIGEST" =~ ^sha256:[a-f0-9]{64}$ ]]; then
+                printf '%s\n' 'schema activation requires a previous digest' >&2
+                exit 2
+              fi
+              if [[ -n "$EXPECTED_LEGACY_RELEASE" ]]; then
+                printf '%s\n' 'schema activation must not provide a legacy release' >&2
+                exit 2
+              fi
+              ;;
             *)
               printf '%s\n' 'invalid release mode' >&2
               exit 2
@@ -135,7 +157,7 @@ jobs:
           push: true
           tags: ${{ steps.ecr.outputs.registry }}/${{ vars.TIER3_ECR_REPOSITORY }}:${{ github.sha }}
       - name: Fence target and previous digests
-        if: inputs.release_mode == 'digest-release'
+        if: inputs.release_mode != 'legacy-bootstrap'
         env:
           IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
           PREVIOUS_IMAGE_DIGEST: ${{ inputs.previous_image_digest }}
