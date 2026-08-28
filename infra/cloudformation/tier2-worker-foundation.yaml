@@ -352,7 +352,7 @@ Resources:
                   - logs:DescribeLogStreams
                   - logs:PutLogEvents
                 Resource:
-                  Fn::Sub: ${WorkerLogGroup.Arn}:*
+                  Fn::Sub: ${WorkerLogGroup.Arn}
       Tags:
         - Key: Project
           Value: co-story
