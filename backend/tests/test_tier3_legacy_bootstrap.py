@@ -158,10 +158,24 @@ def test_migration_bridge_never_runs_migration_and_marks_verified_digest(tmp_pat
     result = _run(env, "migration-bridge", target=NEXT_TARGET, previous=TARGET, legacy="")
 
     assert result.returncode == 0, result.stderr
+    assert f"container_release=verified mode=migration-bridge image_digest={NEXT_TARGET}" in result.stdout
     events = _events(event_log)
     assert "app.commands.migrate" not in "\n".join(events)
     marker = _host_path(host, "/etc/co-story/migration-bridge.state").read_text()
     assert marker == "STATE=verified-bridge\n" f"BRIDGE_IMAGE={REPOSITORY}@{NEXT_TARGET}\n"
+
+
+def test_schema_activation_reports_its_actual_release_mode(tmp_path: Path) -> None:
+    _host, env, _event_log = _sandbox(tmp_path)
+    assert _run(env, "legacy-bootstrap").returncode == 0
+    assert _run(env, "migration-bridge", target=NEXT_TARGET, previous=TARGET, legacy="").returncode == 0
+    third = "sha256:" + "3" * 64
+
+    result = _run(env, "schema-activation", target=third, previous=NEXT_TARGET, legacy="")
+
+    assert result.returncode == 0, result.stderr
+    assert f"container_release=verified mode=schema-activation image_digest={third}" in result.stdout
+    assert "mode=digest-release" not in result.stdout
 
 
 def test_schema_activation_rejects_missing_or_stale_bridge_marker_before_migration(tmp_path: Path) -> None:

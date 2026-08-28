@@ -25,6 +25,7 @@ def configure_production(monkeypatch, *, database_url: str | None = None) -> Non
         "CO_STORY_COOKIE_SECURE",
         "CO_STORY_ALLOWED_HOSTS",
         "CO_STORY_ALLOWED_ORIGINS",
+        "CO_STORY_RESOLUTION_MODE",
         "CO_STORY_AWS_REGION",
         "CO_STORY_BEDROCK_MODEL_ID",
         "CO_STORY_BEDROCK_GUARDRAIL_ID",
@@ -232,6 +233,25 @@ def test_sync_resolution_mode_keeps_postgres_web_flow_on_existing_200_path(monke
     app = create_app(storyteller=FakeProductionStoryteller())
 
     assert app.state.room_service.async_story_resolution_enabled is False
+
+
+@pytest.mark.parametrize("mode", (None, "", "ASYNC", " async", "async ", "unknown"))
+def test_production_web_requires_an_exact_resolution_mode_before_producer_or_store(
+    monkeypatch, mode
+) -> None:
+    configure_production(monkeypatch)
+    if mode is None:
+        monkeypatch.delenv("CO_STORY_RESOLUTION_MODE", raising=False)
+    else:
+        monkeypatch.setenv("CO_STORY_RESOLUTION_MODE", mode)
+    monkeypatch.setattr(
+        main_module,
+        "PostgresStoryResolutionStore",
+        lambda *_args, **_kwargs: pytest.fail("invalid production mode must stop before store creation"),
+    )
+
+    with pytest.raises(RuntimeError, match="CO_STORY_RESOLUTION_MODE"):
+        create_app(storyteller=FakeProductionStoryteller())
 
 
 def test_session_and_local_room_cookies_last_one_week() -> None:

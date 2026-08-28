@@ -65,6 +65,7 @@ def _configure_production_env(monkeypatch, *, dsn: str = "postgresql://app:secre
         "CO_STORY_BEDROCK_GUARDRAIL_ID",
         "CO_STORY_BEDROCK_GUARDRAIL_VERSION",
         "CO_STORY_BEDROCK_MAX_TOKENS",
+        "CO_STORY_RESOLUTION_MODE",
     ):
         monkeypatch.delenv(name, raising=False)
     monkeypatch.setenv("CO_STORY_ENV", "production")
@@ -152,6 +153,26 @@ def test_production_worker_factory_rejects_sync_mode_before_queue_or_bedrock(mon
         factory_module,
         "build_production_worker_runner",
         lambda **_kwargs: pytest.fail("sync mode must stop before queue or Bedrock construction"),
+    )
+
+    with pytest.raises(RuntimeError, match="CO_STORY_RESOLUTION_MODE"):
+        factory_module.build_production_worker("postgresql://app:secret@localhost/co_story")
+
+
+@pytest.mark.parametrize("mode", (None, "", "sync", "ASYNC", " async", "async ", "unknown"))
+def test_production_worker_requires_literal_async_before_runner_queue_or_bedrock(
+    monkeypatch, mode
+) -> None:
+    _configure_production_env(monkeypatch)
+    if mode is None:
+        monkeypatch.delenv("CO_STORY_RESOLUTION_MODE", raising=False)
+    else:
+        monkeypatch.setenv("CO_STORY_RESOLUTION_MODE", mode)
+    factory_module, _ = _load_modules(monkeypatch)
+    monkeypatch.setattr(
+        factory_module,
+        "build_production_worker_runner",
+        lambda **_kwargs: pytest.fail("invalid mode must stop before queue or Bedrock construction"),
     )
 
     with pytest.raises(RuntimeError, match="CO_STORY_RESOLUTION_MODE"):
