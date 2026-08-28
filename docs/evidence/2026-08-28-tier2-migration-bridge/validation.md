@@ -73,3 +73,12 @@
 - Green commit `78a6d88`只在`schema_activation`的`digest_release`返回後辨識`preflight-only`並直接返回；完整release仍於全部既有gate成功後清除marker。
 - Sensitivity：暫時移除三行guard，新測試如預期精確失敗後立即還原。Tier 3 legacy bootstrap／delivery／workflow contract、Backend full regression、Frontend `96 passed`、shell syntax與`git diff --check`均通過。
 - Residual／stop condition：corrective合併與exact-main CI完成前不得恢復marker或重新dispatch。之後仍須以獨立人工核准、fail-closed且不輸出secret的bounded recovery，在active digest、inventory、health與marker-absent preconditions全部吻合時原子恢復digest-bound marker；再以新的exact main SHA形成schema-activation envelope。
+
+## Schema activation target-driver corrective（2026-08-28）
+
+- PR #32 merge後的exact main為`d72a0740ff54ed3e41500b33a3c1397d10a09efb`，main CI run `33167574117`全綠；但唯讀source review確認EC2上的stable driver仍來自active bridge image `sha256:b9272ee…`，尚未取得PR #32修正。現行SSM Document若先恢復marker再呼叫host stable driver，仍會重現誤刪，因此已核准的marker recovery保持未執行。
+- Red commit `c6f80dc`以只理解舊mode的stable driver重現Document在pull exact target前停止，並要求schema activation與migration bridge相同：同一份exact-image temporary driver完成preflight與release。
+- Green commit `6375145`：Document在任何registry access前自行只讀驗證marker canonical path、`root:root:600`、精確兩行、`verified-bridge`與previous digest binding；pull後以image-ID、asset metadata與preflight後SHA-256 fences驗證target driver／unit，再由同一target driver執行schema preflight與release。
+- Negative／rollback：stale marker在login／pull前停止；symlink／錯誤metadata、asset-container image mismatch或preflight後asset替換均不執行target release、不消耗marker、不產生active state。target driver內既有migration、candidate、target activation與previous bridge rollback語意不變。
+- Validation：bridge／schema targeted contract `17 passed`，Tier 2／Tier 3 affected suites、Backend full regression、Frontend `96 passed`、YAML parse與`git diff --check`均通過；只有既有Starlette deprecation warning與既有非production PostgreSQL skips。
+- AWS stop point：未恢復marker、未建立或執行Change Set、未操作AWS／SSM／ECR／Bedrock、未dispatch workflow。corrective merge與exact-main CI後，必須先建立只修改`ContainerReleaseDocument.Content`的新Change Set envelope；Document更新完成後才可重新核准bounded marker recovery與新的schema-activation deployment。
