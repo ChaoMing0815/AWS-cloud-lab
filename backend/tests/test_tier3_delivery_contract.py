@@ -100,6 +100,7 @@ def _document_harness(
     target_unit.chmod(0o400)
 
     _write_executable(fake_bin / "aws", "#!/bin/sh\nprintf 'registry-login\\n'\n")
+    _write_executable(fake_bin / "chown", "#!/bin/sh\nexit 0\n")
     _write_executable(
         fake_bin / "readlink",
         "#!/bin/sh\n"
