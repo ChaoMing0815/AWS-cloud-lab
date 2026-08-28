@@ -23,7 +23,7 @@ Production GitHub environment 必須設定 required reviewer；repository variab
 
 已存在的舊stable driver只理解`digest-release`，因此migration bridge的pull前只能以該mode和`preflight-only`執行common host／active digest／checksum fence；target digest仍是新image digest，previous仍是canonical active digest，asset參數只能是既有stable driver與unit。此步不登入registry、不pull、不遷移也不改寫host state。
 
-Document之後才pull exact scanned digest、以該digest建立asset container，並在root-owned `0700` temporary directory擷取target driver與unit。bridge限定檢查temporary directory、兩個asset的canonical regular-file／non-symlink／`root:root:0500`或`root:root:0400`metadata、container image ID與pulled image ID一致，並在target preflight前後比對兩個SHA-256。只有同一份temporary target driver可執行`migration-bridge`的preflight與release；schema activation的preflight與release仍只能由已升級stable driver執行。
+Document之後才pull exact scanned digest、以該digest建立asset container，並在root-owned `0700` temporary directory擷取target driver與unit。`migration-bridge`與`schema-activation`都要檢查temporary directory、兩個asset的canonical regular-file／non-symlink／`root:root:0500`或`root:root:0400`metadata、container image ID與pulled image ID一致，並在target preflight前後比對兩個SHA-256。兩種mode各自只能由同一份temporary target driver完成preflight與release。schema activation在registry access前另由Document只讀驗證root-only marker的兩行shape、state與previous digest binding，不呼叫可能仍是舊版的host stable driver；target preflight必須保留marker，完整release成功後才可清除。
 
 任何extract或preflight失敗只清除Document自己的asset container與temporary directory，不得變更active runtime、verified marker或release state。target driver已進入mutation後的失敗仍依既有rollback恢復previous runtime；restore失敗保留root-only forensic state並停止。這個repo-local corrective合併與CI完成前，不得建立或執行Change Set。
 
