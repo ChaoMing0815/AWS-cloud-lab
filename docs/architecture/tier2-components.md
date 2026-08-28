@@ -35,7 +35,7 @@ flowchart LR
     Data --> DB[(Room authority)]
 ```
 
-第一階段實作`StoryJob` domain與memory contract double，第二階段新增PostgreSQL durable queue。第三階段建立同DB producer transaction、sanitized snapshot、Story Worker application contract與result inbox／completion outbox。第四階段讓PostgreSQL Web composition以`202`接producer，並提供獨立local Worker process與Web polling；圖仍不是AWS已部署宣告。
+第一階段實作`StoryJob` domain與memory contract double，第二階段新增PostgreSQL durable queue。第三階段建立同DB producer transaction、sanitized snapshot、Story Worker application contract與result inbox／completion outbox。第四階段讓PostgreSQL Web composition以`202`接producer，並提供獨立local Worker process與Web polling；第五階段把 production composition 導向既有Bedrock能力，為終局採用單次 composite tool，維持非終局單一 round invocation。圖仍不是AWS已部署宣告。
 
 ## 邊界與責任
 
@@ -55,7 +55,7 @@ flowchart LR
 - Memory contract 以 injected clock 計算 aware UTC lease，以 secure random 或測試注入的唯一 token 作 fencing。未到期的 owner replay 不增加 attempt；到期 reclaim 會換 token，使舊 worker 不得 complete。
 - Worker 明確 fail 或 lease expiry 達 `max_attempts` 時進入 `DEAD_LETTERED` 等價 terminal 狀態；本地狀態只驗證 bounded retry contract，不是 durable DLQ。
 - PostgreSQL adapter以單一transaction鎖定job row，再以status／ownership token／lease timestamp做條件UPDATE；transaction exception由driver rollback，不留下部分lifecycle mutation。
-- `002_create_story_jobs.sql`保存payload snapshot、Room／round／version關聯、attempt、result／failure與timestamps；state-shape CHECK與unique indexes是application guard以外的第二層防線。
+- `002_create_story_jobs`（已完成）保存payload snapshot、Room／round／version關聯、attempt、result／failure與timestamps；state-shape CHECK與unique indexes是application guard以外的第二層防線。production worker 切片新增 `resolve_round_and_ending` 的 single-converse composite，將終局 round 與 ending 合併在同一筆工具輸出中。
 - Process restart後新adapter可延續未到期lease、到期reclaim及terminal replay；這仍是PostgreSQL-backed at-least-once contract，不等同SQS或distributed exactly-once。
 - 第三階段local Data contract以Room version CAS、job fencing token與UTC lease防止stale result；只有Data commit成功後才可形成canonical state與queue completion intent。
 - SQS visibility timeout 與 ownership token 的 durable mapping、retry delay、真正 DLQ、poison payload 與 process restart recovery尚未定案。導入 durable queue／store 前必須另寫 integration contract 與 failure tests。
@@ -67,3 +67,9 @@ flowchart LR
 - local Worker process使用session-free snapshot narrator與`MockStoryteller`，Web process不內嵌Worker。
 - PostgreSQL Room、`story_jobs`、result inbox與completion outbox已具本機process gate；production尚未執行`002`／`003`。
 - Bedrock Worker adapter、SQS、DLQ、visibility heartbeat、private subnet Worker、container／CI/CD調整與AWS E2E仍未接線。
+
+## Migration bridge runtime boundary
+
+在任何 production `002`／`003`／`004` activation 前，bridge image 將 `CO_STORY_RESOLUTION_MODE=sync` 固定注入 Web candidate 與 stable service。因此PostgreSQL composition不建立 `StoryResolutionProducer`，resolve route 繼續走既有同步 `200` path；Worker factory 同時在 queue、Bedrock client 與 claim 前拒絕 `sync`。這是過渡相容性模式，不是 async feature 的停用開關或產品行為變更。
+
+資料庫 readiness 與 migration runner共用 canonical inventory validator，只接受完整已審核前綴 `001`、`001+002`、`001+002+003`、`001+002+003+004`；任何空白、gap、unknown、duplicate、malformed 或 DB 不可用均不可 ready。詳細的 release state machine 見 [ADR-0006](../decisions/0006-adopt-tier2-migration-bridge.md)。

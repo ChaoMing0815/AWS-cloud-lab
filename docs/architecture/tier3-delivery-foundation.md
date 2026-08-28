@@ -40,3 +40,25 @@ PR #8 已以 merge commit `030f11d` 進入 `main`，PR 四項 checks 全綠；ma
 ## Rollback boundary
 
 Release 只接受 `sha256:<64 hex>` target 與 previous digest。首次容器切換先以 previous digest 取代原生 systemd runtime並通過 `/live`、`/ready`，才遷移與驗證 candidate。正式 target restart 或 health gate 失敗時，release script 原子改回 previous digest；不做 schema downgrade，因此 migration 必須維持 backward compatibility。
+
+## Tier 2 migration bridge state machine
+
+```mermaid
+stateDiagram-v2
+    [*] --> ActiveSync001
+    ActiveSync001 --> OldStableFence: digest-release preflight-only\nold stable driver
+    OldStableFence --> TargetAssetsFenced: exact digest pull + image-ID\nroot-only temporary assets
+    TargetAssetsFenced --> BridgeCandidate: temporary target driver\nzero migration + sync candidate
+    BridgeCandidate --> BridgeUnitHandoff: previous backups + pending state\nverified target unit to installed unit + daemon-reload
+    BridgeUnitHandoff --> BridgeFirstHealth: first target restart + health\nstable assets remain previous
+    BridgeFirstHealth --> VerifiedBridge: promote stable assets + second health\ncanonical state + verified digest marker
+    VerifiedBridge --> SchemaActivation: marker matches previous digest
+    SchemaActivation --> VerifiedBridge: migration/candidate/target failure\nno schema downgrade
+    SchemaActivation --> ActiveSchema: migration + bridge recheck + promotion
+```
+
+`migration-bridge`與`schema-activation`都是 explicit release mode。前者要求 canonical active previous digest且不得提供 legacy input；不呼叫 migration，成功後才寫 root-only、exact-shape、digest-bound marker。production尚未升級的stable driver只執行`digest-release preflight-only`，作為不會mutation的common fence；Document從exact target image擷取並驗證root-owned temporary driver／unit後，才由同一target driver執行bridge的preflight與release。asset container必須綁定pulled image ID，temporary directory與assets必須canonical、non-symlink、嚴格metadata，且target preflight後重驗SHA-256以拒絕替換。
+
+bridge candidate通過後，driver必須先保存previous stable driver／unit、寫入pending state與target release env；隨後再次比對target unit source SHA-256，原子安裝該unit至installed systemd unit、再比對destination SHA-256並`daemon-reload`，才可做第一次target restart。此時stable driver與stable unit仍是previous版本；第一次health通過後才沿用既有promotion與第二次health。任何handoff、hash、reload、restart或health失敗都由previous backups還原installed／stable assets、release env與previous runtime；marker只能在最後verified state後寫入。`digest-release`與`schema-activation`不進入此bridge-only handoff。後者只接受marker綁定的previous bridge digest，在migration後重新驗證marker，再驗bridge與candidate，且始終由已升級stable driver執行。一般`digest-release`碰到仍存在的bridge marker即停止，避免誤把schema activation當成普通digest promotion。
+
+target unit以唯一的systemd設定`Environment=CO_STORY_RESOLUTION_MODE=sync`定義bridge同步模式；Docker CLI必須在同一個`ExecStart`以`--env CO_STORY_RESOLUTION_MODE=${CO_STORY_RESOLUTION_MODE}`傳遞此allowlisted、非秘密值。這是兩層不同的邊界：systemd Environment不會隱式成為container環境，因此禁止只依賴`runtime.env`或在Docker命令硬編第二份mode。此規則不改變candidate的顯式literal sync，亦不改變digest-release或schema-activation路徑。

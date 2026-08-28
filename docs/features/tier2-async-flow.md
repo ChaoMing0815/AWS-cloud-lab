@@ -4,6 +4,7 @@
 - 風險：R2（跨 API、PostgreSQL、獨立 process 與可觀察 UI）
 - 上游依據：Accepted ADR-0004、2026-08-27 使用者核准
 - 非部署聲明：本切片未執行 production migration、AWS、SSM、S3或Bedrock
+- 進度更新：本批新增 `codex/tier2-production-worker`，將 Web 已就緒的 async flow 的 Story worker 真實進程綁定到 production Bedrock adapter，但不改 API、RoomService、DB schema 或 web 行為。
 
 ## 玩家可見行為
 
@@ -35,7 +36,7 @@
 ## Local Worker contract
 
 - `python -m app.workers.story_resolution_worker`只處理一個available job並退出，輸出只有`worker_result=processed|idle`。
-- 本切片的CLI固定使用`MockStoryteller`並拒絕`CO_STORY_ENV=production`，避免把尚未核准的本地worker誤當production Bedrock Worker。
+- CLI 在非 production 環境固定使用`MockStoryteller`；`CO_STORY_ENV=production` 改走 real Bedrock storyteller factory 並維持 production bootstrap fail-closed 行為。
 - snapshot narrator只重建world、最近公開敘事、公開角色敘事資料、行動與canonical dice結果；不建立session、CSRF、cookie、transfer code或runtime secret。
 - 真實process gate必須使用明確的`CO_STORY_PROCESS_TEST_DATABASE_URL`；未提供時測試標記skip。
 
@@ -45,3 +46,4 @@
 - 不執行`002`／`003` production migration，不修改Docker、workflow、IaC或release文件。
 - 不把本機Mock Worker宣稱為Nova Lite或AWS E2E。
 - 整合後下一批才設計SQS transport、private Worker／Data Security Group、production Worker runtime與bounded deployment envelope。
+- production worker 批次也不觸發 `workflow_dispatch`、不啟動 Web process 中的 worker 執行緒或背景 thread，不在 local/test 環境建立 Bedrock client。

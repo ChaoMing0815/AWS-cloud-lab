@@ -9,6 +9,22 @@ from app.application.story_resolution import apply_story_result
 from app.domain.models import Character, DiceResult, Player, Room, StoryEntry, World
 
 
+class ProductionCompositeStorytellerNarrator(StoryResolutionNarrator):
+    """Creates final-round payloads with a single storyteller invocation."""
+
+    def __init__(self, storyteller: Storyteller) -> None:
+        self._storyteller = storyteller
+
+    def resolve(self, snapshot: dict[str, Any]) -> dict[str, Any]:
+        room = _room_from_snapshot(deepcopy(snapshot))
+        if room.round_number >= room.max_rounds:
+            try:
+                return self._storyteller.resolve_round_and_ending(room)
+            except AttributeError as error:
+                raise StorytellerFailure("SCHEMA_INVALID") from error
+        return {"narration": self._storyteller.resolve_round(room)}
+
+
 class StorytellerSnapshotNarrator(StoryResolutionNarrator):
     """Runs the existing storyteller against a session-free immutable snapshot."""
 

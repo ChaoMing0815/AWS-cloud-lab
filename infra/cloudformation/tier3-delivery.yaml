@@ -177,6 +177,8 @@ Resources:
             allowedValues:
               - legacy-bootstrap
               - digest-release
+              - migration-bridge
+              - schema-activation
           RepositoryUri:
             type: String
             allowedPattern: '^[0-9]{12}[.]dkr[.]ecr[.]ap-northeast-1[.]amazonaws[.]com/co-story-tier3$'
@@ -216,6 +218,41 @@ Resources:
                   readonly rds_ca=/etc/pki/rds/rds-ca.pem
                   readonly stable_driver=/usr/local/libexec/co-story-deploy-container
                   readonly stable_unit=/usr/local/share/co-story/co-story-container.service
+                  stop_release() {
+                    printf 'container_release=stopped reason=%s\n' "${1:?reason required}" >&2
+                    exit 2
+                  }
+                  file_sha256() {
+                    path="${1:?file required}"
+                    if command -v sha256sum >/dev/null 2>&1; then
+                      sha256sum "$path" | awk '{print $1}'
+                    else
+                      shasum -a 256 "$path" | awk '{print $1}'
+                    fi
+                  }
+                  validate_temporary_directory() {
+                    test -d "$temporary" || stop_release missing_temporary_directory
+                    test ! -L "$temporary" || stop_release temporary_directory_must_not_be_symlink
+                    test "$(readlink -f "$temporary" 2>/dev/null || true)" = "$temporary" \
+                      || stop_release invalid_temporary_directory_path
+                    test "$(stat -c '%U:%G:%a' "$temporary")" = root:root:700 \
+                      || stop_release invalid_temporary_directory_metadata
+                  }
+                  validate_regular_temporary_asset() {
+                    asset_path="${1:?asset path required}"
+                    asset_name="${2:?asset name required}"
+                    test -f "$asset_path" || stop_release "missing_${asset_name}_asset"
+                    test ! -L "$asset_path" || stop_release "${asset_name}_asset_must_not_be_symlink"
+                    test "$(readlink -f "$asset_path" 2>/dev/null || true)" = "$asset_path" \
+                      || stop_release "invalid_${asset_name}_asset_path"
+                  }
+                  validate_temporary_asset_metadata() {
+                    asset_path="${1:?asset path required}"
+                    expected_metadata="${2:?expected metadata required}"
+                    asset_name="${3:?asset name required}"
+                    test "$(stat -c '%U:%G:%a' "$asset_path")" = "$expected_metadata" \
+                      || stop_release "invalid_${asset_name}_asset_metadata"
+                  }
                   validate_rds_ca() {
                     test -f "$rds_ca" || { printf 'container_release=stopped reason=missing_rds_ca\n' >&2; return 2; }
                     test ! -L "$rds_ca" || { printf 'container_release=stopped reason=rds_ca_must_not_be_symlink\n' >&2; return 2; }
@@ -279,6 +316,20 @@ Resources:
                       test -z "$expected_legacy_release"
                       "$stable_driver" digest-release "$repository_uri" "$image_digest" "$previous_image_digest" '' "$health_host" "$stable_unit" "$stable_driver" preflight-only
                       ;;
+                    migration-bridge)
+                      validate_rds_ca
+                      test -x "$stable_driver"
+                      test -f "$stable_unit"
+                      test -z "$expected_legacy_release"
+                      "$stable_driver" digest-release "$repository_uri" "$image_digest" "$previous_image_digest" '' "$health_host" "$stable_unit" "$stable_driver" preflight-only
+                      ;;
+                    schema-activation)
+                      validate_rds_ca
+                      test -x "$stable_driver"
+                      test -f "$stable_unit"
+                      test -z "$expected_legacy_release"
+                      "$stable_driver" schema-activation "$repository_uri" "$image_digest" "$previous_image_digest" '' "$health_host" "$stable_unit" "$stable_driver" preflight-only
+                      ;;
                     *)
                       printf 'container_release=invalid_mode\n' >&2
                       exit 2
@@ -294,16 +345,50 @@ Resources:
                   trap cleanup EXIT
                   aws ecr get-login-password --region ap-northeast-1 | docker login --username AWS --password-stdin "$registry" >/dev/null
                   docker pull "$target_image" >/dev/null
+                  if [ "$release_mode" = migration-bridge ]; then
+                    target_image_id="$(docker image inspect --format '{{.Id}}' "$target_image")"
+                    [[ "$target_image_id" =~ ^sha256:[a-f0-9]{64}$ ]] || stop_release invalid_target_image_id
+                  fi
                   docker create --name "$asset_container" "$target_image" >/dev/null
+                  if [ "$release_mode" = migration-bridge ]; then
+                    asset_container_image_id="$(docker inspect --format '{{.Image}}' "$asset_container")"
+                    test "$asset_container_image_id" = "$target_image_id" \
+                      || stop_release asset_container_image_mismatch
+                  fi
                   docker cp "$asset_container:/usr/local/share/co-story/deploy_container.sh" "$temporary/deploy_container.sh"
                   docker cp "$asset_container:/usr/local/share/co-story/co-story-container.service" "$temporary/co-story-container.service"
-                  chmod 0500 "$temporary/deploy_container.sh"
                   case "$release_mode" in
                     legacy-bootstrap)
                       "$temporary/deploy_container.sh" legacy-bootstrap "$repository_uri" "$image_digest" '' "$expected_legacy_release" "$health_host" "$temporary/co-story-container.service" "$temporary/deploy_container.sh"
                       ;;
                     digest-release)
                       "$stable_driver" digest-release "$repository_uri" "$image_digest" "$previous_image_digest" '' "$health_host" "$temporary/co-story-container.service" "$temporary/deploy_container.sh"
+                      ;;
+                    migration-bridge)
+                      validate_temporary_directory
+                      validate_regular_temporary_asset "$temporary/deploy_container.sh" driver
+                      validate_regular_temporary_asset "$temporary/co-story-container.service" unit
+                      chown root:root "$temporary/deploy_container.sh" "$temporary/co-story-container.service"
+                      chmod 0500 "$temporary/deploy_container.sh"
+                      chmod 0400 "$temporary/co-story-container.service"
+                      validate_temporary_asset_metadata "$temporary/deploy_container.sh" root:root:500 driver
+                      validate_temporary_asset_metadata "$temporary/co-story-container.service" root:root:400 unit
+                      target_driver_sha="$(file_sha256 "$temporary/deploy_container.sh")"
+                      target_unit_sha="$(file_sha256 "$temporary/co-story-container.service")"
+                      "$temporary/deploy_container.sh" migration-bridge "$repository_uri" "$image_digest" "$previous_image_digest" '' "$health_host" "$temporary/co-story-container.service" "$temporary/deploy_container.sh" preflight-only
+                      validate_temporary_directory
+                      validate_regular_temporary_asset "$temporary/deploy_container.sh" driver
+                      validate_regular_temporary_asset "$temporary/co-story-container.service" unit
+                      validate_temporary_asset_metadata "$temporary/deploy_container.sh" root:root:500 driver
+                      validate_temporary_asset_metadata "$temporary/co-story-container.service" root:root:400 unit
+                      test "$(file_sha256 "$temporary/deploy_container.sh")" = "$target_driver_sha" \
+                        || stop_release target_driver_asset_changed_after_preflight
+                      test "$(file_sha256 "$temporary/co-story-container.service")" = "$target_unit_sha" \
+                        || stop_release target_unit_asset_changed_after_preflight
+                      "$temporary/deploy_container.sh" migration-bridge "$repository_uri" "$image_digest" "$previous_image_digest" '' "$health_host" "$temporary/co-story-container.service" "$temporary/deploy_container.sh"
+                      ;;
+                    schema-activation)
+                      "$stable_driver" schema-activation "$repository_uri" "$image_digest" "$previous_image_digest" '' "$health_host" "$temporary/co-story-container.service" "$temporary/deploy_container.sh"
                       ;;
                   esac
       Tags:

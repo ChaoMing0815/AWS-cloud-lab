@@ -11,6 +11,7 @@ from app.domain.models import Character, DiceResult, Player, Room, StoryEntry, W
 MAX_BEDROCK_TOKENS = 1200
 ROUND_TOOL_NAME = "submit_round_narrative"
 ENDING_TOOL_NAME = "submit_ending_narrative"
+ROUND_AND_ENDING_TOOL_NAME = "submit_round_and_ending_narrative"
 
 
 class FakeBedrockClient:
@@ -171,13 +172,13 @@ def expected_world(**overrides) -> World:
     )
 
 
-def resolution_room() -> Room:
+def resolution_room(*, round_number: int = 2, max_rounds: int = 6) -> Room:
     return Room(
         id="room-1",
         room_code="BEDRK1",
         status="RESOLVING",
         version=3,
-        round_number=2,
+        round_number=round_number,
         world=World(
             name="夜班盤點迷蹤",
             story_title="夜班盤點迷蹤",
@@ -187,7 +188,7 @@ def resolution_room() -> Room:
             core_obstacle="備份硬碟被鎖在倉庫，密碼只剩一半線索。",
             tone="mystery",
         ),
-        max_rounds=6,
+        max_rounds=max_rounds,
         initial_player_count=3,
         progress_points=2,
         danger_points=1,
@@ -223,7 +224,7 @@ def resolution_room() -> Room:
         dice_results=[
             DiceResult(
                 player_id="player-1",
-                round_number=2,
+                round_number=round_number,
                 d6_1=3,
                 d6_2=4,
                 approach="insight",
@@ -236,6 +237,14 @@ def resolution_room() -> Room:
             )
         ],
     )
+
+
+def round_and_ending_tool_input(**overrides) -> dict:
+    return {
+        **round_tool_input(),
+        **ending_tool_input(),
+        **overrides,
+    }
 
 
 def test_generate_world_uses_injected_converse_client_with_bounded_tokens_guardrail_and_safe_prompt() -> None:
@@ -827,5 +836,64 @@ def test_overlong_narrative_output_is_schema_failure(method_name: str, response:
 
     with pytest.raises(StorytellerFailure) as captured:
         getattr(adapter(client), method_name)(resolution_room())
+
+    assert captured.value.code == "SCHEMA_INVALID"
+
+
+def test_resolve_round_and_ending_uses_single_composite_tool_and_returns_round_plus_ending() -> None:
+    room = resolution_room(round_number=6, max_rounds=6)
+    client = FakeBedrockClient(
+        tool_response(
+            ROUND_AND_ENDING_TOOL_NAME,
+            round_and_ending_tool_input(
+                ending_narrative="終局收束：" + expected_ending_text(),
+            ),
+        )
+    )
+    storyteller = adapter(client)
+    assert hasattr(storyteller, "resolve_round_and_ending")
+
+    result = storyteller.resolve_round_and_ending(room)
+
+    assert result["narration"] == expected_round_text()
+    assert result["ending_narration"] == "\n".join(
+        [
+            "終局收束：" + expected_ending_text(),
+            "達成成果：正確報表得以提交，但篡改者的完整動機尚未查明。",
+            "付出代價：阿澈失去值班主管的信任，必須離開原本班表。",
+            "未解後果：缺失的監視器片段仍可能藏著另一名涉入者。",
+        ]
+    )
+    assert len(client.calls) == 1
+    request = client.calls[0]
+    assert request["toolConfig"]["toolChoice"] == {
+        "tool": {"name": ROUND_AND_ENDING_TOOL_NAME}
+    }
+    assert request["toolConfig"]["tools"][0]["toolSpec"]["name"] == ROUND_AND_ENDING_TOOL_NAME
+
+
+@pytest.mark.parametrize(
+    "missing_field",
+    [
+        "narrative",
+        "ending_narrative",
+        "player_consequences",
+    ],
+)
+def test_resolve_round_and_ending_rejects_partial_composite_output(
+    missing_field: str,
+) -> None:
+    room = resolution_room(round_number=6, max_rounds=6)
+    payload = round_and_ending_tool_input()
+    payload = dict(payload)
+    payload.pop(missing_field)
+    client = FakeBedrockClient(
+        tool_response(ROUND_AND_ENDING_TOOL_NAME, payload)
+    )
+    storyteller = adapter(client)
+    assert hasattr(storyteller, "resolve_round_and_ending")
+
+    with pytest.raises(StorytellerFailure) as captured:
+        storyteller.resolve_round_and_ending(room)
 
     assert captured.value.code == "SCHEMA_INVALID"

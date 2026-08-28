@@ -1,5 +1,8 @@
 import importlib.util
 from pathlib import Path
+import shlex
+
+import pytest
 
 
 ROOT = Path(__file__).parents[2]
@@ -13,6 +16,35 @@ PRODUCTION_REQUIREMENTS = ROOT / "backend/requirements-prod.txt"
 def _read(path: Path) -> str:
     assert path.is_file(), f"container asset 尚未建立：{path.relative_to(ROOT)}"
     return path.read_text(encoding="utf-8")
+
+
+def _systemd_execstart_tokens(unit: str) -> list[str]:
+    execstart = next(
+        line.removeprefix("ExecStart=")
+        for line in unit.splitlines()
+        if line.startswith("ExecStart=")
+    )
+    return shlex.split(execstart)
+
+
+def _assert_systemd_container_mode_propagation(unit: str) -> None:
+    mode_sources = [
+        line
+        for line in unit.splitlines()
+        if line.startswith("Environment=CO_STORY_RESOLUTION_MODE=")
+    ]
+    assert mode_sources == ["Environment=CO_STORY_RESOLUTION_MODE=sync"]
+
+    tokens = _systemd_execstart_tokens(unit)
+    expected_env_pair = [
+        "--env",
+        "CO_STORY_RESOLUTION_MODE=${CO_STORY_RESOLUTION_MODE}",
+    ]
+    assert any(
+        tokens[index : index + 2] == expected_env_pair
+        for index in range(len(tokens) - 1)
+    )
+    assert "CO_STORY_RESOLUTION_MODE=sync" not in tokens
 
 
 def test_image_is_non_root_secret_free_and_keeps_the_runtime_contract() -> None:
@@ -168,3 +200,44 @@ def test_container_systemd_keeps_nginx_edge_and_external_runtime_injection() -> 
     assert "DATABASE_URL=" not in unit
     assert "--privileged" not in unit
     assert "--network bridge" not in unit
+
+
+def test_container_systemd_propagates_its_single_sync_mode_source_to_docker() -> None:
+    _assert_systemd_container_mode_propagation(_read(SYSTEMD_UNIT))
+
+
+@pytest.mark.parametrize("invalid_mode", ["", "async", "ASYNC", " sync", "sync "])
+def test_container_systemd_rejects_noncanonical_resolution_mode_sources(
+    invalid_mode: str,
+) -> None:
+    unit = _read(SYSTEMD_UNIT).replace(
+        "Environment=CO_STORY_RESOLUTION_MODE=sync",
+        f"Environment=CO_STORY_RESOLUTION_MODE={invalid_mode}",
+    )
+
+    with pytest.raises(AssertionError):
+        _assert_systemd_container_mode_propagation(unit)
+
+
+@pytest.mark.parametrize(
+    "unsafe_unit",
+    [
+        lambda unit: unit.replace(
+            "--env CO_STORY_RESOLUTION_MODE=${CO_STORY_RESOLUTION_MODE}", ""
+        ),
+        lambda unit: unit.replace(
+            "--env CO_STORY_RESOLUTION_MODE=${CO_STORY_RESOLUTION_MODE}",
+            "--env CO_STORY_RESOLUTION_MODE=sync",
+        ),
+        lambda unit: unit.replace(
+            "--env CO_STORY_RESOLUTION_MODE=${CO_STORY_RESOLUTION_MODE}",
+            "--env-file /etc/co-story/runtime.env",
+        ),
+    ],
+    ids=["missing-docker-env", "hardcoded-docker-sync", "runtime-env-only"],
+)
+def test_container_systemd_rejects_missing_or_noncanonical_docker_mode_propagation(
+    unsafe_unit,
+) -> None:
+    with pytest.raises(AssertionError):
+        _assert_systemd_container_mode_propagation(unsafe_unit(_read(SYSTEMD_UNIT)))

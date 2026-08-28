@@ -301,6 +301,13 @@ run_migration() {
     --user 10001:10001 --entrypoint python "$target_image" -m app.commands.migrate
 }
 
+run_schema_migration() {
+  if [ "$release_mode" = migration-bridge ]; then
+    return 0
+  fi
+  run_migration
+}
+
 check_target_candidate() {
   docker rm -f co-story-candidate >/dev/null 2>&1 || true
   docker run --detach --name co-story-candidate --network host --read-only \
@@ -308,6 +315,7 @@ check_target_candidate() {
     --tmpfs /tmp:rw,noexec,nosuid,size=64m --env-file "$runtime_env" \
     --env-file "$database_env" \
     --env CO_STORY_APPLICATION_LOG_PATH=/var/log/co-story/candidate.jsonl \
+    --env CO_STORY_RESOLUTION_MODE=sync \
     --mount "type=bind,src=$rds_ca,dst=/etc/pki/rds/rds-ca.pem,readonly" \
     --mount "type=bind,src=$log_dir,dst=/var/log/co-story" \
     --user "$runtime_uid:$runtime_gid" \
@@ -411,6 +419,26 @@ restore_previous_assets_and_container() {
   fi
 }
 
+prepare_migration_bridge_target_unit() {
+  [ "$release_mode" = migration-bridge ] || return 0
+  if [ "${CO_STORY_TEST_STALE_FENCE:-}" = bridge-target-unit-source ]; then
+    printf '# stale target unit source\n' >>"$container_unit_source"
+  fi
+  [ "$(file_sha256 "$container_unit_source")" = "$target_unit_sha" ] || return 1
+  record_event mutation:install-bridge-target-unit
+  if ! mutation_guard bridge-target-unit-install \
+    || ! atomic_install "$container_unit_source" "$installed_unit" 0644; then
+    return 1
+  fi
+  if [ "${CO_STORY_TEST_STALE_FENCE:-}" = bridge-target-unit-destination ]; then
+    printf '# stale target unit destination\n' >>"$installed_unit"
+  fi
+  [ "$(file_sha256 "$installed_unit")" = "$target_unit_sha" ] || return 1
+  if ! mutation_guard bridge-target-daemon-reload || ! systemctl daemon-reload; then
+    return 1
+  fi
+}
+
 legacy_bootstrap() {
   [ -z "$previous_image_digest" ] || fail bootstrap_must_not_have_previous_digest
   [ "$legacy_release_id" = "$expected_legacy_release" ] || fail unexpected_legacy_release
@@ -430,7 +458,7 @@ legacy_bootstrap() {
 
   login_registry
   docker pull "$target_image" >/dev/null
-  run_migration || fail migration_failed
+  run_schema_migration || fail migration_failed
   wait_for_health legacy-post-migration 8000 || fail legacy_not_backward_compatible
   check_target_candidate || fail target_candidate_unhealthy
 
@@ -487,6 +515,9 @@ digest_release() {
   if [ "$image_digest" = "$previous_image_digest" ]; then
     fail target_and_previous_must_differ
   fi
+  if [ "$release_mode" = digest-release ] && [ -e "$bridge_marker" ]; then
+    fail bridge_state_requires_schema_activation
+  fi
   validate_common_host
   load_container_state
   [ "$state_status" = container-active ] || fail container_state_not_active
@@ -508,7 +539,7 @@ digest_release() {
   target_driver_sha="$(file_sha256 "$driver_asset_source")"
   target_unit_sha="$(file_sha256 "$container_unit_source")"
   if [ "$release_action" = preflight-only ]; then
-    printf 'container_release=preflight-verified mode=digest-release previous_image_digest=%s\n' "$previous_image_digest"
+    printf 'container_release=preflight-verified mode=%s previous_image_digest=%s\n' "$release_mode" "$previous_image_digest"
     return 0
   fi
   [ "$release_action" = release ] || fail invalid_release_action
@@ -520,7 +551,10 @@ digest_release() {
   login_registry
   docker pull "$previous_image" >/dev/null
   docker pull "$target_image" >/dev/null
-  run_migration || fail migration_failed
+  run_schema_migration || fail migration_failed
+  if [ "$release_mode" = schema-activation ]; then
+    load_bridge_marker "$previous_image"
+  fi
   wait_for_health previous-post-migration 8000 || fail previous_not_backward_compatible
   check_target_candidate || fail target_candidate_unhealthy
 
@@ -541,6 +575,10 @@ digest_release() {
     || ! write_release_env "$target_image"; then
     if ! restore_previous_assets_and_container; then fail previous_asset_restore_failed; fi
     fail digest_switch_prepare_failed
+  fi
+  if ! prepare_migration_bridge_target_unit; then
+    if ! restore_previous_assets_and_container; then fail previous_asset_restore_failed; fi
+    fail bridge_target_unit_prepare_failed
   fi
   if ! restart_service target-restart || ! wait_for_health target-active 8000; then
     if ! restore_previous_assets_and_container; then fail previous_container_restore_failed; fi
@@ -566,12 +604,55 @@ digest_release() {
     if ! restore_previous_assets_and_container; then fail previous_asset_restore_failed; fi
     fail final_state_write_failed
   fi
+  if [ "$release_mode" = migration-bridge ]; then
+    if ! write_bridge_marker "$target_image"; then
+      driver_sha="$previous_driver_sha"
+      container_unit_sha="$previous_unit_sha"
+      if ! restore_previous_assets_and_container; then fail previous_asset_restore_failed; fi
+      fail bridge_marker_write_failed
+    fi
+  fi
   if ! cleanup_previous_asset_backups; then
     write_transition_state asset-backup-cleanup-failed "$target_image" || true
     fail asset_backup_cleanup_failed
   fi
-  printf 'container_release=verified mode=digest-release image_digest=%s previous_image_digest=%s\n' \
-    "$image_digest" "$previous_image_digest"
+  printf 'container_release=verified mode=%s image_digest=%s previous_image_digest=%s\n' \
+    "$release_mode" "$image_digest" "$previous_image_digest"
+}
+
+write_bridge_marker() {
+  image="${1:?bridge image required}"
+  atomic_write "$bridge_marker" 0600 "STATE=verified-bridge
+BRIDGE_IMAGE=$image
+"
+}
+
+load_bridge_marker() {
+  expected_image="${1:?expected bridge image required}"
+  [ -s "$bridge_marker" ] || fail missing_bridge_marker
+  [ "$(file_metadata state "$bridge_marker")" = root:root:600 ] || fail invalid_bridge_marker_metadata
+  [ "$(wc -l <"$bridge_marker" | tr -d ' ')" -eq 2 ] || fail invalid_bridge_marker_shape
+  bridge_state="$(awk -F= '$1 == "STATE" {count++; value=substr($0, 7)} END {if (count == 1) print value}' "$bridge_marker")"
+  bridge_image="$(awk -F= '$1 == "BRIDGE_IMAGE" {count++; value=substr($0, 14)} END {if (count == 1) print value}' "$bridge_marker")"
+  [ "$bridge_state" = verified-bridge ] || fail invalid_bridge_marker_state
+  [ "$bridge_image" = "$expected_image" ] || fail bridge_marker_digest_mismatch
+}
+
+migration_bridge() {
+  [ -z "$legacy_release_id" ] || fail migration_bridge_must_not_set_legacy_release
+  [[ "$previous_image_digest" =~ ^sha256:[a-f0-9]{64}$ ]] || fail bridge_requires_previous_digest
+  [ "$image_digest" != "$previous_image_digest" ] || fail target_and_previous_must_differ
+  [ ! -e "$bridge_marker" ] || fail existing_bridge_marker
+  digest_release
+}
+
+schema_activation() {
+  [ -z "$legacy_release_id" ] || fail schema_activation_must_not_set_legacy_release
+  [[ "$previous_image_digest" =~ ^sha256:[a-f0-9]{64}$ ]] || fail schema_activation_requires_previous_digest
+  [ "$image_digest" != "$previous_image_digest" ] || fail target_and_previous_must_differ
+  load_bridge_marker "$repository_uri@$previous_image_digest"
+  digest_release
+  rm -f "$bridge_marker" || fail schema_activation_marker_clear_failed
 }
 
 legacy_rollback() {
@@ -621,7 +702,7 @@ legacy_rollback() {
 
 if [ "$(id -u)" -ne 0 ]; then fail must_run_as_root; exit $?; fi
 
-mode="${1:?release mode required}"
+release_mode="${1:?release mode required}"
 repository_uri="${2:?repository URI required}"
 image_digest="${3:?image digest required}"
 previous_image_digest="${4-}"
@@ -656,10 +737,13 @@ readonly stable_driver="$(host_path /usr/local/libexec/co-story-deploy-container
 readonly stable_container_unit="$(host_path /usr/local/share/co-story/co-story-container.service)"
 readonly previous_driver_backup="$(host_path /etc/co-story/previous-stable-driver)"
 readonly previous_unit_backup="$(host_path /etc/co-story/previous-stable-unit)"
+readonly bridge_marker="$(host_path /etc/co-story/migration-bridge.state)"
 
-case "$mode" in
+case "$release_mode" in
   legacy-bootstrap) legacy_bootstrap ;;
   digest-release) digest_release ;;
+  migration-bridge) migration_bridge ;;
+  schema-activation) schema_activation ;;
   legacy-rollback) legacy_rollback ;;
   *) fail invalid_release_mode; exit $? ;;
 esac

@@ -28,6 +28,7 @@ def test_policy_defines_exact_parallel_branches_and_protects_integration_state()
         "codex/tier3-healthcheck-correction",
         "codex/tier2-components",
         "codex/tier2-async-flow",
+        "codex/tier2-migration-bridge",
         "codex/tier2-production-worker",
         "codex/support-agent-core",
         "codex/support-agent-persistence",
@@ -251,6 +252,39 @@ def test_tier2_production_worker_accepts_only_worker_and_storyteller_paths() -> 
     assert "docs/handoffs/CURRENT.md" in rejected.stderr
 
 
+def test_tier2_migration_bridge_accepts_only_compatibility_release_paths() -> None:
+    accepted = _check(
+        "codex/tier2-migration-bridge",
+        ".github/workflows/tier3-release.yml",
+        "backend/app/adapters/postgres_migrations.py",
+        "backend/app/adapters/postgres_room_repository.py",
+        "backend/app/adapters/production_storyteller_factory.py",
+        "backend/app/main.py",
+        "backend/tests/test_migration_readiness.py",
+        "backend/tests/test_tier2_production_worker.py",
+        "backend/tests/test_tier3_delivery_contract.py",
+        "infra/cloudformation/tier3-delivery.yaml",
+        "ops/release/deploy_container.sh",
+        "ops/systemd/co-story-container.service",
+        "docs/decisions/0006-adopt-tier2-migration-bridge.md",
+    )
+    rejected = _check(
+        "codex/tier2-migration-bridge",
+        "backend/app/adapters/bedrock_storyteller.py",
+        "backend/migrations/004_create_support_report_drafts.sql",
+        "web/src/ui/pages/game-page.js",
+        "Dockerfile",
+        "docs/handoffs/CURRENT.md",
+    )
+
+    assert accepted.returncode == 0, accepted.stderr
+    assert rejected.returncode == 2
+    assert "backend/app/adapters/bedrock_storyteller.py" in rejected.stderr
+    assert "backend/migrations/004_create_support_report_drafts.sql" in rejected.stderr
+    assert "Dockerfile" in rejected.stderr
+    assert "docs/handoffs/CURRENT.md" in rejected.stderr
+
+
 def test_support_agent_persistence_accepts_only_local_draft_storage_paths() -> None:
     accepted = _check(
         "codex/support-agent-persistence",
@@ -299,6 +333,7 @@ def test_governance_guide_and_pull_request_gate_are_present() -> None:
     assert "codex/tier3-healthcheck-correction" in guide
     assert "codex/tier2-components" in guide
     assert "codex/tier2-async-flow" in guide
+    assert "codex/tier2-migration-bridge" in guide
     assert "codex/tier2-production-worker" in guide
     assert "codex/support-agent-core" in guide
     assert "codex/support-agent-persistence" in guide

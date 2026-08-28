@@ -8,12 +8,26 @@ Production GitHub environment 必須設定 required reviewer；repository variab
 
 `TIER3_INSTANCE_ID` 必須是無任何前後空白的 canonical EC2 instance ID，且精確符合 `^i-[0-9a-f]{17}$`。Workflow 必須在取得 AWS credentials 與 build 之前驗證 raw repository variable；不得靜默 trim。只有通過驗證後寫入的 `VALIDATED_TIER3_INSTANCE_ID` 可供 SSM send／wait／get 共用。
 
-## 兩種 release mode
+## 四種 release mode
 
 - `legacy-bootstrap`：只用於 `tier1-20260825-4a51e0e` 首次切換。`previous_image_digest` 必須空白，`expected_legacy_release` 必須精確相等；禁止假 digest、target digest 或相同 digest冒充 previous。
 - `digest-release`：只用於已有 verified container state 的後續版本。必須提供與 target 不同、且同時吻合 root-only state 與 active release env 的 previous digest；不得提供 legacy release input。
+- `migration-bridge`：只用於將 active digest 切換成可讀舊 schema的同步 bridge。previous 必須是 canonical active digest、legacy input 必須空白；全程不執行 migration，candidate 與 stable runtime 都固定 sync。成功後才寫入 root-only digest-bound bridge marker。
+- `schema-activation`：只能以 marker 綁定的 verified bridge digest 為 previous；先驗 marker，再 migration、重驗 marker、驗 bridge runtime與candidate。任何失敗只回復 bridge runtime，不做 schema downgrade。
 
-兩種模式都只接受 main、production environment 人工核准、OIDC 短期憑證、ARM64 image、exact digest scan，Trivy 保持 `HIGH,CRITICAL` 與 `exit-code: 1`。Migration 不提供 downgrade；每個 migration 在 release 前必須證明舊 runtime 可讀取新 schema，否則不得批准。
+所有 mode 都只接受 main、production environment 人工核准、OIDC 短期憑證、ARM64 image、exact digest scan，Trivy 保持 `HIGH,CRITICAL` 與 `exit-code: 1`。未知 mode 或互斥 input 必須在 credentials、build、registry、migration 或 mutation 前停止。Migration 不提供 downgrade；每個 migration 在 release 前必須證明 verified bridge runtime 可讀取新 schema，否則不得批准。
+
+## Migration bridge bootstrap compatibility
+
+已存在的舊stable driver只理解`digest-release`，因此migration bridge的pull前只能以該mode和`preflight-only`執行common host／active digest／checksum fence；target digest仍是新image digest，previous仍是canonical active digest，asset參數只能是既有stable driver與unit。此步不登入registry、不pull、不遷移也不改寫host state。
+
+Document之後才pull exact scanned digest、以該digest建立asset container，並在root-owned `0700` temporary directory擷取target driver與unit。bridge限定檢查temporary directory、兩個asset的canonical regular-file／non-symlink／`root:root:0500`或`root:root:0400`metadata、container image ID與pulled image ID一致，並在target preflight前後比對兩個SHA-256。只有同一份temporary target driver可執行`migration-bridge`的preflight與release；schema activation的preflight與release仍只能由已升級stable driver執行。
+
+任何extract或preflight失敗只清除Document自己的asset container與temporary directory，不得變更active runtime、verified marker或release state。target driver已進入mutation後的失敗仍依既有rollback恢復previous runtime；restore失敗保留root-only forensic state並停止。這個repo-local corrective合併與CI完成前，不得建立或執行Change Set。
+
+bridge candidate通過後，target driver先保存previous stable driver／unit、寫入pending state與target release env；只有`migration-bridge`才可在首次target restart前重新驗target unit source SHA-256、原子安裝已驗證target unit到installed systemd unit（`root:root:0644`）、再驗destination SHA-256並執行`daemon-reload`。首次target health前stable driver與stable unit仍維持previous版本。health通過後才promotion stable assets、再次restart／health、寫canonical active state，最後才寫verified bridge marker。handoff、hash、reload、restart、promotion或health任一步失敗都必須由previous backups恢復installed／stable assets、release env與previous runtime；restore失敗保留既有root-only forensic state。`digest-release`與`schema-activation`不得採用此handoff。
+
+container unit 的唯一resolution mode來源是精確的`Environment=CO_STORY_RESOLUTION_MODE=sync`。systemd 的Environment只影響Docker CLI process，並不會自動進入container，因此同一個`ExecStart`必須以相鄰token `--env CO_STORY_RESOLUTION_MODE=${CO_STORY_RESOLUTION_MODE}`顯式傳入allowlisted、非秘密值。不得把此值放進`runtime.env`或`container-release.env`，也不得在Docker參數再硬編第二份`sync`；否則production composition仍會在建立producer／store前fail closed。
 
 ## Change Set 與主機 preflight
 
