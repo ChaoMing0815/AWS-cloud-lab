@@ -48,6 +48,10 @@ def test_foundation_has_one_nat_one_private_subnet_and_exactly_two_workers() -> 
     assert route["NatGatewayId"] == {"Ref": "WorkerNatGateway"}
 
     group = resources["WorkerAutoScalingGroup"]["Properties"]
+    assert resources["WorkerAutoScalingGroup"]["DependsOn"] == [
+        "PrivateWorkerDefaultRoute",
+        "PrivateWorkerRouteTableAssociation",
+    ]
     assert group["MinSize"] == "2"
     assert group["MaxSize"] == "2"
     assert group["DesiredCapacity"] == "2"
