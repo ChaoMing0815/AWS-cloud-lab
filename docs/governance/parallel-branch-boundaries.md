@@ -205,6 +205,7 @@
 
 - migration inventory／readiness的明確向前相容contract
 - production composition與route的bridge feature flag及fail-closed tests
+- production Worker factory在bridge／sync mode下於queue、Bedrock client與claim前fail closed
 - GitHub release input、release driver、stable unit與SSM Document的bounded bridge mode
 - ADR、Tier 2／Tier 3架構、release runbook與短validation evidence
 
