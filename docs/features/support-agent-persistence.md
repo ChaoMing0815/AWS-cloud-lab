@@ -28,7 +28,13 @@
 
 - 不接受 raw description、raw identity；草稿僅保留 sanitized structured fields。
 - 不允許保存 `session_token/csrf/password/AWS credential/DATABASE_URL/runtime secret/JWT/PostgreSQL URL`。
-- 沒有提供 `CO_STORY_SUPPORT_TEST_DATABASE_URL` 時，restart／真 DB 測試必須明確skip。2026-08-28已以一次性localhost PostgreSQL 16通過adapter／process restart；目前尚無真實parallel-write case，不得宣稱並行寫入證據完成。
+- 沒有提供 `CO_STORY_SUPPORT_TEST_DATABASE_URL` 時，restart／真 DB 測試必須明確skip。2026-08-28已以一次性 localhost PostgreSQL 16通過 adapter／process restart 與真實 parallel-write contract；並行證據的範圍與限制見下一節。
+
+## 已驗證的並行持久化語意
+
+- 2026-08-28 以一次性、無 volume、僅綁定 localhost 的 PostgreSQL 16 容器驗證。兩個獨立 repository writer 各自建立 PostgreSQL connection，透過 pre-INSERT barrier 同步；winning `INSERT` 在資料庫端暫停，使 competing `ON CONFLICT` 實際與其重疊。
+- 相同正規化草稿與 identity 會收斂為同一 canonical row；相同 idempotency key 的不同 payload 與人工相同 16-hex report ID prefix 的不同 payload 都保留一列並回 `SupportReportConflict`。
+- 每種競態案例均驗證 row count、固定 state、hash／identity constraint 形狀，以及新 repository instance 的 replay。此為本機非 production durability evidence，不代表 production schema 已啟用或 Support Agent 已接入 API／UI。
 
 ## 目前未接範圍
 
