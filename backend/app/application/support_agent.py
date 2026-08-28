@@ -1,4 +1,5 @@
 import hashlib
+import json
 import re
 import unicodedata
 
@@ -7,7 +8,14 @@ from app.application.support_ports import (
     SupportModel,
     SupportReportRepository,
 )
-from app.domain.support_agent import ProblemReportDraft, RuleAnswer
+from app.domain.support_agent import (
+    ProblemReportDraft,
+    RuleAnswer,
+    SupportReportConflict,
+)
+
+
+_PAYLOAD_VERSION = 1
 
 
 _TOOL_ARGUMENTS = {
@@ -185,6 +193,13 @@ class SupportAgent:
         draft = ProblemReportDraft(
             report_id=f"draft-{idempotency_key[:16]}",
             reporter_identity_hash=identity_hash,
+            payload_fingerprint=_compute_payload_fingerprint(
+                category=fields["category"],
+                summary=fields["summary"],
+                reproduction_steps=tuple(fields["reproduction_steps"]),
+                expected_behavior=fields["expected_behavior"],
+                actual_behavior=fields["actual_behavior"],
+            ),
             category=fields["category"],
             summary=fields["summary"],
             reproduction_steps=tuple(fields["reproduction_steps"]),
@@ -194,7 +209,51 @@ class SupportAgent:
             submission_status="local_draft_only",
             idempotency_key=idempotency_key,
         )
-        return self._reports.get_or_save(draft)
+        self._validate_draft_before_persistence(draft)
+        persisted = self._reports.get_or_save(draft)
+        self._validate_persisted_report(draft, persisted)
+        return persisted
+
+    def _validate_draft_before_persistence(self, draft: ProblemReportDraft) -> None:
+        try:
+            _validate_report(draft)
+        except SupportReportConflict as error:
+            raise SupportAgentRejected("invalid_report_contract") from error
+
+    def _validate_persisted_report(
+        self,
+        draft: ProblemReportDraft,
+        persisted: ProblemReportDraft,
+    ) -> None:
+        try:
+            _validate_report(persisted)
+        except SupportReportConflict as error:
+            raise SupportAgentRejected("corrupt_report_contract") from error
+        if persisted != draft:
+            raise SupportAgentRejected("corrupt_report_contract")
+
+
+def _compute_payload_fingerprint(
+    *,
+    category: str,
+    summary: str,
+    reproduction_steps: tuple[str, ...],
+    expected_behavior: str,
+    actual_behavior: str,
+) -> str:
+    payload = {
+        "category": category,
+        "summary": summary,
+        "reproduction_steps": reproduction_steps,
+        "expected_behavior": expected_behavior,
+        "actual_behavior": actual_behavior,
+        "requires_human_confirmation": True,
+        "submission_status": "local_draft_only",
+        "payload_version": _PAYLOAD_VERSION,
+    }
+    return _sha256(
+        json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    )
 
 
 def _contains_unsafe_instruction(message: str) -> bool:
@@ -267,6 +326,56 @@ def _parse_report_fields(description: str) -> dict[str, str | list[str]]:
     if not fields["actual_behavior"]:
         fields["actual_behavior"] = normalized_description
     return fields
+
+
+def _validate_report(draft: ProblemReportDraft) -> None:
+    expected_version = _PAYLOAD_VERSION
+    if draft.payload_version != expected_version:
+        raise SupportReportConflict("payload version mismatch")
+    if not _is_sha256_hex(draft.idempotency_key):
+        raise SupportReportConflict("invalid draft idempotency key")
+    if not _is_sha256_hex(draft.reporter_identity_hash):
+        raise SupportReportConflict("invalid reporter identity hash")
+    if (
+        not isinstance(draft.report_id, str)
+        or re.fullmatch(r"draft-[0-9a-f]{16}", draft.report_id) is None
+        or draft.report_id != f"draft-{draft.idempotency_key[:16]}"
+    ):
+        raise SupportReportConflict("invalid report_id format")
+    if not _is_sha256_hex(draft.payload_fingerprint):
+        raise SupportReportConflict("invalid payload fingerprint")
+    if (
+        draft.requires_human_confirmation is not True
+        or draft.submission_status != "local_draft_only"
+    ):
+        raise SupportReportConflict("invalid report state")
+    _validate_sanitized_text(draft.category, "category")
+    _validate_sanitized_text(draft.summary, "summary")
+    if not isinstance(draft.reproduction_steps, tuple) or not draft.reproduction_steps:
+        raise SupportReportConflict("invalid reproduction steps")
+    for step in draft.reproduction_steps:
+        _validate_sanitized_text(step, "reproduction steps")
+    _validate_sanitized_text(draft.expected_behavior, "expected behavior")
+    _validate_sanitized_text(draft.actual_behavior, "actual behavior")
+    if draft.payload_fingerprint != _compute_payload_fingerprint(
+        category=draft.category,
+        summary=draft.summary,
+        reproduction_steps=draft.reproduction_steps,
+        expected_behavior=draft.expected_behavior,
+        actual_behavior=draft.actual_behavior,
+    ):
+        raise SupportReportConflict("report payload fingerprint mismatch")
+
+
+def _is_sha256_hex(value: object) -> bool:
+    return isinstance(value, str) and re.fullmatch(r"[0-9a-f]{64}", value) is not None
+
+
+def _validate_sanitized_text(value: object, field_name: str) -> None:
+    if not isinstance(value, str) or not value:
+        raise SupportReportConflict(f"invalid {field_name}")
+    if _redact_sensitive_data(value) != value:
+        raise SupportReportConflict("sensitive data in report fields")
 
 
 def _sha256(value: str) -> str:

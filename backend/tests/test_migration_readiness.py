@@ -239,6 +239,7 @@ class _ReadinessConnection:
             "001_create_rooms",
             "002_create_story_jobs",
             "003_create_story_resolution_results",
+            "004_create_support_report_drafts",
         ),
         failure=None,
     ):
