@@ -2,14 +2,14 @@
 
 - 更新日期：2026-08-28
 - 目前里程碑：Tier 1、Tier 3均已完整完成。Tier 2 migration bridge已透過production pipeline成功部署；尚未套用`002`／`003`／`004`、啟用async Worker或完成AWS三組件E2E。
-- 交付策略：已驗證的GitHub OIDC／ECR／Trivy／SSM pipeline作為後續唯一自動部署路徑。Tier 2 producer／Worker／Data replay-safe local contract、玩家可見async API、production Worker／Bedrock composition、Support Agent Phase A與PostgreSQL draft persistence均已整合；migration bridge與唯讀postflight已完成，下一步先補真實非production PostgreSQL durability gate，再另立schema activation與AWS Worker／queue change envelope。
-- Main 整合基準：PR #25 merge commit `57cded8f3cd0a2fc2640311ccfd376a7822e17ec`，exact-main CI run `33150322386`之Backend、Frontend與container build／Trivy全綠；main上的branch-boundary job依workflow設計skipped。
+- 交付策略：已驗證的GitHub OIDC／ECR／Trivy／SSM pipeline作為後續唯一自動部署路徑。Tier 2 producer／Worker／Data replay-safe local contract、玩家可見async API、production Worker／Bedrock composition、Support Agent Phase A與PostgreSQL draft persistence均已整合；migration bridge、唯讀postflight與真實非production PostgreSQL durability gate均已完成。下一步另立`schema-activation` envelope，先只前進schema並保持Web `sync`，再處理AWS Worker／queue與玩家可見async activation。
+- Main 整合基準：PR #31 merge commit `89f09bf1802d559a7311dd1004e7c46f62656b03`，exact-main CI run `33163069932`之Backend、Frontend與container build／Trivy全綠；main上的branch-boundary job依workflow設計skipped。
 - Tier 1 完成基準 commit：`07a986a`
 - 平行分支治理基準：migration bridge初始註冊Red `4d2decb`／Green `fff9f3f`；Worker第二層guard擴權Red `fcf57d4`／Green `bbfe6dd`。
-- Regression：PR #25整合前完整驗證為Backend `657 passed, 13 skipped`、Frontend `96 passed`；merge commit `57cded8…`的main CI `33150322386`之Backend、Frontend與container build／Trivy全綠。合併後以一次性localhost PostgreSQL 16執行Support draft、StoryJob、Story Result與Web／Worker process durability gate，共`33 passed`、無skip；尚缺Support draft真實parallel-write case。
+- Regression：PR #25合併後以一次性localhost PostgreSQL 16執行Support draft、StoryJob、Story Result與Web／Worker process durability gate，共`33 passed`、無skip。PR #31再以兩個獨立connection／backend PID、雙barrier與DB端重疊驗證Support draft並行canonical row、divergent idempotency與16-hex collision；targeted `12 passed`、affected `56 passed`、Backend全部72個test files分段全綠、Frontend `96 passed`。Merge commit `89f09bf…`的main CI `33163069932`之Backend、Frontend與container build／Trivy全綠。
 - AWS active release：migration bridge container digest `sha256:b9272ee27f1f4f587c2acf7f8672ae15f954c01e919ba311aa6ab83f073e60ff`；previous verified digest `sha256:32bee84dac17983d867c3f8f8112a34c6380fc4082b1b0a1819312af0d8df106`與legacy release `tier1-20260825-4a51e0e`保留作rollback state。Bridge runtime仍為同步模式且未前進schema。
 - 操作邊界：Console-first；使用者操作 AWS Console／SSM。Agent 未經新的 bounded batch 核准不得執行 AWS CLI，且不得執行 S3 讀取或 Bedrock 呼叫。
-- 平行工作：`codex/tier2-production-worker`、`codex/tier2-migration-bridge`與`codex/support-agent-persistence`已分別透過PR #26／#27／#25合併並封存；`codex/support-agent-durability`已註冊，僅執行本機非production PostgreSQL並行寫入gate。目前沒有進行中的production deployment task。
+- 平行工作：`codex/tier2-production-worker`、`codex/tier2-migration-bridge`、`codex/support-agent-persistence`與`codex/support-agent-durability`均已合併並可封存；目前沒有進行中的production deployment task。
 
 ## Current
 
@@ -64,12 +64,13 @@
 
 ## Next
 
-1. 以獨立strict-TDD patch補上Support draft真實PostgreSQL parallel-write／collision gate；不得以串行replay冒充並行證據。
-2. Parallel-write gate通過後，另立`schema-activation` change envelope；production套用`002`／`003`／`004`前，必須確認bridge digest可讀newer schema與rollback不做downgrade。
+1. 另立`schema-activation` change envelope；production套用`002`／`003`／`004`前，必須以read-only preflight確認active bridge digest、digest-bound marker、目前migration inventory `001`、sync runtime與rollback不做downgrade。
+2. `schema-activation`只前進append-only schema，candidate與stable Web仍固定`sync`；不得在Worker／queue未完成前切換玩家可見async flow。
 3. 設計SQS／DLQ、private Worker／Data網段、SG、成本與CloudFormation change envelope，通過action→queue→worker→Bedrock→DB→result E2E及負面連線證據後才提production部署核准。
-4. Tier 2 runtime穩定後，另行評估Support Agent API／UI、Nova Lite adapter、rate limiting與observability；外部submit tool仍需獨立核准。
-5. Schema activation以外的後續production更新一律使用新exact main SHA與`digest-release`；previous digest必須取當時verified active state，仍需每次人工核准。
-6. Nova Lite round／ending真實品質evaluation仍需另行bounded核准。
+4. AWS Worker穩定後，再以獨立repo-local strict-TDD patch與production envelope將Web從`sync`切換成`async`，完成玩家可見`202`→polling→result E2E及rollback。
+5. Tier 2 runtime穩定後，另行評估Support Agent API／UI、Nova Lite adapter、rate limiting與observability；外部submit tool仍需獨立核准。
+6. Schema activation以外的後續production更新一律使用新exact main SHA與`digest-release`；previous digest必須取當時verified active state，仍需每次人工核准。
+7. Nova Lite round／ending真實品質evaluation仍需另行bounded核准。
 
 ## 操作護欄
 
@@ -87,9 +88,9 @@
 - Forced-tool Storyteller 已通過 fake Converse contract，但尚未以真實 Nova Lite 驗證 round／ending schema 與敘事品質。
 - 三次失敗T3B images與兩個成功release images均保留於immutable ECR並受lifecycle limit `10`管理；舊runs不得re-run，ECR storage／scan仍可能產生少量費用。
 - Docker actions的 Node.js 20 annotation已以test-first更新至官方 Node.js 24相容版本並通過PR #12、#14、#15 CI；後續仍不得無測試任意升版。
-- Story result的PostgreSQL CAS／inbox／outbox與async route／composition／Web polling已完成本地contract，但真實PostgreSQL process/restart gate仍因缺少專用測試DSN而skip；production Worker／Bedrock adapter、SQS、真正DLQ、lease heartbeat、private Worker與AWS E2E仍是Tier 2核心缺口。
-- Migration readiness目前要求DB套用版本集合與image內集合完全相等；一旦`004`成功套用，舊image rollback會因不認得新版本而失敗。Support persistence PR在另行完成相容性策略前不得merge或部署。
-- Support Agent static retrieval無法涵蓋所有自然語言問法；identity digest未加鹽、草稿尚無API層長度／rate limit，memory repository不耐restart或多process。接線前不得宣稱線上客服、RAG、Bedrock或問題提交已完成。
+- Story result的PostgreSQL CAS／inbox／outbox、async route／composition／Web polling與本機真實PostgreSQL process／restart gate均已完成；production SQS、真正DLQ、lease heartbeat、private Worker、玩家可見async activation與AWS E2E仍是Tier 2核心缺口。
+- Migration bridge已證明可讀完整`001`／`002`／`003`／`004`前綴並作為schema activation失敗時唯一rollback target；不得回復不認得newer schema的pre-bridge image，也不得做schema downgrade。
+- Support Agent static retrieval無法涵蓋所有自然語言問法；identity digest未加鹽，草稿雖已有本機PostgreSQL restart／parallel-write證據，但尚無API層長度／rate limit、API／UI、Bedrock或外部提交。接線前不得宣稱線上客服、RAG或問題提交已完成。
 - iPhone Safari 短期雙向同步已通過，但長時間 polling／visibility 行為仍需在下一次完整多人遊戲觀察。
 - 刪房後舊分頁 lifecycle 修正已部署，尚未以 `COMPLETED` 房間做 AWS 多分頁重驗。
 - 原始截圖若位於 TemporaryItems／Downloads，不算正式 evidence；入庫前必須去識別化。
