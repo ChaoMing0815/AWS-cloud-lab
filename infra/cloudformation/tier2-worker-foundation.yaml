@@ -436,7 +436,9 @@ Resources:
 
   WorkerAutoScalingGroup:
     Type: AWS::AutoScaling::AutoScalingGroup
-    DependsOn: PrivateWorkerDefaultRoute
+    DependsOn:
+      - PrivateWorkerDefaultRoute
+      - PrivateWorkerRouteTableAssociation
     Properties:
       AutoScalingGroupName: co-story-tier2-worker
       MinSize: '2'
