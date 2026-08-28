@@ -3,12 +3,15 @@ from __future__ import annotations
 import importlib
 import importlib.util
 import os
+import threading
+import time
 from dataclasses import replace
 from types import SimpleNamespace
 
 import pytest
 
 from app.adapters.mock_support_model import MockSupportModel
+from app.adapters.memory_support_report_repository import MemorySupportReportRepository
 from app.adapters.static_rules_knowledge_base import StaticRulesKnowledgeBase
 from app.application.support_agent import SupportAgent, _compute_payload_fingerprint
 from app.domain.support_agent import ProblemReportDraft, SupportReportConflict
@@ -108,6 +111,151 @@ def _agent(repository) -> SupportAgent:
         rules_knowledge_base=StaticRulesKnowledgeBase.from_default_resource(),
         report_repository=repository,
     )
+
+
+def _normalized_draft() -> ProblemReportDraft:
+    first = _agent(MemorySupportReportRepository()).respond(
+        "問題回報：並行寫入後仍應保留同一份草稿。",
+        reporter_identity="player-local-concurrency",
+    )
+    second = _agent(MemorySupportReportRepository()).respond(
+        "問題回報：並行寫入後仍應保留同一份草稿。  ",
+        reporter_identity="player-local-concurrency",
+    )
+
+    assert isinstance(first, ProblemReportDraft)
+    assert first == second
+    return first
+
+
+def _prepare_durable_database(dsn: str) -> None:
+    migrations = importlib.import_module("app.adapters.postgres_migrations")
+    migrations.apply_migrations(dsn)
+    with psycopg.connect(dsn) as connection:
+        connection.execute("DELETE FROM support_report_drafts")
+
+
+def _concurrently_save(module, monkeypatch, dsn: str, drafts):
+    """Run two repository writers through the same real pre-INSERT race point."""
+
+    original_connect = psycopg.connect
+    entry_barrier = threading.Barrier(2)
+    insert_barrier = threading.Barrier(2)
+    lock = threading.Lock()
+    backend_pids: set[int] = set()
+    insert_intervals: list[tuple[float, float]] = []
+
+    class _DropDelayColumn:
+        def __init__(self, result) -> None:
+            self._result = result
+
+        def fetchone(self):
+            row = self._result.fetchone()
+            return None if row is None else row[1:]
+
+    class _BarrierConnection:
+        def __init__(self, connection) -> None:
+            self._connection = connection
+
+        def __enter__(self):
+            self._connection.__enter__()
+            return self
+
+        def __exit__(self, exc_type, exc, traceback):
+            return self._connection.__exit__(exc_type, exc, traceback)
+
+        def execute(self, sql, params=None):
+            normalized = " ".join(sql.lower().split())
+            if "insert into support_report_drafts" not in normalized:
+                return self._connection.execute(sql, params)
+
+            with lock:
+                backend_pids.add(self._connection.info.backend_pid)
+            insert_barrier.wait(timeout=5)
+
+            # Keep the winning INSERT transaction open in PostgreSQL.  The
+            # competing ON CONFLICT statement must then execute concurrently
+            # and wait on the real unique-index race, rather than on a mock.
+            delayed_sql = sql.replace(
+                "RETURNING report_id,",
+                "RETURNING pg_sleep(0.20), report_id,",
+                1,
+            )
+            started_at = time.monotonic()
+            try:
+                return _DropDelayColumn(self._connection.execute(delayed_sql, params))
+            finally:
+                with lock:
+                    insert_intervals.append((started_at, time.monotonic()))
+
+    def connect(_dsn: str):
+        return _BarrierConnection(original_connect(_dsn))
+
+    monkeypatch.setattr(module, "psycopg", SimpleNamespace(connect=connect))
+    try:
+        results = [None, None]
+        errors = [None, None]
+
+        def writer(index: int) -> None:
+            try:
+                entry_barrier.wait(timeout=5)
+                results[index] = module.PostgresSupportReportRepository(dsn).get_or_save(
+                    drafts[index]
+                )
+            except BaseException as error:  # pragma: no cover - asserted below
+                errors[index] = error
+
+        writers = [threading.Thread(target=writer, args=(index,)) for index in range(2)]
+        for writer_thread in writers:
+            writer_thread.start()
+        for writer_thread in writers:
+            writer_thread.join(timeout=10)
+
+        assert not any(writer_thread.is_alive() for writer_thread in writers)
+        assert len(backend_pids) == 2
+        assert len(insert_intervals) == 2
+        assert max(started_at for started_at, _ in insert_intervals) < min(
+            finished_at for _, finished_at in insert_intervals
+        )
+        return results, errors
+    finally:
+        monkeypatch.undo()
+
+
+def _assert_single_canonical_row(dsn: str, canonical: ProblemReportDraft) -> None:
+    with psycopg.connect(dsn) as connection:
+        rows = connection.execute(
+            """
+            SELECT report_id, idempotency_key, content_fingerprint,
+                requires_human_confirmation, submission_status
+            FROM support_report_drafts
+            """
+        ).fetchall()
+        constraints = connection.execute(
+            """
+            SELECT conname, pg_get_constraintdef(oid)
+            FROM pg_constraint
+            WHERE conrelid = 'support_report_drafts'::regclass
+            """
+        ).fetchall()
+
+    assert rows == [
+        (
+            canonical.report_id,
+            canonical.idempotency_key,
+            canonical.payload_fingerprint,
+            True,
+            "local_draft_only",
+        )
+    ]
+    constraint_definitions = {name: definition for name, definition in constraints}
+    assert "support_report_drafts_pkey" in constraint_definitions
+    assert "support_report_identity_shape" in constraint_definitions
+    assert "support_report_payload_shape" in constraint_definitions
+    identity_shape = constraint_definitions["support_report_identity_shape"].replace(
+        '"', ""
+    )
+    assert "left(idempotency_key, 16)" in identity_shape
 
 
 def test_postgres_repository_implements_support_report_contract_without_real_connect() -> None:
@@ -263,3 +411,100 @@ def test_postgres_support_report_repository_replays_across_instances() -> None:
     )
 
     assert first == second
+
+
+@pytest.mark.skipif(
+    "CO_STORY_SUPPORT_TEST_DATABASE_URL" not in os.environ,
+    reason="需要明確指定 support 報表 PostgreSQL 測試 DSN",
+)
+def test_postgres_repository_concurrent_normalized_drafts_keep_one_canonical_row(
+    monkeypatch,
+) -> None:
+    dsn = os.environ["CO_STORY_SUPPORT_TEST_DATABASE_URL"]
+    module = _load_repo_module()
+    _prepare_durable_database(dsn)
+    draft = _normalized_draft()
+
+    results, errors = _concurrently_save(module, monkeypatch, dsn, (draft, draft))
+
+    assert errors == [None, None]
+    assert results == [draft, draft]
+    _assert_single_canonical_row(dsn, draft)
+    assert module.PostgresSupportReportRepository(dsn).get_or_save(draft) == draft
+
+
+@pytest.mark.skipif(
+    "CO_STORY_SUPPORT_TEST_DATABASE_URL" not in os.environ,
+    reason="需要明確指定 support 報表 PostgreSQL 測試 DSN",
+)
+def test_postgres_repository_concurrent_divergent_idempotency_key_fails_closed(
+    monkeypatch,
+) -> None:
+    dsn = os.environ["CO_STORY_SUPPORT_TEST_DATABASE_URL"]
+    module = _load_repo_module()
+    _prepare_durable_database(dsn)
+    canonical = _draft(summary="並行 idempotency canonical")
+    divergent = _draft(
+        summary="並行 idempotency divergent",
+        idempotency_key=canonical.idempotency_key,
+    )
+
+    results, errors = _concurrently_save(
+        module,
+        monkeypatch,
+        dsn,
+        (canonical, divergent),
+    )
+
+    successful = [result for result in results if result is not None]
+    conflicts = [error for error in errors if error is not None]
+    assert len(successful) == 1
+    assert len(conflicts) == 1
+    assert isinstance(conflicts[0], SupportReportConflict)
+    assert "idempotency key reused" in str(conflicts[0])
+    stored = successful[0]
+    _assert_single_canonical_row(dsn, stored)
+    restarted = module.PostgresSupportReportRepository(dsn)
+    assert restarted.get_or_save(stored) == stored
+    with pytest.raises(SupportReportConflict, match="idempotency key reused"):
+        restarted.get_or_save(divergent if stored == canonical else canonical)
+
+
+@pytest.mark.skipif(
+    "CO_STORY_SUPPORT_TEST_DATABASE_URL" not in os.environ,
+    reason="需要明確指定 support 報表 PostgreSQL 測試 DSN",
+)
+def test_postgres_repository_concurrent_report_id_prefix_collision_fails_closed(
+    monkeypatch,
+) -> None:
+    dsn = os.environ["CO_STORY_SUPPORT_TEST_DATABASE_URL"]
+    module = _load_repo_module()
+    _prepare_durable_database(dsn)
+    canonical = _draft(
+        summary="並行 report id canonical",
+        idempotency_key="f" * 16 + "a" * 48,
+    )
+    collision = _draft(
+        summary="並行 report id collision",
+        idempotency_key="f" * 16 + "b" * 48,
+    )
+
+    results, errors = _concurrently_save(
+        module,
+        monkeypatch,
+        dsn,
+        (canonical, collision),
+    )
+
+    successful = [result for result in results if result is not None]
+    conflicts = [error for error in errors if error is not None]
+    assert len(successful) == 1
+    assert len(conflicts) == 1
+    assert isinstance(conflicts[0], SupportReportConflict)
+    assert "16-hex prefix collision" in str(conflicts[0])
+    stored = successful[0]
+    _assert_single_canonical_row(dsn, stored)
+    restarted = module.PostgresSupportReportRepository(dsn)
+    assert restarted.get_or_save(stored) == stored
+    with pytest.raises(SupportReportConflict, match="16-hex prefix collision"):
+        restarted.get_or_save(collision if stored == canonical else canonical)
