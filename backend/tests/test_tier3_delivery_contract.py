@@ -67,6 +67,11 @@ def _document_harness(
     runtime_env.write_text("CO_STORY_ALLOWED_HOSTS=localhost\n", encoding="utf-8")
     rds_ca.write_text("test-ca\n", encoding="utf-8")
     stable_unit.write_text("[Service]\n", encoding="utf-8")
+    if mode == "schema-activation":
+        marker.write_text(
+            f"STATE=verified-bridge\nBRIDGE_IMAGE={REPOSITORY}@{PREVIOUS_DIGEST}\n",
+            encoding="utf-8",
+        )
 
     _write_executable(
         stable_driver,
@@ -80,7 +85,7 @@ def _document_harness(
         target_driver,
         "#!/bin/sh\n"
         "printf 'target:%s:%s:%s:%s\\n' \"$1\" \"${9:-release}\" \"$7\" \"$8\" >>\"$TEST_EVENTS\"\n"
-        "test \"$1\" = migration-bridge || exit 43\n"
+        "case \"$1\" in migration-bridge|schema-activation) ;; *) exit 43 ;; esac\n"
         "if test \"${9:-release}\" = preflight-only; then\n"
         "  test \"$TEST_TARGET_PREFLIGHT_FAILURE\" = 1 && exit 44\n"
         "  case \"$TEST_TARGET_MUTATION\" in\n"
@@ -92,7 +97,11 @@ def _document_harness(
         "test \"$TEST_TARGET_RELEASE_FAILURE\" = 1 && exit 45\n"
         "mkdir -p \"$(dirname \"$TEST_ACTIVE_STATE\")\"\n"
         "printf 'STATE=container-active\\n' >\"$TEST_ACTIVE_STATE\"\n"
-        "printf 'STATE=verified-bridge\\n' >\"$TEST_MARKER\"\n",
+        "if test \"$1\" = schema-activation; then\n"
+        "  rm -f \"$TEST_MARKER\"\n"
+        "else\n"
+        "  printf 'STATE=verified-bridge\\n' >\"$TEST_MARKER\"\n"
+        "fi\n",
         0o500,
     )
     target_unit = tmp_path / "target-container.service"
@@ -564,19 +573,32 @@ def test_migration_bridge_bootstraps_an_old_stable_driver_with_the_target_driver
     assert active_state.is_file()
 
 
-def test_schema_activation_keeps_using_the_upgraded_stable_driver(tmp_path: Path) -> None:
+def test_schema_activation_uses_the_exact_target_driver_when_stable_driver_is_old(
+    tmp_path: Path,
+) -> None:
     result, events, marker, active_state, _ = _document_harness(
         tmp_path,
         mode="schema-activation",
-        stable_modes="schema-activation",
+        stable_modes="digest-release",
     )
 
     assert result.returncode == 0, result.stderr
-    assert events.count("stable:schema-activation:preflight-only") == 1
-    assert events.count("stable:schema-activation:release") == 1
-    assert not any(event.startswith("target:") for event in events)
+    ordered = (
+        "docker:login",
+        f"docker:pull {REPOSITORY}@{TARGET_DIGEST}",
+        "docker:create",
+        "docker:cp",
+        "target:schema-activation:preflight-only",
+        "target:schema-activation:release",
+    )
+    positions = [_event_index(events, prefix) for prefix in ordered]
+    assert positions == sorted(positions)
+    assert not any(event.startswith("stable:schema-activation") for event in events)
+    preflight = events[_event_index(events, "target:schema-activation:preflight-only")]
+    release = events[_event_index(events, "target:schema-activation:release")]
+    assert preflight.split(":", 3)[3] == release.split(":", 3)[3]
     assert not marker.exists()
-    assert not active_state.exists()
+    assert active_state.is_file()
 
 
 @pytest.mark.parametrize(
