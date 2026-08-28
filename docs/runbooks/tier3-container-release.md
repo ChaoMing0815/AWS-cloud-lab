@@ -15,6 +15,8 @@ Production GitHub environment 必須設定 required reviewer；repository variab
 - `migration-bridge`：只用於將 active digest 切換成可讀舊 schema的同步 bridge。previous 必須是 canonical active digest、legacy input 必須空白；全程不執行 migration，candidate 與 stable runtime 都固定 sync。成功後才寫入 root-only digest-bound bridge marker。
 - `schema-activation`：只能以 marker 綁定的 verified bridge digest 為 previous；先驗 marker，再 migration、重驗 marker、驗 bridge runtime與candidate。任何失敗只回復 bridge runtime，不做 schema downgrade。
 
+`schema-activation` 的 `preflight-only` 必須只驗證 bridge marker，並完整保留其內容、`root:root:0600` metadata 與 digest binding；只有同一次完整 release 在 migration、candidate、target activation及canonical state全部成功後才可移除 marker。若舊版driver在preflight誤刪marker，立即停止，不得重跑失敗workflow或手動偽造marker；先確認active digest仍是verified bridge、migration inventory未前進且runtime health正常，再以獨立核准的bounded recovery恢復marker。
+
 所有 mode 都只接受 main、production environment 人工核准、OIDC 短期憑證、ARM64 image、exact digest scan，Trivy 保持 `HIGH,CRITICAL` 與 `exit-code: 1`。未知 mode 或互斥 input 必須在 credentials、build、registry、migration 或 mutation 前停止。Migration 不提供 downgrade；每個 migration 在 release 前必須證明 verified bridge runtime 可讀取新 schema，否則不得批准。
 
 ## Migration bridge bootstrap compatibility
