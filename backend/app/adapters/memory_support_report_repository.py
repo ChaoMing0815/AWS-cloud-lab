@@ -1,5 +1,6 @@
 from app.domain.support_agent import SupportReportConflict
 from app.domain.support_agent import ProblemReportDraft
+from app.application.support_agent import _validate_report
 
 
 class MemorySupportReportRepository:
@@ -12,6 +13,7 @@ class MemorySupportReportRepository:
         self._drafts_by_id: dict[str, ProblemReportDraft] = {}
 
     def get_or_save(self, draft: ProblemReportDraft) -> ProblemReportDraft:
+        _validate_report(draft)
         if draft.report_id in self._drafts_by_id:
             existing = self._drafts_by_id[draft.report_id]
             if existing != draft:

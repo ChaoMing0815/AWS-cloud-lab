@@ -103,6 +103,105 @@ def test_application_detects_corrupt_persisted_draft_before_return() -> None:
     assert error.value.code == "corrupt_report_contract"
 
 
+def test_application_validates_draft_before_repository_and_revalidates_persisted(
+    monkeypatch,
+) -> None:
+    application, _, _, _ = _support_types()
+    events = []
+    original_validator = application._validate_report
+
+    def record_validation(draft):
+        events.append("validate")
+        original_validator(draft)
+
+    class RecordingRepository:
+        def get_or_save(self, draft):
+            events.append("repository")
+            return draft
+
+    monkeypatch.setattr(application, "_validate_report", record_validation)
+    agent, _ = _agent(repository=RecordingRepository())
+
+    agent.respond("問題回報：操作失敗。", reporter_identity="player-local-001")
+
+    assert events == ["validate", "repository", "validate"]
+
+
+@pytest.mark.parametrize(
+    ("replacement", "message"),
+    [
+        ({"requires_human_confirmation": False}, "invalid report state"),
+        ({"submission_status": "submitted"}, "invalid report state"),
+        ({"idempotency_key": "A" * 64}, "invalid draft idempotency key"),
+        ({"reporter_identity_hash": "C" * 64}, "invalid reporter identity hash"),
+        ({"payload_fingerprint": "F" * 64}, "invalid payload fingerprint"),
+        ({"report_id": "draft-0000000000000000"}, "invalid report_id format"),
+    ],
+)
+def test_pure_draft_validator_rejects_state_and_identifier_tampering(
+    replacement, message
+) -> None:
+    application, _, _, _ = _support_types()
+    agent, _ = _agent()
+    draft = agent.respond("問題回報：操作失敗。", reporter_identity="player-local-001")
+
+    with pytest.raises(application.SupportReportConflict, match=message):
+        application._validate_report(replace(draft, **replacement))
+
+
+def test_pure_draft_validator_rejects_sensitive_structured_field() -> None:
+    application, _, _, reports = _support_types()
+    agent, _ = _agent()
+    draft = agent.respond("問題回報：操作失敗。", reporter_identity="player-local-001")
+    summary = "password=FAKE_SENSITIVE_MARKER"
+    tampered = replace(
+        draft,
+        summary=summary,
+        payload_fingerprint=application._compute_payload_fingerprint(
+            category=draft.category,
+            summary=summary,
+            reproduction_steps=draft.reproduction_steps,
+            expected_behavior=draft.expected_behavior,
+            actual_behavior=draft.actual_behavior,
+        ),
+    )
+
+    with pytest.raises(application.SupportReportConflict, match="sensitive data"):
+        application._validate_report(tampered)
+    repository = reports.MemorySupportReportRepository()
+    with pytest.raises(application.SupportReportConflict, match="sensitive data"):
+        repository.get_or_save(tampered)
+    assert repository.count == 0
+
+
+def test_pure_draft_validator_allows_existing_redaction_marker() -> None:
+    application, _, _, _ = _support_types()
+    agent, _ = _agent()
+    draft = agent.respond(
+        "問題回報：畫面錯誤，password=FAKE_PASSWORD_MARKER",
+        reporter_identity="player-local-001",
+    )
+
+    application._validate_report(draft)
+
+
+def test_sanitized_draft_replay_remains_idempotent() -> None:
+    _, _, _, reports = _support_types()
+    repository = reports.MemorySupportReportRepository()
+    first_agent, _ = _agent(repository=repository)
+    replay_agent, _ = _agent(repository=repository)
+    description = "問題回報：畫面錯誤，password=FAKE_PASSWORD_MARKER"
+
+    first = first_agent.respond(description, reporter_identity="player-local-001")
+    replay = replay_agent.respond(
+        f"  {description}  ",
+        reporter_identity="player-local-001",
+    )
+
+    assert replay == first
+    assert repository.count == 1
+
+
 def test_draft_report_contains_stable_16_hex_prefix_for_report_id() -> None:
     agent, _ = _agent()
     draft = agent.respond("問題回報：進入房間後畫面沒有更新。", reporter_identity="player-local-001")

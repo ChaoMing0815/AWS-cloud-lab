@@ -21,6 +21,11 @@ def test_support_report_migration_is_append_only_and_stable_version_shape() -> N
     assert "reporter_identity_hash text not null" in sql
     assert "content_fingerprint text not null" in sql
     assert "idempotency_key text not null unique" in sql
+    assert "reporter_identity_hash ~ '^[0-9a-f]{64}$'" in sql
+    assert "content_fingerprint ~ '^[0-9a-f]{64}$'" in sql
+    assert "idempotency_key ~ '^[0-9a-f]{64}$'" in sql
+    assert "report_id ~ '^draft-[0-9a-f]{16}$'" in sql
+    assert "report_id = 'draft-' || left(idempotency_key, 16)" in sql
     assert "requires_human_confirmation boolean not null" in sql
     assert "submission_status text not null" in sql
     assert "create index support_report_drafts_lookup_idx" in sql
@@ -36,7 +41,11 @@ def test_support_report_migration_constrains_payload_shape_and_state_contract() 
     assert "summary <> ''" in sql
     assert "expected_behavior <> ''" in sql
     assert "actual_behavior <> ''" in sql
-    assert "cardinality(reproduction_steps) between 1 and 20" in sql
-    assert "check (reproduction_steps" not in sql or "is not null" in sql
+    assert "cardinality(reproduction_steps) >= 1" in sql
+    assert "between 1 and 20" not in sql
+    assert "exists (select" not in sql
+    assert "unnest(reproduction_steps)" not in sql
+    assert "array_position(reproduction_steps, null) is null" in sql
+    assert "array_position(reproduction_steps, '') is null" in sql
     assert "submission_status = 'local_draft_only'" in sql
     assert "requires_human_confirmation is true" in sql

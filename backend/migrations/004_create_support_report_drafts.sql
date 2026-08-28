@@ -12,18 +12,18 @@ CREATE TABLE support_report_drafts (
     requires_human_confirmation boolean NOT NULL CHECK (requires_human_confirmation IS TRUE),
     submission_status text NOT NULL CHECK (submission_status = 'local_draft_only'),
     created_at timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT support_report_identity_shape CHECK (
+        report_id ~ '^draft-[0-9a-f]{16}$'
+        AND report_id = 'draft-' || left(idempotency_key, 16)
+    ),
     CONSTRAINT support_report_payload_shape CHECK (
         category <> ''
         AND summary <> ''
         AND expected_behavior <> ''
         AND actual_behavior <> ''
-        AND cardinality(reproduction_steps) BETWEEN 1 AND 20
-        AND NOT (EXISTS (
-            SELECT 1
-            FROM unnest(reproduction_steps) AS step
-            WHERE step IS NULL OR step = ''
-        ))
-        AND array_length(reproduction_steps, 1) >= 1
+        AND cardinality(reproduction_steps) >= 1
+        AND array_position(reproduction_steps, NULL) IS NULL
+        AND array_position(reproduction_steps, '') IS NULL
     )
 );
 

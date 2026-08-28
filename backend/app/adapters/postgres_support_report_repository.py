@@ -3,6 +3,7 @@ from __future__ import annotations
 import psycopg
 
 from app.application.support_ports import SupportReportRepository
+from app.application.support_agent import _validate_report
 from app.domain.support_agent import ProblemReportDraft, SupportReportConflict
 
 
@@ -15,6 +16,7 @@ class PostgresSupportReportRepository(SupportReportRepository):
         self._dsn = dsn
 
     def get_or_save(self, draft: ProblemReportDraft) -> ProblemReportDraft:
+        _validate_report(draft)
         with psycopg.connect(self._dsn) as connection:
             inserted = connection.execute(
                 """
@@ -42,7 +44,7 @@ class PostgresSupportReportRepository(SupportReportRepository):
                 _to_db_params(draft),
             ).fetchone()
             if inserted is not None:
-                return _from_row(inserted)
+                return _validated_from_row(inserted)
 
             row = connection.execute(
                 """
@@ -58,7 +60,7 @@ class PostgresSupportReportRepository(SupportReportRepository):
             ).fetchone()
             if row is None:
                 raise SupportReportConflict("report identity conflict could not be resolved")
-            existing = _from_row(row)
+            existing = _validated_from_row(row)
             if existing.idempotency_key == draft.idempotency_key:
                 if existing != draft:
                     raise SupportReportConflict("idempotency key reused with divergent payload")
@@ -103,3 +105,9 @@ def _from_row(row) -> ProblemReportDraft:
         requires_human_confirmation=row[10],
         submission_status=row[11],
     )
+
+
+def _validated_from_row(row) -> ProblemReportDraft:
+    draft = _from_row(row)
+    _validate_report(draft)
+    return draft
