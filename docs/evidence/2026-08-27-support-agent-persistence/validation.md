@@ -24,6 +24,8 @@
 - 代表性 sensitivity：在測試程序內暫時旁路 pre-write validator、INSERT-row validator、application post-validation，並以臨時 004 copy 削弱 identity／unique／human-state constraints；測試均偵測 mutation，mutation 已立即還原。
 - `git diff --check` 通過；共同基準上的 pre-merge branch 與 merge-aware branch-owned path boundary 均為 `passed:paths=14`，且 exact `origin/main` 是 merge HEAD ancestor。最終 commit 後仍需以 PR base 重跑 checker；本 manifest 不把 memory tests 或缺 DSN 的 skip 宣稱為 durable/restart 證據。
 
+- Post-merge durability gate（2026-08-28）：以一次性`postgres:16-alpine`、localhost隨機port、無volume的隔離資料庫，同時設定三個專用test DSN；Support repository／process、StoryJob queue、Story Result inbox／outbox與Tier 2 Web／Worker process suites共`33 passed`、無skip。容器完成後已移除，未使用production RDS或AWS。
+- 此gate證明adapter／process restart與duplicate-delivery replay；現有suite沒有兩個真實並行writer同時提交Support draft的案例，因此不得宣稱parallel-write durability，需另以strict TDD補足。
 - 狀態：migration bridge 已驗證 active，但 production schema 尚未 activation。
 - 未接範圍：仍無 API／UI／Bedrock／submit／production wiring。
 - 原 backward-compatible old-image rollback blocker 已由 verified active migration bridge 解開；本 PR 在更新後完整 CI 全綠及整合 task 明確判定前仍不得 merge。Production schema activation 另需授權，且本批沒有真實 PostgreSQL restart evidence。

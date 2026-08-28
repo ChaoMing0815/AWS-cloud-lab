@@ -28,7 +28,7 @@
 
 - 不接受 raw description、raw identity；草稿僅保留 sanitized structured fields。
 - 不允許保存 `session_token/csrf/password/AWS credential/DATABASE_URL/runtime secret/JWT/PostgreSQL URL`。
-- 沒有提供 `CO_STORY_SUPPORT_TEST_DATABASE_URL` 時，restart / 併發/真 DB 測試必須明確 skip，不宣稱 durability；目前尚無真實 PostgreSQL restart evidence。
+- 沒有提供 `CO_STORY_SUPPORT_TEST_DATABASE_URL` 時，restart／真 DB 測試必須明確skip。2026-08-28已以一次性localhost PostgreSQL 16通過adapter／process restart；目前尚無真實parallel-write case，不得宣稱並行寫入證據完成。
 
 ## 目前未接範圍
 

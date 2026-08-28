@@ -6,7 +6,7 @@
 - Main 整合基準：PR #25 merge commit `57cded8f3cd0a2fc2640311ccfd376a7822e17ec`，exact-main CI run `33150322386`之Backend、Frontend與container build／Trivy全綠；main上的branch-boundary job依workflow設計skipped。
 - Tier 1 完成基準 commit：`07a986a`
 - 平行分支治理基準：migration bridge初始註冊Red `4d2decb`／Green `fff9f3f`；Worker第二層guard擴權Red `fcf57d4`／Green `bbfe6dd`。
-- Regression：PR #25整合前完整驗證為Backend `657 passed, 13 skipped`、Frontend `96 passed`；merge commit `57cded8…`的main CI `33150322386`之Backend、Frontend與container build／Trivy全綠。真實PostgreSQL story-resolution與Support draft process／restart integration因未提供專用測試DSN而明確skip，離線transaction／rollback／fault injection均已執行。
+- Regression：PR #25整合前完整驗證為Backend `657 passed, 13 skipped`、Frontend `96 passed`；merge commit `57cded8…`的main CI `33150322386`之Backend、Frontend與container build／Trivy全綠。合併後以一次性localhost PostgreSQL 16執行Support draft、StoryJob、Story Result與Web／Worker process durability gate，共`33 passed`、無skip；尚缺Support draft真實parallel-write case。
 - AWS active release：migration bridge container digest `sha256:b9272ee27f1f4f587c2acf7f8672ae15f954c01e919ba311aa6ab83f073e60ff`；previous verified digest `sha256:32bee84dac17983d867c3f8f8112a34c6380fc4082b1b0a1819312af0d8df106`與legacy release `tier1-20260825-4a51e0e`保留作rollback state。Bridge runtime仍為同步模式且未前進schema。
 - 操作邊界：Console-first；使用者操作 AWS Console／SSM。Agent 未經新的 bounded batch 核准不得執行 AWS CLI，且不得執行 S3 讀取或 Bedrock 呼叫。
 - 平行工作：`codex/tier2-production-worker`、`codex/tier2-migration-bridge`與`codex/support-agent-persistence`已分別透過PR #26／#27／#25合併並可封存；目前沒有進行中的production deployment task。
@@ -57,15 +57,15 @@
 - Support Agent PR #23已合併main：Phase A提供allowlisted規則回答與stable citations、unsupported fail-closed、人工確認前問題回報草稿、idempotency、prompt-injection／tool guard與model前敏感資料清理。它只使用靜態knowledge、Mock model與memory repository，尚無API、UI、PostgreSQL、Bedrock、外部提交或AWS部署。
 - Tier 2 PR #24已合併main：PostgreSQL production composition的resolve route改為回傳`202`、opaque job ID與canonical `RESOLVING` Room；Web沿用room endpoint polling，60秒只顯示延遲提示，不自動取消、重送或fallback。獨立本機Worker runner以session-free snapshot narrator處理job；本機只允許Mock storyteller並在`CO_STORY_ENV=production` fail closed。程式已包含於bridge image，但production固定`sync`且尚未執行`002`／`003` migrations，因此玩家流程未啟用此切片。
 - Tier 2 PR #26已合併main：production Story Worker使用既有Bedrock能力，round與optional ending由單次複合輸出完成；Web process不啟動Worker，local／test維持Mock，缺少必要production設定時在claim與model invocation前fail closed。程式已包含於bridge image，但Worker未啟動、資料庫schema未改變，也尚未形成AWS Worker／queue部署。
-- Support persistence PR #25已合併main：append-only`004`、PostgreSQL草稿repository、stable idempotency、divergent replay conflict、人工確認與`local_draft_only`邊界均已整合。Application／adapter／DB constraint與DB回傳列皆fail closed；沒有API、UI、Bedrock、外部submit或production wiring。缺少專用非production PostgreSQL DSN，因此restart／parallel-write durability tests仍明確skip，production DB尚未套用`002`／`003`／`004`。
+- Support persistence PR #25已合併main：append-only`004`、PostgreSQL草稿repository、stable idempotency、divergent replay conflict、人工確認與`local_draft_only`邊界均已整合。Application／adapter／DB constraint與DB回傳列皆fail closed；沒有API、UI、Bedrock、外部submit或production wiring。合併後真實PostgreSQL adapter／process restart與Tier 2 duplicate-delivery gate已通過；尚無Support draft並行writer測試，production DB亦尚未套用`002`／`003`／`004`。
 - Migration bridge PR #27已合併main：release flow拆成零migration、固定同步流程的`migration-bridge`與獨立`schema-activation`；readiness／runner共用canonical inventory validator，production resolution mode與Worker均精確fail closed，root-only marker綁定verified bridge digest，schema前進後只回復bridge runtime且禁止downgrade。
 - CloudFormation `ContainerReleaseDocument`已更新至version 4/default 4，stack為`UPDATE_COMPLETE`且Change Set只修改Document content。Runs `33139101239`與`33143814648`分別因首次target unit handoff與systemd mode未傳入container而fail closed並完整回復previous digest；PR #29／#30以strict TDD修正，舊runs未重跑。
 - Production run `33145778589`綁定exact main `8ab5fe0…`，approval、OIDC、ARM64 build／immutable push、exact-digest Trivy與SSM release均成功。SSM回`container_release=verified mode=migration-bridge`，active digest為`sha256:b9272ee…`、previous digest為`sha256:32bee84…`；沒有執行migration。唯讀postflight確認state／release env／marker為`7／3／2`行、marker綁定active digest、runtime mode `sync`、Docker `healthy`／failing streak `0`、四項services active、candidate `0`、live／ready `200`；此batch完成。
 
 ## Next
 
-1. 提供隔離、可清除且非production的PostgreSQL測試DSN，執行Support draft與Story Result的process／restart／parallel-write／duplicate-delivery gate；缺少DSN時不得宣稱durable證據完成。
-2. 上述真實PostgreSQL gate通過後，另立`schema-activation` change envelope；production套用`002`／`003`／`004`前，必須確認bridge digest可讀newer schema與rollback不做downgrade。
+1. 以獨立strict-TDD patch補上Support draft真實PostgreSQL parallel-write／collision gate；不得以串行replay冒充並行證據。
+2. Parallel-write gate通過後，另立`schema-activation` change envelope；production套用`002`／`003`／`004`前，必須確認bridge digest可讀newer schema與rollback不做downgrade。
 3. 設計SQS／DLQ、private Worker／Data網段、SG、成本與CloudFormation change envelope，通過action→queue→worker→Bedrock→DB→result E2E及負面連線證據後才提production部署核准。
 4. Tier 2 runtime穩定後，另行評估Support Agent API／UI、Nova Lite adapter、rate limiting與observability；外部submit tool仍需獨立核准。
 5. Schema activation以外的後續production更新一律使用新exact main SHA與`digest-release`；previous digest必須取當時verified active state，仍需每次人工核准。
