@@ -85,6 +85,17 @@ def _sandbox(tmp_path: Path) -> tuple[Path, dict[str, str], Path]:
     _write_executable(
         fake_bin / "systemctl",
         "#!/bin/sh\nprintf 'systemctl:%s\\n' \"$*\" >>\"$CO_STORY_TEST_EVENT_LOG\"\n"
+        "if [ \"$*\" = 'restart co-story.service' ]; then\n"
+        "  installed=\"$CO_STORY_TEST_ROOT/etc/systemd/system/co-story.service\"\n"
+        "  stable=\"$CO_STORY_TEST_ROOT/usr/local/share/co-story/co-story-container.service\"\n"
+        "  installed_sha=$(shasum -a 256 \"$installed\" | awk '{print $1}')\n"
+        "  if [ -f \"$stable\" ]; then\n"
+        "    stable_sha=$(shasum -a 256 \"$stable\" | awk '{print $1}')\n"
+        "  else\n"
+        "    stable_sha=missing\n"
+        "  fi\n"
+        "  printf 'restart-unit:installed=%s stable=%s\\n' \"$installed_sha\" \"$stable_sha\" >>\"$CO_STORY_TEST_EVENT_LOG\"\n"
+        "fi\n"
         "if [ \"$*\" = 'is-active --quiet co-story-legacy-candidate.service' ]; then exit 3; fi\n"
         "exit 0\n",
     )
@@ -148,6 +159,116 @@ def _events(path: Path) -> list[str]:
     if not path.exists():
         return []
     return path.read_text(encoding="utf-8").splitlines()
+
+
+def _unit_without_resolution_mode(tmp_path: Path) -> Path:
+    old_unit = tmp_path / "old-container.service"
+    target_unit = UNIT.read_text(encoding="utf-8")
+    resolution_mode = "Environment=CO_STORY_RESOLUTION_MODE=sync\n"
+    assert resolution_mode in target_unit
+    old_unit.write_text(target_unit.replace(resolution_mode, ""), encoding="utf-8")
+    old_unit.chmod(0o644)
+    return old_unit
+
+
+def _target_unit_with_sync(tmp_path: Path) -> Path:
+    target_unit = tmp_path / "target-container.service"
+    target_unit.write_bytes(UNIT.read_bytes())
+    target_unit.chmod(0o644)
+    assert b"Environment=CO_STORY_RESOLUTION_MODE=sync\n" in target_unit.read_bytes()
+    return target_unit
+
+
+def _restart_unit_events(events: list[str]) -> list[str]:
+    return [event for event in events if event.startswith("restart-unit:")]
+
+
+def test_migration_bridge_handoffs_target_unit_before_first_target_restart(
+    tmp_path: Path,
+) -> None:
+    _host, env, event_log = _sandbox(tmp_path)
+    old_unit = _unit_without_resolution_mode(tmp_path)
+    target_unit = _target_unit_with_sync(tmp_path)
+    assert _run(env, "legacy-bootstrap", unit_asset=old_unit).returncode == 0
+    event_log.write_text("", encoding="utf-8")
+
+    released = _run(
+        env,
+        "migration-bridge",
+        target=NEXT_TARGET,
+        previous=TARGET,
+        legacy="",
+        unit_asset=target_unit,
+    )
+
+    assert released.returncode == 0, released.stderr
+    target_sha = hashlib.sha256(target_unit.read_bytes()).hexdigest()
+    old_sha = hashlib.sha256(old_unit.read_bytes()).hexdigest()
+    restart_units = _restart_unit_events(_events(event_log))
+    assert restart_units[0] == f"restart-unit:installed={target_sha} stable={old_sha}"
+    assert restart_units[1] == f"restart-unit:installed={target_sha} stable={target_sha}"
+    assert "--env CO_STORY_RESOLUTION_MODE=sync" in "\n".join(_events(event_log))
+    assert "app.commands.migrate" not in "\n".join(_events(event_log))
+
+
+@pytest.mark.parametrize("failure", ("bridge-target-unit-install", "bridge-target-daemon-reload"))
+def test_migration_bridge_target_unit_prepare_failure_restores_previous_assets(
+    tmp_path: Path, failure: str
+) -> None:
+    host, env, event_log = _sandbox(tmp_path)
+    old_unit = _unit_without_resolution_mode(tmp_path)
+    target_unit = _target_unit_with_sync(tmp_path)
+    assert _run(env, "legacy-bootstrap", unit_asset=old_unit).returncode == 0
+    old_driver = _host_path(host, "/usr/local/libexec/co-story-deploy-container").read_bytes()
+    env["CO_STORY_TEST_FAIL"] = failure
+    event_log.write_text("", encoding="utf-8")
+
+    failed = _run(
+        env,
+        "migration-bridge",
+        target=NEXT_TARGET,
+        previous=TARGET,
+        legacy="",
+        unit_asset=target_unit,
+    )
+
+    assert failed.returncode != 0
+    assert not _host_path(host, "/etc/co-story/migration-bridge.state").exists()
+    assert _host_path(host, "/etc/systemd/system/co-story.service").read_bytes() == old_unit.read_bytes()
+    assert _host_path(host, "/usr/local/share/co-story/co-story-container.service").read_bytes() == old_unit.read_bytes()
+    assert _host_path(host, "/usr/local/libexec/co-story-deploy-container").read_bytes() == old_driver
+    assert TARGET in _host_path(host, "/etc/co-story/container-release.env").read_text()
+    assert "health:previous-restore:8000" in _events(event_log)
+
+
+@pytest.mark.parametrize(
+    "stale_fence", ("bridge-target-unit-source", "bridge-target-unit-destination")
+)
+def test_migration_bridge_target_unit_hash_mismatch_restores_previous_assets(
+    tmp_path: Path, stale_fence: str
+) -> None:
+    host, env, event_log = _sandbox(tmp_path)
+    old_unit = _unit_without_resolution_mode(tmp_path)
+    target_unit = _target_unit_with_sync(tmp_path)
+    assert _run(env, "legacy-bootstrap", unit_asset=old_unit).returncode == 0
+    env["CO_STORY_TEST_STALE_FENCE"] = stale_fence
+    event_log.write_text("", encoding="utf-8")
+
+    failed = _run(
+        env,
+        "migration-bridge",
+        target=NEXT_TARGET,
+        previous=TARGET,
+        legacy="",
+        unit_asset=target_unit,
+    )
+
+    assert failed.returncode != 0
+    assert not _host_path(host, "/etc/co-story/migration-bridge.state").exists()
+    assert _host_path(host, "/etc/systemd/system/co-story.service").read_bytes() == old_unit.read_bytes()
+    assert _host_path(host, "/usr/local/share/co-story/co-story-container.service").read_bytes() == old_unit.read_bytes()
+    assert TARGET in _host_path(host, "/etc/co-story/container-release.env").read_text()
+    assert "health:previous-restore:8000" in _events(event_log)
 
 
 def test_migration_bridge_never_runs_migration_and_marks_verified_digest(tmp_path: Path) -> None:
