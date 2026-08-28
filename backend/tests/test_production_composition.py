@@ -217,6 +217,23 @@ def test_postgres_composition_enables_async_producer_without_worker_in_web_proce
     assert not hasattr(app.state, "story_resolution_worker")
 
 
+def test_sync_resolution_mode_keeps_postgres_web_flow_on_existing_200_path(monkeypatch) -> None:
+    configure_production(monkeypatch)
+    monkeypatch.setenv("CO_STORY_RESOLUTION_MODE", "sync")
+    repository = MemoryRoomRepository()
+    monkeypatch.setattr(main_module, "PostgresRoomRepository", lambda _dsn: repository)
+    monkeypatch.setattr(
+        main_module,
+        "StoryResolutionProducer",
+        lambda _store: pytest.fail("sync bridge must not construct a StoryJob producer"),
+        raising=False,
+    )
+
+    app = create_app(storyteller=FakeProductionStoryteller())
+
+    assert app.state.room_service.async_story_resolution_enabled is False
+
+
 def test_session_and_local_room_cookies_last_one_week() -> None:
     with TestClient(create_app()) as client:
         response = client.post(

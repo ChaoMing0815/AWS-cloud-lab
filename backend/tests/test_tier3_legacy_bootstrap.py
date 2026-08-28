@@ -120,6 +120,7 @@ def _run(
     legacy: str = LEGACY,
     unit_asset: Path = UNIT,
     driver_asset: Path = SCRIPT,
+    action: str = "release",
 ) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         [
@@ -133,6 +134,7 @@ def _run(
             "localhost",
             str(unit_asset),
             str(driver_asset),
+            action,
         ],
         cwd=ROOT,
         env=env,
@@ -146,6 +148,42 @@ def _events(path: Path) -> list[str]:
     if not path.exists():
         return []
     return path.read_text(encoding="utf-8").splitlines()
+
+
+def test_migration_bridge_never_runs_migration_and_marks_verified_digest(tmp_path: Path) -> None:
+    host, env, event_log = _sandbox(tmp_path)
+    assert _run(env, "legacy-bootstrap").returncode == 0
+    event_log.write_text("", encoding="utf-8")
+
+    result = _run(env, "migration-bridge", target=NEXT_TARGET, previous=TARGET, legacy="")
+
+    assert result.returncode == 0, result.stderr
+    events = _events(event_log)
+    assert "app.commands.migrate" not in "\n".join(events)
+    marker = _host_path(host, "/etc/co-story/migration-bridge.state").read_text()
+    assert marker == "STATE=verified-bridge\n" f"BRIDGE_IMAGE={REPOSITORY}@{NEXT_TARGET}\n"
+
+
+def test_schema_activation_rejects_missing_or_stale_bridge_marker_before_migration(tmp_path: Path) -> None:
+    host, env, event_log = _sandbox(tmp_path)
+    assert _run(env, "legacy-bootstrap").returncode == 0
+    event_log.write_text("", encoding="utf-8")
+
+    missing = _run(env, "schema-activation", target=NEXT_TARGET, previous=TARGET, legacy="")
+
+    assert missing.returncode != 0
+    assert "app.commands.migrate" not in "\n".join(_events(event_log))
+
+    marker = _host_path(host, "/etc/co-story/migration-bridge.state")
+    marker.parent.mkdir(parents=True, exist_ok=True)
+    marker.write_text(
+        "STATE=verified-bridge\n" f"BRIDGE_IMAGE={REPOSITORY}@{'sha256:' + 'f' * 64}\n",
+        encoding="utf-8",
+    )
+    stale = _run(env, "schema-activation", target=NEXT_TARGET, previous=TARGET, legacy="")
+
+    assert stale.returncode != 0
+    assert "app.commands.migrate" not in "\n".join(_events(event_log))
 
 
 def _assert_order(events: list[str], markers: tuple[str, ...]) -> None:

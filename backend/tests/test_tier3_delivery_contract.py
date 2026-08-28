@@ -65,6 +65,30 @@ def test_release_workflow_distinguishes_legacy_bootstrap_from_digest_release() -
     assert "ExpectedLegacyRelease" in workflow
 
 
+def test_release_workflow_validates_bridge_and_schema_activation_before_credentials_or_build() -> None:
+    workflow_text = _read(RELEASE_WORKFLOW)
+    workflow = yaml.safe_load(workflow_text)
+    steps = workflow["jobs"]["deploy"]["steps"]
+    input_validation = next(
+        index for index, step in enumerate(steps)
+        if step.get("name") == "Validate mutually exclusive release inputs"
+    )
+    credentials = next(
+        index for index, step in enumerate(steps)
+        if step.get("name") == "Configure bounded AWS credentials"
+    )
+    build = next(
+        index for index, step in enumerate(steps)
+        if step.get("name") == "Build and push immutable commit image"
+    )
+
+    assert input_validation < credentials < build
+    assert "migration-bridge" in workflow_text
+    assert "schema-activation" in workflow_text
+    assert "bridge requires a previous digest" in workflow_text
+    assert "schema activation requires a previous digest" in workflow_text
+
+
 def test_release_workflow_scans_exact_pushed_digest_as_linux_arm64() -> None:
     workflow = yaml.safe_load(_read(RELEASE_WORKFLOW))
     deploy_steps = workflow["jobs"]["deploy"]["steps"]

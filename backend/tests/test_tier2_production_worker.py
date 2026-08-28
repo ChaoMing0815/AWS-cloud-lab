@@ -144,6 +144,20 @@ def test_build_production_worker_constructs_without_converse(monkeypatch) -> Non
     assert runner.__class__.__name__ == "LocalStoryResolutionWorkerRunner"
 
 
+def test_production_worker_factory_rejects_sync_mode_before_queue_or_bedrock(monkeypatch) -> None:
+    _configure_production_env(monkeypatch)
+    monkeypatch.setenv("CO_STORY_RESOLUTION_MODE", "sync")
+    factory_module, _ = _load_modules(monkeypatch)
+    monkeypatch.setattr(
+        factory_module,
+        "build_production_worker_runner",
+        lambda **_kwargs: pytest.fail("sync mode must stop before queue or Bedrock construction"),
+    )
+
+    with pytest.raises(RuntimeError, match="CO_STORY_RESOLUTION_MODE"):
+        factory_module.build_production_worker("postgresql://app:secret@localhost/co_story")
+
+
 def test_worker_main_uses_production_path_in_production_environment(monkeypatch, capsys) -> None:
     _configure_production_env(monkeypatch)
     _, worker_module = _load_modules(monkeypatch)
