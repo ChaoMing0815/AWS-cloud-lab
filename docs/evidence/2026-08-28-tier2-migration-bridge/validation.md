@@ -64,3 +64,12 @@
 - 唯讀host postflight：application、public edge、CloudWatch Agent與system-health timer均為`active`；transition／release env／bridge marker均為`root:root:600`且精確`7／3／2`行；state為`container-active`、marker為`verified-bridge`且digest與active release一致；installed unit只含一份literal `sync`來源與一份顯式container env傳遞。
 - Runtime postflight：container running、Docker health `healthy`／failing streak `0`、container內resolution mode `sync`、candidate count `0`、legacy rollback unit preserved、公開live／ready均為`200`。首次檢查因shell在`sudo wc`前開啟root-only檔案且Docker查詢漏用`sudo`而產生空值；補充唯讀gate修正檢查方式後全數通過，該空值不代表runtime失敗。
 - 費用增量限於immutable ECR image storage／scan與GitHub Actions時間；既有ECR lifecycle limit `10`維持。Previous image未留在host cache不是失敗條件，rollback driver可由immutable ECR拉取exact previous digest `sha256:32bee84…`；不得以schema downgrade回復。
+
+## Schema activation preflight marker corrective（2026-08-28）
+
+- Production run使用exact main `be9275a1124b736e7c111ab89228cead83760078`與verified bridge digest `sha256:b9272ee27f1f4f587c2acf7f8672ae15f954c01e919ba311aa6ab83f073e60ff`；stable driver的`preflight-only`通過bridge驗證後誤刪marker，正式activation因此以`missing_bridge_marker`停止。Docker credential-store warning不是失敗原因，舊run不得重跑。
+- 唯讀postflight確認application、public edge、CloudWatch Agent與system-health timer均active；transition／release state維持root-only canonical形狀且digest吻合，container running／healthy、runtime mode `sync`、candidate與backup皆不存在，migration inventory仍只有`001_create_rooms`，公開live／ready均為`200`。未執行`002`以後migration，也不需要rollback。
+- Red commit `489ff66`新增完整生命週期測試：verified marker經schema `preflight-only`後內容與`0600` mode不變、migration未執行，後續完整activation仍成功並移除marker。Red精確失敗於marker不存在。
+- Green commit `78a6d88`只在`schema_activation`的`digest_release`返回後辨識`preflight-only`並直接返回；完整release仍於全部既有gate成功後清除marker。
+- Sensitivity：暫時移除三行guard，新測試如預期精確失敗後立即還原。Tier 3 legacy bootstrap／delivery／workflow contract、Backend full regression、Frontend `96 passed`、shell syntax與`git diff --check`均通過。
+- Residual／stop condition：corrective合併與exact-main CI完成前不得恢復marker或重新dispatch。之後仍須以獨立人工核准、fail-closed且不輸出secret的bounded recovery，在active digest、inventory、health與marker-absent preconditions全部吻合時原子恢復digest-bound marker；再以新的exact main SHA形成schema-activation envelope。

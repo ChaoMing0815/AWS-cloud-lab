@@ -652,6 +652,9 @@ schema_activation() {
   [ "$image_digest" != "$previous_image_digest" ] || fail target_and_previous_must_differ
   load_bridge_marker "$repository_uri@$previous_image_digest"
   digest_release
+  if [ "$release_action" = preflight-only ]; then
+    return 0
+  fi
   rm -f "$bridge_marker" || fail schema_activation_marker_clear_failed
 }
 

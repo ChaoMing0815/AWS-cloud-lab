@@ -364,6 +364,54 @@ def test_schema_activation_reports_its_actual_release_mode(tmp_path: Path) -> No
     assert "mode=digest-release" not in result.stdout
 
 
+def test_schema_activation_preflight_preserves_verified_bridge_marker(
+    tmp_path: Path,
+) -> None:
+    host, env, event_log = _sandbox(tmp_path)
+    assert _run(env, "legacy-bootstrap").returncode == 0
+    assert (
+        _run(
+            env,
+            "migration-bridge",
+            target=NEXT_TARGET,
+            previous=TARGET,
+            legacy="",
+        ).returncode
+        == 0
+    )
+    marker = _host_path(host, "/etc/co-story/migration-bridge.state")
+    marker_bytes = marker.read_bytes()
+    marker_mode = marker.stat().st_mode & 0o777
+    event_log.write_text("", encoding="utf-8")
+    third = "sha256:" + "3" * 64
+
+    preflight = _run(
+        env,
+        "schema-activation",
+        target=third,
+        previous=NEXT_TARGET,
+        legacy="",
+        action="preflight-only",
+    )
+
+    assert preflight.returncode == 0, preflight.stderr
+    assert marker.exists()
+    assert marker.read_bytes() == marker_bytes
+    assert marker.stat().st_mode & 0o777 == marker_mode == 0o600
+    assert "app.commands.migrate" not in "\n".join(_events(event_log))
+
+    released = _run(
+        env,
+        "schema-activation",
+        target=third,
+        previous=NEXT_TARGET,
+        legacy="",
+    )
+
+    assert released.returncode == 0, released.stderr
+    assert not marker.exists()
+
+
 def test_schema_activation_rejects_missing_or_stale_bridge_marker_before_migration(tmp_path: Path) -> None:
     host, env, event_log = _sandbox(tmp_path)
     assert _run(env, "legacy-bootstrap").returncode == 0
