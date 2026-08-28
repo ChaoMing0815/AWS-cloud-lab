@@ -1,7 +1,7 @@
 # 平行分支工作邊界
 
 - 狀態：Active
-- 生效分支：`codex/story-quality`、`codex/tier3-delivery`、`codex/tier3-production-release`、`codex/tier3-healthcheck-correction`、`codex/tier2-components`、`codex/tier2-async-flow`、`codex/tier2-production-worker`、`codex/tier2-migration-bridge`、`codex/support-agent-core`、`codex/support-agent-persistence`
+- 生效分支：`codex/story-quality`、`codex/tier3-delivery`、`codex/tier3-production-release`、`codex/tier3-healthcheck-correction`、`codex/tier2-components`、`codex/tier2-async-flow`、`codex/tier2-production-worker`、`codex/tier2-migration-bridge`、`codex/support-agent-core`、`codex/support-agent-persistence`、`codex/support-agent-durability`
 - 機器可讀規則：`.agents/work-boundaries.json`
 - 自動檢查：`scripts/check_branch_boundaries.py`
 
@@ -196,6 +196,28 @@
 - 不修改port、migration runner、`main.py`、routes、Web、Bedrock adapter、dependency、Docker、workflow、IaC或`ops/`；不執行AWS CLI／SSM／S3／Bedrock，不接production。
 - 真實restart證據只能使用獨立、可清除且非production的專用PostgreSQL測試DSN；缺少時明確skip。
 - `004`會改變全域migration readiness。分支可完成coding、push與PR，但在backward-compatible readiness／rollback策略另行完成前不得merge或部署；不得自行擴張至`postgres_room_repository.py`修正此問題。
+
+## `codex/support-agent-durability`
+
+唯一目標是以獨立、可清除且非production的PostgreSQL，驗證Support Agent草稿repository在真實並行競態下仍維持單一canonical row、stable idempotency與fail-closed conflict。本分支不接API、UI、模型、外部提交、AWS或production。
+
+允許範圍以policy為準，主要包括：
+
+- PostgreSQL Support draft repository的並行寫入contract與必要的最小修正
+- 真實process／connection concurrency tests與短validation evidence
+- Support persistence Feature中對已驗證並行語意的精確說明
+
+強制邊界：
+
+- 測試必須用同步barrier讓兩個獨立writer實際重疊；序列呼叫、單connection或Mock不得宣稱為parallel-write證據。
+- 相同normalized draft與identity的兩個並行writer必須取得相同canonical draft，且資料庫只有一列。
+- 共用idempotency key但payload不同時，只能保留一筆canonical row，另一方必須回`SupportReportConflict`；不得覆寫。
+- 人工製造相同16位report ID prefix但payload不同時，只能保留一筆並回conflict；不得覆寫。
+- 競態後仍須驗證row count、state、hash constraint與restart／replay語意。
+- 只使用獨立、可清除且非production的專用PostgreSQL DSN；不得連production RDS，不得輸出credential或DSN。
+- 若現有實作已通過並行contract，提交測試與證據即可；不得製造假Red或無必要修改production code。若精確測試揭露真實缺陷，才依strict TDD保留Red並做repository最小Green。
+- 不修改domain、application、migration、migration runner、`main.py`、routes、Web、Bedrock adapter、dependency、Docker、workflow、IaC或`ops/`；不執行AWS CLI／SSM／S3／Bedrock，不接production。
+- 可commit、push並建立PR；不得merge或deploy。完成後需主動回報整合task。
 
 ## `codex/tier2-migration-bridge`
 

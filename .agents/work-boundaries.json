@@ -220,6 +220,16 @@
         "docs/features/support-agent-persistence.md",
         "docs/evidence/2026-*-support-agent-persistence/**"
       ]
+    },
+    "codex/support-agent-durability": {
+      "purpose": "以獨立非 production PostgreSQL 驗證 Support Agent 草稿在真實並行寫入、idempotency conflict 與 report ID prefix collision 下仍維持單一 canonical row，不接 API、UI、模型、AWS 或 production",
+      "allowed_paths": [
+        "backend/app/adapters/postgres_support_report_repository.py",
+        "backend/tests/test_postgres_support_report_repository.py",
+        "backend/tests/test_postgres_support_report_process_e2e.py",
+        "docs/features/support-agent-persistence.md",
+        "docs/evidence/2026-*-support-agent-durability/**"
+      ]
     }
   }
 }

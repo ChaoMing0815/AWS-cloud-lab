@@ -31,6 +31,7 @@ def test_policy_defines_exact_parallel_branches_and_protects_integration_state()
         "codex/tier2-migration-bridge",
         "codex/tier2-production-worker",
         "codex/support-agent-core",
+        "codex/support-agent-durability",
         "codex/support-agent-persistence",
     }
     assert "docs/handoffs/CURRENT.md" in policy["protected_paths"]
@@ -316,6 +317,35 @@ def test_support_agent_persistence_accepts_only_local_draft_storage_paths() -> N
     assert "docs/handoffs/CURRENT.md" in rejected.stderr
 
 
+def test_support_agent_durability_accepts_only_parallel_storage_gate_paths() -> None:
+    accepted = _check(
+        "codex/support-agent-durability",
+        "backend/app/adapters/postgres_support_report_repository.py",
+        "backend/tests/test_postgres_support_report_repository.py",
+        "backend/tests/test_postgres_support_report_process_e2e.py",
+        "docs/features/support-agent-persistence.md",
+        "docs/evidence/2026-08-28-support-agent-durability/validation.md",
+    )
+    rejected = _check(
+        "codex/support-agent-durability",
+        "backend/app/domain/support_agent.py",
+        "backend/app/application/support_agent.py",
+        "backend/migrations/004_create_support_report_drafts.sql",
+        "backend/app/main.py",
+        "backend/app/api/routes.py",
+        "web/src/ui/pages/support-page.js",
+        "infra/cloudformation/tier5-agent.yaml",
+        "docs/handoffs/CURRENT.md",
+    )
+
+    assert accepted.returncode == 0, accepted.stderr
+    assert rejected.returncode == 2
+    assert "backend/app/domain/support_agent.py" in rejected.stderr
+    assert "backend/migrations/004_create_support_report_drafts.sql" in rejected.stderr
+    assert "backend/app/main.py" in rejected.stderr
+    assert "docs/handoffs/CURRENT.md" in rejected.stderr
+
+
 def test_unknown_branch_fails_closed() -> None:
     result = _check("codex/unregistered-work", "README.md")
 
@@ -336,6 +366,7 @@ def test_governance_guide_and_pull_request_gate_are_present() -> None:
     assert "codex/tier2-migration-bridge" in guide
     assert "codex/tier2-production-worker" in guide
     assert "codex/support-agent-core" in guide
+    assert "codex/support-agent-durability" in guide
     assert "codex/support-agent-persistence" in guide
     assert "單一部署 owner" in guide
     assert "branch-boundary:" in workflow

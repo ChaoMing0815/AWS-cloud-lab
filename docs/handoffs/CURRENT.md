@@ -9,7 +9,7 @@
 - Regression：PR #25整合前完整驗證為Backend `657 passed, 13 skipped`、Frontend `96 passed`；merge commit `57cded8…`的main CI `33150322386`之Backend、Frontend與container build／Trivy全綠。合併後以一次性localhost PostgreSQL 16執行Support draft、StoryJob、Story Result與Web／Worker process durability gate，共`33 passed`、無skip；尚缺Support draft真實parallel-write case。
 - AWS active release：migration bridge container digest `sha256:b9272ee27f1f4f587c2acf7f8672ae15f954c01e919ba311aa6ab83f073e60ff`；previous verified digest `sha256:32bee84dac17983d867c3f8f8112a34c6380fc4082b1b0a1819312af0d8df106`與legacy release `tier1-20260825-4a51e0e`保留作rollback state。Bridge runtime仍為同步模式且未前進schema。
 - 操作邊界：Console-first；使用者操作 AWS Console／SSM。Agent 未經新的 bounded batch 核准不得執行 AWS CLI，且不得執行 S3 讀取或 Bedrock 呼叫。
-- 平行工作：`codex/tier2-production-worker`、`codex/tier2-migration-bridge`與`codex/support-agent-persistence`已分別透過PR #26／#27／#25合併並可封存；目前沒有進行中的production deployment task。
+- 平行工作：`codex/tier2-production-worker`、`codex/tier2-migration-bridge`與`codex/support-agent-persistence`已分別透過PR #26／#27／#25合併並封存；`codex/support-agent-durability`已註冊，僅執行本機非production PostgreSQL並行寫入gate。目前沒有進行中的production deployment task。
 
 ## Current
 
