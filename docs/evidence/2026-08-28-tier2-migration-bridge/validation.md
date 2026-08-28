@@ -52,3 +52,15 @@
 - Negative／sensitivity：移除Docker env、把source改為`async`、Docker硬編`sync`與移除candidate literal sync，均使各自target contract failure後立即還原；permanent unit negatives亦拒絕empty、uppercase、前後空白、runtime-env-only與非canonical source。
 - Final validation：Tier 2／Tier 3 affected contract為`204 passed`；Backend full regression為`636 passed, 11 skipped`（既有非production PostgreSQL process／restart cases），Frontend為`96 passed, 0 skipped`。YAML parse、`bash -n ops/release/deploy_container.sh`、`git diff --check`與branch boundary均通過。
 - 未建立／執行Change Set，未操作AWS／SSM／S3／Bedrock／ECR push／workflow dispatch或production deploy；PR #25仍`DO NOT MERGE`。
+
+## Production migration bridge（2026-08-28）
+
+- CloudFormation stack `co-story-tier3-delivery`為`UPDATE_COMPLETE`；`ContainerReleaseDocument` version 4/default 4。已核准Change Set只修改`AWS::SSM::Document`的`Content`，沒有IAM、OIDC、ECR、AppRole attachment或其他資源變更。
+- Runs `33139101239`與`33143814648`分別在首次target activation暴露installed unit handoff與systemd環境未傳入container的問題；兩次皆回`target_activation_failed`並回復verified previous digest、healthy container與公開`live=200`／`ready=200`，未寫bridge marker。舊run與舊SHA均未重跑。
+- PR #29／#30以strict TDD完成bridge-only unit handoff及Docker `--env CO_STORY_RESOLUTION_MODE=${CO_STORY_RESOLUTION_MODE}`；exact main `8ab5fe0239cf24e6420a6d983a4cb50078b4e7fc`的CI run `33145389354`全綠。
+- 使用者明確核准exact main `8ab5fe0…`與previous digest `sha256:32bee84…`的`migration-bridge`；production run `33145778589`之approval、OIDC、ARM64 build／immutable push、exact-digest Trivy與bounded SSM release均成功。
+- SSM回`Status=Success`、`ResponseCode=0`，並輸出`container_release=verified mode=migration-bridge image_digest=sha256:b9272ee27f1f4f587c2acf7f8672ae15f954c01e919ba311aa6ab83f073e60ff previous_image_digest=sha256:32bee84dac17983d867c3f8f8112a34c6380fc4082b1b0a1819312af0d8df106`。
+- 此mode沒有執行`002`／`003`／`004` migration，也沒有啟用async Worker。GitHub artifact `tier3-delivery-metrics-33145778589`保留sanitized delivery timing。
+- 唯讀host postflight：application、public edge、CloudWatch Agent與system-health timer均為`active`；transition／release env／bridge marker均為`root:root:600`且精確`7／3／2`行；state為`container-active`、marker為`verified-bridge`且digest與active release一致；installed unit只含一份literal `sync`來源與一份顯式container env傳遞。
+- Runtime postflight：container running、Docker health `healthy`／failing streak `0`、container內resolution mode `sync`、candidate count `0`、legacy rollback unit preserved、公開live／ready均為`200`。首次檢查因shell在`sudo wc`前開啟root-only檔案且Docker查詢漏用`sudo`而產生空值；補充唯讀gate修正檢查方式後全數通過，該空值不代表runtime失敗。
+- 費用增量限於immutable ECR image storage／scan與GitHub Actions時間；既有ECR lifecycle limit `10`維持。Previous image未留在host cache不是失敗條件，rollback driver可由immutable ECR拉取exact previous digest `sha256:32bee84…`；不得以schema downgrade回復。
