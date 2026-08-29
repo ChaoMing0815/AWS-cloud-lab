@@ -432,7 +432,10 @@ Resources:
               #!/bin/bash
               set -Eeuo pipefail
               trap 'cfn-signal --success false --stack ${AWS::StackName} --resource WorkerAutoScalingGroup --region ${AWS::Region}' ERR
-              dnf install -y docker aws-cfn-bootstrap curl
+              dnf install -y docker curl
+              if ! command -v cfn-signal >/dev/null 2>&1; then
+                dnf install -y aws-cfn-bootstrap
+              fi
               systemctl enable --now docker
               install -d -m 0750 -o root -g root /etc/co-story
               install -d -m 0755 -o root -g root /etc/pki/rds

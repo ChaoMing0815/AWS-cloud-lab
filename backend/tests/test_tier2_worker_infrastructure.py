@@ -307,3 +307,21 @@ def test_replacement_bootstrap_installs_exact_worker_and_signals_only_when_idle_
             "WaitOnResourceSignals": True,
         }
     }
+
+
+def test_replacement_bootstrap_does_not_block_docker_on_optional_cfn_package() -> None:
+    launch_template = _template()["Resources"]["WorkerLaunchTemplate"]
+    user_data = launch_template["Properties"]["LaunchTemplateData"]["UserData"]
+    bootstrap = user_data["Fn::Base64"]["Fn::Sub"]
+
+    docker_install = "dnf install -y docker curl"
+    cfn_guard = "if ! command -v cfn-signal >/dev/null 2>&1; then"
+    cfn_install = "dnf install -y aws-cfn-bootstrap"
+
+    assert "dnf install -y docker aws-cfn-bootstrap curl" not in bootstrap
+    assert docker_install in bootstrap
+    assert cfn_guard in bootstrap
+    assert cfn_install in bootstrap
+    assert bootstrap.index(docker_install) < bootstrap.index(cfn_guard)
+    assert bootstrap.index(cfn_guard) < bootstrap.index(cfn_install)
+    assert bootstrap.index(cfn_install) < bootstrap.index("systemctl enable --now docker")
