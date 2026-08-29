@@ -30,3 +30,12 @@
 - Installer回`publisher_service=installed:disabled`；postflight為unit `static`、service `inactive`、runtime env absent、publisher container absent、Web `sync`。
 - 本批未建立activation env、未啟動publisher、未送SQS message、未呼叫Bedrock、未新增IAM／AWS resource或切換Web async。
 - 下一批必須獨立核准runtime env與publisher activation；exactly-one test job及Web async仍是後續不同批次。
+
+## Production publisher activation完成
+
+- 啟動前preflight確認unit為`static`／service為`inactive`、publisher env與container不存在、dispatch outbox總數為`0`，且Web container精確維持`sync`。
+- 第一次bounded SSM Run Command因檢查了source asset名稱`co-story-container.service`，在任何變更前回`web_service_not_active`／response `2`；production實際安裝名稱為`co-story.service`，未留下activation env或publisher container。
+- 修正唯讀service名稱後，使用者以相同單一Web target重新執行；建立root-owned `0640` activation env，unit仍為`static`且只以人工`start`啟動，未執行`enable`。
+- Postflight回`publisher_activation=verified unit=static service=active container=running outbox_total=0 web=sync`；publisher使用active exact digest `sha256:af120cbbfafe710ea8b9da9fb6e1b67cde57e619d91c4188b88740136485cc59`。
+- 本批未建立test job、未切換Web async、未新增IAM／AWS resource；空outbox代表publisher未取得可發布工作。本批亦未由Agent執行AWS CLI、S3讀取或Bedrock呼叫。
+- Rollback為停止`co-story-publisher.service`、確認`co-story-publisher` container移除，再刪除`/etc/co-story/publisher-runtime.env`。Exactly-one test job與Web async仍須各自獨立核准。

@@ -1,13 +1,13 @@
 # CURRENT：目前工作交接
 
 - 更新日期：2026-08-29
-- 目前里程碑：Tier 1、Tier 3均已完整完成。Tier 2 schema已至`005`、SQS／DLQ、兩台private Worker及publisher disabled-only unit均已在AWS驗證；publisher尚未建立runtime env或啟動，AWS三組件E2E與玩家可見async flow仍未完成。
-- 交付策略：已驗證的GitHub OIDC／ECR／Trivy／SSM pipeline作為唯一自動部署路徑。Production Web仍固定`sync`；下一步另行核准publisher runtime env與activation，exactly-one test job與Web async仍分批執行。
-- Main 整合基準：PR #52 merge commit `9337026dea8f0537ac94b3d0979b00cd45c5e2a1`；static-state修復Red `3dad43a`／Green `2294f6c`及四項CI全綠。Production publisher unit已安裝為static／inactive。
+- 目前里程碑：Tier 1、Tier 3均已完整完成。Tier 2 schema已至`005`、SQS／DLQ、兩台private Worker及publisher runtime均已在AWS驗證；publisher為static但已人工啟動，AWS三組件exactly-one E2E與玩家可見async flow仍未完成。
+- 交付策略：已驗證的GitHub OIDC／ECR／Trivy／SSM pipeline作為唯一自動部署路徑。Production Web仍固定`sync`；下一步另行核准exactly-one test job，Web async仍是之後的獨立批次。
+- Main 整合基準：PR #53 merge commit `ea6019687d3c696f463045178a9fdec1db7d8fb4`；static-state修復Red `3dad43a`／Green `2294f6c`及四項CI全綠。Production publisher unit已安裝為static並以獨立activation env人工啟動。
 - Tier 1 完成基準 commit：`07a986a`
 - 平行分支治理基準：migration bridge初始註冊Red `4d2decb`／Green `fff9f3f`；Worker第二層guard擴權Red `fcf57d4`／Green `bbfe6dd`。
 - Regression：publisher static-state分支targeted contracts `39 passed`，Backend `768 tests collected`／exit `0`；代表性sensitivity可攔截`static`誤拒絕。Publisher runtime與disabled-only service evidence分別位於[`producer runtime`](../evidence/2026-08-29-tier2-producer-runtime/validation.md)與[`publisher service`](../evidence/2026-08-29-tier2-publisher-service/validation.md)。
-- AWS active release：verified digest `sha256:af120cbbfafe710ea8b9da9fb6e1b67cde57e619d91c4188b88740136485cc59`；migration inventory精確`001`–`005`，Web runtime為`sync`。Publisher unit為`static`／`inactive`，publisher runtime env與container不存在；failed target `sha256:811faece…`不得rerun。
+- AWS active release：verified digest `sha256:af120cbbfafe710ea8b9da9fb6e1b67cde57e619d91c4188b88740136485cc59`；migration inventory精確`001`–`005`，Web runtime為`sync`。Publisher unit為`static`／`active`、container為`running`且dispatch outbox為`0`；failed target `sha256:811faece…`不得rerun。
 - 操作邊界：Console-first；使用者操作 AWS Console／SSM。Agent 未經新的 bounded batch 核准不得執行 AWS CLI，且不得執行 S3 讀取或 Bedrock 呼叫。
 - 平行工作：Support Agent、Tier 2 local／migration、Worker foundation、SQS consumer、Worker artifact pipeline與replacement bootstrap分支均已合併並可封存；Web async未啟用。
 
@@ -70,8 +70,8 @@
 
 ## Next
 
-1. 另行核准publisher runtime env與activation；啟動前必須維持Web `sync`、Queues為空且不建立test job。
-2. Publisher activation postflight通過後，再核准exactly-one AWS test job，完成queue→worker→Bedrock→DB→result及negative／redrive證據。
+1. 另行核准exactly-one AWS test job，完成queue→worker→Bedrock→DB→result及negative／redrive證據；不得把此核准延伸為Web async。
+2. Exactly-one E2E執行前維持publisher `static`／`active`、Web `sync`，且不得重跑已通過的activation檢查。
 3. 上述E2E通過後，才以獨立production envelope將Web從`sync`切換成`async`，完成玩家可見`202`→polling→result E2E及rollback。
 4. Tier 2 runtime穩定後，另行評估Support Agent API／UI、Nova Lite adapter、rate limiting與observability；外部submit tool仍需獨立核准。
 5. 後續production更新一律使用新exact main SHA與`digest-release`；previous digest必須取當時verified active state，仍需每次人工核准。Nova Lite round／ending真實品質evaluation亦需另行bounded核准。
@@ -92,7 +92,7 @@
 - Forced-tool Storyteller 已通過 fake Converse contract，但尚未以真實 Nova Lite 驗證 round／ending schema 與敘事品質。
 - 三次失敗T3B images與兩個成功release images均保留於immutable ECR並受lifecycle limit `10`管理；舊runs不得re-run，ECR storage／scan仍可能產生少量費用。
 - Docker actions的 Node.js 20 annotation已以test-first更新至官方 Node.js 24相容版本並通過PR #12、#14、#15 CI；後續仍不得無測試任意升版。
-- Story result的PostgreSQL CAS／inbox／completion outbox、async route／composition／Web polling與本機真實PostgreSQL process／restart gate均已完成；AWS SQS／DLQ、private Worker foundation、兩台SQS consumer runtime與ASG replacement重建均已部署。Producer dispatch outbox／reconciliation已合併但`005`與publisher runtime尚未production release；玩家可見async activation與AWS E2E仍是Tier 2核心缺口。
+- Story result的PostgreSQL CAS／inbox／completion outbox、async route／composition／Web polling與本機真實PostgreSQL process／restart gate均已完成；AWS SQS／DLQ、private Worker foundation、兩台SQS consumer runtime、ASG replacement重建、`005`與publisher runtime均已部署。Publisher已在空outbox下啟動但尚未建立exactly-one test job；玩家可見async activation與AWS E2E仍是Tier 2核心缺口。
 - Worker foundation已建立並持續產生單一NAT、public IPv4、兩台Worker與EBS費用；成本上限USD 35、預定清理日2026-09-08。兩台Worker位於同一AZ，只涵蓋instance replacement、不涵蓋AZ failure；HTTPS經NAT的destination尚未以VPC endpoints收斂。
 - Migration bridge已證明可讀完整`001`／`002`／`003`／`004`前綴並作為schema activation失敗時唯一rollback target；不得回復不認得newer schema的pre-bridge image，也不得做schema downgrade。
 - Support Agent static retrieval無法涵蓋所有自然語言問法；identity digest未加鹽，草稿雖已有本機PostgreSQL restart／parallel-write證據，但尚無API層長度／rate limit、API／UI、Bedrock或外部提交。接線前不得宣稱線上客服、RAG或問題提交已完成。
