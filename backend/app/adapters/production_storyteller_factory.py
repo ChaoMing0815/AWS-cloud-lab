@@ -165,3 +165,40 @@ def build_production_worker(
         database_url=database_url,
         worker_id=worker_id or "production-story-resolution-worker",
     )
+
+
+def build_production_story_job_publisher(database_url: str):
+    if os.environ.get("CO_STORY_ENV", "").lower() != "production":
+        raise RuntimeError("CO_STORY_ENV")
+    if os.environ.get("CO_STORY_RESOLUTION_MODE") != "async":
+        raise RuntimeError("CO_STORY_RESOLUTION_MODE")
+    if os.environ.get("CO_STORY_PUBLISHER_ENABLED") != "true":
+        raise RuntimeError("CO_STORY_PUBLISHER_ENABLED")
+    if not database_url:
+        raise RuntimeError("DATABASE_URL")
+
+    from app.adapters.postgres_story_job_dispatch import (
+        PostgresStoryJobDispatchOutbox,
+    )
+    from app.application.story_job_publisher import StoryJobPublisher
+    from botocore.config import Config
+
+    region = _required_setting("CO_STORY_AWS_REGION")
+    queue_url = _required_queue_url(region)
+    sqs_config = Config(
+        read_timeout=10,
+        connect_timeout=5,
+        retries={"max_attempts": 0},
+    )
+    transport = SqsStoryJobTransport(
+        _create_sqs_client(region, config=sqs_config),
+        queue_url=queue_url,
+        visibility_timeout_seconds=180,
+        wait_time_seconds=20,
+    )
+    outbox = PostgresStoryJobDispatchOutbox(
+        database_url,
+        clock=SystemClock(),
+        lease_duration=timedelta(seconds=30),
+    )
+    return StoryJobPublisher(outbox, transport)
