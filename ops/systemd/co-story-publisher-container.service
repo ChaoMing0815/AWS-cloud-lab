@@ -1,0 +1,28 @@
+[Unit]
+Description=Co-Story Tier 2 StoryJob publisher container (explicit activation only)
+After=network-online.target docker.service
+Wants=network-online.target
+Requires=docker.service
+ConditionPathExists=/etc/co-story/publisher-runtime.env
+
+[Service]
+Type=simple
+User=root
+Group=root
+EnvironmentFile=/etc/co-story/container-release.env
+EnvironmentFile=/etc/co-story/runtime.env
+EnvironmentFile=/etc/co-story/database.env
+EnvironmentFile=/etc/co-story/publisher-runtime.env
+ExecStartPre=-/usr/bin/docker rm -f co-story-publisher
+ExecStart=/usr/bin/docker run --name co-story-publisher --network host --read-only --cap-drop ALL --security-opt no-new-privileges --tmpfs /tmp:rw,noexec,nosuid,size=64m --no-healthcheck --env-file /etc/co-story/runtime.env --env-file /etc/co-story/database.env --env-file /etc/co-story/publisher-runtime.env --mount type=bind,src=/etc/pki/rds/rds-ca.pem,dst=/etc/pki/rds/rds-ca.pem,readonly --user ${CO_STORY_CONTAINER_UID}:${CO_STORY_CONTAINER_GID} ${CO_STORY_CONTAINER_IMAGE} python -m app.workers.story_job_publisher
+ExecStop=/usr/bin/docker stop --time 20 co-story-publisher
+ExecStopPost=-/usr/bin/docker rm -f co-story-publisher
+Restart=on-failure
+RestartSec=5
+TimeoutStartSec=120
+TimeoutStopSec=30
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+

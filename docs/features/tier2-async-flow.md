@@ -55,3 +55,5 @@
 此進度不代表production已套用`005`、publisher已部署、AWS message E2E完成或Web已切換async；這些仍需各自的release與Console核准。
 
 Publisher runtime已在後續repo-local切片完成：獨立process只有在`CO_STORY_ENV=production`、`CO_STORY_RESOLUTION_MODE=async`與literal `CO_STORY_PUBLISHER_ENABLED=true`同時成立時才會建立SQS client；缺少DB或任何gate均fail closed。Runtime尚未封裝為Web host systemd service，也未由release pipeline啟動。
+
+Web-host publisher service與installer也已完成repo-local contract：unit與installer封裝於同一個待掃描image，unit沒有`[Install]` target並要求獨立activation file；installer只安裝root-owned unit、驗證disabled／inactive，且不得enable、start或restart。此狀態仍未代表host已安裝unit或publisher已啟用。
