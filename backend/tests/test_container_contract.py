@@ -64,6 +64,11 @@ def test_image_is_non_root_secret_free_and_keeps_the_runtime_contract() -> None:
     assert '\"--workers\", \"1\"' in dockerfile
     assert "DATABASE_URL=" not in dockerfile
     assert "CO_STORY_BEDROCK_GUARDRAIL_ID=" not in dockerfile
+    assert "ARG CO_STORY_SOURCE_REVISION" in dockerfile
+    assert (
+        "LABEL org.opencontainers.image.revision=${CO_STORY_SOURCE_REVISION}"
+        in dockerfile
+    )
     assert ".env" in dockerignore
     assert ".git" in dockerignore
     assert "docs/evidence" in dockerignore

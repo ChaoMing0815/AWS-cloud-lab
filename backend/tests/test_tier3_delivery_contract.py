@@ -301,6 +301,19 @@ def test_release_workflow_scans_exact_pushed_digest_as_linux_arm64() -> None:
     }
 
 
+def test_release_image_embeds_exact_approved_commit_revision() -> None:
+    workflow = yaml.safe_load(_read(RELEASE_WORKFLOW))
+    build_step = next(
+        step
+        for step in workflow["jobs"]["deploy"]["steps"]
+        if step.get("name") == "Build and push immutable commit image"
+    )
+
+    assert build_step["with"]["build-args"] == (
+        "CO_STORY_SOURCE_REVISION=${{ github.sha }}"
+    )
+
+
 def test_release_workflow_validates_one_canonical_instance_target_before_build(
     tmp_path: Path,
 ) -> None:
