@@ -11,6 +11,9 @@ RUN python -m pip install --no-cache-dir --requirement backend/requirements-prod
 
 FROM debian:bookworm-slim@sha256:88200866dfff7ea7f5cbcb6ec7c8a701889efe6fe859fe64d6990e4b07ea4171
 
+ARG CO_STORY_SOURCE_REVISION=unknown
+LABEL org.opencontainers.image.revision=${CO_STORY_SOURCE_REVISION}
+
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
