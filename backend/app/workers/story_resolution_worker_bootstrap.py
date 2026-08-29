@@ -109,11 +109,18 @@ def main(
         print("worker_bootstrap=stopped:runtime_secret_unavailable")
         return 2
 
+    previous_database_url = os.environ.get("DATABASE_URL")
     os.environ["DATABASE_URL"] = database_url
     if run_worker is None:
         from app.workers.story_resolution_worker import main as run_worker
 
-    return run_worker()
+    try:
+        return run_worker()
+    finally:
+        if previous_database_url is None:
+            os.environ.pop("DATABASE_URL", None)
+        else:
+            os.environ["DATABASE_URL"] = previous_database_url
 
 
 if __name__ == "__main__":
