@@ -1,15 +1,15 @@
 # CURRENT：目前工作交接
 
 - 更新日期：2026-08-29
-- 目前里程碑：Tier 1、Tier 3均已完整完成。Tier 2 migration bridge與append-only schema activation已透過production pipeline成功部署；SQS／DLQ、兩台private Worker、單一NAT與最小權限foundation已在AWS建立並完成第一批驗證，玩家可見async flow與AWS三組件E2E仍未完成。
-- 交付策略：已驗證的GitHub OIDC／ECR／Trivy／SSM pipeline作為後續唯一自動部署路徑。Tier 2 SQS consumer、visibility heartbeat、記憶體內secret bootstrap與hardened Worker unit已以exact digest部署到兩台private Worker並通過空Queue idle gate。Production已套用`002`／`003`／`004`且Web仍固定`sync`；下一步先補ASG replacement runtime重建邊界，再實作producer publisher／reconciliation與核准的AWS message E2E。
-- Main 整合基準：PR #38 merge commit `7bdd497dbb275fd4bb508b4527ef20c03e5cb89f`；CI run `33232277417`之Backend、Frontend、container build／Trivy與branch-boundary均全綠，production active release與runtime mode未變。
+- 目前里程碑：Tier 1、Tier 3均已完整完成。Tier 2 migration bridge、append-only schema activation、SQS／DLQ、兩台private Worker與replacement-safe exact-digest runtime均已在AWS驗證；玩家可見async flow與AWS三組件E2E仍未完成。
+- 交付策略：已驗證的GitHub OIDC／ECR／Trivy／SSM pipeline作為後續唯一自動部署路徑。Tier 2 SQS consumer、visibility heartbeat、記憶體內secret bootstrap與hardened Worker unit已由Launch Template在ASG replacement後自動重建並取得2／2 success signals。Production已套用`002`／`003`／`004`且Web仍固定`sync`；下一步實作producer publisher／reconciliation與核准的AWS message E2E。
+- Main 整合基準：PR #44 merge commit `49bfb0e888b899ffda4b3868c1055ff5e41ea383`；Backend、Frontend、container build／Trivy與branch-boundary均全綠，Worker foundation stack最終`UPDATE_COMPLETE`且production Web runtime mode未變。
 - Tier 1 完成基準 commit：`07a986a`
 - 平行分支治理基準：migration bridge初始註冊Red `4d2decb`／Green `fff9f3f`；Worker第二層guard擴權Red `fcf57d4`／Green `bbfe6dd`。
 - Regression：PR #25合併後以一次性localhost PostgreSQL 16執行Support draft、StoryJob、Story Result與Web／Worker process durability gate，共`33 passed`、無skip。PR #31再以兩個獨立connection／backend PID、雙barrier與DB端重疊驗證Support draft並行canonical row、divergent idempotency與16-hex collision；PR #32／#33完成schema marker生命週期與exact target-driver R3 contract。PR #34新增Worker foundation IaC contract與三類R3 sensitivity；PR #35／#36分別修正CloudWatch LogGroup ARN與SQS TLS單resource statement，Worker IaC `6 passed`、Backend 686 tests collected／exit 0、Frontend 96 passed，PR #36 CI四項全綠。
 - AWS active release：schema-activated container digest `sha256:6d0d732d7bb436d68d56123da1c84800b31effcaaba96b22629334cb5d28dd69`；previous verified bridge digest `sha256:b9272ee27f1f4f587c2acf7f8672ae15f954c01e919ba311aa6ab83f073e60ff`保留為不降版schema的runtime rollback target。Migration inventory精確為`001`／`002`／`003`／`004`，bridge marker已於成功後清除，runtime仍為`sync`。
 - 操作邊界：Console-first；使用者操作 AWS Console／SSM。Agent 未經新的 bounded batch 核准不得執行 AWS CLI，且不得執行 S3 讀取或 Bedrock 呼叫。
-- 平行工作：Support Agent、Tier 2 local／migration、Worker foundation、SQS consumer與Worker artifact pipeline分支均已合併並可封存；目前只建立本次Worker runtime部署紀錄，Web async未啟用。
+- 平行工作：Support Agent、Tier 2 local／migration、Worker foundation、SQS consumer、Worker artifact pipeline與replacement bootstrap分支均已合併並可封存；Web async未啟用。
 
 ## Current
 
@@ -63,18 +63,17 @@
 - Production run `33145778589`綁定exact main `8ab5fe0…`，approval、OIDC、ARM64 build／immutable push、exact-digest Trivy與SSM release均成功。SSM回`container_release=verified mode=migration-bridge`，active digest為`sha256:b9272ee…`、previous digest為`sha256:32bee84…`；沒有執行migration。唯讀postflight確認state／release env／marker為`7／3／2`行、marker綁定active digest、runtime mode `sync`、Docker `healthy`／failing streak `0`、四項services active、candidate `0`、live／ready `200`；此batch完成。
 - 首次schema activation因舊stable driver在`preflight-only`誤刪bridge marker而fail closed；migration inventory仍為`001`且服務健康。PR #32修正marker生命週期，PR #33讓SSM Document先只讀驗marker，再由exact target image的同一temporary driver執行preflight與release；Document更新至version 5/default 5，marker依bounded recovery原子恢復。
 - Production run `33170836289`綁定exact main `2472e49…`，approval、OIDC、ARM64 build／immutable push、exact-digest Trivy及SSM `schema-activation`全部成功。Active digest更新為`sha256:6d0d732…`，inventory精確為`001`／`002`／`003`／`004`；postflight確認marker清除、state／release env `7／3`行、assets checksum吻合、runtime `sync`、Docker healthy、四項services及live／ready全部通過。
-- Tier 2 Worker foundation已部署：PR #36修正SQS TLS statement後，stack `co-story-tier2-worker-foundation`固定20項resource且全部`CREATE_COMPLETE`；ASG `2／2／2`、兩台同AZ private`t4g.micro`、8 GiB encrypted gp3、SSM online、Docker active且無container。SQS／DLQ為空、DLQ alarm `OK`／actions disabled、SG與Worker／Web IAM正負控制均通過；未部署Worker image或啟用async。
+- Tier 2 Worker foundation與replacement-safe runtime已部署：stack `co-story-tier2-worker-foundation`固定20項resource；PR #44修正AL2023 `curl-minimal`衝突後，Launch Template與ASG rolling update均`UPDATE_COMPLETE`，Desired／In service `2／2`。新instance只有在exact image、service active、container running與restart `0`後才送success signal；Web仍為`sync`且未啟用async。
 - Tier 2 SQS consumer runtime已完成repo-local strict TDD：exact message schema、單筆20秒long poll、180秒visibility與60秒heartbeat、commit後ack、retry／exception／heartbeat failure不ack；production startup以精確secret ARN在記憶體組成RDS `verify-full` DSN。Worker unit已封裝於同一scanned image並固定non-root、read-only、無published port、awslogs與Worker-only `async`；Web unit仍固定`sync`，尚未部署Worker image或傳送production message。
 - Worker artifact pipeline新增獨立manual workflow：只允許main、沿用production approval與bounded OIDC role，build／push ARM64 immutable image、以exact digest執行Trivy HIGH／CRITICAL fail-closed scan並保存manifest；workflow不含SSM或Web release call，不會切換active Web runtime。
 - Worker-only run `33233803509`綁定exact main `0ea4b125…`並完整通過production approval、ARM64 build／push、exact-digest Trivy與manifest；digest `sha256:ede0f8e…`經bounded SSM部署至兩台private Worker。SSM `2/2 Success`／response `0`，兩個CloudWatch log streams存在，主Queue／DLQ仍為空；未送message、未呼叫Bedrock，Web仍為`sync`。
 
 ## Next
 
-1. ASG replacement bootstrap已完成repo-local strict TDD；下一關只建立Change Set檢查既有Launch Template／ASG Modify及rolling replacement，不新增resource，未核准前不執行。
-2. 以獨立strict-TDD批次完成producer publisher／reconciliation，解決DB commit後SendMessage失敗；再以核准的AWS test job完成queue→worker→Bedrock→DB→result與negative／redrive證據。
-3. 上述E2E通過後，才以獨立production envelope將Web從`sync`切換成`async`，完成玩家可見`202`→polling→result E2E及rollback。
-4. Tier 2 runtime穩定後，另行評估Support Agent API／UI、Nova Lite adapter、rate limiting與observability；外部submit tool仍需獨立核准。
-5. 後續production更新一律使用新exact main SHA與`digest-release`；previous digest必須取當時verified active state，仍需每次人工核准。Nova Lite round／ending真實品質evaluation亦需另行bounded核准。
+1. 以獨立strict-TDD批次完成producer publisher／reconciliation，解決DB commit後SendMessage失敗；再以核准的AWS test job完成queue→worker→Bedrock→DB→result與negative／redrive證據。
+2. 上述E2E通過後，才以獨立production envelope將Web從`sync`切換成`async`，完成玩家可見`202`→polling→result E2E及rollback。
+3. Tier 2 runtime穩定後，另行評估Support Agent API／UI、Nova Lite adapter、rate limiting與observability；外部submit tool仍需獨立核准。
+4. 後續production更新一律使用新exact main SHA與`digest-release`；previous digest必須取當時verified active state，仍需每次人工核准。Nova Lite round／ending真實品質evaluation亦需另行bounded核准。
 
 ## 操作護欄
 
@@ -92,7 +91,7 @@
 - Forced-tool Storyteller 已通過 fake Converse contract，但尚未以真實 Nova Lite 驗證 round／ending schema 與敘事品質。
 - 三次失敗T3B images與兩個成功release images均保留於immutable ECR並受lifecycle limit `10`管理；舊runs不得re-run，ECR storage／scan仍可能產生少量費用。
 - Docker actions的 Node.js 20 annotation已以test-first更新至官方 Node.js 24相容版本並通過PR #12、#14、#15 CI；後續仍不得無測試任意升版。
-- Story result的PostgreSQL CAS／inbox／outbox、async route／composition／Web polling與本機真實PostgreSQL process／restart gate均已完成；AWS SQS／DLQ、private Worker foundation及兩台SQS consumer runtime均已部署。ASG replacement重建、producer publisher／reconciliation、玩家可見async activation與AWS E2E仍是Tier 2核心缺口。
+- Story result的PostgreSQL CAS／inbox／outbox、async route／composition／Web polling與本機真實PostgreSQL process／restart gate均已完成；AWS SQS／DLQ、private Worker foundation、兩台SQS consumer runtime與ASG replacement重建均已部署。Producer publisher／reconciliation、玩家可見async activation與AWS E2E仍是Tier 2核心缺口。
 - Worker foundation已建立並持續產生單一NAT、public IPv4、兩台Worker與EBS費用；成本上限USD 35、預定清理日2026-09-08。兩台Worker位於同一AZ，只涵蓋instance replacement、不涵蓋AZ failure；HTTPS經NAT的destination尚未以VPC endpoints收斂。
 - Migration bridge已證明可讀完整`001`／`002`／`003`／`004`前綴並作為schema activation失敗時唯一rollback target；不得回復不認得newer schema的pre-bridge image，也不得做schema downgrade。
 - Support Agent static retrieval無法涵蓋所有自然語言問法；identity digest未加鹽，草稿雖已有本機PostgreSQL restart／parallel-write證據，但尚無API層長度／rate limit、API／UI、Bedrock或外部提交。接線前不得宣稱線上客服、RAG或問題提交已完成。
