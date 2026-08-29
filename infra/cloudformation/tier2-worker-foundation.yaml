@@ -431,7 +431,28 @@ Resources:
             Fn::Sub: |
               #!/bin/bash
               set -Eeuo pipefail
-              trap 'cfn-signal --success false --stack ${AWS::StackName} --resource WorkerAutoScalingGroup --region ${AWS::Region}' ERR
+              bootstrap_phase=initializing
+              signal_failure() {
+                failure_status=$?
+                trap - ERR
+                worker_service="$(systemctl is-active co-story-worker.service 2>/dev/null || true)"
+                worker_container="$(docker inspect --format '{{.State.Status}}' co-story-worker 2>/dev/null || true)"
+                worker_restarts="$(docker inspect --format '{{.RestartCount}}' co-story-worker 2>/dev/null || true)"
+                worker_exit="$(docker inspect --format '{{.State.ExitCode}}' co-story-worker 2>/dev/null || true)"
+                [ -n "$worker_service" ] || worker_service=unknown
+                [ -n "$worker_container" ] || worker_container=unknown
+                [ -n "$worker_restarts" ] || worker_restarts=unknown
+                [ -n "$worker_exit" ] || worker_exit=unknown
+                printf 'worker_bootstrap=failed phase=%s status=%s\n' "$bootstrap_phase" "$failure_status" >&2
+                printf 'worker_service=%s worker_container=%s restart=%s exit=%s\n' \
+                  "$worker_service" "$worker_container" "$worker_restarts" "$worker_exit" >&2
+                if command -v cfn-signal >/dev/null 2>&1; then
+                  cfn-signal --success false --stack ${AWS::StackName} --resource WorkerAutoScalingGroup --region ${AWS::Region} || true
+                fi
+                exit "$failure_status"
+              }
+              trap signal_failure ERR
+              bootstrap_phase=install_packages
               dnf install -y docker curl
               if ! command -v cfn-signal >/dev/null 2>&1; then
                 dnf install -y aws-cfn-bootstrap
@@ -478,13 +499,35 @@ Resources:
               install -m 0644 -o root -g root "$temporary/co-story-worker.service" /etc/systemd/system/co-story-worker.service
               rm -rf "$temporary"
               systemctl daemon-reload
+              bootstrap_phase=start_worker
               systemctl enable --now co-story-worker.service
-              sleep 35
-              systemctl is-active --quiet co-story-worker.service
-              test "$(docker inspect --format '{{.State.Running}}' co-story-worker)" = true
-              test "$(docker inspect --format '{{.RestartCount}}' co-story-worker)" = 0
-              cfn-signal --success true --stack ${AWS::StackName} --resource WorkerAutoScalingGroup --region ${AWS::Region}
+              bootstrap_phase=wait_worker_ready
+              worker_ready=false
+              for attempt in $(seq 1 12); do
+                worker_service="$(systemctl is-active co-story-worker.service 2>/dev/null || true)"
+                worker_container="$(docker inspect --format '{{.State.Status}}' co-story-worker 2>/dev/null || true)"
+                worker_restarts="$(docker inspect --format '{{.RestartCount}}' co-story-worker 2>/dev/null || true)"
+                if [ "$worker_service" = active ] \
+                  && [ "$worker_container" = running ] \
+                  && [ "$worker_restarts" = 0 ]; then
+                  worker_ready=true
+                  break
+                fi
+                sleep 10
+              done
+              test "$worker_ready" = true
+              bootstrap_phase=signal_success
+              success_signal_sent=false
+              for attempt in 1 2 3; do
+                if cfn-signal --success true --stack ${AWS::StackName} --resource WorkerAutoScalingGroup --region ${AWS::Region}; then
+                  success_signal_sent=true
+                  break
+                fi
+                sleep 5
+              done
+              test "$success_signal_sent" = true
               trap - ERR
+              printf 'worker_bootstrap=ready\n'
         TagSpecifications:
           - ResourceType: instance
             Tags:

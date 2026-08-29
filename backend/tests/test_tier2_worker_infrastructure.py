@@ -325,3 +325,18 @@ def test_replacement_bootstrap_does_not_block_docker_on_optional_cfn_package() -
     assert bootstrap.index(docker_install) < bootstrap.index(cfn_guard)
     assert bootstrap.index(cfn_guard) < bootstrap.index(cfn_install)
     assert bootstrap.index(cfn_install) < bootstrap.index("systemctl enable --now docker")
+
+
+def test_replacement_bootstrap_has_bounded_readiness_and_safe_failure_diagnostics() -> None:
+    launch_template = _template()["Resources"]["WorkerLaunchTemplate"]
+    user_data = launch_template["Properties"]["LaunchTemplateData"]["UserData"]
+    bootstrap = user_data["Fn::Base64"]["Fn::Sub"]
+
+    assert "sleep 35" not in bootstrap
+    assert "for attempt in $(seq 1 12); do" in bootstrap
+    assert "test \"$worker_ready\" = true" in bootstrap
+    assert "for attempt in 1 2 3; do" in bootstrap
+    assert "test \"$success_signal_sent\" = true" in bootstrap
+    assert "worker_bootstrap=failed phase=%s status=%s" in bootstrap
+    assert "worker_service=%s worker_container=%s restart=%s exit=%s" in bootstrap
+    assert "BASH_COMMAND" not in bootstrap
