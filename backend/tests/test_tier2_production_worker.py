@@ -66,6 +66,7 @@ def _configure_production_env(monkeypatch, *, dsn: str = "postgresql://app:secre
         "CO_STORY_BEDROCK_GUARDRAIL_VERSION",
         "CO_STORY_BEDROCK_MAX_TOKENS",
         "CO_STORY_RESOLUTION_MODE",
+        "CO_STORY_SQS_QUEUE_URL",
     ):
         monkeypatch.delenv(name, raising=False)
     monkeypatch.setenv("CO_STORY_ENV", "production")
@@ -79,6 +80,10 @@ def _configure_production_env(monkeypatch, *, dsn: str = "postgresql://app:secre
     monkeypatch.setenv("CO_STORY_BEDROCK_GUARDRAIL_VERSION", "7")
     monkeypatch.setenv("CO_STORY_BEDROCK_MAX_TOKENS", "800")
     monkeypatch.setenv("CO_STORY_RESOLUTION_MODE", "async")
+    monkeypatch.setenv(
+        "CO_STORY_SQS_QUEUE_URL",
+        "https://sqs.ap-northeast-1.amazonaws.com/123456789012/co-story-tier2-story",
+    )
 
 
 @pytest.mark.parametrize(
@@ -92,6 +97,7 @@ def _configure_production_env(monkeypatch, *, dsn: str = "postgresql://app:secre
         ("CO_STORY_BEDROCK_GUARDRAIL_ID", None),
         ("CO_STORY_BEDROCK_GUARDRAIL_VERSION", None),
         ("CO_STORY_BEDROCK_MAX_TOKENS", "0"),
+        ("CO_STORY_SQS_QUEUE_URL", None),
     ],
 )
 def test_production_worker_build_rejects_missing_or_invalid_bootstrap_config(
@@ -135,15 +141,103 @@ def test_build_production_worker_constructs_without_converse(monkeypatch) -> Non
 
     client = FakeClient()
 
+    class FakeSqsClient:
+        def __init__(self) -> None:
+            self.receive_calls = 0
+
+        def receive_message(self, **_kwargs):
+            self.receive_calls += 1
+            raise AssertionError("SQS receive should not run during construction")
+
+    sqs_client = FakeSqsClient()
+
     def fake_client(_region: str, config=None):
         return client
 
     monkeypatch.setattr(factory_module, "_create_bedrock_client", fake_client)
+    assert hasattr(factory_module, "_create_sqs_client"), "production SQS client factory 尚未建立"
+    monkeypatch.setattr(
+        factory_module,
+        "_create_sqs_client",
+        lambda _region, config=None: sqs_client,
+    )
 
     runner = factory_module.build_production_worker("postgresql://app:secret@localhost/co_story")
 
     assert client.calls == 0
-    assert runner.__class__.__name__ == "LocalStoryResolutionWorkerRunner"
+    assert sqs_client.receive_calls == 0
+    assert runner.__class__.__name__ == "SqsStoryResolutionWorkerRunner"
+
+
+@pytest.mark.parametrize(
+    "queue_url",
+    [
+        "http://sqs.ap-northeast-1.amazonaws.com/123456789012/co-story-tier2-story",
+        "https://sqs.us-east-1.amazonaws.com/123456789012/co-story-tier2-story",
+        "https://sqs.ap-northeast-1.amazonaws.com/123456789012/other-queue",
+        " https://sqs.ap-northeast-1.amazonaws.com/123456789012/co-story-tier2-story",
+    ],
+)
+def test_production_worker_rejects_noncanonical_queue_url_before_clients(
+    monkeypatch, queue_url
+) -> None:
+    _configure_production_env(monkeypatch)
+    monkeypatch.setenv("CO_STORY_SQS_QUEUE_URL", queue_url)
+    factory_module, _ = _load_modules(monkeypatch)
+    monkeypatch.setattr(
+        factory_module,
+        "_create_bedrock_client",
+        lambda *_args, **_kwargs: pytest.fail("invalid queue URL must stop before Bedrock"),
+    )
+
+    with pytest.raises(RuntimeError) as captured:
+        factory_module.build_production_worker("postgresql://app:secret@localhost/co_story")
+
+    assert str(captured.value) == "CO_STORY_SQS_QUEUE_URL"
+
+
+def test_production_sqs_runner_aligns_db_lease_and_attempts_with_transport(
+    monkeypatch,
+) -> None:
+    _configure_production_env(monkeypatch)
+    factory_module, _ = _load_modules(monkeypatch)
+    created = {}
+
+    class RecordingQueue:
+        def __init__(self, dsn, *, clock, lease_duration, max_attempts):
+            created["queue"] = (dsn, clock, lease_duration, max_attempts)
+
+    class RecordingStore:
+        def __init__(self, dsn, *, clock):
+            created["store"] = (dsn, clock)
+
+    class FakeSqsClient:
+        pass
+
+    monkeypatch.setattr(
+        "app.adapters.postgres_story_job_queue.PostgresStoryJobQueue",
+        RecordingQueue,
+    )
+    monkeypatch.setattr(
+        "app.adapters.postgres_story_resolution_store.PostgresStoryResolutionStore",
+        RecordingStore,
+    )
+    monkeypatch.setattr(factory_module, "create_production_story_resolution_narrator", object)
+    assert hasattr(factory_module, "_create_sqs_client"), "production SQS client factory 尚未建立"
+    monkeypatch.setattr(
+        factory_module,
+        "_create_sqs_client",
+        lambda _region, config=None: FakeSqsClient(),
+    )
+
+    runner = factory_module.build_production_worker_runner(
+        database_url="postgresql://app:secret@localhost/co_story",
+        worker_id="worker-1",
+    )
+
+    assert runner.__class__.__name__ == "SqsStoryResolutionWorkerRunner"
+    assert created["queue"][2].total_seconds() == 180
+    assert created["queue"][3] == 3
 
 
 def test_production_worker_factory_rejects_sync_mode_before_queue_or_bedrock(monkeypatch) -> None:
@@ -186,7 +280,10 @@ def test_worker_main_uses_production_path_in_production_environment(monkeypatch,
 
     class FakeRunner:
         def run_once(self) -> str:
-            return "processed"
+            raise AssertionError("production worker must use the long-poll loop")
+
+        def run_forever(self) -> str:
+            return "stopped"
 
     monkeypatch.setattr(
         worker_module,
@@ -201,7 +298,7 @@ def test_worker_main_uses_production_path_in_production_environment(monkeypatch,
 
     assert worker_module.main() == 0
     output = capsys.readouterr().out.strip()
-    assert output == "worker_result=processed"
+    assert output == "worker_result=stopped"
 
 
 def test_worker_main_local_mode_still_uses_mock_runner(monkeypatch, capsys) -> None:
