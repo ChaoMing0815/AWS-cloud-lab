@@ -25,6 +25,7 @@
 - Backend collection：`731 tests collected`。
 - Backend完整regression：`715 passed, 16 skipped, 1 existing Starlette deprecation warning`。
 - Local image build：成功，新增unit已複製至`/usr/local/share/co-story/co-story-worker-container.service`並設為`0444`。
+- Offline image smoke：以`--network none`確認unit mode為`0444`，SQS adapter與secret bootstrap可匯入；未連AWS。
 - Frontend：本機環境無Node／npm；由既有GitHub CI merge gate執行，不在本文件假稱本機通過。
 - `git diff --check`：通過。
 
