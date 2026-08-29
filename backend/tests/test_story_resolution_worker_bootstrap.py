@@ -162,6 +162,7 @@ def test_bootstrap_main_sets_database_url_in_memory_and_never_prints_it(
     monkeypatch, tmp_path, capsys
 ) -> None:
     module = _module()
+    monkeypatch.delenv("DATABASE_URL", raising=False)
     ca = tmp_path / "rds-ca.pem"
     ca.write_text("test-ca", encoding="utf-8")
     monkeypatch.setenv("CO_STORY_AWS_REGION", "ap-northeast-1")
@@ -186,6 +187,7 @@ def test_bootstrap_main_sets_database_url_in_memory_and_never_prints_it(
     assert "never-print" not in captured.out
     assert "never-print" not in captured.err
     assert "never-print" in observed["database_url"]
+    assert "DATABASE_URL" not in os.environ
 
 
 def test_bootstrap_main_sanitizes_secret_client_failure(monkeypatch, tmp_path, capsys) -> None:
