@@ -221,17 +221,25 @@ Resources:
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
-          - Sid: DenyInsecureTransport
+          - Sid: DenyInsecureTransportToStoryQueue
             Effect: Deny
             Principal: '*'
             Action: sqs:*
             Resource:
-              - Fn::GetAtt:
-                  - StoryQueue
-                  - Arn
-              - Fn::GetAtt:
-                  - StoryDeadLetterQueue
-                  - Arn
+              Fn::GetAtt:
+                - StoryQueue
+                - Arn
+            Condition:
+              Bool:
+                aws:SecureTransport: 'false'
+          - Sid: DenyInsecureTransportToStoryDeadLetterQueue
+            Effect: Deny
+            Principal: '*'
+            Action: sqs:*
+            Resource:
+              Fn::GetAtt:
+                - StoryDeadLetterQueue
+                - Arn
             Condition:
               Bool:
                 aws:SecureTransport: 'false'
