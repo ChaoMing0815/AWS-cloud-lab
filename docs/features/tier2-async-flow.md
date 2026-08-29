@@ -53,3 +53,5 @@
 已新增append-only `005_create_story_job_dispatch_outbox.sql`與repo-local publisher contract。Producer transaction現在同時建立opaque SQS signal outbox；publisher以lease／fencing與`SKIP LOCKED`協調並只在SendMessage成功後標記dispatched。Send失敗回到pending；Send成功但DB mark失敗則等待lease到期重送，以既有StoryJob claim/fencing承接duplicate delivery。
 
 此進度不代表production已套用`005`、publisher已部署、AWS message E2E完成或Web已切換async；這些仍需各自的release與Console核准。
+
+Publisher runtime已在後續repo-local切片完成：獨立process只有在`CO_STORY_ENV=production`、`CO_STORY_RESOLUTION_MODE=async`與literal `CO_STORY_PUBLISHER_ENABLED=true`同時成立時才會建立SQS client；缺少DB或任何gate均fail closed。Runtime尚未封裝為Web host systemd service，也未由release pipeline啟動。
