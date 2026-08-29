@@ -57,8 +57,7 @@ def test_publisher_unit_runs_on_web_identity_but_requires_separate_activation_fi
     assert tokens[tokens.index("--user") + 1] == (
         "${CO_STORY_CONTAINER_UID}:${CO_STORY_CONTAINER_GID}"
     )
-    assert tokens[-3:] == ["-m", "app.workers.story_job_publisher"][-3:]
-    assert "python" in tokens
+    assert tokens[-3:] == ["python", "-m", "app.workers.story_job_publisher"]
     assert "--publish" not in tokens
     assert "-p" not in tokens
     assert "--privileged" not in tokens
@@ -89,7 +88,10 @@ def _installer_harness(tmp_path: Path, *, daemon_reload_status: int = 0):
     )
     executable(
         "install",
-        "for last; do :; done\nmkdir -p \"$(dirname \"$last\")\"\ncp \"$5\" \"$last\"\nchmod 0444 \"$last\"\n",
+        "previous=''\nlast=''\n"
+        "for argument; do previous=\"$last\"; last=\"$argument\"; done\n"
+        "mkdir -p \"$(dirname \"$last\")\"\n"
+        "cp \"$previous\" \"$last\"\nchmod 0444 \"$last\"\n",
     )
     executable(
         "systemctl",
@@ -135,9 +137,7 @@ def test_installer_promotes_unit_but_never_enables_or_starts_it(tmp_path) -> Non
         "is-active co-story-publisher.service",
     ]
     assert not any(
-        action in event
-        for event in events
-        for action in ("enable", "start", "restart")
+        event.split()[0] in {"enable", "start", "restart"} for event in events
     )
 
 
