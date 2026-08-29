@@ -9,3 +9,14 @@
 - Frontend local：workspace無`npm`，未宣稱本機通過；PR CI的Frontend gate必須全綠後才可合併。
 - Boundary：revision metadata不含credential、account、ARN或secret；不改IAM、SSM Document、migration SQL、runtime mode或publisher activation。
 - Rollback／stop：PR／CI未完成前不得dispatch activation；activation target digest必須不同於bridge且previous精確為`sha256:c0efe0f…`。
+
+## 首次 production activation 與 SQL 相容性修正
+
+- Run `33242226396`綁定exact main `61a736a1e770f2678e3abe438607e222c1e45bfe`；approval、ARM64 build／push、digest fence與Trivy均通過，target digest為`sha256:811faece…`。
+- SSM preflight驗證previous bridge digest `sha256:c0efe0f…`正確，migration因PostgreSQL不存在`jsonb_object_length(jsonb)`而fail closed，response code `2`；未切換target image、未清除bridge marker、未啟用async／publisher。
+- Root cause：`005_create_story_job_dispatch_outbox.sql`的payload CHECK誤用不存在的函式；安全目標仍是只允許`schema_version`與`job_id`兩個key。
+- Red commit：`1cc347e`；要求以受支援的JSONB key-removal guard取代不存在函式，target test因舊SQL失敗。
+- Green commit：`916e76d`；使用`(message_payload - 'schema_version' - 'job_id') = '{}'::jsonb`保留exact-key invariant。
+- Targeted verification：migration contracts `7 passed`；代表性sensitivity改回`jsonb_object_length`時target test失敗，還原後通過。
+- Full regression：Backend `767 tests collected`，exit code `0`；只有既有Starlette／httpx warning。
+- Rollback／residual risk：production inventory仍應為`001`–`004`且active release仍是bridge；修復PR與CI全綠後，必須以新exact main／新digest另行核准activation，不得rerun失敗run。
