@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import sys
+import threading
 from datetime import timedelta
 from uuid import uuid4
 
@@ -57,6 +58,12 @@ class SqsStoryResolutionWorkerRunner:
         self._transport.delete(delivery)
         return "processed"
 
+    def run_forever(self, *, stop_event=None) -> str:
+        resolved_stop_event = stop_event or threading.Event()
+        while not resolved_stop_event.is_set():
+            self.run_once()
+        return "stopped"
+
 
 def build_local_runner(dsn: str, *, worker_id: str | None = None):
     if not dsn:
@@ -99,7 +106,11 @@ def main() -> int:
         print("worker_result=stopped:database_url_missing")
         return 2
     try:
-        result = _build_runner(dsn).run_once()
+        runner = _build_runner(dsn)
+        if os.environ.get("CO_STORY_ENV", "").lower() == "production":
+            result = runner.run_forever()
+        else:
+            result = runner.run_once()
     except RuntimeError as error:
         print(f"worker_result=stopped:{error}")
         return 2
