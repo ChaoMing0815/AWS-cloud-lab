@@ -27,7 +27,7 @@ def test_dispatch_outbox_payload_is_an_opaque_versioned_job_signal() -> None:
     sql = " ".join(MIGRATION.read_text(encoding="utf-8").lower().split())
 
     assert "jsonb_build_object('schema_version', 1, 'job_id', job_id)" in sql
-    assert "message_payload - 'schema_version' - 'job_id' = '{}'::jsonb" in sql
+    assert "(message_payload - 'schema_version' - 'job_id') = '{}'::jsonb" in sql
     assert "jsonb_object_length" not in sql
     assert "message_payload ->> 'schema_version' = '1'" in sql
     assert "message_payload ->> 'job_id' = job_id" in sql
