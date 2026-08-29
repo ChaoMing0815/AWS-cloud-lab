@@ -94,8 +94,8 @@
 
 - [x] 建立 Web/API、Story Worker、Data 依賴圖，並完成PostgreSQL durable story-job local contract。
 - [ ] 將故事生成改為 queue／job 模式並保存 idempotency key。
-- [ ] 部署至少三個課程要求可辨識的 AWS 組件／compute，公私網段正確。
-- [ ] Data 與 Worker 不直接對外；SG 只允許必要流量。
+- [x] 部署至少三個課程要求可辨識的 AWS 組件／compute，公私網段正確。
+- [x] Data 與 Worker 不直接對外；SG 只允許必要流量。
 - [ ] 驗證 action→queue→worker→Bedrock→database→result E2E。
 - [ ] 保存組件、網段、SG 與負面連線證據。
 

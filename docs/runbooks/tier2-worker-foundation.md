@@ -51,7 +51,7 @@
 ## 執行前安全檢查
 
 1. Template／Git commit SHA與本runbook envelope一致。
-2. IAM Access Analyzer對Web producer policy及Worker inline policies的Security／Errors／Warnings／Suggestions均為0，或所有finding已停止並回報。
+2. 新增或變更IAM policy document／resolved resource scope時，IAM Access Analyzer Console自動finding的Security／Errors／Warnings／Suggestions均為0，或所有finding已停止並回報。若內容與scope相對已記錄證據未變，沿用既有結果，不重貼相同JSON。
 3. Worker trust只含`ec2.amazonaws.com`；permissions boundary為`PowerUserAccess`。
 4. Web policy只附加`AWSFinalProjectAppRole`；Worker role不附加到Web instance。
 5. Worker無public IP、無KeyName、SG無inbound；DB ingress source為Worker SG而非CIDR。
@@ -70,6 +70,7 @@
 - Worker role的正面模擬允許指定Queue receive，負面模擬拒絕`SendMessage`、其他Queue、其他secret、`iam:PassRole`。
 - Web role正面模擬允許指定Queue send，負面模擬拒絕receive／delete。
 - DB SG只新增Worker SG `5432`；RDS仍`Public access=No`。
+- Worker SG無inbound；egress恰好為HTTPS `443`、目的DB SG `5432`，以及抑制AWS預設allow-all的localhost sink `127.0.0.1/32`。
 
 完成上述驗證前，不進行SQS runtime或async activation。
 
