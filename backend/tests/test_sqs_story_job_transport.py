@@ -144,6 +144,94 @@ def test_delete_and_visibility_extension_are_scoped_to_exact_receipt() -> None:
     assert client.delete_calls == [expected]
 
 
+class StepStopEvent:
+    def __init__(self) -> None:
+        self.wait_calls = []
+        self.set_calls = 0
+
+    def wait(self, timeout: float) -> bool:
+        self.wait_calls.append(timeout)
+        return len(self.wait_calls) > 1
+
+    def set(self) -> None:
+        self.set_calls += 1
+
+
+class ImmediateThread:
+    def __init__(self, *, target, name: str, daemon: bool) -> None:
+        self._target = target
+        self.name = name
+        self.daemon = daemon
+        self.started = False
+        self.joined = False
+
+    def start(self) -> None:
+        self.started = True
+        self._target()
+
+    def join(self) -> None:
+        self.joined = True
+
+
+class VisibilityRecordingTransport:
+    def __init__(self, *, error: Exception | None = None) -> None:
+        self.calls = []
+        self.error = error
+
+    def extend_visibility(self, delivery) -> None:
+        self.calls.append(delivery)
+        if self.error is not None:
+            raise self.error
+
+
+def test_visibility_heartbeat_extends_in_background_and_stops_cleanly() -> None:
+    module = _transport_module()
+    delivery = _delivery()
+    transport = VisibilityRecordingTransport()
+    stop_event = StepStopEvent()
+    threads = []
+
+    def thread_factory(**kwargs):
+        thread = ImmediateThread(**kwargs)
+        threads.append(thread)
+        return thread
+
+    with module.SqsVisibilityHeartbeat(
+        transport,
+        delivery,
+        interval_seconds=60,
+        stop_event=stop_event,
+        thread_factory=thread_factory,
+    ):
+        pass
+
+    assert transport.calls == [delivery]
+    assert stop_event.wait_calls == [60, 60]
+    assert stop_event.set_calls == 1
+    assert threads[0].started is True
+    assert threads[0].joined is True
+    assert threads[0].daemon is True
+
+
+def test_visibility_heartbeat_surfaces_extension_failure_without_receipt_data() -> None:
+    module = _transport_module()
+    delivery = _delivery()
+    transport = VisibilityRecordingTransport(error=RuntimeError("receipt-sensitive-detail"))
+
+    with pytest.raises(module.VisibilityHeartbeatError) as captured:
+        with module.SqsVisibilityHeartbeat(
+            transport,
+            delivery,
+            interval_seconds=60,
+            stop_event=StepStopEvent(),
+            thread_factory=lambda **kwargs: ImmediateThread(**kwargs),
+        ):
+            pass
+
+    assert str(captured.value) == "visibility_heartbeat_failed"
+    assert "receipt-sensitive-detail" not in str(captured.value)
+
+
 class RecordingHeartbeat:
     def __init__(self, events: list[str], *, fail_on_exit: bool = False) -> None:
         self._events = events
