@@ -453,7 +453,8 @@ Resources:
               }
               trap signal_failure ERR
               bootstrap_phase=install_packages
-              dnf install -y docker curl
+              dnf install -y docker
+              command -v curl >/dev/null 2>&1
               if ! command -v cfn-signal >/dev/null 2>&1; then
                 dnf install -y aws-cfn-bootstrap
               fi
