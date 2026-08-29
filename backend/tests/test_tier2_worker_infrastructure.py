@@ -258,3 +258,52 @@ def test_foundation_is_bounded_and_exports_only_deployment_identifiers() -> None
         "StoryDeadLetterQueueArn",
         "WorkerLogGroupName",
     }
+
+
+def test_replacement_bootstrap_installs_exact_worker_and_signals_only_when_idle_ready() -> None:
+    template = _template()
+    parameters = template["Parameters"]
+    resources = template["Resources"]
+
+    assert len(resources) == 20
+    assert parameters["WorkerImageDigest"]["AllowedPattern"] == (
+        "^sha256:[a-f0-9]{64}$"
+    )
+    assert parameters["DbEndpointAddress"]["AllowedPattern"] == (
+        "^[A-Za-z0-9-]+([.][A-Za-z0-9-]+)*[.]ap-northeast-1[.]rds[.]amazonaws[.]com$"
+    )
+
+    launch_template = resources["WorkerLaunchTemplate"]
+    user_data = launch_template["Properties"]["LaunchTemplateData"]["UserData"]
+    bootstrap = user_data["Fn::Base64"]["Fn::Sub"]
+    required = {
+        "${WorkerImageDigest}",
+        "${DbEndpointAddress}",
+        "${RuntimeSecretArn}",
+        "${StoryQueue}",
+        "${BedrockGuardrailId}",
+        "${BedrockGuardrailVersion}",
+        "co-story-worker-container.service",
+        "aws ecr get-login-password --region ${AWS::Region}",
+        "--network host",
+        "systemctl enable --now co-story-worker.service",
+        "docker inspect --format '{{.RestartCount}}' co-story-worker",
+        "cfn-signal --success true --stack ${AWS::StackName} --resource WorkerAutoScalingGroup --region ${AWS::Region}",
+    }
+    for fragment in required:
+        assert fragment in bootstrap
+    assert "SendMessage" not in bootstrap
+    assert "DATABASE_URL=" not in bootstrap
+
+    group = resources["WorkerAutoScalingGroup"]
+    assert group["CreationPolicy"] == {
+        "ResourceSignal": {"Count": 2, "Timeout": "PT15M"}
+    }
+    assert group["UpdatePolicy"] == {
+        "AutoScalingRollingUpdate": {
+            "MaxBatchSize": 1,
+            "MinInstancesInService": 1,
+            "PauseTime": "PT10M",
+            "WaitOnResourceSignals": True,
+        }
+    }
