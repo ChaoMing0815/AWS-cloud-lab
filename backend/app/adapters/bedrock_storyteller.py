@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+from copy import deepcopy
 from typing import Any
 
 from app.application.ports import Storyteller, StorytellerFailure
@@ -13,6 +14,14 @@ MAX_NARRATIVE_LENGTH = 1200
 ROUND_TOOL_NAME = "submit_round_narrative"
 ENDING_TOOL_NAME = "submit_ending_narrative"
 ROUND_AND_ENDING_TOOL_NAME = "submit_round_and_ending_narrative"
+_NOVA_LITE_V1_MODEL_ID = "amazon.nova-lite-v1:0"
+_NOVA_LITE_UNSUPPORTED_SCHEMA_FIELDS = {
+    "additionalProperties",
+    "minLength",
+    "maxLength",
+    "minItems",
+    "maxItems",
+}
 _TONES = {
     "light_comedy",
     "workplace_satire",
@@ -499,9 +508,10 @@ class BedrockStoryteller(Storyteller):
             },
         }
         if tool is not None:
-            tool_name = tool["toolSpec"]["name"]
+            request_tool = _tool_for_model(tool, self._model_id)
+            tool_name = request_tool["toolSpec"]["name"]
             request["toolConfig"] = {
-                "tools": [tool],
+                "tools": [request_tool],
                 "toolChoice": {"tool": {"name": tool_name}},
             }
         try:
@@ -514,6 +524,31 @@ class BedrockStoryteller(Storyteller):
         if response.get("stopReason") == "guardrail_intervened":
             raise StorytellerFailure("CONTENT_REJECTED")
         return response
+
+
+def _tool_for_model(tool: dict[str, Any], model_id: str) -> dict[str, Any]:
+    request_tool = deepcopy(tool)
+    if model_id != _NOVA_LITE_V1_MODEL_ID:
+        return request_tool
+
+    tool_spec = request_tool["toolSpec"]
+    tool_spec.pop("strict", None)
+    tool_spec["inputSchema"]["json"] = _without_unsupported_nova_lite_fields(
+        tool_spec["inputSchema"]["json"]
+    )
+    return request_tool
+
+
+def _without_unsupported_nova_lite_fields(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {
+            key: _without_unsupported_nova_lite_fields(child)
+            for key, child in value.items()
+            if key not in _NOVA_LITE_UNSUPPORTED_SCHEMA_FIELDS
+        }
+    if isinstance(value, list):
+        return [_without_unsupported_nova_lite_fields(child) for child in value]
+    return value
 
 
 def _world_context(room: Room) -> dict[str, str | None]:
