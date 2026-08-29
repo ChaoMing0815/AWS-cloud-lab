@@ -20,3 +20,14 @@
 - Sensitivity：暫時恢復額外`:*`後專屬test精確失敗；還原後重新通過。
 - Full regression：Backend 686 tests collected／exit 0；Frontend 96 passed。
 - AWS freeze：既有Change Set使用舊template SHA，不得執行；必須待修正合併後以新exact HEAD與template SHA重建20-Add Change Set，並重做IAM Access Analyzer。
+
+## SQS TLS policy corrective validation
+
+- AWS結果：使用`main` exact HEAD `209a086`與template SHA-256 `0fb878d6277d7d1f17893aa47f1f713e1282b33f2557bf360720ae3779f1630b`建立的20-Add Change Set，在獲得foundation-only、USD 35成本上限與2026-09-08清理日核准後執行；`StoryQueueTlsPolicy`建立失敗，整體stack已安全回復至`ROLLBACK_COMPLETE`。
+- Finding：SQS拒絕單一policy statement同時包含兩個Queue resource；錯誤指出每個statement必須恰好一個resource。帳號與request識別資訊未保存。
+- Red：`c4a45b6`要求同一個`AWS::SQS::QueuePolicy`保留兩個Queue綁定，但TLS deny拆成兩個statement，且每個statement只指向一個Queue ARN；舊template精確失敗。
+- Green：`93878c9`將main queue與DLQ分成兩個TLS deny statements；CloudFormation resource inventory仍為20，未新增服務或權限。
+- Targeted verification：專屬test 1 passed；Tier 2 Worker IaC suite 6 passed。
+- Sensitivity：暫時將第一個statement還原為雙Queue resource array後，專屬test精確失敗；mutation還原後重新通過。
+- Full regression：Backend 686 tests collected／exit 0；Frontend 96 passed。
+- AWS freeze：失敗的Change Set不得重試；修正必須先合併至`main`，再以新的exact HEAD與template SHA-256 `71ed3342ff3570bf6d31978580cb8e0fc52f0acff33930146f2bebe3f660a85c`建立全新Change Set。重新執行前仍須確認20 Add／0 Modify／0 Remove／0 Replacement、property-level diff及IAM Access Analyzer無新增finding。
