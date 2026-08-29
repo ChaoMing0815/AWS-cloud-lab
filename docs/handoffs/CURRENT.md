@@ -1,8 +1,8 @@
 # CURRENT：目前工作交接
 
 - 更新日期：2026-08-29
-- 目前里程碑：Tier 1、Tier 3均已完整完成。Tier 2 migration bridge、append-only schema activation至`004`、SQS／DLQ、兩台private Worker與replacement-safe exact-digest runtime均已在AWS驗證；producer publisher／reconciliation contract與fail-closed runtime已完成repo-local，service／schema release、AWS三組件E2E與玩家可見async flow仍未完成。
-- 交付策略：已驗證的GitHub OIDC／ECR／Trivy／SSM pipeline作為後續唯一自動部署路徑。Production Web仍固定`sync`；下一步封裝Web-host publisher systemd service與release contract，再以獨立envelope套用`005`並部署但保持停用，通過後才申請AWS message E2E。
+- 目前里程碑：Tier 1、Tier 3均已完整完成。Tier 2 migration bridge、append-only schema activation至`004`、SQS／DLQ、兩台private Worker與replacement-safe exact-digest runtime均已在AWS驗證；producer publisher／reconciliation、fail-closed runtime及disabled-only service release contract已完成repo-local，production schema／asset release、AWS三組件E2E與玩家可見async flow仍未完成。
+- 交付策略：已驗證的GitHub OIDC／ECR／Trivy／SSM pipeline作為後續唯一自動部署路徑。Production Web仍固定`sync`；下一步先合併publisher service切片，再建立獨立production envelope套用`005`、部署image並只安裝disabled／inactive unit，通過後才申請AWS message E2E與明確activation。
 - Main 整合基準：PR #46 merge commit `b90e55111ae31b18b7c42b7a30dd44ad99246fdc`；Backend、Frontend、container build／Trivy與branch-boundary均全綠。`005`與publisher contract已進main但尚未production套用或部署；Worker foundation stack仍為`UPDATE_COMPLETE`且Web runtime mode未變。
 - Tier 1 完成基準 commit：`07a986a`
 - 平行分支治理基準：migration bridge初始註冊Red `4d2decb`／Green `fff9f3f`；Worker第二層guard擴權Red `fcf57d4`／Green `bbfe6dd`。
@@ -70,11 +70,12 @@
 
 ## Next
 
-1. 合併`codex/tier2-producer-runtime`，再以獨立strict-TDD切片封裝Web-host publisher systemd service與release contract；Worker role不得取得`SendMessage`，service預設不得啟動。
-2. 另建production release envelope，先套用append-only `005`並部署publisher assets，但Web保持`sync`、publisher保持停用且不得送訊息；再以核准的AWS test job完成queue→worker→Bedrock→DB→result與negative／redrive證據。
-3. 上述E2E通過後，才以獨立production envelope將Web從`sync`切換成`async`，完成玩家可見`202`→polling→result E2E及rollback。
-4. Tier 2 runtime穩定後，另行評估Support Agent API／UI、Nova Lite adapter、rate limiting與observability；外部submit tool仍需獨立核准。
-5. 後續production更新一律使用新exact main SHA與`digest-release`；previous digest必須取當時verified active state，仍需每次人工核准。Nova Lite round／ending真實品質evaluation亦需另行bounded核准。
+1. 合併`codex/tier2-publisher-service`；CI必須含Backend、Frontend、container build／Trivy與branch boundary。
+2. 另建production release envelope，先套用append-only `005`並部署publisher assets，只安裝disabled／inactive unit；Web保持`sync`、不得建立activation file或送訊息。
+3. 另行核准AWS test job與publisher activation後，完成queue→worker→Bedrock→DB→result及negative／redrive證據。
+4. 上述E2E通過後，才以獨立production envelope將Web從`sync`切換成`async`，完成玩家可見`202`→polling→result E2E及rollback。
+5. Tier 2 runtime穩定後，另行評估Support Agent API／UI、Nova Lite adapter、rate limiting與observability；外部submit tool仍需獨立核准。
+6. 後續production更新一律使用新exact main SHA與`digest-release`；previous digest必須取當時verified active state，仍需每次人工核准。Nova Lite round／ending真實品質evaluation亦需另行bounded核准。
 
 ## 操作護欄
 
