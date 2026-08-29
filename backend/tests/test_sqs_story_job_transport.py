@@ -358,3 +358,22 @@ def test_sqs_runner_reports_idle_without_starting_heartbeat() -> None:
 
     assert _runner(transport, worker, events).run_once() == "idle"
     assert events == ["receive"]
+
+
+class StepLoopStop:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def is_set(self) -> bool:
+        self.calls += 1
+        return self.calls > 1
+
+
+def test_sqs_runner_long_poll_loop_stops_at_explicit_boundary() -> None:
+    events = []
+    transport = RecordingTransport(None, events)
+    worker = RecordingWorker(object(), events)
+    runner = _runner(transport, worker, events)
+
+    assert runner.run_forever(stop_event=StepLoopStop()) == "stopped"
+    assert events == ["receive"]
