@@ -54,6 +54,7 @@ flowchart LR
 - Production composition在建立AWS client前先驗證精確Tokyo queue URL與Bedrock設定；SQS與Bedrock SDK retry均停用，由既有job retry／SQS redrive邊界主導。
 - Worker啟動時只讀精確runtime secret ARN，接受`co_story_app`的`username`／`password`兩欄，使用RDS endpoint與非symlink CA組成`verify-full` DSN；DB密碼只存在Worker process memory，不寫入host env file或log。
 - Worker systemd unit已封裝於同一個會經CI掃描的image：non-root container、read-only rootfs、無published port、無HTTP healthcheck、CloudWatch awslogs與固定Worker-only `async` entrypoint。既有Web unit仍精確為`sync`。
+- Worker artifact使用獨立manual／main-only／production-approved workflow產生ARM64 immutable image、掃描exact digest並保存manifest；該workflow不得呼叫SSM或既有Web release document。
 
 ## IAM boundary
 

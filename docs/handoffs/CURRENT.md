@@ -2,14 +2,14 @@
 
 - 更新日期：2026-08-29
 - 目前里程碑：Tier 1、Tier 3均已完整完成。Tier 2 migration bridge與append-only schema activation已透過production pipeline成功部署；SQS／DLQ、兩台private Worker、單一NAT與最小權限foundation已在AWS建立並完成第一批驗證，玩家可見async flow與AWS三組件E2E仍未完成。
-- 交付策略：已驗證的GitHub OIDC／ECR／Trivy／SSM pipeline作為後續唯一自動部署路徑。Tier 2 replay-safe Data contract、玩家可見async API與production Worker／Bedrock composition均已整合；本批再完成SQS consumer、visibility heartbeat、記憶體內secret bootstrap與hardened Worker unit。Production已套用`002`／`003`／`004`且Web仍固定`sync`；下一步先以獨立envelope部署exact-digest Worker image並做空queue idle gate，再實作producer publisher／reconciliation，AWS E2E後才啟用Web async。
-- Main 整合基準：PR #37 merge commit `391c4d6151f1743fab6aab22f14755aa6ee5e12d`；Worker foundation部署紀錄已整合，production active release與runtime mode未變。
+- 交付策略：已驗證的GitHub OIDC／ECR／Trivy／SSM pipeline作為後續唯一自動部署路徑。Tier 2 replay-safe Data contract、玩家可見async API、production Worker／Bedrock composition、SQS consumer、visibility heartbeat、記憶體內secret bootstrap與hardened Worker unit均已整合。Production已套用`002`／`003`／`004`且Web仍固定`sync`；下一步以Worker-only workflow產生並掃描exact digest，再由bounded SSM envelope只部署兩台private Worker並做空queue idle gate。
+- Main 整合基準：PR #38 merge commit `7bdd497dbb275fd4bb508b4527ef20c03e5cb89f`；CI run `33232277417`之Backend、Frontend、container build／Trivy與branch-boundary均全綠，production active release與runtime mode未變。
 - Tier 1 完成基準 commit：`07a986a`
 - 平行分支治理基準：migration bridge初始註冊Red `4d2decb`／Green `fff9f3f`；Worker第二層guard擴權Red `fcf57d4`／Green `bbfe6dd`。
 - Regression：PR #25合併後以一次性localhost PostgreSQL 16執行Support draft、StoryJob、Story Result與Web／Worker process durability gate，共`33 passed`、無skip。PR #31再以兩個獨立connection／backend PID、雙barrier與DB端重疊驗證Support draft並行canonical row、divergent idempotency與16-hex collision；PR #32／#33完成schema marker生命週期與exact target-driver R3 contract。PR #34新增Worker foundation IaC contract與三類R3 sensitivity；PR #35／#36分別修正CloudWatch LogGroup ARN與SQS TLS單resource statement，Worker IaC `6 passed`、Backend 686 tests collected／exit 0、Frontend 96 passed，PR #36 CI四項全綠。
 - AWS active release：schema-activated container digest `sha256:6d0d732d7bb436d68d56123da1c84800b31effcaaba96b22629334cb5d28dd69`；previous verified bridge digest `sha256:b9272ee27f1f4f587c2acf7f8672ae15f954c01e919ba311aa6ab83f073e60ff`保留為不降版schema的runtime rollback target。Migration inventory精確為`001`／`002`／`003`／`004`，bridge marker已於成功後清除，runtime仍為`sync`。
 - 操作邊界：Console-first；使用者操作 AWS Console／SSM。Agent 未經新的 bounded batch 核准不得執行 AWS CLI，且不得執行 S3 讀取或 Bedrock 呼叫。
-- 平行工作：Support Agent、Tier 2 local／migration與Worker foundation分支均已合併並可封存；目前進行SQS Worker runtime repo-local整合，沒有production runtime deployment task。
+- 平行工作：Support Agent、Tier 2 local／migration、Worker foundation與SQS consumer runtime分支均已合併並可封存；目前準備Worker-only exact-digest artifact pipeline，尚未部署Worker image。
 
 ## Current
 
@@ -65,14 +65,16 @@
 - Production run `33170836289`綁定exact main `2472e49…`，approval、OIDC、ARM64 build／immutable push、exact-digest Trivy及SSM `schema-activation`全部成功。Active digest更新為`sha256:6d0d732…`，inventory精確為`001`／`002`／`003`／`004`；postflight確認marker清除、state／release env `7／3`行、assets checksum吻合、runtime `sync`、Docker healthy、四項services及live／ready全部通過。
 - Tier 2 Worker foundation已部署：PR #36修正SQS TLS statement後，stack `co-story-tier2-worker-foundation`固定20項resource且全部`CREATE_COMPLETE`；ASG `2／2／2`、兩台同AZ private`t4g.micro`、8 GiB encrypted gp3、SSM online、Docker active且無container。SQS／DLQ為空、DLQ alarm `OK`／actions disabled、SG與Worker／Web IAM正負控制均通過；未部署Worker image或啟用async。
 - Tier 2 SQS consumer runtime已完成repo-local strict TDD：exact message schema、單筆20秒long poll、180秒visibility與60秒heartbeat、commit後ack、retry／exception／heartbeat failure不ack；production startup以精確secret ARN在記憶體組成RDS `verify-full` DSN。Worker unit已封裝於同一scanned image並固定non-root、read-only、無published port、awslogs與Worker-only `async`；Web unit仍固定`sync`，尚未部署Worker image或傳送production message。
+- Worker artifact pipeline新增獨立manual workflow：只允許main、沿用production approval與bounded OIDC role，build／push ARM64 immutable image、以exact digest執行Trivy HIGH／CRITICAL fail-closed scan並保存manifest；workflow不含SSM或Web release call，不會切換active Web runtime。
 
 ## Next
 
-1. SQS runtime PR通過Backend、Frontend、container scan與boundary gate後，另立bounded deployment envelope；先只部署exact-digest Worker image並在空Queue驗證兩台service healthy／idle，不切換Web、不傳送production job。
-2. 以獨立strict-TDD批次完成producer publisher／reconciliation，解決DB commit後SendMessage失敗；再以核准的AWS test job完成queue→worker→Bedrock→DB→result與negative／redrive證據。
-3. 上述E2E通過後，才以獨立production envelope將Web從`sync`切換成`async`，完成玩家可見`202`→polling→result E2E及rollback。
-4. Tier 2 runtime穩定後，另行評估Support Agent API／UI、Nova Lite adapter、rate limiting與observability；外部submit tool仍需獨立核准。
-5. 後續production更新一律使用新exact main SHA與`digest-release`；previous digest必須取當時verified active state，仍需每次人工核准。Nova Lite round／ending真實品質evaluation亦需另行bounded核准。
+1. Worker artifact workflow PR通過四項CI並合併後，從main人工dispatch；production approval後只接受exact digest manifest，停止條件為build／push／Trivy／artifact任一失敗。
+2. 另以bounded SSM Console envelope將同一exact digest部署到兩台private Worker；先驗證Queue／DLQ仍為0與Web仍為`sync`，再做兩台service running／無restart／空queue idle gate，不傳送production job。
+3. 以獨立strict-TDD批次完成producer publisher／reconciliation，解決DB commit後SendMessage失敗；再以核准的AWS test job完成queue→worker→Bedrock→DB→result與negative／redrive證據。
+4. 上述E2E通過後，才以獨立production envelope將Web從`sync`切換成`async`，完成玩家可見`202`→polling→result E2E及rollback。
+5. Tier 2 runtime穩定後，另行評估Support Agent API／UI、Nova Lite adapter、rate limiting與observability；外部submit tool仍需獨立核准。
+6. 後續production更新一律使用新exact main SHA與`digest-release`；previous digest必須取當時verified active state，仍需每次人工核准。Nova Lite round／ending真實品質evaluation亦需另行bounded核准。
 
 ## 操作護欄
 
