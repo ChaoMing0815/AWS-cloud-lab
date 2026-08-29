@@ -1,0 +1,28 @@
+[Unit]
+Description=Co-Story private Tier 2 SQS Worker container
+After=network-online.target docker.service
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=simple
+User=root
+Group=root
+EnvironmentFile=/etc/co-story/worker-release.env
+EnvironmentFile=/etc/co-story/worker-runtime.env
+Environment=CO_STORY_RESOLUTION_MODE=async
+ExecStartPre=-/usr/bin/docker rm -f co-story-worker
+ExecStart=/usr/bin/docker run --name co-story-worker --network host --read-only --cap-drop ALL --security-opt no-new-privileges --tmpfs /tmp:rw,noexec,nosuid,size=64m --no-healthcheck --env-file /etc/co-story/worker-runtime.env --env CO_STORY_RESOLUTION_MODE=${CO_STORY_RESOLUTION_MODE} --mount type=bind,src=/etc/pki/rds/rds-ca.pem,dst=/etc/pki/rds/rds-ca.pem,readonly --user ${CO_STORY_WORKER_UID}:${CO_STORY_WORKER_GID} --log-driver awslogs --log-opt awslogs-region=${CO_STORY_AWS_REGION} --log-opt awslogs-group=/co-story/tier2/worker --log-opt awslogs-stream=${CO_STORY_WORKER_LOG_STREAM} --log-opt awslogs-create-group=false ${CO_STORY_WORKER_IMAGE} python -m app.workers.story_resolution_worker_bootstrap
+ExecStop=/usr/bin/docker stop --time 30 co-story-worker
+ExecStopPost=-/usr/bin/docker rm -f co-story-worker
+Restart=on-failure
+RestartSec=10
+TimeoutStartSec=120
+TimeoutStopSec=45
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+
+[Install]
+WantedBy=multi-user.target

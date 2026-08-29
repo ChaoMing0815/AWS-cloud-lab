@@ -28,9 +28,11 @@ COPY web web
 COPY ops/container/healthcheck.py /usr/local/bin/co-story-healthcheck
 COPY ops/release/deploy_container.sh /usr/local/share/co-story/deploy_container.sh
 COPY ops/systemd/co-story-container.service /usr/local/share/co-story/co-story-container.service
+COPY ops/systemd/co-story-worker-container.service /usr/local/share/co-story/co-story-worker-container.service
 RUN chmod 0555 /usr/local/bin/co-story-healthcheck \
     && chmod 0555 /usr/local/share/co-story/deploy_container.sh \
     && chmod 0444 /usr/local/share/co-story/co-story-container.service \
+    && chmod 0444 /usr/local/share/co-story/co-story-worker-container.service \
     && install -d -m 0750 -o 10001 -g 10001 /var/log/co-story \
     && install -d -m 0755 -o root -g root /etc/pki/rds
 
