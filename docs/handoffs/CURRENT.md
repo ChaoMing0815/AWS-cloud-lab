@@ -1,12 +1,12 @@
 # CURRENT：目前工作交接
 
 - 更新日期：2026-08-29
-- 目前里程碑：Tier 1、Tier 3均已完整完成。Tier 2 migration bridge、append-only schema activation、SQS／DLQ、兩台private Worker與replacement-safe exact-digest runtime均已在AWS驗證；玩家可見async flow與AWS三組件E2E仍未完成。
-- 交付策略：已驗證的GitHub OIDC／ECR／Trivy／SSM pipeline作為後續唯一自動部署路徑。Tier 2 SQS consumer、visibility heartbeat、記憶體內secret bootstrap與hardened Worker unit已由Launch Template在ASG replacement後自動重建並取得2／2 success signals。Production已套用`002`／`003`／`004`且Web仍固定`sync`；下一步實作producer publisher／reconciliation與核准的AWS message E2E。
-- Main 整合基準：PR #44 merge commit `49bfb0e888b899ffda4b3868c1055ff5e41ea383`；Backend、Frontend、container build／Trivy與branch-boundary均全綠，Worker foundation stack最終`UPDATE_COMPLETE`且production Web runtime mode未變。
+- 目前里程碑：Tier 1、Tier 3均已完整完成。Tier 2 migration bridge、append-only schema activation至`004`、SQS／DLQ、兩台private Worker與replacement-safe exact-digest runtime均已在AWS驗證；producer publisher／reconciliation contract已合併，runtime release、AWS三組件E2E與玩家可見async flow仍未完成。
+- 交付策略：已驗證的GitHub OIDC／ECR／Trivy／SSM pipeline作為後續唯一自動部署路徑。Production Web仍固定`sync`；下一步在Web compute／AppRole邊界建立fail-closed publisher runtime，再以獨立release套用`005`並部署，通過後才申請AWS message E2E。
+- Main 整合基準：PR #46 merge commit `b90e55111ae31b18b7c42b7a30dd44ad99246fdc`；Backend、Frontend、container build／Trivy與branch-boundary均全綠。`005`與publisher contract已進main但尚未production套用或部署；Worker foundation stack仍為`UPDATE_COMPLETE`且Web runtime mode未變。
 - Tier 1 完成基準 commit：`07a986a`
 - 平行分支治理基準：migration bridge初始註冊Red `4d2decb`／Green `fff9f3f`；Worker第二層guard擴權Red `fcf57d4`／Green `bbfe6dd`。
-- Regression：PR #25合併後以一次性localhost PostgreSQL 16執行Support draft、StoryJob、Story Result與Web／Worker process durability gate，共`33 passed`、無skip。PR #31再以兩個獨立connection／backend PID、雙barrier與DB端重疊驗證Support draft並行canonical row、divergent idempotency與16-hex collision；PR #32／#33完成schema marker生命週期與exact target-driver R3 contract。PR #34新增Worker foundation IaC contract與三類R3 sensitivity；PR #35／#36分別修正CloudWatch LogGroup ARN與SQS TLS單resource statement，Worker IaC `6 passed`、Backend 686 tests collected／exit 0、Frontend 96 passed，PR #36 CI四項全綠。
+- Regression：PR #46以strict TDD新增producer dispatch outbox、lease／fencing publisher與SendMessage failure reconciliation；Backend `752 tests collected`／exit `0`，PR CI的Backend、Frontend、container build／Trivy與branch-boundary四項全綠。R3 evidence：[`docs/evidence/2026-08-29-tier2-story-job-publisher/validation.md`](../evidence/2026-08-29-tier2-story-job-publisher/validation.md)。
 - AWS active release：schema-activated container digest `sha256:6d0d732d7bb436d68d56123da1c84800b31effcaaba96b22629334cb5d28dd69`；previous verified bridge digest `sha256:b9272ee27f1f4f587c2acf7f8672ae15f954c01e919ba311aa6ab83f073e60ff`保留為不降版schema的runtime rollback target。Migration inventory精確為`001`／`002`／`003`／`004`，bridge marker已於成功後清除，runtime仍為`sync`。
 - 操作邊界：Console-first；使用者操作 AWS Console／SSM。Agent 未經新的 bounded batch 核准不得執行 AWS CLI，且不得執行 S3 讀取或 Bedrock 呼叫。
 - 平行工作：Support Agent、Tier 2 local／migration、Worker foundation、SQS consumer、Worker artifact pipeline與replacement bootstrap分支均已合併並可封存；Web async未啟用。
@@ -70,10 +70,11 @@
 
 ## Next
 
-1. 以獨立strict-TDD批次完成producer publisher／reconciliation，解決DB commit後SendMessage失敗；再以核准的AWS test job完成queue→worker→Bedrock→DB→result與negative／redrive證據。
-2. 上述E2E通過後，才以獨立production envelope將Web從`sync`切換成`async`，完成玩家可見`202`→polling→result E2E及rollback。
-3. Tier 2 runtime穩定後，另行評估Support Agent API／UI、Nova Lite adapter、rate limiting與observability；外部submit tool仍需獨立核准。
-4. 後續production更新一律使用新exact main SHA與`digest-release`；previous digest必須取當時verified active state，仍需每次人工核准。Nova Lite round／ending真實品質evaluation亦需另行bounded核准。
+1. 在`codex/tier2-producer-runtime`以strict TDD建立只允許Web compute／AppRole執行的fail-closed publisher runtime；Worker role不得取得`SendMessage`。
+2. Runtime合併後另建production release envelope，先套用append-only `005`並部署publisher，但Web保持`sync`、不得送訊息；再以核准的AWS test job完成queue→worker→Bedrock→DB→result與negative／redrive證據。
+3. 上述E2E通過後，才以獨立production envelope將Web從`sync`切換成`async`，完成玩家可見`202`→polling→result E2E及rollback。
+4. Tier 2 runtime穩定後，另行評估Support Agent API／UI、Nova Lite adapter、rate limiting與observability；外部submit tool仍需獨立核准。
+5. 後續production更新一律使用新exact main SHA與`digest-release`；previous digest必須取當時verified active state，仍需每次人工核准。Nova Lite round／ending真實品質evaluation亦需另行bounded核准。
 
 ## 操作護欄
 
@@ -91,7 +92,7 @@
 - Forced-tool Storyteller 已通過 fake Converse contract，但尚未以真實 Nova Lite 驗證 round／ending schema 與敘事品質。
 - 三次失敗T3B images與兩個成功release images均保留於immutable ECR並受lifecycle limit `10`管理；舊runs不得re-run，ECR storage／scan仍可能產生少量費用。
 - Docker actions的 Node.js 20 annotation已以test-first更新至官方 Node.js 24相容版本並通過PR #12、#14、#15 CI；後續仍不得無測試任意升版。
-- Story result的PostgreSQL CAS／inbox／outbox、async route／composition／Web polling與本機真實PostgreSQL process／restart gate均已完成；AWS SQS／DLQ、private Worker foundation、兩台SQS consumer runtime與ASG replacement重建均已部署。Producer publisher／reconciliation、玩家可見async activation與AWS E2E仍是Tier 2核心缺口。
+- Story result的PostgreSQL CAS／inbox／completion outbox、async route／composition／Web polling與本機真實PostgreSQL process／restart gate均已完成；AWS SQS／DLQ、private Worker foundation、兩台SQS consumer runtime與ASG replacement重建均已部署。Producer dispatch outbox／reconciliation已合併但`005`與publisher runtime尚未production release；玩家可見async activation與AWS E2E仍是Tier 2核心缺口。
 - Worker foundation已建立並持續產生單一NAT、public IPv4、兩台Worker與EBS費用；成本上限USD 35、預定清理日2026-09-08。兩台Worker位於同一AZ，只涵蓋instance replacement、不涵蓋AZ failure；HTTPS經NAT的destination尚未以VPC endpoints收斂。
 - Migration bridge已證明可讀完整`001`／`002`／`003`／`004`前綴並作為schema activation失敗時唯一rollback target；不得回復不認得newer schema的pre-bridge image，也不得做schema downgrade。
 - Support Agent static retrieval無法涵蓋所有自然語言問法；identity digest未加鹽，草稿雖已有本機PostgreSQL restart／parallel-write證據，但尚無API層長度／rate limit、API／UI、Bedrock或外部提交。接線前不得宣稱線上客服、RAG或問題提交已完成。
