@@ -26,6 +26,13 @@ _CANONICAL_INVENTORIES = (
         "003_create_story_resolution_results",
         "004_create_support_report_drafts",
     ),
+    (
+        "001_create_rooms",
+        "002_create_story_jobs",
+        "003_create_story_resolution_results",
+        "004_create_support_report_drafts",
+        "005_create_story_job_dispatch_outbox",
+    ),
 )
 
 

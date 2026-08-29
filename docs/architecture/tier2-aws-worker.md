@@ -1,6 +1,6 @@
 # Tier 2 AWS Worker foundation 架構
 
-- 狀態：AWS foundation與兩台SQS consumer runtime已部署；producer／AWS message E2E尚未啟用
+- 狀態：AWS foundation與兩台SQS consumer runtime已部署；producer publisher／reconciliation已完成repo-local contract，尚未部署或執行AWS message E2E
 - 決策：ADR-0007
 - Region：`ap-northeast-1`
 
@@ -45,7 +45,7 @@ flowchart LR
 - DLQ：SSE-SQS、14天retention；主Queue三次接收失敗後redrive。
 - TLS deny policy同時套用主Queue與DLQ。
 - 第一版message schema固定為`{"schema_version":1,"job_id":"<opaque>"}`；adapter拒絕缺欄、額外欄位、非版本1與不合格job ID，message不含Room snapshot、玩家文字或secret。
-- PostgreSQL job row先commit；後續SQS publisher／reconciliation contract必須另以strict TDD解決DB commit後SendMessage失敗，不得用dual-write成功假設取代outbox／replay設計。
+- PostgreSQL job row與`story_job_dispatch_outbox`在同一transaction commit。Publisher以lease／fencing claim，SendMessage失敗回到pending；Send成功但DB mark失敗則由lease到期後重送，維持at-least-once，不宣稱distributed exactly-once。
 
 ## Consumer runtime boundary
 
@@ -69,4 +69,4 @@ Auto Scaling Group固定`min=2`、`desired=2`、`max=2`，可以替換單一失�
 
 ## Foundation completion boundary
 
-Foundation完成僅表示network、queue、IAM與兩台Docker-ready host存在。SQS adapter、visibility heartbeat、production consumer composition與runtime unit已部署到目前兩台host並通過空Queue idle gate；以下仍是獨立缺口：ASG replacement自動重建runtime、producer publisher／reconciliation、DLQ operator flow、AWS E2E、Web async activation與rollback。
+Foundation、SQS consumer runtime與ASG replacement自動重建已完成；producer publisher／reconciliation已完成repo-local strict-TDD contract但尚未套用`005`或部署。以下仍是獨立缺口：schema／publisher release、DLQ operator flow、AWS E2E、Web async activation與rollback。

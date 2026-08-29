@@ -159,6 +159,53 @@ def test_producer_fault_escapes_same_transaction_after_job_insert(monkeypatch) -
     assert not any("insert into rooms" in sql for sql, _ in connection.statements)
 
 
+def test_producer_inserts_dispatch_outbox_before_room_commit(monkeypatch) -> None:
+    room = resolution_room()
+    connection = ScriptedConnection(
+        [
+            ("from story_jobs", []),
+            ("select payload from rooms", [(_room_payload(room),)]),
+            ("insert into story_jobs", []),
+            ("insert into story_job_dispatch_outbox", []),
+            ("insert into rooms", []),
+        ]
+    )
+    store = _store(monkeypatch, connection)
+
+    job = store.begin_resolution("room-1", 2, 7, True)
+
+    statements = [sql for sql, _ in connection.statements]
+    dispatch_sql = next(sql for sql in statements if "insert into story_job_dispatch_outbox" in sql)
+    assert "jsonb_build_object" in dispatch_sql
+    assert statements.index(dispatch_sql) < statements.index(
+        next(sql for sql in statements if "insert into rooms" in sql)
+    )
+
+
+def test_producer_fault_after_dispatch_insert_escapes_same_transaction(monkeypatch) -> None:
+    room = resolution_room()
+    connection = ScriptedConnection(
+        [
+            ("from story_jobs", []),
+            ("select payload from rooms", [(_room_payload(room),)]),
+            ("insert into story_jobs", []),
+            ("insert into story_job_dispatch_outbox", []),
+        ]
+    )
+
+    def fail(point):
+        if point == "after_dispatch_insert":
+            raise RuntimeError("injected dispatch rollback")
+
+    store = _store(monkeypatch, connection, fault_hook=fail)
+
+    with pytest.raises(RuntimeError, match="dispatch rollback"):
+        store.begin_resolution("room-1", 2, 7, True)
+
+    assert isinstance(connection.exit_error, RuntimeError)
+    assert not any("insert into rooms" in sql for sql, _ in connection.statements)
+
+
 def test_result_commit_orders_room_inbox_and_outbox_in_one_transaction(monkeypatch) -> None:
     room = resolution_room(status="RESOLVING", version=8)
     room.dice_results[0].spark_decision = "DECLINE"

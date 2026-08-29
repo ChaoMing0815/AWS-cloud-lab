@@ -40,6 +40,17 @@ class SqsStoryJobTransport:
         self._visibility_timeout_seconds = visibility_timeout_seconds
         self._wait_time_seconds = wait_time_seconds
 
+    def publish(self, job_id: str) -> None:
+        if not _valid_job_id(job_id):
+            raise ValueError("invalid_story_job_id")
+        self._client.send_message(
+            QueueUrl=self._queue_url,
+            MessageBody=json.dumps(
+                {"schema_version": 1, "job_id": job_id},
+                separators=(",", ":"),
+            ),
+        )
+
     def receive_one(self) -> SqsStoryJobDelivery | None:
         response = self._client.receive_message(
             QueueUrl=self._queue_url,
