@@ -90,3 +90,11 @@
 - 使用者核准exact main `2472e49…`、previous digest `sha256:b9272ee…`的`schema-activation`；production run `33170836289`通過approval、OIDC、ARM64 build／immutable push、exact-digest Trivy與bounded SSM。SSM response code `0`，回`container_release=verified mode=schema-activation image_digest=sha256:6d0d732d7bb436d68d56123da1c84800b31effcaaba96b22629334cb5d28dd69`。
 - 唯讀postflight為`pass`：state／release env精確`7／3`行且digest吻合，marker與asset backups absent，stable driver／unit checksum吻合，container running／healthy／failing streak `0`、runtime mode仍為`sync`、candidate `0`，migration inventory精確為`001_create_rooms,002_create_story_jobs,003_create_story_resolution_results,004_create_support_report_drafts`，四項services active、live／ready均`200`。
 - 此batch只前進append-only schema並更新同步Web image；沒有啟用async Worker、SQS或玩家可見async flow。Runtime rollback只能回verified bridge digest且不做schema downgrade。
+
+## `005` production migration bridge（2026-08-29）
+
+- 使用者核准exact main `4435fdb45c2fda4e0d7551617b874fbb2b8c8f8c`、previous verified active digest `sha256:6d0d732d7bb436d68d56123da1c84800b31effcaaba96b22629334cb5d28dd69`與`migration-bridge`；GitHub run `33241665137`綁定相同source SHA。
+- Approval、OIDC、ARM64 build／immutable push、exact-digest Trivy與bounded SSM release全部成功；target bridge digest為`sha256:c0efe0f9400e08e767bd77e6174ce315ee2bfc42942bb8abd30a27e8a86b404d`。
+- SSM step回`Status=Success`／`ResponseCode=0`。Migration bridge mode依既有contract不執行migration，Web維持`sync`；publisher unit未安裝、未建立activation file、未送SQS message、未呼叫Bedrock。
+- Bridge成功後production schema inventory仍為`001`／`002`／`003`／`004`；`005`只能由後續新的exact-main schema activation執行，previous digest必須精確綁定本節bridge digest。
+- 費用增量限於一次GitHub Actions與immutable ECR image storage／scan；未新增常駐AWS resource，USD 35上限與2026-09-08清理日不變。
