@@ -155,6 +155,7 @@ jobs:
           context: .
           platforms: linux/arm64
           push: true
+          build-args: CO_STORY_SOURCE_REVISION=${{ github.sha }}
           tags: ${{ steps.ecr.outputs.registry }}/${{ vars.TIER3_ECR_REPOSITORY }}:${{ github.sha }}
       - name: Fence target and previous digests
         if: inputs.release_mode != 'legacy-bootstrap'
