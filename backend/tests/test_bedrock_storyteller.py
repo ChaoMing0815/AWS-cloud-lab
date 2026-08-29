@@ -713,6 +713,37 @@ def test_round_and_ending_force_output_only_tools_and_leave_canonical_room_state
     ]
 
 
+def test_nova_v1_tool_request_omits_unsupported_structured_output_fields() -> None:
+    client = FakeBedrockClient(
+        tool_response(ROUND_TOOL_NAME, round_tool_input())
+    )
+    storyteller = adapter(client, model_id="amazon.nova-lite-v1:0")
+
+    storyteller.resolve_round(resolution_room())
+
+    tool_spec = client.calls[0]["toolConfig"]["tools"][0]["toolSpec"]
+    assert "strict" not in tool_spec
+
+    unsupported = {
+        "additionalProperties",
+        "minLength",
+        "maxLength",
+        "minItems",
+        "maxItems",
+    }
+
+    def assert_compatible(value) -> None:
+        if isinstance(value, dict):
+            assert unsupported.isdisjoint(value)
+            for child in value.values():
+                assert_compatible(child)
+        elif isinstance(value, list):
+            for child in value:
+                assert_compatible(child)
+
+    assert_compatible(tool_spec["inputSchema"]["json"])
+
+
 @pytest.mark.parametrize(
     "case",
     [
