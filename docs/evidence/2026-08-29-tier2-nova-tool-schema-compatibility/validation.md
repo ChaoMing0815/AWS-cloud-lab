@@ -7,4 +7,6 @@
 - Green：只對 exact `amazon.nova-lite-v1:0` 深拷貝 request tool，移除 `strict`、`additionalProperties`、`minLength`、`maxLength`、`minItems`、`maxItems`；其他模型保留既有 strict schema，回應仍通過原有 exact-key、型別、長度與玩家集合 validators。
 - Regression：Bedrock／production Worker／async workflow／publisher／PostgreSQL store相關測試全綠；完整 Backend suite exit `0`；Frontend `96/96`。
 - Sensitivity：暫時停用 Nova Lite轉換後，新 targeted test重新失敗於 `strict`；還原後通過。
-- Rollback／殘餘風險：回復 Green commit即可撤銷；本機測試不能證明實際 Bedrock接受 request。production Worker仍使用舊 image digest `sha256:ede0f8e571824e2b1100a537795825ecdff415b0dbd1fcbc1e8a1ebd50bf1757`，必須先通過 PR CI、獨立 Worker image release與新的單次 Bedrock測試核准，才能重新驗證 AWS E2E。
+- Integration：PR #56四項CI全綠並合併為exact main `98ded43cad36a59c020f3937db0d360d019749f8`。Worker image run `33257141550`完成ARM64 build／immutable push、exact-digest Trivy與manifest，產生`sha256:94ff5d2c073542393d4e82d1b1c620ee2653730a78a9c655fbf13694024bf8f0`。
+- Production rollout：使用者以bounded SSM精確選取兩台private Worker，由previous `sha256:ede0f8e571824e2b1100a537795825ecdff415b0dbd1fcbc1e8a1ebd50bf1757`更新；兩台皆回`nova_lite_schema=compatible`、service active、container running、restart `0`、mode async。部署後兩台皆執行registry logout並確認credential absent；Web仍為`sync`。
+- Rollback／殘餘風險：每台release均保留previous digest rollback；local／CI與部署健康不能證明實際Bedrock接受request。升版後未建立test job、未送SQS或呼叫Bedrock，必須取得新的exactly-one單次測試核准後才能宣稱AWS E2E通過。

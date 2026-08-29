@@ -1,13 +1,13 @@
 # CURRENT：目前工作交接
 
 - 更新日期：2026-08-29
-- 目前里程碑：Tier 1、Tier 3均已完整完成。Tier 2 schema已至`005`、SQS／DLQ、兩台private Worker及publisher runtime均已在AWS驗證；publisher為static但已人工啟動，AWS三組件exactly-one E2E與玩家可見async flow仍未完成。
-- 交付策略：已驗證的GitHub OIDC／ECR／Trivy／SSM pipeline作為唯一自動部署路徑。Production Web仍固定`sync`；下一步另行核准exactly-one test job，Web async仍是之後的獨立批次。
-- Main 整合基準：PR #53 merge commit `ea6019687d3c696f463045178a9fdec1db7d8fb4`；static-state修復Red `3dad43a`／Green `2294f6c`及四項CI全綠。Production publisher unit已安裝為static並以獨立activation env人工啟動。
+- 目前里程碑：Tier 1、Tier 3均已完整完成。Tier 2 schema已至`005`，SQS／DLQ、兩台private Worker及publisher runtime均已在AWS驗證。首次exactly-one鏈路已完成typed JSONB寫入、dispatch、Worker completion與清理，但Bedrock結果為`INVALID_MODEL`；Nova Lite相容性修正已部署至兩台Worker，尚待新的單次live E2E核准，玩家可見async仍未啟用。
+- 交付策略：已驗證的GitHub OIDC／ECR／Trivy／SSM pipeline作為唯一自動部署路徑。Production Web仍精確固定`sync`；下一步只可在新核准下建立一個exactly-one test job、單次SQS message與至多一次Bedrock invocation，Web async仍是之後的獨立批次。
+- Main 整合基準：PR #56 merge commit `98ded43cad36a59c020f3937db0d360d019749f8`；Nova Lite tool schema相容性Red `f556671`／Green `58680f3`／evidence `d4a3648`及四項CI全綠。PR #55 typed JSONB producer修正已包含於production Web／publisher image。
 - Tier 1 完成基準 commit：`07a986a`
 - 平行分支治理基準：migration bridge初始註冊Red `4d2decb`／Green `fff9f3f`；Worker第二層guard擴權Red `fcf57d4`／Green `bbfe6dd`。
-- Regression：publisher static-state分支targeted contracts `39 passed`，Backend `768 tests collected`／exit `0`；代表性sensitivity可攔截`static`誤拒絕。Publisher runtime與disabled-only service evidence分別位於[`producer runtime`](../evidence/2026-08-29-tier2-producer-runtime/validation.md)與[`publisher service`](../evidence/2026-08-29-tier2-publisher-service/validation.md)。
-- AWS active release：verified digest `sha256:af120cbbfafe710ea8b9da9fb6e1b67cde57e619d91c4188b88740136485cc59`；migration inventory精確`001`–`005`，Web runtime為`sync`。Publisher unit為`static`／`active`、container為`running`且dispatch outbox為`0`；failed target `sha256:811faece…`不得rerun。
+- Regression：Nova Lite／production Worker／async workflow／publisher／PostgreSQL store相關測試`117 passed, 1 skipped`，完整Backend suite exit `0`，Frontend `96/96`；停用Nova相容轉換的代表性sensitivity會失敗。正式證據位於[`Nova Lite tool schema compatibility`](../evidence/2026-08-29-tier2-nova-tool-schema-compatibility/validation.md)。
+- AWS active release：migration inventory精確`001`–`005`；Web與publisher digest均為`sha256:23357e315e94842cee8455023b1f87f203fca5b1d11b67b714f4af86efaa2a1b`，Web為`sync`，publisher為`static`／`active`且container `running`。兩台Worker均為`sha256:94ff5d2c073542393d4e82d1b1c620ee2653730a78a9c655fbf13694024bf8f0`、service active、container running、restart `0`、mode `async`；兩台ECR login credential均已登出清除。
 - 操作邊界：Console-first；使用者操作 AWS Console／SSM。Agent 未經新的 bounded batch 核准不得執行 AWS CLI，且不得執行 S3 讀取或 Bedrock 呼叫。
 - 平行工作：Support Agent、Tier 2 local／migration、Worker foundation、SQS consumer、Worker artifact pipeline與replacement bootstrap分支均已合併並可封存；Web async未啟用。
 
@@ -67,14 +67,15 @@
 - Tier 2 SQS consumer runtime已完成repo-local strict TDD：exact message schema、單筆20秒long poll、180秒visibility與60秒heartbeat、commit後ack、retry／exception／heartbeat failure不ack；production startup以精確secret ARN在記憶體組成RDS `verify-full` DSN。Worker unit已封裝於同一scanned image並固定non-root、read-only、無published port、awslogs與Worker-only `async`；Web unit仍固定`sync`，尚未部署Worker image或傳送production message。
 - Worker artifact pipeline新增獨立manual workflow：只允許main、沿用production approval與bounded OIDC role，build／push ARM64 immutable image、以exact digest執行Trivy HIGH／CRITICAL fail-closed scan並保存manifest；workflow不含SSM或Web release call，不會切換active Web runtime。
 - Worker-only run `33233803509`綁定exact main `0ea4b125…`並完整通過production approval、ARM64 build／push、exact-digest Trivy與manifest；digest `sha256:ede0f8e…`經bounded SSM部署至兩台private Worker。SSM `2/2 Success`／response `0`，兩個CloudWatch log streams存在，主Queue／DLQ仍為空；未送message、未呼叫Bedrock，Web仍為`sync`。
+- PR #55以typed psycopg `Jsonb`參數修正publisher outbox payload；run `33253308679`綁定exact main `b4b6e28…`完成digest release，Web與publisher均切至`sha256:23357e3…`且Web維持`sync`。首次exactly-one測試只建立一個job，typed JSONB setup、SQS dispatch與Worker completion均成功，但room以`RESOLUTION_FAILED／INVALID_MODEL`結束；marker已清除，主Queue／DLQ available及in-flight四項皆為`0`。
+- PR #56只對exact `amazon.nova-lite-v1:0`移除不相容的outgoing tool schema constraints，保留本機strict response validation。Worker image run `33257141550`綁定exact main `98ded43…`完成ARM64 build、exact-digest Trivy及manifest；兩台Worker以bounded SSM更新至`sha256:94ff5d2…`，均為active／running／restart `0`／async，Docker registry credential已登出。升版後尚未建立test job或呼叫Bedrock。
 
 ## Next
 
-1. 另行核准exactly-one AWS test job，完成queue→worker→Bedrock→DB→result及negative／redrive證據；不得把此核准延伸為Web async。
-2. Exactly-one E2E執行前維持publisher `static`／`active`、Web `sync`，且不得重跑已通過的activation檢查。
+1. 另行取得新核准後，以Worker digest `sha256:94ff5d2…`建立一個exactly-one AWS test job；只允許單次SQS message與至多一次Bedrock invocation，不自動重跑，Web保持`sync`。
+2. 成功時驗證queue→publisher→worker→Bedrock→DB→result並清除marker；失敗時先清理並回報單一根因，不把測試核准延伸為Web async。
 3. 上述E2E通過後，才以獨立production envelope將Web從`sync`切換成`async`，完成玩家可見`202`→polling→result E2E及rollback。
-4. Tier 2 runtime穩定後，另行評估Support Agent API／UI、Nova Lite adapter、rate limiting與observability；外部submit tool仍需獨立核准。
-5. 後續production更新一律使用新exact main SHA與`digest-release`；previous digest必須取當時verified active state，仍需每次人工核准。Nova Lite round／ending真實品質evaluation亦需另行bounded核准。
+4. Tier 2完成後更新completion evidence與架構文件，並依成本上限USD 35於2026-09-08執行既定清理；若需面試展示，只保留可快速重建的最小資產。
 
 ## 操作護欄
 
@@ -89,10 +90,10 @@
 - Direct IP certificate 約 160 小時效期；須保留 renewal timer 驗證。EC2 stop/start 若 public IP 改變，URL、certificate 與 allowlist 都需重建。
 - EC2 與 RDS 最近一次已知狀態均為運行中。若預估超過 48 小時不使用，依既定清理計畫由使用者手動停止 RDS；storage／backup 仍可能計費，且 RDS 最長 7 天會自動啟動。
 - `CoStoryHealthCheck` 已通過正面 gate，尚未執行 Document 自身的代表性 failure gate。
-- Forced-tool Storyteller 已通過 fake Converse contract，但尚未以真實 Nova Lite 驗證 round／ending schema 與敘事品質。
+- Nova Lite相容request已通過local／CI並部署至兩台Worker，但尚未以新digest完成live Bedrock invocation；先前唯一一次production invocation以舊Worker結束於`INVALID_MODEL`，不得宣稱AWS E2E已通過。錯誤映射仍較粗，若新測試失敗須保存sanitized原始error分類再診斷。
 - 三次失敗T3B images與兩個成功release images均保留於immutable ECR並受lifecycle limit `10`管理；舊runs不得re-run，ECR storage／scan仍可能產生少量費用。
 - Docker actions的 Node.js 20 annotation已以test-first更新至官方 Node.js 24相容版本並通過PR #12、#14、#15 CI；後續仍不得無測試任意升版。
-- Story result的PostgreSQL CAS／inbox／completion outbox、async route／composition／Web polling與本機真實PostgreSQL process／restart gate均已完成；AWS SQS／DLQ、private Worker foundation、兩台SQS consumer runtime、ASG replacement重建、`005`與publisher runtime均已部署。Publisher已在空outbox下啟動但尚未建立exactly-one test job；玩家可見async activation與AWS E2E仍是Tier 2核心缺口。
+- Story result的PostgreSQL CAS／inbox／completion outbox、async route／composition／Web polling與本機真實PostgreSQL process／restart gate均已完成；AWS SQS／DLQ、private Worker foundation、兩台SQS consumer runtime、ASG replacement重建、`005`與publisher runtime均已部署。首次exactly-one已證明dispatch與completion但模型結果失敗；新Worker digest的successful Bedrock result、玩家可見async activation與rollback仍是Tier 2核心缺口。
 - Worker foundation已建立並持續產生單一NAT、public IPv4、兩台Worker與EBS費用；成本上限USD 35、預定清理日2026-09-08。兩台Worker位於同一AZ，只涵蓋instance replacement、不涵蓋AZ failure；HTTPS經NAT的destination尚未以VPC endpoints收斂。
 - Migration bridge已證明可讀完整`001`／`002`／`003`／`004`前綴並作為schema activation失敗時唯一rollback target；不得回復不認得newer schema的pre-bridge image，也不得做schema downgrade。
 - Support Agent static retrieval無法涵蓋所有自然語言問法；identity digest未加鹽，草稿雖已有本機PostgreSQL restart／parallel-write證據，但尚無API層長度／rate limit、API／UI、Bedrock或外部提交。接線前不得宣稱線上客服、RAG或問題提交已完成。
