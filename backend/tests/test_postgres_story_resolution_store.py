@@ -182,6 +182,30 @@ def test_producer_inserts_dispatch_outbox_before_room_commit(monkeypatch) -> Non
     )
 
 
+def test_producer_fault_after_dispatch_insert_escapes_same_transaction(monkeypatch) -> None:
+    room = resolution_room()
+    connection = ScriptedConnection(
+        [
+            ("from story_jobs", []),
+            ("select payload from rooms", [(_room_payload(room),)]),
+            ("insert into story_jobs", []),
+            ("insert into story_job_dispatch_outbox", []),
+        ]
+    )
+
+    def fail(point):
+        if point == "after_dispatch_insert":
+            raise RuntimeError("injected dispatch rollback")
+
+    store = _store(monkeypatch, connection, fault_hook=fail)
+
+    with pytest.raises(RuntimeError, match="dispatch rollback"):
+        store.begin_resolution("room-1", 2, 7, True)
+
+    assert isinstance(connection.exit_error, RuntimeError)
+    assert not any("insert into rooms" in sql for sql, _ in connection.statements)
+
+
 def test_result_commit_orders_room_inbox_and_outbox_in_one_transaction(monkeypatch) -> None:
     room = resolution_room(status="RESOLVING", version=8)
     room.dice_results[0].spark_decision = "DECLINE"

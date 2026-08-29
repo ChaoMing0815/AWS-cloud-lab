@@ -30,4 +30,5 @@ def test_dispatch_outbox_payload_is_an_opaque_versioned_job_signal() -> None:
     assert "jsonb_object_length(message_payload) = 2" in sql
     assert "message_payload ->> 'schema_version' = '1'" in sql
     assert "message_payload ->> 'job_id' = job_id" in sql
-
+    assert "jsonb_typeof(message_payload -> 'schema_version') = 'number'" in sql
+    assert "jsonb_typeof(message_payload -> 'job_id') = 'string'" in sql

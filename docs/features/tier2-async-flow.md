@@ -47,3 +47,9 @@
 - 不把本機Mock Worker宣稱為Nova Lite或AWS E2E。
 - 整合後下一批才設計SQS transport、private Worker／Data Security Group、production Worker runtime與bounded deployment envelope。
 - production worker 批次也不觸發 `workflow_dispatch`、不啟動 Web process 中的 worker 執行緒或背景 thread，不在 local/test 環境建立 Bedrock client。
+
+## Producer publisher／reconciliation 進度（2026-08-29）
+
+已新增append-only `005_create_story_job_dispatch_outbox.sql`與repo-local publisher contract。Producer transaction現在同時建立opaque SQS signal outbox；publisher以lease／fencing與`SKIP LOCKED`協調並只在SendMessage成功後標記dispatched。Send失敗回到pending；Send成功但DB mark失敗則等待lease到期重送，以既有StoryJob claim/fencing承接duplicate delivery。
+
+此進度不代表production已套用`005`、publisher已部署、AWS message E2E完成或Web已切換async；這些仍需各自的release與Console核准。

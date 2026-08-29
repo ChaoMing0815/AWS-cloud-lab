@@ -14,7 +14,9 @@ CREATE TABLE story_job_dispatch_outbox (
     CONSTRAINT story_job_dispatch_outbox_payload_shape CHECK (
         jsonb_typeof(message_payload) = 'object'
         AND jsonb_object_length(message_payload) = 2
+        AND jsonb_typeof(message_payload -> 'schema_version') = 'number'
         AND message_payload ->> 'schema_version' = '1'
+        AND jsonb_typeof(message_payload -> 'job_id') = 'string'
         AND message_payload ->> 'job_id' = job_id
     ),
     CONSTRAINT story_job_dispatch_outbox_state_shape CHECK (

@@ -111,6 +111,42 @@ def test_send_failure_releases_for_reconciliation_without_marking_dispatched() -
     assert events == [("release", "job-1", "lease-1", "sqs_send_failed")]
 
 
+def test_mark_failure_leaves_publishing_lease_for_expiry_reconciliation() -> None:
+    from app.application.story_job_publisher import StoryJobPublisher
+
+    events = []
+    delivery = SimpleNamespace(job_id="job-1", lease_token="lease-1")
+
+    def mark_failed(_job_id, _token):
+        events.append(("mark",))
+        raise RuntimeError("database unavailable after successful send")
+
+    outbox = SimpleNamespace(
+        claim_one=lambda: delivery,
+        mark_dispatched=mark_failed,
+        release=lambda *_args: events.append(("release",)),
+    )
+    transport = SimpleNamespace(
+        publish=lambda job_id: events.append(("send", job_id)),
+    )
+
+    with pytest.raises(RuntimeError, match="database unavailable"):
+        StoryJobPublisher(outbox, transport).run_once()
+
+    assert events == [("send", "job-1"), ("mark",)]
+
+
+def test_publisher_is_idle_without_claim_and_never_sends() -> None:
+    from app.application.story_job_publisher import StoryJobPublisher
+
+    events = []
+    outbox = SimpleNamespace(claim_one=lambda: None)
+    transport = SimpleNamespace(publish=lambda _job_id: events.append("send"))
+
+    assert StoryJobPublisher(outbox, transport).run_once() == "idle"
+    assert events == []
+
+
 def test_outbox_rejects_stale_lease_when_marking_dispatched(monkeypatch) -> None:
     from app.adapters.postgres_story_job_dispatch import StoryJobDispatchOwnershipConflict
 
@@ -142,3 +178,21 @@ def test_sqs_publish_sends_only_compact_opaque_job_signal() -> None:
         }
     ]
 
+
+@pytest.mark.parametrize("job_id", ["", " job-1", "job\n1", "x" * 129])
+def test_sqs_publish_rejects_invalid_job_id_before_network(job_id) -> None:
+    from app.adapters.sqs_story_job_transport import SqsStoryJobTransport
+
+    calls = []
+    client = SimpleNamespace(send_message=lambda **kwargs: calls.append(kwargs) or {})
+    transport = SqsStoryJobTransport(
+        client,
+        queue_url="https://sqs.ap-northeast-1.amazonaws.com/example/story",
+        visibility_timeout_seconds=180,
+        wait_time_seconds=20,
+    )
+
+    with pytest.raises(ValueError, match="invalid_story_job_id"):
+        transport.publish(job_id)
+
+    assert calls == []
