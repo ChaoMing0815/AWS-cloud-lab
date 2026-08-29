@@ -31,3 +31,17 @@
 - Sensitivity：暫時將第一個statement還原為雙Queue resource array後，專屬test精確失敗；mutation還原後重新通過。
 - Full regression：Backend 686 tests collected／exit 0；Frontend 96 passed。
 - AWS freeze：失敗的Change Set不得重試；修正必須先合併至`main`，再以新的exact HEAD與template SHA-256 `71ed3342ff3570bf6d31978580cb8e0fc52f0acff33930146f2bebe3f660a85c`建立全新Change Set。重新執行前仍須確認20 Add／0 Modify／0 Remove／0 Replacement、property-level diff及IAM Access Analyzer無新增finding。
+
+## AWS foundation deployment
+
+- Merge／template：PR #36的SQS TLS修正已合併；執行基準為`main` exact HEAD `90677f8c31fd587e957675000fc413e747b17f9c`，template SHA-256為`71ed3342ff3570bf6d31978580cb8e0fc52f0acff33930146f2bebe3f660a85c`。
+- Preflight stop：首次重建的Change Set property diff仍顯示舊版單一TLS statement／雙Queue resource；在執行前停止並刪除，沒有建立AWS resource或產生該批費用。以exact workspace template重新上傳後，`StoryQueueTlsPolicy`顯示兩個statement且每個只有一個Queue resource。
+- Approved envelope：Change Set `tier2-worker-foundation-add20-90677f8-20260829-r3`為20 Add／0 Modify／0 Remove／0 Replacement；成本上限USD 35、清理日2026-09-08，只建立foundation，不部署Worker image、不啟用async。
+- CloudFormation：stack `co-story-tier2-worker-foundation`為`CREATE_COMPLETE`，20／20 resources均為`CREATE_COMPLETE`。
+- Compute／storage：ASG min／desired／max為2／2／2；兩台`t4g.micro`均running／healthy、無public IPv4、無Key Pair、IMDSv2 required；兩顆root volume均為8 GiB encrypted gp3且in-use。
+- SSM／bootstrap：兩台managed node online。第一次Run Command誤選PowerShell document，因Linux無`/usr/bin/pwsh`而立即失敗且未修改instance；改用`AWS-RunShellScript`後兩台均`Success`，Docker為`active`且`docker ps`只有header，沒有Worker container。
+- Messaging／observability：主Queue與DLQ的available／in-flight均為0；部署後TLS policy含兩個預期Sid；DLQ alarm為`OK`且actions disabled。
+- Network：Worker SG無inbound；egress為HTTPS 443、指向既有DB SG的PostgreSQL 5432，以及抑制AWS預設allow-all的localhost sink `127.0.0.1/32`。DB SG只新增來源為Worker SG的TCP 5432，未使用CIDR。
+- Effective IAM：Worker role對主Queue `ReceiveMessage`為Allowed；主Queue `SendMessage`、DLQ `ReceiveMessage`、廣泛／非授權secret與`iam:PassRole`均Denied。既有Web role對主Queue `SendMessage`為Allowed，`ReceiveMessage`／`DeleteMessage`均Denied。
+- Validation process：IAM JSON在本次修正前後未變；Console自動finding再次顯示Security／Errors／Warnings／Suggestions均為0。後續若policy document與resolved resource scope未變，沿用已記錄結果，不再要求重貼相同JSON；只有IAM內容或scope改變才重驗。
+- Runtime boundary：production active release與Web runtime仍維持精確`sync`；本批沒有pull／run Worker image、沒有傳送SQS message、沒有Bedrock呼叫或async activation。
