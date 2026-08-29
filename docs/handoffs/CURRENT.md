@@ -1,13 +1,13 @@
 # CURRENT：目前工作交接
 
 - 更新日期：2026-08-29
-- 目前里程碑：Tier 1、Tier 3均已完整完成。Tier 2 migration bridge、append-only schema activation至`004`、SQS／DLQ、兩台private Worker與replacement-safe exact-digest runtime均已在AWS驗證；首次`005` activation因SQL使用不存在的PostgreSQL函式而fail closed，production schema仍未前進，AWS三組件E2E與玩家可見async flow仍未完成。
-- 交付策略：已驗證的GitHub OIDC／ECR／Trivy／SSM pipeline作為後續唯一自動部署路徑。Production Web仍固定`sync`；下一步先合併`005` JSONB guard修正，以新exact-main image重做schema activation，再另行只安裝disabled／inactive publisher unit。
-- Main 整合基準：PR #49 merge commit `61a736a1e770f2678e3abe438607e222c1e45bfe`；Backend、Frontend、container build／Trivy與branch-boundary均全綠。修復分支`codex/tier2-schema-activation-jsonb-fix`以Red `1cc347e`／Green `916e76d`取代不受支援的`jsonb_object_length`，尚待PR／CI。
+- 目前里程碑：Tier 1、Tier 3均已完整完成。Tier 2 migration bridge與append-only schema activation至`005`、SQS／DLQ、兩台private Worker與replacement-safe exact-digest runtime均已在AWS驗證；publisher尚未安裝／啟用，AWS三組件E2E與玩家可見async flow仍未完成。
+- 交付策略：已驗證的GitHub OIDC／ECR／Trivy／SSM pipeline作為唯一自動部署路徑。Production Web仍固定`sync`；下一步只安裝disabled／inactive publisher unit，publisher activation、測試訊息與Web async各自維持獨立核准。
+- Main 整合基準：PR #50 merge commit `ae2666ae26da15284e45d7143596f51201e50fe2`；Backend、Frontend、container build／Trivy與branch-boundary均全綠。`005` JSONB guard修正Red `1cc347e`／Green `916e76d`已合併並完成production activation。
 - Tier 1 完成基準 commit：`07a986a`
 - 平行分支治理基準：migration bridge初始註冊Red `4d2decb`／Green `fff9f3f`；Worker第二層guard擴權Red `fcf57d4`／Green `bbfe6dd`。
 - Regression：修復分支targeted migration contracts `7 passed`，Backend `767 tests collected`／exit `0`；代表性sensitivity可攔截不存在函式。Publisher runtime與disabled-only service evidence分別位於[`producer runtime`](../evidence/2026-08-29-tier2-producer-runtime/validation.md)與[`publisher service`](../evidence/2026-08-29-tier2-publisher-service/validation.md)。
-- AWS active release：verified migration bridge digest `sha256:c0efe0f9400e08e767bd77e6174ce315ee2bfc42942bb8abd30a27e8a86b404d`；failed activation target `sha256:811faece1ace06c33e2ebc28b1757252cd7fe8ecab525aa828224bced50824eb`不得視為active或rerun。Migration inventory仍應精確為`001`／`002`／`003`／`004`，bridge marker應綁定active bridge digest，runtime仍為`sync`。
+- AWS active release：verified schema-activated digest `sha256:abd0f942c036f3794bdb6ed159793106a2bf26ce7f566f0b561a77033c595f13`；failed target `sha256:811faece…`不得rerun。Migration inventory精確為`001`／`002`／`003`／`004`／`005`，bridge marker已清除，runtime為`sync`，publisher unit／runtime env／container均不存在。
 - 操作邊界：Console-first；使用者操作 AWS Console／SSM。Agent 未經新的 bounded batch 核准不得執行 AWS CLI，且不得執行 S3 讀取或 Bedrock 呼叫。
 - 平行工作：Support Agent、Tier 2 local／migration、Worker foundation、SQS consumer、Worker artifact pipeline與replacement bootstrap分支均已合併並可封存；Web async未啟用。
 
@@ -70,12 +70,11 @@
 
 ## Next
 
-1. 建立並合併`codex/tier2-schema-activation-jsonb-fix` PR；Backend、Frontend、container scan與branch-boundary必須全綠。
-2. 以新的exact main與previous bridge digest `sha256:c0efe0f…`建立全新`schema-activation` run，只將inventory前進到精確`001`–`005`；不得rerun `33242226396`，Web保持`sync`，不得安裝publisher unit、建立activation file或送訊息。
-3. Activation postflight通過後，另行核准只安裝disabled／inactive publisher unit；再分開核准AWS test job與publisher activation，完成queue→worker→Bedrock→DB→result及negative／redrive證據。
-4. 上述E2E通過後，才以獨立production envelope將Web從`sync`切換成`async`，完成玩家可見`202`→polling→result E2E及rollback。
-5. Tier 2 runtime穩定後，另行評估Support Agent API／UI、Nova Lite adapter、rate limiting與observability；外部submit tool仍需獨立核准。
-6. 後續production更新一律使用新exact main SHA與`digest-release`；previous digest必須取當時verified active state，仍需每次人工核准。Nova Lite round／ending真實品質evaluation亦需另行bounded核准。
+1. 另行核准只安裝disabled／inactive publisher unit；不得建立publisher runtime env、啟用unit、送訊息或切換Web async。
+2. 安裝postflight通過後，再分開核准publisher runtime env／activation與exactly-one AWS test job，完成queue→worker→Bedrock→DB→result及negative／redrive證據。
+3. 上述E2E通過後，才以獨立production envelope將Web從`sync`切換成`async`，完成玩家可見`202`→polling→result E2E及rollback。
+4. Tier 2 runtime穩定後，另行評估Support Agent API／UI、Nova Lite adapter、rate limiting與observability；外部submit tool仍需獨立核准。
+5. 後續production更新一律使用新exact main SHA與`digest-release`；previous digest必須取當時verified active state，仍需每次人工核准。Nova Lite round／ending真實品質evaluation亦需另行bounded核准。
 
 ## 操作護欄
 

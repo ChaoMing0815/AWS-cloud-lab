@@ -20,3 +20,12 @@
 - Targeted verification：migration contracts `7 passed`；代表性sensitivity改回`jsonb_object_length`時target test失敗，還原後通過。
 - Full regression：Backend `767 tests collected`，exit code `0`；只有既有Starlette／httpx warning。
 - Rollback／residual risk：production inventory仍應為`001`–`004`且active release仍是bridge；修復PR與CI全綠後，必須以新exact main／新digest另行核准activation，不得rerun失敗run。
+
+## 修復後 production activation 完成
+
+- PR #50四項CI全綠並合併為exact main `ae2666ae26da15284e45d7143596f51201e50fe2`；未rerun失敗run。
+- Run `33243455252`通過production approval、ARM64 build／push、digest fence、exact-digest Trivy與bounded SSM；target digest為`sha256:abd0f942c036f3794bdb6ed159793106a2bf26ce7f566f0b561a77033c595f13`。
+- SSM回`container_release=verified mode=schema-activation`、`Status=Success`與response code `0`；previous digest精確為bridge `sha256:c0efe0f…`。
+- 單一bounded postflight確認active image digest吻合、migration inventory精確為`001`–`005`、runtime精確為`sync`、bridge marker已清除。
+- Publisher unit、publisher runtime env與publisher container均不存在；未送SQS message、未呼叫Bedrock、未切換Web async。
+- 本批完成；下一批若安裝publisher，只允許disabled／inactive狀態，啟用與測試訊息仍需分開核准。
