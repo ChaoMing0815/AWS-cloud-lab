@@ -66,7 +66,13 @@ def test_publisher_unit_runs_on_web_identity_but_requires_separate_activation_fi
     assert "WantedBy=multi-user.target" not in unit
 
 
-def _installer_harness(tmp_path: Path, *, daemon_reload_status: int = 0):
+def _installer_harness(
+    tmp_path: Path,
+    *,
+    daemon_reload_status: int = 0,
+    enabled_state: str = "disabled",
+    enabled_status: int = 1,
+):
     fake_bin = tmp_path / "bin"
     fake_bin.mkdir()
     events = tmp_path / "events"
@@ -98,7 +104,7 @@ def _installer_harness(tmp_path: Path, *, daemon_reload_status: int = 0):
         "printf '%s\\n' \"$*\" >>\"$TEST_EVENTS\"\n"
         "case \"$1\" in\n"
         f"  daemon-reload) exit {daemon_reload_status} ;;\n"
-        "  is-enabled) printf 'disabled\\n'; exit 1 ;;\n"
+        f"  is-enabled) printf '{enabled_state}\\n'; exit {enabled_status} ;;\n"
         "  is-active) printf 'inactive\\n'; exit 3 ;;\n"
         "  *) exit 91 ;;\n"
         "esac\n",
@@ -139,6 +145,20 @@ def test_installer_promotes_unit_but_never_enables_or_starts_it(tmp_path) -> Non
     assert not any(
         event.split()[0] in {"enable", "start", "restart"} for event in events
     )
+
+
+def test_installer_accepts_static_unit_as_not_enabled(tmp_path) -> None:
+    result, installed, events = _installer_harness(
+        tmp_path, enabled_state="static", enabled_status=0
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "publisher_service=installed:disabled"
+    assert installed.is_file()
+    assert events[-2:] == [
+        "is-enabled co-story-publisher.service",
+        "is-active co-story-publisher.service",
+    ]
 
 
 def test_installer_rolls_back_new_unit_when_daemon_reload_fails(tmp_path) -> None:

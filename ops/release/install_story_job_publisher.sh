@@ -44,11 +44,15 @@ if ! systemctl daemon-reload; then
   stop daemon_reload_failed
 fi
 
-if systemctl is-enabled "$service_name" >/dev/null 2>&1; then
-  rm -f "$installed_unit"
-  systemctl daemon-reload || true
-  stop unexpected_enabled_service
-fi
+enablement_state="$(systemctl is-enabled "$service_name" 2>/dev/null || true)"
+case "$enablement_state" in
+  disabled|static) ;;
+  *)
+    rm -f "$installed_unit"
+    systemctl daemon-reload || true
+    stop unexpected_enabled_service
+    ;;
+esac
 if systemctl is-active "$service_name" >/dev/null 2>&1; then
   rm -f "$installed_unit"
   systemctl daemon-reload || true
