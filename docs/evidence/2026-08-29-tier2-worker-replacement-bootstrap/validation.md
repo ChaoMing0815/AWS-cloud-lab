@@ -33,3 +33,12 @@
 - 修正後IaC targeted為`9 passed`；完整Backend gate exit 0；將readiness縮為單次的代表性mutation如預期被測試攔截，還原後通過。
 - 模板仍精確20 resources，SHA-256為`6e299869df24154056caf67788d50644bcf0419c0f90ce4986bd06bc972636ea`；未新增IAM、NAT、compute、Queue或async activation。
 - Residual risk：晚期失敗的精確外部原因仍未知；新模板的目的同時是容忍bounded transient並在再次失敗時留下可操作診斷，AWS執行仍需新的Change Set與明確核准。
+
+## 第三次AWS更新與curl-minimal根因
+
+- 第三個Change Set仍符合相同2-Modify envelope，但更新再次rollback；新增診斷精確輸出`phase=install_packages status=1`且Worker service尚未啟動。
+- cloud-init原始錯誤證明AL2023預裝`curl-minimal`與UserData要求安裝的完整`curl`套件衝突；`dnf`因此整批失敗，這是先前三次rollback的實證根因。
+- 修正不採用`--allowerasing`或`--skip-broken`；Red `7c0d5af`要求保留AL2023基礎套件，Green `7d87988`只安裝Docker並顯式驗證既有curl binary。
+- 修正後IaC targeted為`9 passed`、UserData shell syntax通過、完整Backend gate exit 0；把完整curl加回`dnf`的代表性mutation如預期被攔截。
+- 模板仍精確20 resources，SHA-256為`d220479dbaa01be1a47404e151458faac3c5ef42bf770e22b2ca4c46502d05d3`；IAM、network、compute、Queue、成本上限與sync／async邊界均未變更。
+- Residual risk：最小修正尚未在AWS replacement驗證；不得沿用已執行失敗的Change Set，合併後需建立新的Change Set並另行核准。
