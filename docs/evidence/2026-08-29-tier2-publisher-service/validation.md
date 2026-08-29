@@ -21,3 +21,12 @@
 - Full regression：Backend `768 tests collected`，exit code `0`；只有既有Starlette／httpx warning。
 - Sensitivity：暫時從allowlist移除`static`時新target test失敗；還原後完整regression通過。
 - Boundary：沒有加入`enable`／`start`／`restart`，沒有activation env、IAM、AWS resource、SQS或Bedrock變更；production unit仍尚未安裝。
+
+## Production disabled-only 安裝完成
+
+- PR #52四項CI全綠並合併為exact main `9337026dea8f0537ac94b3d0979b00cd45c5e2a1`。
+- Run `33246093420`以previous digest `sha256:abd0f942…`完成bounded `digest-release`；exact target digest為`sha256:af120cbbfafe710ea8b9da9fb6e1b67cde57e619d91c4188b88740136485cc59`，Trivy與SSM success／response `0`。
+- 使用者透過單一bounded SSM Run Command只從active exact image複製installer與unit；來源檔限制root-owned regular file，且拒絕`[Install]`、enable／start／restart與hardcoded async。
+- Installer回`publisher_service=installed:disabled`；postflight為unit `static`、service `inactive`、runtime env absent、publisher container absent、Web `sync`。
+- 本批未建立activation env、未啟動publisher、未送SQS message、未呼叫Bedrock、未新增IAM／AWS resource或切換Web async。
+- 下一批必須獨立核准runtime env與publisher activation；exactly-one test job及Web async仍是後續不同批次。
