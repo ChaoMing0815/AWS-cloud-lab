@@ -149,12 +149,12 @@ class PostgresStoryResolutionStore(StoryResolutionStore):
             connection.execute(
                 """
                 INSERT INTO story_job_dispatch_outbox (job_id, message_payload)
-                VALUES (
-                    %s,
-                    jsonb_build_object('schema_version', 1, 'job_id', %s)
-                )
+                VALUES (%s, %s)
                 """,
-                (job.job_id, job.job_id),
+                (
+                    job.job_id,
+                    Jsonb({"schema_version": 1, "job_id": job.job_id}),
+                ),
             )
             self._fault_hook("after_dispatch_insert")
             PostgresRoomRepository._save(connection, room)
