@@ -1,6 +1,6 @@
 # Tier 2 AWS Worker foundation 架構
 
-- 狀態：Repo-local foundation ready；尚未建立AWS資源
+- 狀態：AWS foundation已建立；SQS consumer runtime repo-local ready，尚未部署Worker image
 - 決策：ADR-0007
 - Region：`ap-northeast-1`
 
@@ -44,8 +44,16 @@ flowchart LR
 - 主Queue：SSE-SQS、20秒long polling、180秒visibility、4天retention。
 - DLQ：SSE-SQS、14天retention；主Queue三次接收失敗後redrive。
 - TLS deny policy同時套用主Queue與DLQ。
-- 第一版message schema預定為`{"schema_version":1,"job_id":"<opaque>"}`；此foundation尚未產生或消費message。
+- 第一版message schema固定為`{"schema_version":1,"job_id":"<opaque>"}`；adapter拒絕缺欄、額外欄位、非版本1與不合格job ID，message不含Room snapshot、玩家文字或secret。
 - PostgreSQL job row先commit；後續SQS publisher／reconciliation contract必須另以strict TDD解決DB commit後SendMessage失敗，不得用dual-write成功假設取代outbox／replay設計。
+
+## Consumer runtime boundary
+
+- 每次long poll最多取一筆、等待20秒、初始visibility 180秒；處理期間每60秒延長同一receipt的visibility。
+- 只有Data transaction成功且heartbeat乾淨停止後才刪除SQS message；retryable `PENDING`、處理例外或heartbeat失敗均不得ack。
+- Production composition在建立AWS client前先驗證精確Tokyo queue URL與Bedrock設定；SQS與Bedrock SDK retry均停用，由既有job retry／SQS redrive邊界主導。
+- Worker啟動時只讀精確runtime secret ARN，接受`co_story_app`的`username`／`password`兩欄，使用RDS endpoint與非symlink CA組成`verify-full` DSN；DB密碼只存在Worker process memory，不寫入host env file或log。
+- Worker systemd unit已封裝於同一個會經CI掃描的image：non-root container、read-only rootfs、無published port、無HTTP healthcheck、CloudWatch awslogs與固定Worker-only `async` entrypoint。既有Web unit仍精確為`sync`。
 
 ## IAM boundary
 
@@ -60,4 +68,4 @@ Auto Scaling Group固定`min=2`、`desired=2`、`max=2`，可以替換單一失�
 
 ## Foundation completion boundary
 
-Foundation完成僅表示network、queue、IAM與兩台Docker-ready host存在。以下仍是獨立缺口：SQS adapter、runtime service、image deployment、visibility heartbeat、DLQ operator flow、AWS E2E、Web async activation與rollback。
+Foundation完成僅表示network、queue、IAM與兩台Docker-ready host存在。SQS adapter、visibility heartbeat、production consumer composition與runtime unit已完成repo-local驗證；以下仍是獨立缺口：exact-digest Worker image deployment、producer publisher／reconciliation、DLQ operator flow、AWS E2E、Web async activation與rollback。
