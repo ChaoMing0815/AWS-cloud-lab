@@ -129,16 +129,21 @@ def test_story_queue_and_dlq_are_encrypted_bounded_and_tls_only() -> None:
     deny = queue_policy["PolicyDocument"]["Statement"]
     assert deny == [
         {
-            "Sid": "DenyInsecureTransport",
+            "Sid": "DenyInsecureTransportToStoryQueue",
             "Effect": "Deny",
             "Principal": "*",
             "Action": "sqs:*",
-            "Resource": [
-                {"Fn::GetAtt": ["StoryQueue", "Arn"]},
-                {"Fn::GetAtt": ["StoryDeadLetterQueue", "Arn"]},
-            ],
+            "Resource": {"Fn::GetAtt": ["StoryQueue", "Arn"]},
             "Condition": {"Bool": {"aws:SecureTransport": "false"}},
-        }
+        },
+        {
+            "Sid": "DenyInsecureTransportToStoryDeadLetterQueue",
+            "Effect": "Deny",
+            "Principal": "*",
+            "Action": "sqs:*",
+            "Resource": {"Fn::GetAtt": ["StoryDeadLetterQueue", "Arn"]},
+            "Condition": {"Bool": {"aws:SecureTransport": "false"}},
+        },
     ]
 
 
