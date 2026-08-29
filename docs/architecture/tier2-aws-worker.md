@@ -1,6 +1,6 @@
 # Tier 2 AWS Worker foundation 架構
 
-- 狀態：AWS foundation已建立；SQS consumer runtime repo-local ready，尚未部署Worker image
+- 狀態：AWS foundation與兩台SQS consumer runtime已部署；producer／AWS message E2E尚未啟用
 - 決策：ADR-0007
 - Region：`ap-northeast-1`
 
@@ -69,4 +69,4 @@ Auto Scaling Group固定`min=2`、`desired=2`、`max=2`，可以替換單一失�
 
 ## Foundation completion boundary
 
-Foundation完成僅表示network、queue、IAM與兩台Docker-ready host存在。SQS adapter、visibility heartbeat、production consumer composition與runtime unit已完成repo-local驗證；以下仍是獨立缺口：exact-digest Worker image deployment、producer publisher／reconciliation、DLQ operator flow、AWS E2E、Web async activation與rollback。
+Foundation完成僅表示network、queue、IAM與兩台Docker-ready host存在。SQS adapter、visibility heartbeat、production consumer composition與runtime unit已部署到目前兩台host並通過空Queue idle gate；以下仍是獨立缺口：ASG replacement自動重建runtime、producer publisher／reconciliation、DLQ operator flow、AWS E2E、Web async activation與rollback。
