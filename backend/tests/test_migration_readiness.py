@@ -158,6 +158,7 @@ def test_migration_runner_rejects_invalid_applied_inventory_before_migration_sql
         ("001_create_rooms", "002_create_story_jobs"),
         ("001_create_rooms", "002_create_story_jobs", "003_create_story_resolution_results"),
         ("001_create_rooms", "002_create_story_jobs", "003_create_story_resolution_results", "004_create_support_report_drafts"),
+        ("001_create_rooms", "002_create_story_jobs", "003_create_story_resolution_results", "004_create_support_report_drafts", "005_create_story_job_dispatch_outbox"),
     ),
 )
 def test_canonical_inventory_validator_accepts_only_complete_append_only_prefixes(inventory) -> None:
@@ -240,6 +241,7 @@ class _ReadinessConnection:
             "002_create_story_jobs",
             "003_create_story_resolution_results",
             "004_create_support_report_drafts",
+            "005_create_story_job_dispatch_outbox",
         ),
         failure=None,
     ):
