@@ -42,3 +42,12 @@
 - 修正後IaC targeted為`9 passed`、UserData shell syntax通過、完整Backend gate exit 0；把完整curl加回`dnf`的代表性mutation如預期被攔截。
 - 模板仍精確20 resources，SHA-256為`d220479dbaa01be1a47404e151458faac3c5ef42bf770e22b2ca4c46502d05d3`；IAM、network、compute、Queue、成本上限與sync／async邊界均未變更。
 - Residual risk：最小修正尚未在AWS replacement驗證；不得沿用已執行失敗的Change Set，合併後需建立新的Change Set並另行核准。
+
+## 最終AWS replacement驗證
+
+- PR #44合併exact main `49bfb0e888b899ffda4b3868c1055ff5e41ea383`後，使用者建立並檢查`0 Add／2 Modify／0 Remove` Change Set；Launch Template為`Replacement=False`，ASG的`Conditional`只涉及既定三項property diff。
+- 使用者在相同USD 35上限、2026-09-08清理日、Web維持`sync`且不啟用async的envelope內明確核准執行。
+- Stack、`WorkerLaunchTemplate`與`WorkerAutoScalingGroup`均為`UPDATE_COMPLETE`；ASG Desired／In service為`2／2`。
+- 兩個success signals只會在exact image、Worker service active、container running且restart count 0後送出，因此不重複執行相同SSM runtime驗證。
+- 最終resource inventory仍精確20；沒有新增IAM、NAT、compute、Queue、message、Bedrock呼叫或玩家可見async行為。
+- Replacement-safe Worker runtime已完成；剩餘Tier 2核心缺口為producer publisher／reconciliation、核准的AWS message E2E與後續獨立async activation。
