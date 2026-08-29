@@ -8,6 +8,7 @@ from types import SimpleNamespace
 
 import psycopg
 import pytest
+from psycopg.types.json import Jsonb
 
 from app.adapters.postgres_room_repository import _room_payload
 from app.application.story_jobs import create_story_job
@@ -175,8 +176,19 @@ def test_producer_inserts_dispatch_outbox_before_room_commit(monkeypatch) -> Non
     job = store.begin_resolution("room-1", 2, 7, True)
 
     statements = [sql for sql, _ in connection.statements]
-    dispatch_sql = next(sql for sql in statements if "insert into story_job_dispatch_outbox" in sql)
-    assert "jsonb_build_object" in dispatch_sql
+    dispatch_sql, dispatch_params = next(
+        (sql, params)
+        for sql, params in connection.statements
+        if "insert into story_job_dispatch_outbox" in sql
+    )
+    assert "jsonb_build_object" not in dispatch_sql
+    assert len(dispatch_params) == 2
+    assert dispatch_params[0] == job.job_id
+    assert isinstance(dispatch_params[1], Jsonb)
+    assert dispatch_params[1].obj == {
+        "schema_version": 1,
+        "job_id": job.job_id,
+    }
     assert statements.index(dispatch_sql) < statements.index(
         next(sql for sql in statements if "insert into rooms" in sql)
     )
