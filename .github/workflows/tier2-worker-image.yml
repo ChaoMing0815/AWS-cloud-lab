@@ -1,0 +1,92 @@
+name: Tier 2 Worker image
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tier2-worker-image
+  cancel-in-progress: false
+
+jobs:
+  approval-gate:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment: production
+    steps:
+      - name: Confirm bounded main approval
+        run: test "${{ github.ref }}" = refs/heads/main
+
+  publish:
+    if: github.ref == 'refs/heads/main'
+    needs: approval-gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Check out approved source
+        uses: actions/checkout@v6.0.2
+        with:
+          persist-credentials: false
+      - name: Validate fixed Worker artifact boundary
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+          ECR_REPOSITORY: ${{ vars.TIER3_ECR_REPOSITORY }}
+        run: |
+          test "$AWS_REGION" = ap-northeast-1
+          test "$ECR_REPOSITORY" = co-story-tier3
+      - name: Configure bounded AWS credentials
+        uses: aws-actions/configure-aws-credentials@v5.1.0
+        with:
+          role-to-assume: ${{ vars.TIER3_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - name: Log in to the bounded ECR registry
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2.0.1
+      - name: Set up ARM64 emulation
+        uses: docker/setup-qemu-action@v3.6.0
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4.0.0
+      - name: Build and push immutable Worker image
+        id: build
+        uses: docker/build-push-action@v7.0.0
+        with:
+          context: .
+          platforms: linux/arm64
+          push: true
+          tags: ${{ steps.ecr.outputs.registry }}/${{ vars.TIER3_ECR_REPOSITORY }}:${{ github.sha }}
+      - name: Scan the exact pushed digest
+        uses: aquasecurity/trivy-action@v0.36.0
+        env:
+          TRIVY_PLATFORM: linux/arm64
+        with:
+          version: v0.70.0
+          image-ref: ${{ steps.ecr.outputs.registry }}/${{ vars.TIER3_ECR_REPOSITORY }}@${{ steps.build.outputs.digest }}
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: 1
+      - name: Write exact Worker image manifest
+        env:
+          REPOSITORY_URI: ${{ steps.ecr.outputs.registry }}/${{ vars.TIER3_ECR_REPOSITORY }}
+          IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          install -d -m 0755 outputs
+          jq -cn \
+            --arg commit_sha "${{ github.sha }}" \
+            --arg workflow_run_id "${{ github.run_id }}" \
+            --arg repository_uri "$REPOSITORY_URI" \
+            --arg image_digest "$IMAGE_DIGEST" \
+            '{commit_sha:$commit_sha,workflow_run_id:$workflow_run_id,repository_uri:$repository_uri,image_digest:$image_digest}' \
+            > outputs/tier2-worker-image.json
+      - name: Preserve exact Worker image manifest
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: tier2-worker-image-${{ github.run_id }}
+          path: outputs/tier2-worker-image.json
+          if-no-files-found: error
+          retention-days: 30
