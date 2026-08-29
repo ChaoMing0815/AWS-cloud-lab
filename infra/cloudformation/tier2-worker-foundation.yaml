@@ -31,7 +31,15 @@ Parameters:
   Tier3RepositoryArn:
     Type: String
     AllowedPattern: ^arn:[a-z0-9-]+:ecr:[a-z0-9-]+:[0-9]{12}:repository/co-story-tier3$
-    Description: Existing immutable ECR repository ARN; no image is pulled by this foundation.
+    Description: Existing immutable ECR repository ARN used only for exact-digest Worker pulls.
+  WorkerImageDigest:
+    Type: String
+    AllowedPattern: ^sha256:[a-f0-9]{64}$
+    Description: Trivy-verified immutable Worker image digest from the approved main workflow.
+  DbEndpointAddress:
+    Type: String
+    AllowedPattern: ^[A-Za-z0-9-]+([.][A-Za-z0-9-]+)*[.]ap-northeast-1[.]rds[.]amazonaws[.]com$
+    Description: Existing private RDS endpoint hostname; no credentials.
   RuntimeSecretArn:
     Type: String
     AllowedPattern: ^arn:[a-z0-9-]+:secretsmanager:[a-z0-9-]+:[0-9]{12}:secret:[A-Za-z0-9/_+=.@-]+$
@@ -422,10 +430,58 @@ Resources:
           Fn::Base64:
             Fn::Sub: |
               #!/bin/bash
-              set -eu
-              dnf install -y docker
+              set -Eeuo pipefail
+              trap 'cfn-signal --success false --stack ${AWS::StackName} --resource WorkerAutoScalingGroup --region ${AWS::Region}' ERR
+              dnf install -y docker aws-cfn-bootstrap curl
               systemctl enable --now docker
               install -d -m 0750 -o root -g root /etc/co-story
+              install -d -m 0755 -o root -g root /etc/pki/rds
+              curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 \
+                https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem \
+                --output /etc/pki/rds/rds-ca.pem
+              chmod 0644 /etc/pki/rds/rds-ca.pem
+              repository_uri='${AWS::AccountId}.dkr.ecr.${AWS::Region}.${AWS::URLSuffix}/co-story-tier3'
+              target_image="$repository_uri@${WorkerImageDigest}"
+              aws ecr get-login-password --region ${AWS::Region} \
+                | docker login --username AWS --password-stdin "${AWS::AccountId}.dkr.ecr.${AWS::Region}.${AWS::URLSuffix}" >/dev/null
+              docker pull "$target_image" >/dev/null
+              asset_container="$(docker create "$target_image")"
+              temporary="$(mktemp -d /tmp/co-story-worker-bootstrap.XXXXXX)"
+              docker cp "$asset_container:/usr/local/share/co-story/co-story-worker-container.service" "$temporary/co-story-worker.service"
+              docker rm "$asset_container" >/dev/null
+              test -f "$temporary/co-story-worker.service"
+              test ! -L "$temporary/co-story-worker.service"
+              grep -F -- '--network host' "$temporary/co-story-worker.service" >/dev/null
+              umask 077
+              printf '%s\n' \
+                'CO_STORY_ENV=production' \
+                'CO_STORY_AWS_REGION=${AWS::Region}' \
+                'CO_STORY_SQS_QUEUE_URL=${StoryQueue}' \
+                'CO_STORY_RUNTIME_SECRET_ARN=${RuntimeSecretArn}' \
+                'CO_STORY_DB_ENDPOINT=${DbEndpointAddress}' \
+                'CO_STORY_RDS_CA_PATH=/etc/pki/rds/rds-ca.pem' \
+                'CO_STORY_BEDROCK_MODEL_ID=${BedrockModelId}' \
+                'CO_STORY_BEDROCK_GUARDRAIL_ID=${BedrockGuardrailId}' \
+                'CO_STORY_BEDROCK_GUARDRAIL_VERSION=${BedrockGuardrailVersion}' \
+                'CO_STORY_BEDROCK_MAX_TOKENS=800' \
+                > /etc/co-story/worker-runtime.env
+              printf '%s\n' \
+                "CO_STORY_WORKER_IMAGE=$target_image" \
+                'CO_STORY_WORKER_UID=10001' \
+                'CO_STORY_WORKER_GID=10001' \
+                "CO_STORY_WORKER_LOG_STREAM=$(hostname -s)" \
+                > /etc/co-story/worker-release.env
+              chmod 0600 /etc/co-story/worker-runtime.env /etc/co-story/worker-release.env
+              install -m 0644 -o root -g root "$temporary/co-story-worker.service" /etc/systemd/system/co-story-worker.service
+              rm -rf "$temporary"
+              systemctl daemon-reload
+              systemctl enable --now co-story-worker.service
+              sleep 35
+              systemctl is-active --quiet co-story-worker.service
+              test "$(docker inspect --format '{{.State.Running}}' co-story-worker)" = true
+              test "$(docker inspect --format '{{.RestartCount}}' co-story-worker)" = 0
+              cfn-signal --success true --stack ${AWS::StackName} --resource WorkerAutoScalingGroup --region ${AWS::Region}
+              trap - ERR
         TagSpecifications:
           - ResourceType: instance
             Tags:
@@ -447,6 +503,16 @@ Resources:
     DependsOn:
       - PrivateWorkerDefaultRoute
       - PrivateWorkerRouteTableAssociation
+    CreationPolicy:
+      ResourceSignal:
+        Count: 2
+        Timeout: PT15M
+    UpdatePolicy:
+      AutoScalingRollingUpdate:
+        MaxBatchSize: 1
+        MinInstancesInService: 1
+        PauseTime: PT10M
+        WaitOnResourceSignals: true
     Properties:
       AutoScalingGroupName: co-story-tier2-worker
       MinSize: '2'

@@ -70,7 +70,7 @@
 
 ## Next
 
-1. 以strict TDD補ASG instance replacement的exact-digest runtime重建與fail-closed邊界；目前手動安裝只存在於這兩台host，新instance不會自動取得Worker service。
+1. ASG replacement bootstrap已完成repo-local strict TDD；下一關只建立Change Set檢查既有Launch Template／ASG Modify及rolling replacement，不新增resource，未核准前不執行。
 2. 以獨立strict-TDD批次完成producer publisher／reconciliation，解決DB commit後SendMessage失敗；再以核准的AWS test job完成queue→worker→Bedrock→DB→result與negative／redrive證據。
 3. 上述E2E通過後，才以獨立production envelope將Web從`sync`切換成`async`，完成玩家可見`202`→polling→result E2E及rollback。
 4. Tier 2 runtime穩定後，另行評估Support Agent API／UI、Nova Lite adapter、rate limiting與observability；外部submit tool仍需獨立核准。
