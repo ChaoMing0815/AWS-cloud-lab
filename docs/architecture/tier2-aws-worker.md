@@ -60,7 +60,7 @@ flowchart LR
 
 - `AWSFinalProjectAppRole`只附加指定主Queue的`SendMessage`、`GetQueueUrl`、`GetQueueAttributes`。
 - `AWSFinalProjectTier2WorkerRole`信任`ec2.amazonaws.com`、使用`PowerUserAccess`permissions boundary並只掛`AmazonSSMManagedInstanceCore` managed policy。
-- Worker inline policy限定主Queue consumer、既有`co-story-tier3` ECR pull、精確runtime secret、Nova Lite＋既有Guardrail與`/co-story/tier2/worker` log group。
+- Worker inline policy限定主Queue consumer、既有`co-story-tier3` ECR pull、精確runtime secret、Nova Lite＋既有Guardrail與`/co-story/tier2/worker` log group。Cross-Region Guardrail只允許既有Guardrail ARN及Tokyo來源`apac.guardrail.v1:0`的六個精確destination-region profile ARNs，不使用wildcard。
 - Worker不具`SendMessage`、`iam:PassRole`、任意secret、SSH、IAM管理或其他repository權限。
 
 ## Availability boundary
