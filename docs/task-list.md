@@ -97,6 +97,7 @@
 - [x] 部署至少三個課程要求可辨識的 AWS 組件／compute，公私網段正確。
 - [x] Data 與 Worker 不直接對外；SG 只允許必要流量。
 - [ ] 驗證 action→queue→worker→Bedrock→database→result E2E。
+  - [ ] 首次exactly-one已完成typed JSONB、dispatch與completion，但舊Worker回`INVALID_MODEL`；Nova Lite相容Worker digest已部署，尚待新的單次live E2E核准與成功結果。
 - [ ] 保存組件、網段、SG 與負面連線證據。
 
 ## F. Tier 3：CI/CD
