@@ -16,6 +16,11 @@ _SAFE_EVENT_KEYS = {
         "latency_ms",
     },
     "co_story.storyteller": {"operation", "failure_code"},
+    "co_story.storyteller_schema": {
+        "operation",
+        "failure_code",
+        "diagnostic_code",
+    },
     "co_story.storyteller_metrics": {
         "metric_type",
         "operation",

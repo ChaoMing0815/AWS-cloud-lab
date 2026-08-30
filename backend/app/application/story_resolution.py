@@ -3,6 +3,8 @@ from __future__ import annotations
 from collections.abc import Callable
 from copy import deepcopy
 from datetime import datetime, timedelta
+import json
+import logging
 from typing import Any
 
 from app.application.ports import (
@@ -15,6 +17,9 @@ from app.application.rules import ending_cost, ending_result, points_percent, ta
 from app.domain.errors import DomainError
 from app.domain.models import Room, StoryEntry
 from app.domain.story_resolution import StoryResolutionOutcome, StoryResolutionReceipt
+
+
+STORYTELLER_SCHEMA_LOGGER = logging.getLogger("co_story.storyteller_schema")
 
 
 def apply_story_result(
@@ -161,6 +166,17 @@ class StoryResolutionWorker:
                 result = deepcopy(result)
                 result.setdefault("attempts", job.attempt_count)
             except StorytellerFailure as failure:
+                if failure.diagnostic_code is not None:
+                    STORYTELLER_SCHEMA_LOGGER.warning(
+                        json.dumps(
+                            {
+                                "operation": job.operation.value,
+                                "failure_code": failure.code,
+                                "diagnostic_code": failure.diagnostic_code,
+                            },
+                            separators=(",", ":"),
+                        )
+                    )
                 if failure.retryable and job.attempt_count < self._max_attempts:
                     return self._queue.fail(
                         job.job_id,

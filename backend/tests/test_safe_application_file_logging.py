@@ -52,6 +52,27 @@ def test_safe_application_file_collects_only_allowlisted_json_events(
                 separators=(",", ":"),
             )
         )
+        logging.getLogger("co_story.storyteller_schema").warning(
+            json.dumps(
+                {
+                    "operation": "resolve-round",
+                    "failure_code": "SCHEMA_INVALID",
+                    "diagnostic_code": "round_input_keys",
+                },
+                separators=(",", ":"),
+            )
+        )
+        logging.getLogger("co_story.storyteller_schema").warning(
+            json.dumps(
+                {
+                    "operation": "resolve-round",
+                    "failure_code": "SCHEMA_INVALID",
+                    "diagnostic_code": "round_input_keys",
+                    "raw_model_content": "never-log-raw-model-content",
+                },
+                separators=(",", ":"),
+            )
+        )
         logging.getLogger("uvicorn.access").warning(
             'GET /api/v1/live?token=raw-access-secret HTTP/1.1 200'
         )
@@ -91,11 +112,17 @@ def test_safe_application_file_collects_only_allowlisted_json_events(
             "retry_count": 1,
             "fallback_count": 0,
         } in events
+        assert {
+            "operation": "resolve-round",
+            "failure_code": "SCHEMA_INVALID",
+            "diagnostic_code": "round_input_keys",
+        } in events
 
         rendered = log_path.read_text(encoding="utf-8")
         assert "never-log-this" not in rendered
         assert "raw-access-secret" not in rendered
         assert "forged-safe-logger-secret" not in rendered
+        assert "never-log-raw-model-content" not in rendered
     finally:
         monkeypatch.delenv("CO_STORY_APPLICATION_LOG_PATH", raising=False)
         create_app()

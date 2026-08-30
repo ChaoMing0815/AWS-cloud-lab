@@ -17,11 +17,36 @@ RETRYABLE_STORYTELLER_FAILURES = {
     "SCHEMA_INVALID",
 }
 
+STORYTELLER_SCHEMA_DIAGNOSTIC_CODES = {
+    "unexpected_stop_reason",
+    "unexpected_content_count",
+    "unexpected_content_block",
+    "unexpected_tool_shape",
+    "unexpected_tool_use_id",
+    "unexpected_tool_name",
+    "round_input_keys",
+    "round_player_consequence_count",
+    "round_player_consequence_shape",
+    "round_player_id_bounds",
+    "round_action_consequence_bounds",
+    "round_player_set",
+    "round_narrative_bounds",
+    "round_progress_consequence_bounds",
+    "round_crisis_consequence_bounds",
+    "round_next_scene_hook_bounds",
+}
+
 
 class StorytellerFailure(Exception):
-    def __init__(self, code: str) -> None:
+    def __init__(self, code: str, *, diagnostic_code: str | None = None) -> None:
+        if diagnostic_code is not None and (
+            code != "SCHEMA_INVALID"
+            or diagnostic_code not in STORYTELLER_SCHEMA_DIAGNOSTIC_CODES
+        ):
+            raise ValueError("diagnostic_code")
         super().__init__(code)
         self.code = code
+        self.diagnostic_code = diagnostic_code
 
     @property
     def retryable(self) -> bool:
