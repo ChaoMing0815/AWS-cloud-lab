@@ -227,6 +227,54 @@ def test_worker_log_policy_uses_the_log_group_arn_without_an_extra_wildcard() ->
     ]
 
 
+def test_worker_guardrail_policy_allows_only_the_tokyo_apac_profile_regions() -> None:
+    resources = _template()["Resources"]
+    worker_policies = {
+        policy["PolicyName"]: policy["PolicyDocument"]
+        for policy in resources["WorkerRole"]["Properties"]["Policies"]
+    }
+
+    bedrock_statements = _statements(worker_policies["CoStoryTier2BedrockRuntime"])
+    apply_guardrail = next(
+        statement
+        for statement in bedrock_statements
+        if statement["Sid"] == "ApplyExactGuardrail"
+    )
+    destination_regions = (
+        "ap-south-1",
+        "ap-northeast-3",
+        "ap-northeast-2",
+        "ap-southeast-1",
+        "ap-southeast-2",
+        "ap-northeast-1",
+    )
+    expected_resources = [
+        {
+            "Fn::Sub": (
+                "arn:${AWS::Partition}:bedrock:${AWS::Region}:"
+                "${AWS::AccountId}:guardrail/${BedrockGuardrailId}"
+            )
+        },
+        *[
+            {
+                "Fn::Sub": (
+                    f"arn:${{AWS::Partition}}:bedrock:{region}:"
+                    "${AWS::AccountId}:guardrail-profile/apac.guardrail.v1:0"
+                )
+            }
+            for region in destination_regions
+        ],
+    ]
+
+    assert apply_guardrail == {
+        "Sid": "ApplyExactGuardrail",
+        "Effect": "Allow",
+        "Action": "bedrock:ApplyGuardrail",
+        "Resource": expected_resources,
+    }
+    assert all(resource != "*" for resource in apply_guardrail["Resource"])
+
+
 def test_foundation_is_bounded_and_exports_only_deployment_identifiers() -> None:
     template = _template()
     resources = template["Resources"]
