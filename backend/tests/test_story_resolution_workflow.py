@@ -3,6 +3,8 @@ from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 import importlib
 import importlib.util
+import json
+import logging
 
 import pytest
 
@@ -196,3 +198,39 @@ def test_nonretryable_failure_is_committed_once_as_terminal_result() -> None:
     assert receipt.outcome is module.StoryResolutionOutcome.FAILED
     assert store.committed == {"failure_code": "CONTENT_REJECTED", "attempts": 1}
     assert queue.events[1][0] == "complete"
+
+
+def test_worker_logs_only_safe_schema_diagnostic_without_changing_retry_contract(
+    caplog,
+) -> None:
+    module = _module()
+    queue = ScriptedQueue(claimed_job(attempt=1))
+    store = ScriptedStore(module)
+    failure = StorytellerFailure(
+        "SCHEMA_INVALID",
+        diagnostic_code="round_input_keys",
+    )
+    worker = module.StoryResolutionWorker(
+        queue,
+        store,
+        Narrator(failure),
+        max_attempts=2,
+    )
+
+    with caplog.at_level(logging.WARNING, logger="co_story.storyteller_schema"):
+        worker.process("job-1", "worker-1")
+
+    events = [
+        json.loads(record.message)
+        for record in caplog.records
+        if record.name == "co_story.storyteller_schema"
+    ]
+    assert events == [
+        {
+            "operation": "resolve-round",
+            "failure_code": "SCHEMA_INVALID",
+            "diagnostic_code": "round_input_keys",
+        }
+    ]
+    assert queue.events == ["claim", ("fail", "SCHEMA_INVALID")]
+    assert store.events == ["inbox"]

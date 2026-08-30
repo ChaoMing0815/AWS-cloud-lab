@@ -799,6 +799,64 @@ def test_round_rejects_any_response_other_than_one_exact_valid_output_tool(case:
 
 
 @pytest.mark.parametrize(
+    ("case", "diagnostic_code"),
+    [
+        ("text-json", "unexpected_stop_reason"),
+        ("wrong-tool-name", "unexpected_tool_name"),
+        ("missing-field", "round_input_keys"),
+        ("extra-content-block", "unexpected_content_count"),
+        ("multiple-tool-use", "unexpected_content_count"),
+        ("extra-input-field", "round_input_keys"),
+        ("wrong-player-set", "round_player_set"),
+        ("overlong-narrative", "round_narrative_bounds"),
+    ],
+)
+def test_round_schema_failure_exposes_only_safe_diagnostic_code(
+    case: str,
+    diagnostic_code: str,
+) -> None:
+    secret = "raw model content must never leak"
+    tool_input = round_tool_input()
+    if case == "text-json":
+        response = converse_response(secret, stopReason="end_turn")
+    elif case == "wrong-tool-name":
+        response = tool_response("run_recovery_action", tool_input)
+    elif case == "missing-field":
+        tool_input.pop("crisis_consequence")
+        response = tool_response(ROUND_TOOL_NAME, tool_input)
+    elif case == "extra-content-block":
+        response = tool_response(
+            ROUND_TOOL_NAME,
+            tool_input,
+            extra_content=[{"text": secret}],
+        )
+    elif case == "multiple-tool-use":
+        response = tool_response(
+            ROUND_TOOL_NAME,
+            tool_input,
+            extra_content=[tool_use_block(ROUND_TOOL_NAME, tool_input, secret)],
+        )
+    elif case == "extra-input-field":
+        tool_input["raw_secret"] = secret
+        response = tool_response(ROUND_TOOL_NAME, tool_input)
+    elif case == "wrong-player-set":
+        tool_input["player_consequences"][0]["player_id"] = secret
+        response = tool_response(ROUND_TOOL_NAME, tool_input)
+    else:
+        tool_input["narrative"] = secret + ("x" * 1200)
+        response = tool_response(ROUND_TOOL_NAME, tool_input)
+
+    with pytest.raises(StorytellerFailure) as captured:
+        adapter(FakeBedrockClient(response)).resolve_round(resolution_room())
+
+    assert captured.value.code == "SCHEMA_INVALID"
+    assert captured.value.diagnostic_code == diagnostic_code
+    assert str(captured.value) == "SCHEMA_INVALID"
+    assert secret not in str(captured.value)
+    assert secret not in repr(captured.value)
+
+
+@pytest.mark.parametrize(
     "case",
     ["text-json", "wrong-tool-name", "missing-field", "extra-content-block"],
 )
