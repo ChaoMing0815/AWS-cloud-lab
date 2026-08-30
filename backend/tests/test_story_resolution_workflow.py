@@ -234,3 +234,18 @@ def test_worker_logs_only_safe_schema_diagnostic_without_changing_retry_contract
     ]
     assert queue.events == ["claim", ("fail", "SCHEMA_INVALID")]
     assert store.events == ["inbox"]
+
+
+@pytest.mark.parametrize(
+    ("failure_code", "diagnostic_code"),
+    [
+        ("SCHEMA_INVALID", "raw model response"),
+        ("TIMEOUT", "round_input_keys"),
+    ],
+)
+def test_storyteller_failure_rejects_unallowlisted_or_unrelated_diagnostics(
+    failure_code: str,
+    diagnostic_code: str,
+) -> None:
+    with pytest.raises(ValueError, match="diagnostic_code"):
+        StorytellerFailure(failure_code, diagnostic_code=diagnostic_code)
