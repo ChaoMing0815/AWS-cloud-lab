@@ -11,4 +11,8 @@
 - Full regression：Backend 791 項完整 suite 通過；僅既有 Starlette `httpx` deprecation warning。
 - Negative：非 allowlist 診斷與非 `SCHEMA_INVALID` 診斷均 fail closed；夾帶額外原始欄位的事件不落檔。
 - Sensitivity：暫時允許 `raw model response` 時負面測試如預期失敗；還原後目標測試重新通過。
-- Rollback／residual risk：可回退 Green commit；需另行核准 image build、Worker deploy 與新 exactly-one invocation 才能取得真實分類。
+- Integration：PR #58四項CI全綠，merge commit `81bf54af63684681ccc8bf8b22c6c96503ae9b47`。Worker artifact run `33296013600`通過production approval、ARM64 immutable push、exact-digest Trivy與manifest，digest為`sha256:2d5d5866f54879e79882644f4b45af2475650ddc9972e6b91cfe786886cddfbc`。
+- Worker rollout：使用者透過bounded SSM選取兩台private Worker，兩台皆回preflight safe、service active、container running、restart `0`、mode async與credential absent；Web／publisher image與Web `sync`均未改變。
+- AWS exactly-one：新marker只建立一個job，`retry_seed=2`限制最多一次Bedrock invocation；publisher stop／start通過、dispatch attempts為`1`、final attempt為`3`、result為`applied`、Room回`COLLECTING_ACTIONS`，且沒有自動重跑。
+- Cleanup／postflight：成功狀態與result fingerprint／room version驗證後才精確刪除marker；`marker_count=0`、publisher active、Web `sync`，主Queue／DLQ available與in-flight四項皆為`0`。
+- Rollback／residual risk：previous Worker digest仍為可回復資產；safe diagnostics未在成功路徑輸出事件。此證據不授權或證明玩家可見async activation、多人polling或rollback。
