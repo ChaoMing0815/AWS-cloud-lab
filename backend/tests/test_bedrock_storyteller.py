@@ -806,9 +806,19 @@ def test_round_rejects_any_response_other_than_one_exact_valid_output_tool(case:
         ("missing-field", "round_input_keys"),
         ("extra-content-block", "unexpected_content_count"),
         ("multiple-tool-use", "unexpected_content_count"),
+        ("invalid-content-block", "unexpected_content_block"),
+        ("invalid-tool-shape", "unexpected_tool_shape"),
+        ("invalid-tool-id", "unexpected_tool_use_id"),
         ("extra-input-field", "round_input_keys"),
+        ("invalid-consequence-count", "round_player_consequence_count"),
+        ("invalid-consequence-shape", "round_player_consequence_shape"),
+        ("invalid-player-id", "round_player_id_bounds"),
+        ("invalid-action-consequence", "round_action_consequence_bounds"),
         ("wrong-player-set", "round_player_set"),
         ("overlong-narrative", "round_narrative_bounds"),
+        ("overlong-progress", "round_progress_consequence_bounds"),
+        ("overlong-crisis", "round_crisis_consequence_bounds"),
+        ("overlong-next-scene", "round_next_scene_hook_bounds"),
     ],
 )
 def test_round_schema_failure_exposes_only_safe_diagnostic_code(
@@ -836,14 +846,43 @@ def test_round_schema_failure_exposes_only_safe_diagnostic_code(
             tool_input,
             extra_content=[tool_use_block(ROUND_TOOL_NAME, tool_input, secret)],
         )
+    elif case == "invalid-content-block":
+        response = converse_response(secret, stopReason="tool_use")
+    elif case == "invalid-tool-shape":
+        response = tool_response(ROUND_TOOL_NAME, tool_input)
+        response["output"]["message"]["content"][0]["toolUse"]["raw"] = secret
+    elif case == "invalid-tool-id":
+        response = tool_response(ROUND_TOOL_NAME, tool_input)
+        response["output"]["message"]["content"][0]["toolUse"]["toolUseId"] = ""
     elif case == "extra-input-field":
         tool_input["raw_secret"] = secret
+        response = tool_response(ROUND_TOOL_NAME, tool_input)
+    elif case == "invalid-consequence-count":
+        tool_input["player_consequences"] = []
+        response = tool_response(ROUND_TOOL_NAME, tool_input)
+    elif case == "invalid-consequence-shape":
+        tool_input["player_consequences"][0]["raw"] = secret
+        response = tool_response(ROUND_TOOL_NAME, tool_input)
+    elif case == "invalid-player-id":
+        tool_input["player_consequences"][0]["player_id"] = ""
+        response = tool_response(ROUND_TOOL_NAME, tool_input)
+    elif case == "invalid-action-consequence":
+        tool_input["player_consequences"][0]["action_consequence"] = ""
         response = tool_response(ROUND_TOOL_NAME, tool_input)
     elif case == "wrong-player-set":
         tool_input["player_consequences"][0]["player_id"] = secret
         response = tool_response(ROUND_TOOL_NAME, tool_input)
-    else:
+    elif case == "overlong-narrative":
         tool_input["narrative"] = secret + ("x" * 1200)
+        response = tool_response(ROUND_TOOL_NAME, tool_input)
+    elif case == "overlong-progress":
+        tool_input["progress_consequence"] = secret + ("x" * 300)
+        response = tool_response(ROUND_TOOL_NAME, tool_input)
+    elif case == "overlong-crisis":
+        tool_input["crisis_consequence"] = secret + ("x" * 300)
+        response = tool_response(ROUND_TOOL_NAME, tool_input)
+    else:
+        tool_input["next_scene_hook"] = secret + ("x" * 500)
         response = tool_response(ROUND_TOOL_NAME, tool_input)
 
     with pytest.raises(StorytellerFailure) as captured:
