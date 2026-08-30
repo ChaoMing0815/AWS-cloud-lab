@@ -238,6 +238,12 @@ _ROUND_AND_ENDING_TOOL = {
 _METRICS_LOGGER = logging.getLogger("co_story.storyteller_metrics")
 
 
+class _SchemaDiagnostic(ValueError):
+    def __init__(self, code: str) -> None:
+        super().__init__(code)
+        self.code = code
+
+
 class BedrockStoryteller(Storyteller):
     """Storyteller adapter over an injected Bedrock Runtime-compatible client."""
 
@@ -444,24 +450,50 @@ class BedrockStoryteller(Storyteller):
     ) -> dict[str, Any]:
         try:
             content = response["output"]["message"]["content"]
-            if response.get("stopReason") != "tool_use" or len(content) != 1:
-                raise ValueError("exclusive tool use required")
-            block = content[0]
-            if not isinstance(block, dict) or set(block) != {"toolUse"}:
-                raise ValueError("tool use block required")
-            tool_use = block["toolUse"]
-            if not isinstance(tool_use, dict) or set(tool_use) != {
-                "toolUseId",
-                "name",
-                "input",
-            }:
-                raise ValueError("invalid tool use")
-            tool_use_id = tool_use["toolUseId"]
-            if not isinstance(tool_use_id, str) or not 1 <= len(tool_use_id) <= 64:
-                raise ValueError("invalid tool use id")
-            if tool_use["name"] != tool_name:
-                raise ValueError("wrong tool")
+        except (KeyError, TypeError):
+            raise StorytellerFailure(
+                "SCHEMA_INVALID",
+                diagnostic_code="unexpected_content_block",
+            ) from None
+        if response.get("stopReason") != "tool_use":
+            raise StorytellerFailure(
+                "SCHEMA_INVALID",
+                diagnostic_code="unexpected_stop_reason",
+            )
+        if not isinstance(content, list) or len(content) != 1:
+            raise StorytellerFailure(
+                "SCHEMA_INVALID",
+                diagnostic_code="unexpected_content_count",
+            )
+        block = content[0]
+        if not isinstance(block, dict) or set(block) != {"toolUse"}:
+            raise StorytellerFailure(
+                "SCHEMA_INVALID",
+                diagnostic_code="unexpected_content_block",
+            )
+        tool_use = block["toolUse"]
+        if not isinstance(tool_use, dict) or set(tool_use) != {
+            "toolUseId",
+            "name",
+            "input",
+        }:
+            raise StorytellerFailure(
+                "SCHEMA_INVALID",
+                diagnostic_code="unexpected_tool_shape",
+            )
+        tool_use_id = tool_use["toolUseId"]
+        if not isinstance(tool_use_id, str) or not 1 <= len(tool_use_id) <= 64:
+            raise StorytellerFailure(
+                "SCHEMA_INVALID",
+                diagnostic_code="unexpected_tool_use_id",
+            )
+        if tool_use["name"] != tool_name:
+            raise StorytellerFailure(
+                "SCHEMA_INVALID",
+                diagnostic_code="unexpected_tool_name",
+            )
 
+        try:
             if tool_name == ROUND_TOOL_NAME:
                 return _validate_round_tool_input(
                     tool_use["input"], expected_player_ids or []
@@ -473,6 +505,11 @@ class BedrockStoryteller(Storyteller):
                     tool_use["input"],
                     expected_player_ids or [],
                 )
+        except _SchemaDiagnostic as error:
+            raise StorytellerFailure(
+                "SCHEMA_INVALID",
+                diagnostic_code=error.code,
+            ) from None
         except (KeyError, TypeError, ValueError):
             raise StorytellerFailure("SCHEMA_INVALID") from None
         raise StorytellerFailure("SCHEMA_INVALID")
@@ -616,36 +653,73 @@ def _validate_round_tool_input(value: object, expected_player_ids: list[str]) ->
         "next_scene_hook",
     }
     if not isinstance(value, dict) or set(value) != required:
-        raise ValueError("round tool input")
+        raise _SchemaDiagnostic("round_input_keys")
     if not 1 <= len(expected_player_ids) <= 5 or len(set(expected_player_ids)) != len(
         expected_player_ids
     ):
-        raise ValueError("expected players")
+        raise _SchemaDiagnostic("round_player_set")
     consequences = value["player_consequences"]
     if not isinstance(consequences, list) or len(consequences) != len(expected_player_ids):
-        raise ValueError("player consequences")
+        raise _SchemaDiagnostic("round_player_consequence_count")
     by_player_id: dict[str, str] = {}
     for consequence in consequences:
         if not isinstance(consequence, dict) or set(consequence) != {
             "player_id",
             "action_consequence",
         }:
-            raise ValueError("player consequence")
-        player_id = _bounded_text(consequence["player_id"], 1, 64)
+            raise _SchemaDiagnostic("round_player_consequence_shape")
+        player_id = _diagnostic_bounded_text(
+            consequence["player_id"],
+            1,
+            64,
+            "round_player_id_bounds",
+        )
         if player_id in by_player_id:
-            raise ValueError("duplicate player")
-        by_player_id[player_id] = _bounded_text(
-            consequence["action_consequence"], 1, 240
+            raise _SchemaDiagnostic("round_player_set")
+        by_player_id[player_id] = _diagnostic_bounded_text(
+            consequence["action_consequence"],
+            1,
+            240,
+            "round_action_consequence_bounds",
         )
     if set(by_player_id) != set(expected_player_ids):
-        raise ValueError("player set")
+        raise _SchemaDiagnostic("round_player_set")
     return {
-        "narrative": _bounded_text(value["narrative"], 1, 600),
+        "narrative": _diagnostic_bounded_text(
+            value["narrative"], 1, 600, "round_narrative_bounds"
+        ),
         "player_consequences": [by_player_id[player_id] for player_id in expected_player_ids],
-        "progress_consequence": _bounded_text(value["progress_consequence"], 1, 240),
-        "crisis_consequence": _bounded_text(value["crisis_consequence"], 1, 240),
-        "next_scene_hook": _bounded_text(value["next_scene_hook"], 1, 400),
+        "progress_consequence": _diagnostic_bounded_text(
+            value["progress_consequence"],
+            1,
+            240,
+            "round_progress_consequence_bounds",
+        ),
+        "crisis_consequence": _diagnostic_bounded_text(
+            value["crisis_consequence"],
+            1,
+            240,
+            "round_crisis_consequence_bounds",
+        ),
+        "next_scene_hook": _diagnostic_bounded_text(
+            value["next_scene_hook"],
+            1,
+            400,
+            "round_next_scene_hook_bounds",
+        ),
     }
+
+
+def _diagnostic_bounded_text(
+    value: object,
+    minimum: int,
+    maximum: int,
+    diagnostic_code: str,
+) -> str:
+    try:
+        return _bounded_text(value, minimum, maximum)
+    except (TypeError, ValueError):
+        raise _SchemaDiagnostic(diagnostic_code) from None
 
 
 def _validate_ending_tool_input(value: object) -> dict[str, str]:
