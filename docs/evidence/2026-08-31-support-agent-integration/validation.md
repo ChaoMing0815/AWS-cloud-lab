@@ -10,5 +10,5 @@
 - Negative：匿名／純Host／失效session、錯誤CSRF、unknown identity/state欄位、長度／body上限、429、dependency exception與安全serialization均通過。
 - Sensitivity：既有security mutations之外，暫時移除pruning或capacity guard均使對應測試轉紅；mutation已還原且targeted重跑全綠。
 - Static gates：12份YAML parse、`git diff --check`、`branch_boundary=passed`（8 paths）與本機container build通過。
-- CI：原PR tip run `33365284676`四項全綠；bounded-limiter corrective tip將於push後重新執行Backend／Frontend／branch boundary／Trivy container scan。
+- CI：bounded-limiter corrective PR #68 run `33365974390`的Backend／Frontend／branch boundary／container build-scan四項全綠；Trivy HIGH／CRITICAL fail-closed scan通過。
 - Rollback／residual：回退本分支commits即可移除API；limiter僅保證單process，production release前仍須依實際Web process數量review。
