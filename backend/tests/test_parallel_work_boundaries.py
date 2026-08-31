@@ -37,6 +37,7 @@ def test_policy_defines_exact_parallel_branches_and_protects_integration_state()
         "codex/web-stale-feedback",
         "codex/support-agent-api",
         "codex/support-agent-web",
+        "codex/tier2-web-ui-release",
     }
     assert "docs/handoffs/CURRENT.md" in policy["protected_paths"]
     assert "docs/checkpoints.md" in policy["protected_paths"]
@@ -103,6 +104,33 @@ def test_support_agent_api_and_web_branches_have_disjoint_integration_ownership(
     assert web_rejected.returncode == 2
     assert "backend/app/api/support_routes.py" in web_rejected.stderr
     assert "backend/migrations/005_support_agent.sql" in web_rejected.stderr
+
+
+def test_tier2_web_ui_release_accepts_only_async_preserving_release_paths() -> None:
+    accepted = _check(
+        "codex/tier2-web-ui-release",
+        "ops/release/deploy_container.sh",
+        "backend/tests/test_tier3_delivery_contract.py",
+        "backend/tests/test_tier2_web_async_release.py",
+        "docs/runbooks/tier3-container-release.md",
+        "docs/evidence/2026-08-31-tier2-web-ui-release/validation.md",
+    )
+    rejected = _check(
+        "codex/tier2-web-ui-release",
+        ".github/workflows/tier3-release.yml",
+        "ops/systemd/co-story-container.service",
+        "backend/app/main.py",
+        "web/index.html",
+        "docs/handoffs/CURRENT.md",
+    )
+
+    assert accepted.returncode == 0, accepted.stderr
+    assert rejected.returncode == 2
+    assert ".github/workflows/tier3-release.yml" in rejected.stderr
+    assert "ops/systemd/co-story-container.service" in rejected.stderr
+    assert "backend/app/main.py" in rejected.stderr
+    assert "web/index.html" in rejected.stderr
+    assert "docs/handoffs/CURRENT.md" in rejected.stderr
 
 
 def test_story_quality_branch_accepts_product_paths_and_rejects_delivery_paths() -> None:
@@ -462,6 +490,7 @@ def test_governance_guide_and_pull_request_gate_are_present() -> None:
     assert "codex/support-agent-core" in guide
     assert "codex/support-agent-durability" in guide
     assert "codex/support-agent-persistence" in guide
+    assert "codex/tier2-web-ui-release" in guide
     assert "單一部署 owner" in guide
     assert "branch-boundary:" in workflow
     assert "scripts/check_branch_boundaries.py" in workflow

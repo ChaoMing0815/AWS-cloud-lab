@@ -294,13 +294,27 @@
 - Backend/API 分支先交付固定 contract；此分支可用 fake adapter strict TDD 平行開發，但 merge gate 必須在最新 Backend contract 上跑完整 Frontend regression。
 - 不修改 Python、migration、Backend tests、AWS、Docker、workflow、IaC、ops、Feature Spec 或 protected paths。
 
+## `codex/tier2-web-ui-release`
+
+唯一目標是讓已合併的 stale feedback／失效房間控制 UI 修正透過既有 `digest-release` 上線時，精確保留目前 production Web 的 `async` resolution mode。此分支不開發 Support Agent，也不改 workflow、SSM Document、IAM、ECR、Worker、Publisher 或資料 schema。
+
+強制邊界：
+
+- strict TDD 必須先證明現有 release driver 會以 source unit 的 `sync` 覆蓋 active `async`，再做最小修正。
+- `digest-release` 必須從 canonical installed unit 讀取並 allowlist `sync|async`；缺失、重複、空白、大小寫或未知值都在 registry login、pull、migration與 service mutation前停止。
+- candidate、target unit promotion及 rollback 必須使用同一個已驗證 mode；不得只修最後一次 restart，也不得改寫 runtime／database env。
+- `migration-bridge` 與 `schema-activation` 的既有 `sync` contract、digest fence、health、rollback及 fail-closed行為不得降級。
+- 只修改 policy 白名單中的 release driver、contract tests、runbook與短 evidence；不得執行 AWS CLI／SSM／S3／Bedrock、`workflow_dispatch`或 production deploy。
+- 完成後只可 push／建立 PR，不得自行 merge；production 必須由整合 task 以新的 exact main SHA、既有 active digest與人工 approval gate另行核准。
+
 ### 下一輪整合順序
 
 1. `codex/web-stale-feedback` 先合併，消除 `web/index.html` 的 owner 衝突。
 2. 整合 task 固定 Support Agent HTTP contract 與共同治理基準。
 3. `codex/support-agent-api` 與 `codex/support-agent-web` 從同一 exact base 平行開發；Backend 與 Web 路徑互斥。
 4. 先合併 API，再讓 Web 分支同步最新 `main` 並完成 contract／Frontend merge gate。
-5. Production deployment、Bedrock adapter與 external submit 均為後續獨立 change envelope。
+5. `codex/tier2-web-ui-release` 與兩個 Support Agent 分支路徑互斥，可平行完成；它只服務已合併 UI patch 的獨立 production envelope。
+6. Support Agent production deployment、Bedrock adapter與 external submit 均為後續獨立 change envelope。
 
 ## 共用檔案與交接
 
