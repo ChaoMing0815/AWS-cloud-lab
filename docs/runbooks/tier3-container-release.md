@@ -11,7 +11,7 @@ Production GitHub environment 必須設定 required reviewer；repository variab
 ## 四種 release mode
 
 - `legacy-bootstrap`：只用於 `tier1-20260825-4a51e0e` 首次切換。`previous_image_digest` 必須空白，`expected_legacy_release` 必須精確相等；禁止假 digest、target digest 或相同 digest冒充 previous。
-- `digest-release`：只用於已有 verified container state 的後續版本。必須提供與 target 不同、且同時吻合 root-only state 與 active release env 的 previous digest；不得提供 legacy release input。
+- `digest-release`：只用於已有 verified container state 的後續版本。必須提供與 target 不同、且同時吻合 root-only state 與 active release env 的 previous digest；不得提供 legacy release input。它從 canonical installed unit 精確繼承目前 `sync|async` resolution mode，不接受 target source unit 覆蓋 active mode。
 - `migration-bridge`：只用於將 active digest 切換成可讀舊 schema的同步 bridge。previous 必須是 canonical active digest、legacy input 必須空白；全程不執行 migration，candidate 與 stable runtime 都固定 sync。成功後才寫入 root-only digest-bound bridge marker。
 - `schema-activation`：只能以 marker 綁定的 verified bridge digest 為 previous；先驗 marker，再 migration、重驗 marker、驗 bridge runtime與candidate。任何失敗只回復 bridge runtime，不做 schema downgrade。
 
@@ -29,7 +29,7 @@ Document之後才pull exact scanned digest、以該digest建立asset container�
 
 bridge candidate通過後，target driver先保存previous stable driver／unit、寫入pending state與target release env；只有`migration-bridge`才可在首次target restart前重新驗target unit source SHA-256、原子安裝已驗證target unit到installed systemd unit（`root:root:0644`）、再驗destination SHA-256並執行`daemon-reload`。首次target health前stable driver與stable unit仍維持previous版本。health通過後才promotion stable assets、再次restart／health、寫canonical active state，最後才寫verified bridge marker。handoff、hash、reload、restart、promotion或health任一步失敗都必須由previous backups恢復installed／stable assets、release env與previous runtime；restore失敗保留既有root-only forensic state。`digest-release`與`schema-activation`不得採用此handoff。
 
-container unit 的唯一resolution mode來源是精確的`Environment=CO_STORY_RESOLUTION_MODE=sync`。systemd 的Environment只影響Docker CLI process，並不會自動進入container，因此同一個`ExecStart`必須以相鄰token `--env CO_STORY_RESOLUTION_MODE=${CO_STORY_RESOLUTION_MODE}`顯式傳入allowlisted、非秘密值。不得把此值放進`runtime.env`或`container-release.env`，也不得在Docker參數再硬編第二份`sync`；否則production composition仍會在建立producer／store前fail closed。
+`migration-bridge`與`schema-activation`的container unit resolution mode仍固定為精確的`Environment=CO_STORY_RESOLUTION_MODE=sync`。`digest-release`則只從目前 canonical installed unit 讀取唯一精確的`Environment=CO_STORY_RESOLUTION_MODE=sync|async`；missing、duplicate、空值、空白、大小寫或未知值都必須在registry login、pull、migration及service／state mutation前停止。驗證後的同一mode必須供target candidate使用，並綁定到promotion的installed／stable target unit；失敗rollback恢復的previous unit也必須保持該mode。systemd的Environment只影響Docker CLI process，並不會自動進入container，因此同一個`ExecStart`必須以相鄰token `--env CO_STORY_RESOLUTION_MODE=${CO_STORY_RESOLUTION_MODE}`顯式傳入allowlisted、非秘密值。不得把此值放進`runtime.env`或`container-release.env`，也不得在Docker參數硬編第二份mode。
 
 ## Change Set 與主機 preflight
 
@@ -57,9 +57,9 @@ Container image的default user維持非root `10001:10001`，但production host�
 
 ## 後續 digest release
 
-後續 release在任何 target pull前，先由目前 active stable driver核對 state metadata／shape、active env、stable driver checksum、stable／installed unit checksum、暫存 backup不存在與 previous digest。任何不一致都停止。Document之後才從 exact scanned target digest擷取本次 driver與unit到暫存區，不使用任意 URL。
+後續 release在任何 target pull前，先由目前 active stable driver核對 state metadata／shape、active env、stable driver checksum、stable／installed unit checksum、暫存 backup不存在、previous digest，以及canonical installed unit中唯一的active resolution mode。任何不一致都停止。Document之後才從 exact scanned target digest擷取本次 driver與unit到暫存區，不使用任意 URL。
 
-通過後依序執行 migration、previous runtime schema-compatible health、target candidate與使用目前 stable unit的第一次 target switch。新 driver／unit在 target `:8000`健康前不得永久安裝；其後先保存 previous stable assets與 pending state，再原子 promotion、`daemon-reload`、以新 unit restart target並再次驗證 `target-promoted` health，最後才寫入新 checksum與 active state。Promotion或第二次 health失敗，必須恢復 previous stable driver、unit、installed unit與 exact previous digest；restore失敗保存 `asset-restore-failed`並 nonzero。Crash留下 pending state、backup或 checksum漂移時 fail closed。這條路徑不降級既有 digest-to-digest rollback。
+通過後依序執行 migration、previous runtime schema-compatible health、使用validated active mode的target candidate，以及使用目前stable unit的第一次target switch。新driver／mode-bound target unit在target `:8000`健康前不得永久安裝；其後先保存previous stable assets與pending state，再原子promotion、`daemon-reload`、以同一validated mode的新unit restart target並再次驗證`target-promoted` health，最後才寫入新checksum與active state。Promotion或第二次health失敗，必須恢復previous stable driver、unit、installed unit、同一active mode與exact previous digest；restore失敗保存`asset-restore-failed`並nonzero。Crash留下pending state、backup或checksum漂移時fail closed。這條路徑不降級既有digest-to-digest rollback。
 
 ## 人工 legacy rollback
 
@@ -84,6 +84,7 @@ Container image的default user維持非root `10001:10001`，但production host�
 - RDS CA 缺少、是 symlink、非 canonical regular file、app不可讀或 group／other可寫：在第一次 login／pull前停止，不得複製CA進image或降低TLS。
 - Host `co-story` UID/GID不是canonical非零numeric值，或log directory／candidate log的type、symlink、owner、`750/640` mode與實際可寫性不符：candidate前停止，不得改成`777`、group/other writable或關閉file logging。
 - Root-only release env不是精確image／UID／GID三行，metadata不是`root:root:600`，或identity不符host：digest-release與legacy rollback在mutation前停止。
+- Canonical installed unit缺少、重複或包含非精確`sync|async`的resolution mode：digest-release在registry login、pull、migration與任何service／state mutation前停止，不以source unit預設值繼續。
 - migration、candidate 或 target health 失敗：停止；target 未啟用或自動恢復 previous digest。
 - legacy／previous restore health 仍失敗：保留 nonzero state並停止；不得覆寫 state、關閉 guard或直接重試 deploy。
 - `legacy-switch-pending`、`digest-switch-pending`、`asset-promotion-pending`、任何 `*-failed` state、previous asset backup殘留或 stable asset checksum漂移：停止並交由人工處置。
