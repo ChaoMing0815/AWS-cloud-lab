@@ -166,6 +166,25 @@ def test_activation_atomically_updates_both_units_and_canonical_state(
     )
 
 
+def test_activation_polls_through_transient_container_startup(
+    tmp_path: Path,
+) -> None:
+    host, env, events = _sandbox(tmp_path)
+    env["CO_STORY_TEST_TRANSIENT_FAIL"] = "target-container-running"
+
+    result = _run(env, "activate")
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == (
+        "web_async_activation=verified previous=sync current=async"
+    )
+    event_lines = events.read_text(encoding="utf-8").splitlines()
+    assert "health-retry:target:container_running" in event_lines
+    assert event_lines.index("health-retry:target:container_running") < event_lines.index(
+        "mutation:final-state"
+    )
+
+
 def test_rollback_returns_the_verified_async_state_to_sync(tmp_path: Path) -> None:
     host, env, _events = _sandbox(tmp_path)
     activated = _run(env, "activate")
@@ -362,6 +381,28 @@ def test_failed_restore_preserves_both_exact_health_probe_phases(
         "web_mode_transition=original-failure reason=target_public_ready_failed",
         "web_mode_transition=stopped reason=restore_internal_live_failed",
     ]
+
+
+def test_restore_polls_through_transient_container_startup(tmp_path: Path) -> None:
+    host, env, events = _sandbox(tmp_path)
+    env["CO_STORY_TEST_FAIL"] = "target-public-ready"
+    env["CO_STORY_TEST_TRANSIENT_FAIL"] = "restore-container-running"
+    installed = _host_path(host, "/etc/systemd/system/co-story.service")
+    state = _host_path(host, "/etc/co-story/container-transition.state")
+    installed_before = installed.read_bytes()
+    state_before = state.read_bytes()
+
+    result = _run(env, "activate")
+
+    assert result.returncode == 2
+    assert result.stderr.strip() == (
+        "web_mode_transition=stopped reason=target_public_ready_failed"
+    )
+    assert installed.read_bytes() == installed_before
+    assert state.read_bytes() == state_before
+    assert "health-retry:restore:container_running" in events.read_text(
+        encoding="utf-8"
+    ).splitlines()
 
 
 def test_failure_output_never_includes_environment_or_player_content(tmp_path: Path) -> None:
