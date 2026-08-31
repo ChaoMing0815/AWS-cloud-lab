@@ -37,6 +37,7 @@ def test_policy_defines_exact_parallel_branches_and_protects_integration_state()
         "codex/web-stale-feedback",
         "codex/support-agent-api",
         "codex/support-agent-web",
+        "codex/support-csp-corrective",
         "codex/tier2-web-ui-release",
     }
     assert "docs/handoffs/CURRENT.md" in policy["protected_paths"]
@@ -104,6 +105,31 @@ def test_support_agent_api_and_web_branches_have_disjoint_integration_ownership(
     assert web_rejected.returncode == 2
     assert "backend/app/api/support_routes.py" in web_rejected.stderr
     assert "backend/migrations/005_support_agent.sql" in web_rejected.stderr
+
+
+def test_support_csp_corrective_accepts_only_the_static_web_slice() -> None:
+    accepted = _check(
+        "codex/support-csp-corrective",
+        "web/index.html",
+        "web/styles.css",
+        "web/src/composition/bootstrap.js",
+        "web/tests/ui/production-navigation.test.js",
+        "docs/evidence/2026-08-31-support-csp-corrective/validation.md",
+    )
+    rejected = _check(
+        "codex/support-csp-corrective",
+        "backend/app/main.py",
+        "backend/tests/test_internet_release_gates.py",
+        ".github/workflows/tier3-release.yml",
+        "docs/handoffs/CURRENT.md",
+    )
+
+    assert accepted.returncode == 0, accepted.stderr
+    assert rejected.returncode == 2
+    assert "backend/app/main.py" in rejected.stderr
+    assert "backend/tests/test_internet_release_gates.py" in rejected.stderr
+    assert ".github/workflows/tier3-release.yml" in rejected.stderr
+    assert "docs/handoffs/CURRENT.md" in rejected.stderr
 
 
 def test_tier2_web_ui_release_accepts_only_async_preserving_release_paths() -> None:
