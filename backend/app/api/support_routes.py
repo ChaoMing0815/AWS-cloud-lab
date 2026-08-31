@@ -124,10 +124,16 @@ def create_support_router(
             return _error("REQUEST_VALIDATION_FAILED")
         if not room_id:
             return _error("SESSION_NOT_FOUND")
-        room = room_service.repository.get(room_id)
+        try:
+            room = room_service.repository.get(room_id)
+        except Exception:
+            return _error("SUPPORT_UNAVAILABLE")
         if room is None:
             return _error("SESSION_NOT_FOUND")
-        session = room_service.session_context(room, host_token, player_token)
+        try:
+            session = room_service.session_context(room, host_token, player_token)
+        except Exception:
+            return _error("SUPPORT_UNAVAILABLE")
         if session["principalType"] == "anonymous":
             return _error("SESSION_NOT_FOUND")
         if session["principalType"] != "player" or not session["playerId"]:
