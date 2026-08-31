@@ -361,12 +361,12 @@ Resources:
                   trap cleanup EXIT
                   aws ecr get-login-password --region ap-northeast-1 | docker login --username AWS --password-stdin "$registry" >/dev/null
                   docker pull "$target_image" >/dev/null
-                  if [ "$release_mode" = migration-bridge ] || [ "$release_mode" = schema-activation ]; then
+                  if [ "$release_mode" = digest-release ] || [ "$release_mode" = migration-bridge ] || [ "$release_mode" = schema-activation ]; then
                     target_image_id="$(docker image inspect --format '{{.Id}}' "$target_image")"
                     [[ "$target_image_id" =~ ^sha256:[a-f0-9]{64}$ ]] || stop_release invalid_target_image_id
                   fi
                   docker create --name "$asset_container" "$target_image" >/dev/null
-                  if [ "$release_mode" = migration-bridge ] || [ "$release_mode" = schema-activation ]; then
+                  if [ "$release_mode" = digest-release ] || [ "$release_mode" = migration-bridge ] || [ "$release_mode" = schema-activation ]; then
                     asset_container_image_id="$(docker inspect --format '{{.Image}}' "$asset_container")"
                     test "$asset_container_image_id" = "$target_image_id" \
                       || stop_release asset_container_image_mismatch
@@ -377,10 +377,7 @@ Resources:
                     legacy-bootstrap)
                       "$temporary/deploy_container.sh" legacy-bootstrap "$repository_uri" "$image_digest" '' "$expected_legacy_release" "$health_host" "$temporary/co-story-container.service" "$temporary/deploy_container.sh"
                       ;;
-                    digest-release)
-                      "$stable_driver" digest-release "$repository_uri" "$image_digest" "$previous_image_digest" '' "$health_host" "$temporary/co-story-container.service" "$temporary/deploy_container.sh"
-                      ;;
-                    migration-bridge|schema-activation)
+                    digest-release|migration-bridge|schema-activation)
                       validate_temporary_directory
                       validate_regular_temporary_asset "$temporary/deploy_container.sh" driver
                       validate_regular_temporary_asset "$temporary/co-story-container.service" unit

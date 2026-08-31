@@ -98,11 +98,10 @@ def _document_harness(
         "test \"$TEST_TARGET_RELEASE_FAILURE\" = 1 && exit 45\n"
         "mkdir -p \"$(dirname \"$TEST_ACTIVE_STATE\")\"\n"
         "printf 'STATE=container-active\\n' >\"$TEST_ACTIVE_STATE\"\n"
-        "if test \"$1\" = schema-activation; then\n"
-        "  rm -f \"$TEST_MARKER\"\n"
-        "else\n"
-        "  printf 'STATE=verified-bridge\\n' >\"$TEST_MARKER\"\n"
-        "fi\n",
+        "case \"$1\" in\n"
+        "  schema-activation) rm -f \"$TEST_MARKER\" ;;\n"
+        "  migration-bridge) printf 'STATE=verified-bridge\\n' >\"$TEST_MARKER\" ;;\n"
+        "esac\n",
         0o500,
     )
     target_unit = tmp_path / "target-container.service"
