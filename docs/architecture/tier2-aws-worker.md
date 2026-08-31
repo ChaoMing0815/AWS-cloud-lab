@@ -1,6 +1,6 @@
 # Tier 2 AWS Worker foundation 架構
 
-- 狀態：AWS foundation與兩台SQS consumer runtime已部署；producer publisher／reconciliation已完成repo-local contract，尚未部署或執行AWS message E2E
+- 狀態：AWS foundation、兩台SQS consumer、publisher與queue→Worker→Bedrock→DB result鏈路均已完成exactly-one驗證；Web仍固定`sync`，玩家可見async尚未啟用
 - 決策：ADR-0007
 - Region：`ap-northeast-1`
 
@@ -69,4 +69,4 @@ Auto Scaling Group固定`min=2`、`desired=2`、`max=2`，可以替換單一失�
 
 ## Foundation completion boundary
 
-Foundation、SQS consumer runtime與ASG replacement自動重建已完成；producer publisher／reconciliation已完成repo-local strict-TDD contract但尚未套用`005`或部署。以下仍是獨立缺口：schema／publisher release、DLQ operator flow、AWS E2E、Web async activation與rollback。
+Foundation、SQS consumer runtime、ASG replacement自動重建、`005`、publisher及exactly-one AWS E2E均已完成。測試job結果為`applied`、Room回`COLLECTING_ACTIONS`，marker已清除且主Queue／DLQ四項皆為`0`。剩餘獨立缺口是Web async activation、受控玩家E2E、rollback證據與DLQ operator flow；activation envelope見[`tier2-web-async-activation.md`](../runbooks/tier2-web-async-activation.md)。
