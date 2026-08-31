@@ -93,12 +93,12 @@
 ## E. Tier 2：三組件切割
 
 - [x] 建立 Web/API、Story Worker、Data 依賴圖，並完成PostgreSQL durable story-job local contract。
-- [ ] 將故事生成改為 queue／job 模式並保存 idempotency key。
+- [x] 將故事生成改為 queue／job 模式並保存 idempotency key。
 - [x] 部署至少三個課程要求可辨識的 AWS 組件／compute，公私網段正確。
 - [x] Data 與 Worker 不直接對外；SG 只允許必要流量。
-- [ ] 驗證 action→queue→worker→Bedrock→database→result E2E。
-  - [ ] 首次exactly-one已完成typed JSONB、dispatch與completion，但舊Worker回`INVALID_MODEL`；Nova Lite相容Worker digest已部署，尚待新的單次live E2E核准與成功結果。
-- [ ] 保存組件、網段、SG 與負面連線證據。
+- [x] 驗證 action→queue→worker→Bedrock→database→result E2E。
+  - [x] Production玩家流程完成`202 → polling → applied result`；retry batch精確一次dispatch／一次Bedrock invocation，Room進入Round 02／`COLLECTING_ACTIONS`，Queue／DLQ回空。
+- [x] 保存組件、網段、SG 與負面連線證據。
 
 ## F. Tier 3：CI/CD
 

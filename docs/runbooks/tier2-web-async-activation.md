@@ -1,6 +1,6 @@
 # Tier 2 Web async activation 與 rollback envelope
 
-- 狀態：Repo-local 準備完成；尚未取得 production activation 核准
+- 狀態：Production activation、rollback與玩家exactly-one E2E均已完成
 - Envelope 名稱：`tier2-web-async-activation-b9c8b84-20260831`
 - Region：`ap-northeast-1`
 - 成本上限：USD 35
@@ -10,10 +10,10 @@
 
 本 envelope 只界定玩家 Web 從精確 `sync` 切換為 `async`，以及失敗時回復 `sync` 的單一 production 變更。它不授權執行 AWS 操作、建立測試工作或呼叫 Bedrock。
 
-Repo 基準為 PR #59 merge commit `b9c8b843ee4d77c11ccc640919d5f38c9691ed41`。目前 production 基準如下：
+最終執行基準為 PR #63 merge commit `bf7de1f4bd8dbb6e3f6791c3160a0532bbe5820f`。目前 production 基準如下：
 
 - Web 與 publisher image：`sha256:23357e315e94842cee8455023b1f87f203fca5b1d11b67b714f4af86efaa2a1b`
-- Web：service active、container running、`CO_STORY_RESOLUTION_MODE=sync`
+- Web：service active、container running、`CO_STORY_RESOLUTION_MODE=async`
 - Publisher：static unit、service active、container running
 - 兩台 private Worker：`sha256:2d5d5866f54879e79882644f4b45af2475650ddc9972e6b91cfe786886cddfbc`，service active、container running、restart `0`、mode `async`
 - Migration inventory：精確 `001`–`005`
@@ -55,7 +55,7 @@ Repo-local contract 位於[`ops/release/transition_web_resolution_mode.sh`](../.
 
 Script會核對root權限、三個參數、active digest、release env、七行canonical state、installed／stable unit、stable driver、metadata、checksum、service、container、restart count、container mode及internal／public live／ready。它只原子替換unit的唯一mode來源並更新canonical unit checksum；release image、UID、GID及其他state欄位保持不變。成功輸出只能是`web_async_activation=verified previous=sync current=async`或`web_async_rollback=verified previous=async current=sync`；失敗只輸出allowlisted reason。
 
-上述 contract 必須合併、CI 全綠並完成可讀script diff之後，才可進入 production approval。目前repo-local targeted與rollback sensitivity已完成，但尚未push、建立PR或取得production核准。
+上述 contract 已由PR #59、#61、#62與#63逐步完成candidate、failure diagnostics及bounded startup polling修正；最終PR #63四項CI全綠後才執行production activation。
 
 ## Activation preflight
 
@@ -112,7 +112,7 @@ Script執行成功會移除本次transaction backup；若target失敗且restore�
 
 ## 後續獨立關卡
 
-Activation成功只代表Web producer已開啟，不代表玩家E2E或Tier 2完成。必須另行取得production核准，才可用一個受控玩家流程驗證`202 → polling → applied result`。該batch只能建立一個player operation／job、送出一則SQS message並最多呼叫一次Bedrock；不得自動重跑。若玩家流程失敗，先回復Web `sync`，再保存sanitized診斷與清理marker；不得沿用先前synthetic E2E授權。
+Activation成功後已另行取得production核准並完成受控玩家流程。首次單一job以一次dispatch／一次Bedrock invocation回`TRANSIENT_SERVICE_ERROR`，依本runbook回復`sync`；第二個另行核准的人工retry同樣限制為一次dispatch／一次invocation，結果`applied`並進入Round 02／`COLLECTING_ACTIONS`。兩批均沒有自動重跑。
 
 ## 成本與清理
 

@@ -46,3 +46,15 @@
 - Startup-polling Red commit：`5ee28ea`；精確證明activation與restore均不會對transient container startup進入retry。
 - Startup-polling Green commit：`c602499`；將service／container／restart／image／mode與原有HTTP probes放入同一個30-attempt bounded polling，不新增repeat restart、無限等待、fallback或自動重跑。
 - Verification：`bash -n`、23項targeted、43項Web transition／container／release rollback contract與`git diff --check`全數通過；transient target／restore container startup皆有代表性sensitivity，永久不符仍以最後exact phase fail closed。
+
+## Production activation、玩家 E2E 與 rollback 完成
+
+- PR #63四項CI全綠並合併為exact main `bf7de1f4bd8dbb6e3f6791c3160a0532bbe5820f`；production使用同一完整contract，SHA-256為`0f677a5d285fe0a3ee13b2018ca9940e289d2ea24e430afcbdf7222ef30b0fcd`。
+- Web activation回`web_async_activation=verified previous=sync current=async`；postflight確認service／container／Publisher active、restart `0`、canonical state `container-active`、backup absent、internal／public health通過。兩台Worker維持active／running／restart `0`／async；空的`0600` Docker config經結構化診斷確認沒有auth、credential helper或credential material。
+- 玩家測試只以手動世界建立一個`maxRounds=4`房間、精確三位玩家與第一回合三筆action；setup沒有呼叫世界生成模型。房主第一次只按一次「略過等待者並結算」，Publisher先quiesce，DB精確出現一個pending StoryJob與一個pending dispatch outbox。
+- 為確保單一batch最多一次Bedrock invocation，該job在dispatch前固定`retry_seed=2`；第一次dispatch精確`1`、final attempt `3/3`，以`TRANSIENT_SERVICE_ERROR`／`outcome=failed`終止，沒有自動重跑。Web隨即以同一contract回`web_async_rollback=verified previous=async current=sync`；Publisher、Worker、主Queue、DLQ與disabled-actions alarm postflight皆健康／空值。
+- 使用者另行核准一次新的人工bounded retry。Web重新activation後，Publisher再次quiesce，房主只按一次「手動重試一次」；DB驗證一個historical failed job與一個新的pending retry job，後者同樣固定`retry_seed=2`。
+- Retry結果為`dispatch_attempts=1`、`final_attempt=3`、`invocation_budget=1`、`outcome=applied`，Room進入`COLLECTING_ACTIONS`。Browser顯示Round 02與新的AI故事內容；主Queue available／in-flight／delayed、DLQ available／in-flight均為`0`，DLQ alarm為`OK`／`No actions`。
+- 最終production狀態：Web `async`、Publisher active、兩台Worker active／running／restart `0`／async；Web／Publisher digest仍為`sha256:23357e315e94842cee8455023b1f87f203fca5b1d11b67b714f4af86efaa2a1b`，Worker digest仍為`sha256:2d5d5866f54879e79882644f4b45af2475650ddc9972e6b91cfe786886cddfbc`。沒有IAM、CloudFormation、network、schema或固定成本變更。
+- Residual UI：Room已正確poll至Round 02／`COLLECTING_ACTIONS`，但上一個「AI 正在整理劇情」operation feedback沒有在polling套用terminal Room後清除；右側canonical AI狀態與故事內容正確。此項列為後續Web UI修正，不否定`202 → polling → applied result`證據。
+- 測試房間保留作正式報告證據，不進行第二回合，最晚於`2026-09-08`清理；成本上限維持USD 35。

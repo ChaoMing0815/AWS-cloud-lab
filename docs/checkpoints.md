@@ -78,11 +78,11 @@ Demo 與每日進度依本清單逐項驗收。檔案存在不代表完成；必
 ## Tier 2：三組件與網段隔離
 
 - [x] Web/API、Story Worker、Data 組件與依賴圖完成。
-- [ ] 至少三個課程要求可辨識的 AWS 組件／compute 已部署。
-- [ ] Web 在 public；Worker／Data 在 private。
-- [ ] SG 串接正確，Worker／Data 外網連不到。
-- [ ] Queue job 有 version／idempotency，不重複扣資源或推進回合。
-- [ ] E2E action→worker→Bedrock→DB→result 成功。
+- [x] 至少三個課程要求可辨識的 AWS 組件／compute 已部署。
+- [x] Web 在 public；Worker／Data 在 private。
+- [x] SG 串接正確，Worker／Data 外網連不到。
+- [x] Queue job 有 version／idempotency，不重複扣資源或推進回合。
+- [x] E2E action→worker→Bedrock→DB→result 成功。
 
 ## Tier 3：CI/CD
 
