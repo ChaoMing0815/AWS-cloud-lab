@@ -122,7 +122,7 @@
 ## H. Tier 5：Enterprise Agentic AI
 
 - [x] 建立bounded Support Agent核心、static cited rules、prompt／tool guard、敏感資料清理與PostgreSQL `local_draft_only`草稿持久化／並行耐久性。
-- [ ] 依固定integration contract完成Support Agent API／session／CSRF／rate limit與Web人工確認UI；不接Bedrock或外部submit。
+- [x] 依固定integration contract完成Support Agent API／session／CSRF／rate limit與Web人工確認UI；不接Bedrock或外部submit。
 - [ ] Prompt 有版本、測試集與至少一次 A/B 比較。
 - [ ] 建立世界設定／規則／runbook 的小型 RAG corpus 與引用測試。
 - [ ] 建立一個 allowlisted MCP／tool，拒絕未授權參數與工具。
@@ -138,7 +138,7 @@
 - [ ] 完成各 Tier 的 current／target architecture diagrams。
 - [ ] 每個 Tier 保存成功與至少一項負面測試。
 - [ ] 同步 README、project plan、gantt、checkpoints、deployment log 與截圖索引。
-- [ ] 盤點工作區內檔名帶 ` 2` 的未追蹤副本：逐一比對 canonical 檔案與 SHA-256，確認不是使用者修改後才依精確清單清理；完成後重驗 `git status`、branch boundary 與必要 regression。未確認前不得批次刪除。
+- [x] 盤點工作區內檔名帶 ` 2` 的未追蹤副本：96份均有canonical，94份逐byte相同，2份為Git歷史中的舊版；已移至`/private/tmp`可恢復備份並重驗tracked diff、未追蹤清單與branch boundary。
 - [ ] 建立 5–8 分鐘主 Demo 與完整證據附錄。
 - [ ] Demo 後依清理清單停止或刪除資源並驗證帳單。
 
