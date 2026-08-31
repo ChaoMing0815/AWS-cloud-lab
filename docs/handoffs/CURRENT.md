@@ -3,13 +3,13 @@
 - 更新日期：2026-08-31
 - 目前里程碑：Tier 1、Tier 2、Tier 3均已完整完成。Tier 2 production玩家流程已完成`202 → polling → applied result`；Room進入Round 02／`COLLECTING_ACTIONS`，新AI故事可見，主Queue／DLQ五項均為`0`且DLQ alarm為`OK`／`No actions`。
 - 交付策略：已驗證的GitHub OIDC／ECR／Trivy／SSM pipeline作為唯一image交付路徑。Production Web已啟用`async`；後續不得沿用已消耗的玩家E2E核准建立第二回合job或額外呼叫Bedrock。
-- Main 整合基準：PR #65 merge commit `58852b915ccb9a7d8ccdac19f51643e77ed73ead`；stale feedback Red `15dd1b5`、Green `cd7a153`，Backend／Frontend／branch boundary／container build-scan四項CI全綠。
+- Main 整合基準：PR #65 merge commit `58852b915ccb9a7d8ccdac19f51643e77ed73ead`；治理 commit `bcface45711e67be59ad76cbebded64bddd0c152`另建立保留production `async`模式的UI release corrective邊界。Stale feedback Red `15dd1b5`、Green `cd7a153`，Backend／Frontend／branch boundary／container build-scan四項CI全綠。
 - Tier 1 完成基準 commit：`07a986a`
-- 平行分支治理基準：`98ae0ff`註冊`codex/web-stale-feedback`、`codex/support-agent-api`與`codex/support-agent-web`，API／Web owner互斥且禁止migration、外部submit與AWS操作。
+- 平行分支治理基準：`bcface4`；`codex/support-agent-api`、`codex/support-agent-web`與`codex/tier2-web-ui-release`三者owner互斥。Support兩分支禁止migration、外部submit與AWS操作；UI release分支只能修正既有digest driver的mode-preservation contract。
 - Regression：stale-feedback targeted 14項、Frontend full 98項通過；PR #65四項CI全綠。Production activation、rollback與玩家E2E正式證據位於[`Tier 2 Web async activation`](../evidence/2026-08-31-tier2-web-async-activation/validation.md)。
 - AWS active release：migration inventory精確`001`–`005`；Web與publisher digest均為`sha256:23357e315e94842cee8455023b1f87f203fca5b1d11b67b714f4af86efaa2a1b`，Web為`async`，publisher為`static`／`active`且container `running`。兩台Worker均為`sha256:2d5d5866f54879e79882644f4b45af2475650ddc9972e6b91cfe786886cddfbc`、service active、container running、restart `0`、mode `async`、safe diagnostics active；Docker config沒有credential material。
 - 操作邊界：Console-first；使用者操作 AWS Console／SSM。Agent 未經新的 bounded batch 核准不得執行 AWS CLI，且不得執行 S3 讀取或 Bedrock 呼叫。
-- 平行工作：Tier 2與Web stale-feedback分支均已合併；Support Agent durability task已封存。下一個產品切片依固定contract拆成Backend API／security與Web UI兩個repo-local工作流。
+- 平行工作：Support Agent API／security與Web UI兩個repo-local worktree task已啟動，API先整合；另有獨立UI release corrective task，避免既有`digest-release`把production Web從`async`退回source unit的`sync`。三者沒有重疊可寫路徑。
 
 ## Current
 
@@ -79,7 +79,7 @@
 
 1. 依[`Support Agent integration contract`](../features/support-agent-integration.md)在`codex/support-agent-api`完成API／session／CSRF／輸入上限／rate limit與PostgreSQL draft composition的strict TDD。
 2. `codex/support-agent-web`只依固定HTTP contract建立規則引用與`local_draft_only`人工確認UI；Backend與Web從同一治理基準平行開發，API先整合。
-3. PR #65的stale feedback與dead room control修正已合併repo，尚未部署至AWS；後續只可隨新的exact-main release envelope上線，不為此建立未核准的production batch。
+3. PR #65的stale feedback與dead room control修正已合併repo且已取得production部署授權；先由`codex/tier2-web-ui-release`以strict TDD確保`digest-release`完整保留active `async` mode，通過PR／CI後再以新的exact-main SHA、active previous digest及production approval gate上線。
 4. Bedrock、RAG與外部submit不在本輪；成本上限USD 35與2026-09-08清理日不變，既有測試房間不再建立job。
 
 ## 操作護欄
