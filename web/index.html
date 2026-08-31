@@ -20,7 +20,10 @@
         </span>
       </a>
       <div id="connectionStatus" class="connection"><span></span> 準備開始</div>
-      <a class="topbar-link" href="/rules">遊戲規則</a>
+      <nav class="topbar-nav" aria-label="主要導覽">
+        <a class="topbar-link" href="/rules">遊戲規則</a>
+        <a class="topbar-link" href="/support">客服支援</a>
+      </nav>
     </header>
 
     <p id="serverRequiredNotice" role="alert" hidden>此頁面需由本機或正式 Web server 開啟，請使用專案提供的網址。</p>
@@ -98,6 +101,40 @@
         <section><div class="eyebrow">4. 星火</div><h2>看見骰點後再決定</h2><p>每位角色開始時有 1 點星火。使用星火會讓本次總值 +1；失敗結算後可獲得星火，最多持有 3 點。</p></section>
         <section><div class="eyebrow">5. 結局</div><h2>推進目標、控制危機</h2><p>成功會推進共同目標，失敗可能增加危機。達成目標或到達選定的回合上限後，故事會依結果與代價收束。</p></section>
         <p class="muted">房主負責世界設定、開始、擲骰與結算；所有玩家都能建立角色、提交行動與決定自己的星火。</p>
+      </section>
+    </main>
+
+    <main id="supportPage" class="landing-shell support-shell" hidden>
+      <section class="landing-copy">
+        <div class="eyebrow">Bounded Support Agent</div>
+        <h1>規則查詢與問題草稿</h1>
+        <p>規則答案只引用目前版本的正式資料；問題回報在本批次只會建立本機草稿，尚未提交，必須經過人工確認。</p>
+        <a class="secondary-button rules-return" href="/">返回首頁</a>
+      </section>
+
+      <section class="support-workspace" aria-label="客服支援工具">
+        <form id="supportRuleForm" class="entry-panel support-card">
+          <div class="eyebrow">匿名可用</div>
+          <h2>查詢遊戲規則</h2>
+          <label for="supportRuleMessage">你的規則問題</label>
+          <textarea id="supportRuleMessage" maxlength="500" rows="4" required></textarea>
+          <p id="supportRuleFeedback" class="feedback" role="status" aria-live="polite" hidden></p>
+          <p id="supportRuleAnswer" class="support-answer" hidden></p>
+          <pre id="supportRuleCitations" class="support-citations" hidden></pre>
+          <button id="supportRuleButton" class="primary-button" type="submit">查詢規則</button>
+        </form>
+
+        <form id="supportReportForm" class="entry-panel support-card">
+          <div class="eyebrow">玩家工作階段限定</div>
+          <h2>建立問題草稿</h2>
+          <p>請描述重現步驟、預期與實際結果。草稿只保存在本機資料層，後續仍需人工確認。</p>
+          <label for="supportReportDescription">問題描述</label>
+          <textarea id="supportReportDescription" maxlength="2000" rows="7" required disabled></textarea>
+          <p id="supportReportCapability" class="trial-safety-note" role="note"></p>
+          <p id="supportReportFeedback" class="feedback" role="status" aria-live="polite" hidden></p>
+          <pre id="supportReportResult" class="support-draft-result" hidden></pre>
+          <button id="supportReportButton" class="secondary-button" type="submit" disabled>建立本機草稿</button>
+        </form>
       </section>
     </main>
 
