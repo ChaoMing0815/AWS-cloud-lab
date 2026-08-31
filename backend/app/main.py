@@ -164,15 +164,19 @@ def create_app(
     application.state.support_rule_knowledge_base = support_rule_knowledge_base
     application.state.support_report_repository = support_report_repository
     support_rule_limiter = support_rule_limiter or FixedWindowRateLimiter(
+        capacity=1024,
         limit=10,
         window=timedelta(seconds=60),
         clock=resolved_clock,
     )
     support_report_limiter = support_report_limiter or FixedWindowRateLimiter(
+        capacity=512,
         limit=3,
         window=timedelta(minutes=10),
         clock=resolved_clock,
     )
+    application.state.support_rule_limiter = support_rule_limiter
+    application.state.support_report_limiter = support_report_limiter
 
     @application.middleware("http")
     async def security_headers(request: Request, call_next):

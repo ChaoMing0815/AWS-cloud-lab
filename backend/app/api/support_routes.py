@@ -40,25 +40,44 @@ def _error(code: str) -> JSONResponse:
 
 
 class FixedWindowRateLimiter:
-    def __init__(self, *, limit: int, window: timedelta, clock) -> None:
-        if limit < 1 or window.total_seconds() <= 0:
+    def __init__(self, *, capacity: int, limit: int, window: timedelta, clock) -> None:
+        if capacity < 1 or limit < 1 or window.total_seconds() <= 0:
             raise ValueError("rate limiter boundaries must be positive")
+        self._capacity = capacity
         self._limit = limit
         self._window = window
         self._clock = clock
         self._entries: dict[str, tuple[object, int]] = {}
         self._lock = Lock()
 
+    @property
+    def capacity(self) -> int:
+        return self._capacity
+
     def allow(self, key: str) -> bool:
         now = self._clock.now()
         with self._lock:
-            started_at, count = self._entries.get(key, (now, 0))
-            if now - started_at >= self._window:
+            self._prune_expired(now)
+            existing = self._entries.get(key)
+            if existing is None:
+                if len(self._entries) >= self._capacity:
+                    return False
                 started_at, count = now, 0
+            else:
+                started_at, count = existing
             if count >= self._limit:
                 return False
             self._entries[key] = (started_at, count + 1)
             return True
+
+    def _prune_expired(self, now) -> None:
+        expired = tuple(
+            key
+            for key, (started_at, _count) in self._entries.items()
+            if now >= started_at and now - started_at >= self._window
+        )
+        for key in expired:
+            del self._entries[key]
 
 
 async def _bounded_json(request: Request, model: type[BaseModel], maximum: int):
