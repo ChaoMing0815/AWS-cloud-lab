@@ -35,6 +35,11 @@ test("既有 module 在 file:// 顯示 server-required 提示，且 HTML 不含 
     /if\s*\(\s*globalThis\.location\.protocol\s*===\s*["']file:["']\s*\)[\s\S]*serverRequiredNotice\.hidden\s*=\s*false/,
     "HTTP／HTTPS 不得移除預設 hidden",
   );
+  assert.match(
+    bootstrap,
+    /showServerRequiredNoticeForFileProtocol\(\);\s*void bootstrap\(\);/,
+    "module 啟動時必須實際執行 file:// 提示 guard",
+  );
 });
 
 test("Web 樣式只使用本機或系統 CJK 字型，不載入 Google Fonts", async () => {
