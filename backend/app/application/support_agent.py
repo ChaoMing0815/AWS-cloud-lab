@@ -110,18 +110,41 @@ class SupportAgent:
         self._rules = rules_knowledge_base
         self._reports = report_repository
 
+    def lookup_game_rules(self, message: str) -> RuleAnswer:
+        """Execute the read-only route intent without model-selected tool switching."""
+        normalized = self._validated_input(message)
+        answer = self._rules.lookup(normalized)
+        self._validate_grounded_answer(answer)
+        return answer
+
+    def draft_problem_report(
+        self,
+        description: str,
+        *,
+        reporter_identity: str,
+    ) -> ProblemReportDraft:
+        """Execute the local-draft route intent without model-selected tool switching."""
+        normalized = self._validated_input(description)
+        if not reporter_identity.strip():
+            raise SupportAgentRejected("reporter_identity_required")
+        return self._draft_report(normalized, reporter_identity=reporter_identity)
+
+    @staticmethod
+    def _validated_input(value: str) -> str:
+        raw_value = value.strip()
+        if not _normalize_text(raw_value):
+            raise SupportAgentRejected("empty_message")
+        if _contains_unsafe_instruction(raw_value):
+            raise SupportAgentRejected("unsafe_instruction")
+        return _redact_sensitive_data(raw_value)
+
     def respond(
         self,
         message: str,
         *,
         reporter_identity: str | None = None,
     ) -> RuleAnswer | ProblemReportDraft:
-        raw_message = message.strip()
-        if not _normalize_text(raw_message):
-            raise SupportAgentRejected("empty_message")
-        if _contains_unsafe_instruction(raw_message):
-            raise SupportAgentRejected("unsafe_instruction")
-        original_message = _redact_sensitive_data(raw_message)
+        original_message = self._validated_input(message)
 
         tool, arguments = self._validate_proposal(
             self._model.propose(original_message),

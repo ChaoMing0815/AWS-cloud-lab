@@ -64,7 +64,7 @@ def test_rules_lookup_has_fixed_unsupported_response_and_cannot_switch_to_write(
 
 def test_rules_lookup_rejects_unknown_fields_and_normalized_length_boundaries() -> None:
     with TestClient(create_app()) as client:
-        exact = client.post(RULES_PATH, json={"message": " 星 " + "火" * 498})
+        exact = client.post(RULES_PATH, json={"message": " a " + "b" * 498})
         empty = client.post(RULES_PATH, json={"message": " \n\t "})
         too_long = client.post(RULES_PATH, json={"message": "星" * 501})
         forged = client.post(

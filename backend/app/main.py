@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+from datetime import timedelta
 from time import perf_counter
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
@@ -15,8 +16,12 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from app.adapters.memory_room_repository import MemoryRoomRepository
 from app.adapters.postgres_room_repository import PostgresRoomRepository
 from app.adapters.postgres_story_resolution_store import PostgresStoryResolutionStore
+from app.adapters.postgres_support_report_repository import PostgresSupportReportRepository
 from app.adapters.memory_idempotency_store import MemoryIdempotencyStore
+from app.adapters.memory_support_report_repository import MemorySupportReportRepository
 from app.adapters.mock_storyteller import MockStoryteller
+from app.adapters.mock_support_model import MockSupportModel
+from app.adapters.static_rules_knowledge_base import StaticRulesKnowledgeBase
 from app.adapters.session_security import HmacSessionTokenFactory
 from app.adapters.safe_application_file_logging import (
     configure_safe_application_file_logging,
@@ -24,7 +29,9 @@ from app.adapters.safe_application_file_logging import (
 from app.adapters.system_clock import SystemClock
 from app.adapters.secure_dice_roller import SecureDiceRoller
 from app.api.routes import create_api_router
+from app.api.support_routes import FixedWindowRateLimiter, create_support_router
 from app.application.room_service import RoomService
+from app.application.support_agent import SupportAgent
 from app.application.story_resolution import StoryResolutionProducer
 from app.domain.errors import DomainError
 
@@ -89,6 +96,9 @@ def create_app(
     storyteller=None,
     clock=None,
     story_resolution_producer=None,
+    support_agent=None,
+    support_rule_limiter=None,
+    support_report_limiter=None,
 ) -> FastAPI:
     configure_safe_application_file_logging(
         os.environ.get("CO_STORY_APPLICATION_LOG_PATH")
@@ -134,6 +144,35 @@ def create_app(
         story_resolution_producer=story_resolution_producer,
     )
     application.state.room_service = service
+
+    if support_agent is None:
+        support_rule_knowledge_base = StaticRulesKnowledgeBase.from_default_resource()
+        support_report_repository = (
+            PostgresSupportReportRepository(database_url)
+            if database_url
+            else MemorySupportReportRepository()
+        )
+        support_agent = SupportAgent(
+            model=MockSupportModel(),
+            rules_knowledge_base=support_rule_knowledge_base,
+            report_repository=support_report_repository,
+        )
+    else:
+        support_rule_knowledge_base = getattr(support_agent, "_rules", None)
+        support_report_repository = getattr(support_agent, "_reports", None)
+    application.state.support_agent = support_agent
+    application.state.support_rule_knowledge_base = support_rule_knowledge_base
+    application.state.support_report_repository = support_report_repository
+    support_rule_limiter = support_rule_limiter or FixedWindowRateLimiter(
+        limit=10,
+        window=timedelta(seconds=60),
+        clock=resolved_clock,
+    )
+    support_report_limiter = support_report_limiter or FixedWindowRateLimiter(
+        limit=3,
+        window=timedelta(minutes=10),
+        clock=resolved_clock,
+    )
 
     @application.middleware("http")
     async def security_headers(request: Request, call_next):
@@ -186,6 +225,14 @@ def create_app(
 
     secure_cookies = os.environ.get("CO_STORY_COOKIE_SECURE", "false").lower() == "true"
     application.include_router(create_api_router(service, secure_cookies=secure_cookies))
+    application.include_router(
+        create_support_router(
+            support_agent,
+            service,
+            rule_limiter=support_rule_limiter,
+            report_limiter=support_report_limiter,
+        )
+    )
 
     @application.get("/demo", include_in_schema=False)
     async def demo_app_shell() -> FileResponse:
@@ -193,6 +240,10 @@ def create_app(
 
     @application.get("/rules", include_in_schema=False)
     async def rules_app_shell() -> FileResponse:
+        return FileResponse(WEB_ROOT / "index.html")
+
+    @application.get("/support", include_in_schema=False)
+    async def support_app_shell() -> FileResponse:
         return FileResponse(WEB_ROOT / "index.html")
 
     @application.get("/host/setup", include_in_schema=False)

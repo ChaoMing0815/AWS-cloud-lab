@@ -13,6 +13,7 @@ class StaticRulesKnowledgeBase:
             raise ValueError("rule records must have unique stable IDs")
         self.records = records
         self._by_id = {record.rule_id: record for record in records}
+        self.lookup_count = 0
 
     @classmethod
     def from_default_resource(cls) -> "StaticRulesKnowledgeBase":
@@ -47,6 +48,7 @@ class StaticRulesKnowledgeBase:
         return self._by_id.get(rule_id)
 
     def lookup(self, query: str) -> RuleAnswer:
+        self.lookup_count += 1
         normalized = " ".join(query.casefold().split())
         matches = tuple(
             record
