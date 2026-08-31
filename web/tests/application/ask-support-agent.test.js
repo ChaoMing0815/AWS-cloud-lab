@@ -18,7 +18,11 @@ test("規則查詢正規化 1–500 字元後只透過 SupportApi", async () => 
   const useCase = new LookupSupportRule({
     async lookupRules(command) {
       commands.push(command);
-      return { supported: false, answer: "目前資料不足。", citations: [] };
+      return {
+        status: "unsupported",
+        answer: "目前版本的規則資料沒有足夠證據回答這個問題。",
+        citations: [],
+      };
     },
   });
 

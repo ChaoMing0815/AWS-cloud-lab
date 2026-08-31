@@ -23,7 +23,7 @@ test("規則查詢使用 same-origin cookie 與固定 endpoint", async () => {
     fetchImpl: async (url, options) => {
       request = { url, options };
       return jsonResponse({
-        supported: true,
+        status: "supported",
         answer: "玩家可在看見骰點後決定是否使用星火。",
         citations: [{
           ruleId: "spark-usage",
@@ -59,13 +59,19 @@ test("問題草稿只使用 canonical Player CSRF 且不送 identity 或提交�
       requests.push({ url, options });
       return jsonResponse({
         reportId: "report-opaque-1",
+        category: "general_issue",
+        summary: "送出行動後沒有更新。",
+        reproductionSteps: ["送出行動"],
+        expectedBehavior: "畫面更新",
+        actualBehavior: "畫面未更新",
         requiresHumanConfirmation: true,
         submissionStatus: "local_draft_only",
+        identityHash: "must-not-leave-adapter",
       }, 201);
     },
   });
 
-  await api.createReportDraft({
+  const result = await api.createReportDraft({
     description: "送出行動後沒有更新。",
     playerId: "forged-player",
     identityHash: "forged-hash",
@@ -77,6 +83,16 @@ test("問題草稿只使用 canonical Player CSRF 且不送 identity 或提交�
   assert.equal(request.options.headers["X-CSRF-Token"], "player-csrf");
   assert.equal(request.options.headers["Idempotency-Key"], "support-draft-key");
   assert.deepEqual(JSON.parse(request.options.body), { description: "送出行動後沒有更新。" });
+  assert.deepEqual(result, {
+    reportId: "report-opaque-1",
+    category: "general_issue",
+    summary: "送出行動後沒有更新。",
+    reproductionSteps: ["送出行動"],
+    expectedBehavior: "畫面更新",
+    actualBehavior: "畫面未更新",
+    requiresHumanConfirmation: true,
+    submissionStatus: "local_draft_only",
+  });
 });
 
 test("沒有 canonical Player session 時草稿 fail closed 且不發 request", async () => {
@@ -115,11 +131,12 @@ test("adapter 拒絕跨來源 basePath", () => {
 
 test("401／403／409／422／429 與未知錯誤只產生固定安全訊息", async () => {
   const cases = [
-    [401, "PLAYER_SESSION_REQUIRED", "需要有效的玩家工作階段才能建立草稿。"],
-    [403, "CSRF_REJECTED", "玩家工作階段驗證失敗，請重新載入後再試。"],
-    [409, "SUPPORT_REPORT_CONFLICT", "草稿狀態衝突，請重新載入後再試。"],
-    [422, "REQUEST_VALIDATION_FAILED", "請檢查輸入內容與長度。"],
-    [429, "RATE_LIMITED", "操作太頻繁，請稍後再試。"],
+    [401, "SESSION_NOT_FOUND", "目前的遊戲工作階段已失效。"],
+    [401, "PLAYER_SESSION_REQUIRED", "需要有效的玩家工作階段。"],
+    [403, "CSRF_FAILED", "CSRF 驗證失敗。"],
+    [409, "SUPPORT_REPORT_CONFLICT", "問題草稿狀態衝突，請重新整理後再試。"],
+    [422, "REQUEST_VALIDATION_FAILED", "請檢查輸入內容。"],
+    [429, "SUPPORT_RATE_LIMITED", "操作過於頻繁，請稍後再試。"],
     [500, "SUPPORT_UNAVAILABLE", "客服暫時無法使用，請稍後再試。"],
   ];
 
@@ -128,7 +145,7 @@ test("401／403／409／422／429 與未知錯誤只產生固定安全訊息", a
       playerSessionProvider: async () => ({ principalType: "player", csrfToken: "csrf" }),
       fetchImpl: async () => jsonResponse({
         error: {
-          code: "RAW_INTERNAL_CODE",
+          code,
           message: "raw exception token=must-not-leak hash=must-not-leak",
         },
       }, status),

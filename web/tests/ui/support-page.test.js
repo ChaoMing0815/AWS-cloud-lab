@@ -46,6 +46,10 @@ function fakeDocument() {
 
 test("Support UI 有分離表單、可讀狀態與沒有外部提交暗示", async () => {
   const html = await readFile(new URL("../../index.html", import.meta.url), "utf8");
+  const bootstrap = await readFile(
+    new URL("../../src/composition/bootstrap.js", import.meta.url),
+    "utf8",
+  );
 
   assert.match(html, /href=["']\/support["'][^>]*>客服支援/);
   assert.match(html, /id=["']supportPage["']/);
@@ -56,6 +60,9 @@ test("Support UI 有分離表單、可讀狀態與沒有外部提交暗示", asy
   assert.match(html, /maxlength=["']500["']/);
   assert.match(html, /maxlength=["']2000["']/);
   assert.doesNotMatch(html, /建立 GitHub Issue|寄送 Email|送出問題回報/);
+  assert.match(bootstrap, /path === ["']\/support["']/);
+  assert.match(bootstrap, /loadRoom\.execute\(\)/);
+  assert.match(bootstrap, /room\?\.session/);
 });
 
 test("匿名仍可查規則，但問題草稿禁用並說明需要 Player session", () => {
@@ -81,7 +88,7 @@ test("規則查詢分別顯示安全答案與 citations 或固定 unsupported", 
   const documentRef = fakeDocument();
   const answers = [
     {
-      supported: true,
+      status: "supported",
       answer: "玩家可在看見骰點後決定是否使用星火。",
       citations: [{
         ruleId: "spark-usage",
@@ -91,8 +98,8 @@ test("規則查詢分別顯示安全答案與 citations 或固定 unsupported", 
       }],
     },
     {
-      supported: false,
-      answer: "目前規則資料未定義這個問題。",
+      status: "unsupported",
+      answer: "目前版本的規則資料沒有足夠證據回答這個問題。",
       citations: [],
     },
   ];
@@ -116,7 +123,7 @@ test("規則查詢分別顯示安全答案與 citations 或固定 unsupported", 
   await page.handleRuleLookup({ preventDefault() {} });
   assert.equal(
     documentRef.elements.supportRuleAnswer.textContent,
-    "目前規則資料未定義這個問題。",
+    "目前版本的規則資料沒有足夠證據回答這個問題。",
   );
   assert.equal(documentRef.elements.supportRuleCitations.hidden, true);
 });
@@ -155,10 +162,10 @@ test("成功草稿只顯示尚未提交、人工確認與 local_draft_only", asy
 
 test("UI 對 401／403／409／429 與未知 exception 顯示安全下一步", async () => {
   const cases = [
-    [401, "需要有效的玩家工作階段才能建立草稿。"],
-    [403, "玩家工作階段驗證失敗，請重新載入後再試。"],
-    [409, "草稿狀態衝突，請重新載入後再試。"],
-    [429, "操作太頻繁，請稍後再試。"],
+    [401, "需要有效的玩家工作階段。"],
+    [403, "CSRF 驗證失敗。"],
+    [409, "問題草稿狀態衝突，請重新整理後再試。"],
+    [429, "操作過於頻繁，請稍後再試。"],
     [500, "問題草稿暫時無法建立，請稍後再試。"],
   ];
 
