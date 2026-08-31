@@ -25,6 +25,13 @@ import { GamePage } from "../ui/pages/game-page.js";
 import { LandingPage } from "../ui/pages/landing-page.js";
 import { SupportPage } from "../ui/pages/support-page.js";
 
+function showServerRequiredNoticeForFileProtocol() {
+  const serverRequiredNotice = document.getElementById("serverRequiredNotice");
+  if (globalThis.location.protocol === "file:") {
+    serverRequiredNotice.hidden = false;
+  }
+}
+
 globalThis.addEventListener("popstate", () => globalThis.location.reload());
 
 const SURFACE_IDS = ["landingPage", "gamePage", "rulesPage", "supportPage"];
@@ -133,4 +140,5 @@ async function bootstrap() {
   }
 }
 
+showServerRequiredNoticeForFileProtocol();
 void bootstrap();
