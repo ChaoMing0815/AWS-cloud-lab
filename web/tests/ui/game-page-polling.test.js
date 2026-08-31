@@ -217,6 +217,32 @@ test("GamePage 重新連線後更新 canonical state 並恢復 3 秒 polling", a
   }
 });
 
+test("AI 結算完成後 polling 清除只屬於該次結算的 pending feedback", async () => {
+  const previousDocument = globalThis.document;
+  const feedback = { hidden: false, textContent: "已送出回合結算，AI 正在整理劇情。", dataset: { kind: "pending" } };
+  globalThis.document = {
+    getElementById(id) {
+      if (id === "feedback") return feedback;
+      return null;
+    },
+  };
+  const page = new GamePage({});
+  page.room = { status: "RESOLVING", resolutionJobId: "job-stale-feedback" };
+  page.render = () => {};
+  page.syncRoute = () => {};
+
+  try {
+    page.trackResolution(page.room);
+    page.applyPolledRoom({ status: "COLLECTING_ACTIONS", version: 9 });
+
+    assert.equal(feedback.hidden, true);
+    assert.equal(feedback.textContent, "");
+    assert.equal(feedback.dataset.kind, "");
+  } finally {
+    globalThis.document = previousDocument;
+  }
+});
+
 test("AI 結算超過 60 秒仍只讀 polling，不取消、不重送或自動 fallback", async () => {
   const scheduler = createScheduler();
   const statusDocument = installPollingStatusDocument();
