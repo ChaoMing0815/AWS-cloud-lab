@@ -123,6 +123,8 @@ def test_versioned_transition_contract_is_bounded_and_secret_free() -> None:
     assert "--show-error" not in script
     assert "cat \"$runtime_env\"" not in script
     assert "cat \"$database_env\"" not in script
+    assert "--name co-story-web-mode-candidate" in script
+    assert "--env CO_STORY_RESOLUTION_MODE=$target_mode" in script
 
 
 def test_activation_atomically_updates_both_units_and_canonical_state(
@@ -150,6 +152,9 @@ def test_activation_atomically_updates_both_units_and_canonical_state(
     assert not _host_path(host, "/etc/co-story/web-mode-previous-unit").exists()
     assert not _host_path(host, "/etc/co-story/web-mode-previous-state").exists()
     event_lines = events.read_text(encoding="utf-8").splitlines()
+    assert event_lines.index("candidate:async") < event_lines.index(
+        "mutation:pending-state"
+    )
     assert event_lines.index("mutation:pending-state") < event_lines.index(
         "mutation:stable-unit"
     )
@@ -238,6 +243,32 @@ def test_preflight_mismatch_is_read_only(tmp_path: Path, mutation: str) -> None:
     assert not events.exists() or "mutation:" not in events.read_text(encoding="utf-8")
 
 
+def test_async_candidate_failure_stops_before_live_mutation(tmp_path: Path) -> None:
+    host, env, events = _sandbox(tmp_path)
+    env["CO_STORY_TEST_FAIL"] = "target-candidate"
+    installed = _host_path(host, "/etc/systemd/system/co-story.service")
+    stable = _host_path(host, "/usr/local/share/co-story/co-story-container.service")
+    state = _host_path(host, "/etc/co-story/container-transition.state")
+    installed_before = installed.read_bytes()
+    stable_before = stable.read_bytes()
+    state_before = state.read_bytes()
+
+    result = _run(env, "activate")
+
+    assert result.returncode == 2
+    assert result.stderr.strip() == (
+        "web_mode_transition=stopped reason=target_candidate_failed"
+    )
+    assert installed.read_bytes() == installed_before
+    assert stable.read_bytes() == stable_before
+    assert state.read_bytes() == state_before
+    assert not _host_path(host, "/etc/co-story/web-mode-previous-unit").exists()
+    assert not _host_path(host, "/etc/co-story/web-mode-previous-state").exists()
+    event_lines = events.read_text(encoding="utf-8").splitlines()
+    assert "candidate:async" in event_lines
+    assert not any(line.startswith("mutation:") for line in event_lines)
+
+
 @pytest.mark.parametrize(
     "failure",
     ("target-unit-drift", "target-restart", "target-health", "final-state"),
@@ -265,6 +296,18 @@ def test_activation_failure_restores_exact_sync_unit_and_state(
     assert "health:restore:sync" in event_lines
 
 
+def test_successful_restore_preserves_the_original_failure_reason(tmp_path: Path) -> None:
+    _host, env, _events = _sandbox(tmp_path)
+    env["CO_STORY_TEST_FAIL"] = "target-health"
+
+    result = _run(env, "activate")
+
+    assert result.returncode == 2
+    assert result.stderr.strip() == (
+        "web_mode_transition=stopped reason=target_health_failed"
+    )
+
+
 def test_restore_failure_preserves_root_only_forensic_state(tmp_path: Path) -> None:
     host, env, _events = _sandbox(tmp_path)
     env["CO_STORY_TEST_FAIL"] = "target-health,restore-health"
@@ -277,6 +320,18 @@ def test_restore_failure_preserves_root_only_forensic_state(tmp_path: Path) -> N
     assert state.stat().st_mode & 0o777 == 0o600
     assert _host_path(host, "/etc/co-story/web-mode-previous-unit").exists()
     assert _host_path(host, "/etc/co-story/web-mode-previous-state").exists()
+
+
+def test_restore_failure_reports_the_exact_sanitized_phase(tmp_path: Path) -> None:
+    _host, env, _events = _sandbox(tmp_path)
+    env["CO_STORY_TEST_FAIL"] = "target-health,restore-health"
+
+    result = _run(env, "activate")
+
+    assert result.returncode == 2
+    assert result.stderr.strip() == (
+        "web_mode_transition=stopped reason=restore_health_failed"
+    )
 
 
 def test_failure_output_never_includes_environment_or_player_content(tmp_path: Path) -> None:

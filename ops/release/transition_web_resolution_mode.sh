@@ -217,6 +217,69 @@ restart_web() {
   systemctl restart co-story.service
 }
 
+cleanup_candidate() {
+  if [ "${candidate_active:-no}" = yes ]; then
+    if [ -z "$test_root" ]; then
+      docker rm -f co-story-web-mode-candidate >/dev/null 2>&1 || true
+    fi
+    candidate_active=no
+  fi
+}
+
+cleanup_ephemeral() {
+  cleanup_candidate
+  if [ -n "${target_unit:-}" ]; then rm -f "$target_unit"; fi
+}
+
+check_target_candidate() {
+  record_event "candidate:$target_mode"
+  failure_enabled target-candidate && return 1
+  if [ -n "$test_root" ]; then return 0; fi
+  if docker inspect co-story-web-mode-candidate >/dev/null 2>&1; then
+    return 1
+  fi
+  candidate_active=yes
+  if ! docker run --detach --name co-story-web-mode-candidate --network host \
+    --read-only --cap-drop ALL --security-opt no-new-privileges \
+    --tmpfs /tmp:rw,noexec,nosuid,size=64m \
+    --env-file /etc/co-story/runtime.env \
+    --env-file /etc/co-story/database.env \
+    --env CO_STORY_APPLICATION_LOG_PATH=/var/log/co-story/candidate.jsonl \
+    --env CO_STORY_RESOLUTION_MODE=$target_mode \
+    --mount type=bind,src=/etc/pki/rds/rds-ca.pem,dst=/etc/pki/rds/rds-ca.pem,readonly \
+    --mount type=bind,src=/var/log/co-story,dst=/var/log/co-story \
+    --user "$release_uid:$release_gid" \
+    "$release_image" uvicorn app.main:create_app --factory \
+    --host 127.0.0.1 --port 8001 --workers 1 >/dev/null 2>&1; then
+    cleanup_candidate
+    return 1
+  fi
+  attempt=1
+  while [ "$attempt" -le 30 ]; do
+    if curl --fail --silent --max-time 3 \
+      --header "Host: $health_host" http://127.0.0.1:8001/api/v1/live >/dev/null \
+      && curl --fail --silent --max-time 3 \
+        --header "Host: $health_host" http://127.0.0.1:8001/api/v1/ready >/dev/null; then
+      cleanup_candidate
+      return 0
+    fi
+    if [ "$attempt" -lt 30 ]; then sleep 1; fi
+    attempt=$((attempt + 1))
+  done
+  candidate_state="$(docker inspect --format '{{.State.Status}} {{.State.ExitCode}}' \
+    co-story-web-mode-candidate 2>/dev/null || true)"
+  case "$candidate_state" in
+    created\ [0-9]* | running\ [0-9]* | paused\ [0-9]* | restarting\ [0-9]* | \
+      removing\ [0-9]* | exited\ [0-9]* | dead\ [0-9]*)
+      printf 'web_mode_candidate=unhealthy status=%s exit_code=%s\n' \
+        "${candidate_state% *}" "${candidate_state##* }" >&2
+      ;;
+    *) printf '%s\n' 'web_mode_candidate=unhealthy status=unknown exit_code=unknown' >&2 ;;
+  esac
+  cleanup_candidate
+  return 1
+}
+
 cleanup_backups() {
   failure_enabled cleanup && return 1
   rm -f "$unit_backup" "$state_backup"
@@ -229,31 +292,41 @@ write_forensic_state() {
 
 restore_previous() {
   restored=yes
+  restore_failure_reason=restore_unknown_failed
   record_event mutation:restore-units
   if failure_enabled restore-install \
     || ! atomic_install "$unit_backup" "$stable_unit" 0644 \
     || ! atomic_install "$unit_backup" "$installed_unit" 0644; then
     restored=no
+    restore_failure_reason=restore_unit_install_failed
   fi
   if [ "$restored" = yes ]; then
     record_event service:restore-daemon-reload
     if failure_enabled restore-daemon-reload; then
       restored=no
+      restore_failure_reason=restore_daemon_reload_failed
     elif [ -z "$test_root" ] && ! systemctl daemon-reload; then
       restored=no
+      restore_failure_reason=restore_daemon_reload_failed
     fi
   fi
   if [ "$restored" = yes ] && ! restart_web restore-restart "$current_mode"; then
     restored=no
+    restore_failure_reason=restore_restart_failed
   fi
   if [ "$restored" = yes ] && ! wait_for_health restore "$current_mode"; then
     restored=no
+    restore_failure_reason=restore_health_failed
   fi
   if [ "$restored" = yes ] && ! atomic_install "$state_backup" "$transition_state" 0600; then
     restored=no
+    restore_failure_reason=restore_state_install_failed
   fi
   if [ "$restored" = yes ] && cleanup_backups; then
     return 0
+  fi
+  if [ "$restored" = yes ]; then
+    restore_failure_reason=restore_cleanup_failed
   fi
   write_forensic_state
   return 1
@@ -263,8 +336,9 @@ transition_failed() {
   reason="${1:?reason required}"
   if restore_previous; then
     fail "$reason"
+    return $?
   fi
-  fail restore_failed
+  fail "$restore_failure_reason"
 }
 
 [ "$#" -eq 3 ] || { fail invalid_argument_count; exit $?; }
@@ -299,6 +373,9 @@ readonly transition_state="$(host_path /etc/co-story/container-transition.state)
 readonly release_env="$(host_path /etc/co-story/container-release.env)"
 readonly unit_backup="$(host_path /etc/co-story/web-mode-previous-unit)"
 readonly state_backup="$(host_path /etc/co-story/web-mode-previous-state)"
+candidate_active=no
+target_unit=
+trap cleanup_ephemeral EXIT
 
 [ ! -e "$unit_backup" ] && [ ! -e "$state_backup" ] \
   || { fail existing_web_mode_backup; exit $?; }
@@ -351,11 +428,11 @@ wait_for_health preflight "$current_mode" \
   || { fail preflight_health_failed; exit $?; }
 
 target_unit="$(mktemp "$(dirname "$stable_unit")/.co-story-web-mode-target.XXXXXX")"
-trap 'rm -f "$target_unit"' EXIT
 make_target_unit "$stable_unit" "$target_unit" "$current_mode" "$target_mode" \
   || { fail target_unit_build_failed; exit $?; }
 validate_unit_mode "$target_unit" "$target_mode"
 target_unit_sha="$(file_sha256 "$target_unit")"
+check_target_candidate || { fail target_candidate_failed; exit $?; }
 
 atomic_install "$stable_unit" "$unit_backup" 0600 \
   || { fail unit_backup_failed; exit $?; }
