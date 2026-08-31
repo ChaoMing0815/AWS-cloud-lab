@@ -241,6 +241,47 @@
         "docs/features/support-agent-persistence.md",
         "docs/evidence/2026-*-support-agent-durability/**"
       ]
+    },
+    "codex/web-stale-feedback": {
+      "purpose": "修正 Tier 2 玩家頁已完成回合後仍顯示 AI pending 的 stale feedback，並移除未接 production contract 的建立新房間控制",
+      "allowed_paths": [
+        "web/index.html",
+        "web/src/ui/pages/game-page.js",
+        "web/tests/ui/game-page-polling.test.js",
+        "web/tests/ui/game-page-room-controls.test.js"
+      ]
+    },
+    "codex/support-agent-api": {
+      "purpose": "將已合併的 bounded Support Agent 核心與 PostgreSQL draft repository 接入本機 API 與 production-safe composition，不接 Web、Bedrock 或外部提交",
+      "allowed_paths": [
+        "backend/app/api/support_routes.py",
+        "backend/app/api/support_schemas.py",
+        "backend/app/api/support_serialization.py",
+        "backend/app/main.py",
+        "backend/app/application/support_agent.py",
+        "backend/app/adapters/static_rules_knowledge_base.py",
+        "backend/app/adapters/mock_support_model.py",
+        "backend/app/adapters/postgres_support_report_repository.py",
+        "backend/tests/test_support_agent*.py",
+        "docs/architecture/support-agent.md",
+        "docs/features/support-agent-integration.md",
+        "docs/evidence/2026-*-support-agent-integration/**"
+      ]
+    },
+    "codex/support-agent-web": {
+      "purpose": "依固定 Support Agent HTTP contract 建立規則問答與人工確認問題草稿 UI，不修改 Backend 或建立外部提交能力",
+      "allowed_paths": [
+        "web/index.html",
+        "web/styles.css",
+        "web/src/composition/bootstrap.js",
+        "web/src/application/ports/support-api.js",
+        "web/src/application/use-cases/ask-support-agent.js",
+        "web/src/adapters/api/fetch-support-api.js",
+        "web/src/ui/pages/support-page.js",
+        "web/tests/application/ask-support-agent.test.js",
+        "web/tests/adapters/fetch-support-api.test.js",
+        "web/tests/ui/support-page.test.js"
+      ]
     }
   }
 }

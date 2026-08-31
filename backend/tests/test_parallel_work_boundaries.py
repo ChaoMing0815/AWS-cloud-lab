@@ -34,11 +34,75 @@ def test_policy_defines_exact_parallel_branches_and_protects_integration_state()
         "codex/support-agent-core",
         "codex/support-agent-durability",
         "codex/support-agent-persistence",
+        "codex/web-stale-feedback",
+        "codex/support-agent-api",
+        "codex/support-agent-web",
     }
     assert "docs/handoffs/CURRENT.md" in policy["protected_paths"]
     assert "docs/checkpoints.md" in policy["protected_paths"]
     assert "docs/deployment-log.md" in policy["protected_paths"]
     assert ".agents/work-boundaries.json" in policy["protected_paths"]
+
+
+def test_web_stale_feedback_branch_accepts_only_the_existing_game_ui_slice() -> None:
+    accepted = _check(
+        "codex/web-stale-feedback",
+        "web/index.html",
+        "web/src/ui/pages/game-page.js",
+        "web/tests/ui/game-page-polling.test.js",
+        "web/tests/ui/game-page-room-controls.test.js",
+    )
+    rejected = _check(
+        "codex/web-stale-feedback",
+        "web/src/composition/bootstrap.js",
+        "backend/app/api/routes.py",
+        "docs/handoffs/CURRENT.md",
+    )
+
+    assert accepted.returncode == 0, accepted.stderr
+    assert rejected.returncode == 2
+    assert "web/src/composition/bootstrap.js" in rejected.stderr
+    assert "backend/app/api/routes.py" in rejected.stderr
+    assert "docs/handoffs/CURRENT.md" in rejected.stderr
+
+
+def test_support_agent_api_and_web_branches_have_disjoint_integration_ownership() -> None:
+    api_accepted = _check(
+        "codex/support-agent-api",
+        "backend/app/api/support_routes.py",
+        "backend/app/api/support_schemas.py",
+        "backend/app/main.py",
+        "backend/tests/test_support_agent_api.py",
+        "docs/features/support-agent-integration.md",
+    )
+    api_rejected = _check(
+        "codex/support-agent-api",
+        "web/src/ui/pages/support-page.js",
+        "backend/migrations/005_support_agent.sql",
+        "docs/handoffs/CURRENT.md",
+    )
+    web_accepted = _check(
+        "codex/support-agent-web",
+        "web/src/application/use-cases/ask-support-agent.js",
+        "web/src/adapters/api/fetch-support-api.js",
+        "web/src/ui/pages/support-page.js",
+        "web/tests/ui/support-page.test.js",
+    )
+    web_rejected = _check(
+        "codex/support-agent-web",
+        "backend/app/api/support_routes.py",
+        "backend/migrations/005_support_agent.sql",
+        "docs/handoffs/CURRENT.md",
+    )
+
+    assert api_accepted.returncode == 0, api_accepted.stderr
+    assert api_rejected.returncode == 2
+    assert "web/src/ui/pages/support-page.js" in api_rejected.stderr
+    assert "backend/migrations/005_support_agent.sql" in api_rejected.stderr
+    assert web_accepted.returncode == 0, web_accepted.stderr
+    assert web_rejected.returncode == 2
+    assert "backend/app/api/support_routes.py" in web_rejected.stderr
+    assert "backend/migrations/005_support_agent.sql" in web_rejected.stderr
 
 
 def test_story_quality_branch_accepts_product_paths_and_rejects_delivery_paths() -> None:

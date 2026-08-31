@@ -260,6 +260,48 @@
 - 本分支只做repo-local strict TDD、ADR與runbook；不執行AWS CLI／SSM／S3／Bedrock、`workflow_dispatch`或production deploy，也不修改IAM、OIDC、ECR、成本與migration SQL。
 - 需要白名單外路徑時立即停止並交回整合task；完成後只可push／建立PR，不得自行merge。
 
+## `codex/web-stale-feedback`
+
+唯一目標是修正已完成 async 回合後仍殘留「AI 正在整理劇情」的玩家可見 feedback，並移除目前沒有 production API contract 的「建立新房間」圖示控制。此切片不得新增 room-code rotation、切換房間或 session 行為。
+
+強制邊界：
+
+- polling 讀到 canonical room 已離開 `RESOLVING` 時，必須清除只屬於該次 resolution 的 pending feedback；不得清除 API error、session expiry 或離線提示。
+- `newRoomButton` 必須從正式與 Demo 共用 HTML 移除，且 `GamePage.mount` 不得再查找或註冊該節點；Mock 的結局重設測試仍維持原行為。
+- 不修改 composition、API adapter、Backend、session、room code、CSS、MVP Spec、AWS 或 protected paths。
+- 以 strict TDD 完成 targeted Red／Green與完整 Frontend regression；完成後只可 push／建立 PR，不得自行 merge 或 deploy。
+
+## `codex/support-agent-api`
+
+唯一目標是把既有 Support Agent 核心與已驗證 PostgreSQL draft repository 接入本機 HTTP API 與可 fail-closed 的 application composition。規則回答只能使用版本化 static rules；問題回報只建立需要人工確認的 `local_draft_only` 草稿。
+
+強制邊界：
+
+- 先在 `docs/features/support-agent-integration.md` 固定 request／response、錯誤、認證、CSRF、輸入上限與 rate-limit contract，Web 分支只讀取該 contract。
+- 規則查詢可匿名；問題草稿必須由 server 端有效 Room／Player session 衍生 stable reporter identity，不接受 client 傳入 player ID、identity hash 或 submission state。
+- 問題草稿 mutation 必須有 CSRF、bounded request size、idempotency 與 rate limit；錯誤不得回傳 cookie、token、DSN、raw exception 或敏感輸入。
+- 不新增 migration，不改既有 room／story flow，不接 Bedrock、GitHub Issue、Email 或其他外部提交，不修改 Web、Docker、workflow、IaC、ops 或 protected paths。
+- 本分支只做 repo-local strict TDD；不得執行 AWS CLI／SSM／S3／Bedrock或 production deploy。
+
+## `codex/support-agent-web`
+
+唯一目標是依整合 task 已固定的 Support Agent HTTP contract 建立規則問答與問題草稿 UI。UI 必須明確區分有引用的規則答案、查無根據，以及「尚未提交、需要人工確認」的本機草稿。
+
+強制邊界：
+
+- 只能呼叫固定 Support API；不得自行重作規則查詢、去敏、identity 或 report ID 演算法。
+- 不提供或暗示 GitHub Issue／Email／外部送出；問題草稿不得顯示 cookie、token、identity hash 或 runtime metadata。
+- Backend/API 分支先交付固定 contract；此分支可用 fake adapter strict TDD 平行開發，但 merge gate 必須在最新 Backend contract 上跑完整 Frontend regression。
+- 不修改 Python、migration、Backend tests、AWS、Docker、workflow、IaC、ops、Feature Spec 或 protected paths。
+
+### 下一輪整合順序
+
+1. `codex/web-stale-feedback` 先合併，消除 `web/index.html` 的 owner 衝突。
+2. 整合 task 固定 Support Agent HTTP contract 與共同治理基準。
+3. `codex/support-agent-api` 與 `codex/support-agent-web` 從同一 exact base 平行開發；Backend 與 Web 路徑互斥。
+4. 先合併 API，再讓 Web 分支同步最新 `main` 並完成 contract／Frontend merge gate。
+5. Production deployment、Bedrock adapter與 external submit 均為後續獨立 change envelope。
+
 ## 共用檔案與交接
 
 `AGENTS.md`、policy、checker、治理文件、README、CURRENT、checkpoints、task list、deployment log、project plan 與 source-of-truth 都是 protected paths，只能由整合 task 修改。
