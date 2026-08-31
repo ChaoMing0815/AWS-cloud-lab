@@ -152,6 +152,9 @@ def test_activation_atomically_updates_both_units_and_canonical_state(
     assert not _host_path(host, "/etc/co-story/web-mode-previous-unit").exists()
     assert not _host_path(host, "/etc/co-story/web-mode-previous-state").exists()
     event_lines = events.read_text(encoding="utf-8").splitlines()
+    assert event_lines.index("candidate:async") < event_lines.index(
+        "mutation:pending-state"
+    )
     assert event_lines.index("mutation:pending-state") < event_lines.index(
         "mutation:stable-unit"
     )
