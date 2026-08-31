@@ -89,7 +89,6 @@ export class GamePage {
   async mount() {
     byId("connectionStatus").lastChild.textContent = ` ${this.connectionLabel}`;
     byId("persistenceStatus").textContent = this.persistenceLabel;
-    byId("newRoomButton").addEventListener("click", () => this.handleCreateRoom());
     byId("resetButton").hidden = this.apiMode !== "mock";
     byId("resetButton").addEventListener("click", () => this.handleResetRoom());
     byId("joinForm").addEventListener("submit", (event) => this.handleJoin(event));
@@ -207,6 +206,8 @@ export class GamePage {
   }
 
   applyPolledRoom(room) {
+    const wasTrackingResolution = this.room?.status === "RESOLVING"
+      && (this.resolutionStartedAtMs !== null || this.resolutionJobId !== null);
     const maxRoundsInput = globalThis.document?.getElementById("maxRoundsInput");
     const selectedMaxRounds = room?.status === "DRAFT" ? maxRoundsInput?.value : null;
     if (room?.status === "RESOLVING" && this.resolutionJobId) {
@@ -216,6 +217,9 @@ export class GamePage {
     this.trackResolution(room);
     this.syncRoute();
     this.render();
+    if (wasTrackingResolution && room?.status !== "RESOLVING") {
+      this.showFeedback("");
+    }
     if (selectedMaxRounds && maxRoundsInput) maxRoundsInput.value = selectedMaxRounds;
   }
 
@@ -516,7 +520,7 @@ export class GamePage {
 
   setBusy(busy) {
     this.busy = busy;
-    document.querySelectorAll("button[type='submit'], #newRoomButton, #startGameButton, #rollRoundButton, #useSparkButton, #declineSparkButton, #resolveRoundButton, #skipAndResolveButton, #retryResolutionButton, #fallbackRoundButton, #finishNowButton, #continueButton, #deleteRoomButton, #generateWorldButton").forEach((button) => {
+    document.querySelectorAll("button[type='submit'], #startGameButton, #rollRoundButton, #useSparkButton, #declineSparkButton, #resolveRoundButton, #skipAndResolveButton, #retryResolutionButton, #fallbackRoundButton, #finishNowButton, #continueButton, #deleteRoomButton, #generateWorldButton").forEach((button) => {
       button.disabled = busy;
     });
   }
