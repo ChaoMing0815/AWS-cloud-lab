@@ -4,7 +4,11 @@
 
 ```mermaid
 flowchart LR
-    Caller[未接線的本機 Caller] --> App[SupportAgent application]
+    RulesRoute[POST rules:lookup] --> RulesLimit[Rules fixed-window limiter]
+    DraftRoute[POST reports:draft] --> Session[Room／Player session + CSRF]
+    Session --> DraftLimit[Draft fixed-window limiter]
+    RulesLimit --> App[SupportAgent explicit use cases]
+    DraftLimit --> App
     App --> ModelPort[SupportModel port]
     App --> RulesPort[RulesKnowledgeBase port]
     App --> ReportPort[SupportReportRepository port]
@@ -12,7 +16,7 @@ flowchart LR
     ModelPort --> Mock[MockSupportModel]
     RulesPort --> Static[StaticRulesKnowledgeBase]
     Static --> JSON[versioned game_rules.json]
-    ReportPort --> Memory[MemorySupportReportRepository]
+    ReportPort --> Memory[MemorySupportReportRepository local/test]
 ```
 
 Ports 由 `backend/app/application/support_ports.py` 擁有；本切片不共用或修改既有 `application/ports.py`。Domain 只包含 immutable rule、citation、answer 與 report draft value objects，不依賴 adapter。
@@ -25,6 +29,8 @@ Ports 由 `backend/app/application/support_ports.py` 擁有；本切片不共用
 - `draft_problem_report`，exact arguments 為 `description`。
 
 Mock model 只做 deterministic proposal，不是安全 oracle。Application 在執行前負責拒絕 unknown tool、額外／遺漏參數、被 model 改動的輸入、malformed output、prompt injection 與規則改寫要求。Phase A 沒有 generic tool registry、shell、網路、AWS 或 external submit capability。
+
+HTTP API不允許model選route：`rules:lookup`直接呼叫read-only `lookup_game_rules`，`reports:draft`直接呼叫`draft_problem_report`。因此匿名rules request不會因輸入文字或model proposal切換成寫入；API接線也不呼叫Mock model。
 
 ## 規則資料與 grounding
 
@@ -57,8 +63,12 @@ Application 在呼叫 repository 前與取得回傳草稿後，都會以同一�
 
 `004` 的 `reproduction_steps` constraint 只要求非空，且陣列元素不可為 `NULL` 或空字串；它以 PostgreSQL 合法的 `cardinality`／`array_position` array expressions 實作，沒有子查詢，也沒有內容長度或步驟數上限。
 
-重播與重啟行為仍在測試中驗證：多個 repository instance 對同一 normalized input 需回傳同一草稿；未提供 `CO_STORY_SUPPORT_TEST_DATABASE_URL` 時則不聲稱 durable 重啟證據。
+重播與重啟行為已有專用PostgreSQL測試：多個 repository instance 對同一 normalized input回傳同一草稿；真實並行writer亦維持單一canonical row與divergent replay conflict。未提供`CO_STORY_SUPPORT_TEST_DATABASE_URL`時測試明確skip，不以memory adapter冒充durable證據。
 
-## 尚未接線
+## HTTP API 與 composition
 
-`004`已在production schema，但這個persistence slice仍沒有API／UI、Bedrock、external submit或production request wiring。`98ae0ff`已把後續工作拆成互斥的`codex/support-agent-api`與`codex/support-agent-web`；兩者須先通過repo-local strict TDD與整合CI，任何AWS release、Bedrock或外部提交仍需獨立核准。
+`POST /api/v1/support/rules:lookup`是匿名read-only route；request schema、raw JSON body與normalized message都有明確上限，response只序列化固定answer與safe citations。`POST /api/v1/support/reports:draft`先從current Room cookie載入canonical Room，再以Player cookie與Player CSRF驗證session；reporter identity只由server以Room ID與Player ID形成，request不能提供identity、hash、report ID或submission state。
+
+兩條route各有獨立、可注入時鐘的單process fixed-window limiter。超限會在rules knowledge lookup或draft repository寫入前回固定`429`；任何validation、session、CSRF、conflict或dependency failure只回固定public error envelope，不包含raw input、token、DSN、hash或底層例外。Production composition在存在`DATABASE_URL`時使用既有`PostgresSupportReportRepository`；local/test才使用memory repository。
+
+目前程式提供`/support`同源app shell，但Web UI由獨立owner開發，尚未合併或部署。API仍只建立`local_draft_only`且`requires_human_confirmation=true`的本機草稿；沒有Bedrock、RAG、GitHub Issue、Email或其他external submit。任何AWS release仍需後續獨立change envelope。

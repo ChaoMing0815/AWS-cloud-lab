@@ -20,6 +20,29 @@ INVALID_REQUEST = {
 }
 
 
+class CountingKnowledgeBase:
+    def __init__(self) -> None:
+        self.delegate = StaticRulesKnowledgeBase.from_default_resource()
+        self.lookup_count = 0
+
+    def lookup(self, query):
+        self.lookup_count += 1
+        return self.delegate.lookup(query)
+
+    def get(self, rule_id):
+        return self.delegate.get(rule_id)
+
+
+def _app_with_counting_knowledge() -> tuple[object, CountingKnowledgeBase]:
+    knowledge = CountingKnowledgeBase()
+    agent = SupportAgent(
+        model=MockSupportModel(),
+        rules_knowledge_base=knowledge,
+        report_repository=MemorySupportReportRepository(),
+    )
+    return create_app(support_agent=agent), knowledge
+
+
 def _create_player_session(client: TestClient, key: str = "support-room") -> dict:
     response = client.post(
         "/api/v1/rooms",
@@ -87,7 +110,7 @@ def test_rules_lookup_rejects_unknown_fields_and_normalized_length_boundaries() 
 
 
 def test_rules_lookup_rejects_oversized_json_before_support_side_effects() -> None:
-    app = create_app()
+    app, knowledge = _app_with_counting_knowledge()
     body = json.dumps({"message": "星火", "padding": "x" * 1100})
     with TestClient(app) as client:
         response = client.post(
@@ -98,7 +121,7 @@ def test_rules_lookup_rejects_oversized_json_before_support_side_effects() -> No
 
     assert response.status_code == 422
     assert response.json() == INVALID_REQUEST
-    assert app.state.support_rule_knowledge_base.lookup_count == 0
+    assert knowledge.lookup_count == 0
 
 
 def test_report_draft_requires_current_player_session_and_player_csrf() -> None:
@@ -269,7 +292,7 @@ def test_report_draft_normalized_boundaries_and_oversized_body_fail_closed() -> 
 
 
 def test_rules_and_reports_have_independent_bounded_limits_before_side_effects() -> None:
-    app = create_app()
+    app, knowledge = _app_with_counting_knowledge()
     with TestClient(app) as client:
         room = _create_player_session(client, "support-rate-limit")
         csrf = {"X-CSRF-Token": room["session"]["csrfToken"]}
@@ -295,7 +318,7 @@ def test_rules_and_reports_have_independent_bounded_limits_before_side_effects()
         }
     }
     assert report_responses[-1].json() == rule_responses[-1].json()
-    assert app.state.support_rule_knowledge_base.lookup_count == 10
+    assert knowledge.lookup_count == 10
     assert app.state.support_report_repository.count == 3
 
 
