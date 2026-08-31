@@ -282,6 +282,16 @@
         "web/tests/adapters/fetch-support-api.test.js",
         "web/tests/ui/support-page.test.js"
       ]
+    },
+    "codex/tier2-web-ui-release": {
+      "purpose": "讓既有 Tier 3 digest release 在更新玩家 Web image 時保留已驗證的 Tier 2 async runtime mode，供 stale feedback 與失效房間控制修正安全上線",
+      "allowed_paths": [
+        "ops/release/deploy_container.sh",
+        "backend/tests/test_tier3_delivery_contract.py",
+        "backend/tests/test_tier2_web_async_release.py",
+        "docs/runbooks/tier3-container-release.md",
+        "docs/evidence/2026-*-tier2-web-ui-release/**"
+      ]
     }
   }
 }
