@@ -15,13 +15,19 @@ import { FinishGame } from "../application/use-cases/finish-game.js";
 import { DeleteRoom } from "../application/use-cases/delete-room.js";
 import { GenerateWorld } from "../application/use-cases/generate-world.js";
 import { FetchGameApi } from "../adapters/api/fetch-game-api.js";
+import { FetchSupportApi } from "../adapters/api/fetch-support-api.js";
 import { MockGameApi } from "../adapters/api/mock-game-api.js";
+import {
+  CreateSupportReportDraft,
+  LookupSupportRule,
+} from "../application/use-cases/ask-support-agent.js";
 import { GamePage } from "../ui/pages/game-page.js";
 import { LandingPage } from "../ui/pages/landing-page.js";
+import { SupportPage } from "../ui/pages/support-page.js";
 
 globalThis.addEventListener("popstate", () => globalThis.location.reload());
 
-const SURFACE_IDS = ["landingPage", "gamePage", "rulesPage"];
+const SURFACE_IDS = ["landingPage", "gamePage", "rulesPage", "supportPage"];
 
 function showLoading() {
   SURFACE_IDS.forEach((id) => { document.getElementById(id).hidden = true; });
@@ -71,12 +77,41 @@ async function mountGamePage({ forceMock = false } = {}) {
   showSurface("gamePage");
 }
 
+async function mountSupportPage() {
+  showLoading();
+  const config = globalThis.CO_STORY_CONFIG ?? { apiBasePath: "/api/v1" };
+  const gameApi = new FetchGameApi({ basePath: config.apiBasePath });
+  const loadRoom = new LoadRoom(gameApi);
+  let playerSession = null;
+  try {
+    const room = await loadRoom.execute();
+    playerSession = room?.session ?? null;
+  } catch {
+    playerSession = null;
+  }
+  const canDraftReport = playerSession?.principalType === "player"
+    && typeof playerSession?.csrfToken === "string"
+    && playerSession.csrfToken.trim().length > 0;
+  const supportApi = new FetchSupportApi({
+    basePath: config.apiBasePath,
+    playerSessionProvider: async () => playerSession,
+  });
+  const page = new SupportPage({
+    lookupSupportRule: new LookupSupportRule(supportApi),
+    createSupportReportDraft: new CreateSupportReportDraft(supportApi),
+    canDraftReport,
+  });
+  page.mount();
+  showSurface("supportPage");
+}
+
 async function bootstrap() {
   const path = globalThis.location?.pathname ?? "/";
   const formalRoomPath = /^\/room\/[A-HJ-NP-Z2-9]{6}/;
   const formalGameSuffixes = ["/lobby", "/play", "/ending"];
   if (path === "/demo") await mountGamePage({ forceMock: true });
   else if (path === "/host/setup") await mountGamePage();
+  else if (path === "/support") await mountSupportPage();
   else if (path === "/rules") showSurface("rulesPage");
   else if (formalRoomPath.test(path) && formalGameSuffixes.some((suffix) => path.endsWith(suffix))) {
     await mountGamePage();
