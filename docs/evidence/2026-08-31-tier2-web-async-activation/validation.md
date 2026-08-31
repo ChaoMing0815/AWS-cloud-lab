@@ -25,3 +25,14 @@
 - Side-effect boundary：candidate 不建立 job、不發送 SQS message、不呼叫 Bedrock，成功或失敗都清除候選 container；既有同名 container 時 fail closed。
 - Restore diagnostics：去敏回報精確區分 unit install、daemon reload、restart、health、state restore 與 cleanup；不輸出 env／secret／玩家內容。
 - Verification：`bash -n` 通過；Web transition／container／release rollback contract 共39項通過；`git diff --check` 通過。完整 dependency suite 與 workflow gate 留待 CI，production 再次 activation 需新的明確核准。
+
+## Candidate-preflight 版本的 production 結果與第二次修正
+
+- PR #61 四項CI全綠並合併為exact main `dff1b4d7162daf6002edef6056bbfb5297c491e9`。
+- 第二次 activation 在 async candidate 通過後進入live transaction，但回報 `restore_health_failed`並nonzero停止；沒有自動重跑、test job、額外SQS message或Bedrock invocation。
+- 唯讀診斷確認installed／stable／backup unit三者byte-identical，Web container已為`sync`、exact image、restart `0`，internal／public live／ready均`200`，candidate absent。
+- Bounded recovery只復原已驗證的canonical state並清除兩個forensic backup，輸出 `web_mode_recovery=verified current=sync state=container-active backups=absent health=passed`。
+- Publisher的production安裝名稱為`co-story-publisher.service`（repo source asset名稱不同）；正確核對為loaded／active／running／result success／restart `0`／enablement static，container仍為running且exact image。
+- Failure-diagnostics Red commit：`9b0733a`；證明restore失敗時會遺失原始target reason，且無法區分service／container／mode／internal／public的live／ready probe。
+- Failure-diagnostics Green commit：`4758577`；restore失敗時同時回報原始target phase與精確restore phase，所有reason固定allowlist，不輸出HTTP body、host、env、secret或玩家內容。
+- Verification：`bash -n`、21項targeted與41項Web transition／container／release rollback contract及`git diff --check`全數通過；未調高timeout、未改transition mutation／restore語意。完整CI與任何production再試均仍需後續關卡。

@@ -169,34 +169,75 @@ wait_for_health() {
   label="${1:?health label required}"
   expected_mode="${2:?mode required}"
   record_event "health:$label:$expected_mode"
-  failure_enabled "${label}-health" && return 1
+  health_failure_reason="${label}_unknown_health_failed"
+  if failure_enabled "${label}-health"; then
+    health_failure_reason="${label}_health_failed"
+    return 1
+  fi
+  for phase in service-active container-running restart-count image mode \
+    internal-live internal-ready public-live public-ready; do
+    if failure_enabled "${label}-${phase}"; then
+      normalized_phase="${phase//-/_}"
+      health_failure_reason="${label}_${normalized_phase}_failed"
+      return 1
+    fi
+  done
   if [ -n "$test_root" ]; then
-    [ "${CO_STORY_TEST_SERVICE_STATE:-inactive}" = active ] || return 1
-    [ "${CO_STORY_TEST_CONTAINER_STATE:-absent}" = running ] || return 1
-    [ "${CO_STORY_TEST_CONTAINER_RESTARTS:-unknown}" = 0 ] || return 1
-    [ "$test_container_mode" = "$expected_mode" ] || return 1
+    if [ "${CO_STORY_TEST_SERVICE_STATE:-inactive}" != active ]; then
+      health_failure_reason="${label}_service_active_failed"
+      return 1
+    fi
+    if [ "${CO_STORY_TEST_CONTAINER_STATE:-absent}" != running ]; then
+      health_failure_reason="${label}_container_running_failed"
+      return 1
+    fi
+    if [ "${CO_STORY_TEST_CONTAINER_RESTARTS:-unknown}" != 0 ]; then
+      health_failure_reason="${label}_restart_count_failed"
+      return 1
+    fi
+    if [ "$test_container_mode" != "$expected_mode" ]; then
+      health_failure_reason="${label}_mode_failed"
+      return 1
+    fi
     return 0
   fi
-  systemctl is-active --quiet co-story.service || return 1
-  [ "$(docker inspect --format '{{.State.Status}}' co-story 2>/dev/null || true)" = running ] \
-    || return 1
-  [ "$(docker inspect --format '{{.RestartCount}}' co-story 2>/dev/null || true)" = 0 ] \
-    || return 1
-  [ "$(docker inspect --format '{{.Config.Image}}' co-story 2>/dev/null || true)" = "$release_image" ] \
-    || return 1
+  if ! systemctl is-active --quiet co-story.service; then
+    health_failure_reason="${label}_service_active_failed"
+    return 1
+  fi
+  if [ "$(docker inspect --format '{{.State.Status}}' co-story 2>/dev/null || true)" != running ]; then
+    health_failure_reason="${label}_container_running_failed"
+    return 1
+  fi
+  if [ "$(docker inspect --format '{{.RestartCount}}' co-story 2>/dev/null || true)" != 0 ]; then
+    health_failure_reason="${label}_restart_count_failed"
+    return 1
+  fi
+  if [ "$(docker inspect --format '{{.Config.Image}}' co-story 2>/dev/null || true)" != "$release_image" ]; then
+    health_failure_reason="${label}_image_failed"
+    return 1
+  fi
   observed_mode="$(docker inspect --format '{{range .Config.Env}}{{println .}}{{end}}' co-story 2>/dev/null \
     | awk -F= '$1 == "CO_STORY_RESOLUTION_MODE" {count++; value=substr($0, length($1) + 2)} END {if (count == 1) print value}')"
-  [ "$observed_mode" = "$expected_mode" ] || return 1
+  if [ "$observed_mode" != "$expected_mode" ]; then
+    health_failure_reason="${label}_mode_failed"
+    return 1
+  fi
   attempt=1
   while [ "$attempt" -le 30 ]; do
-    if curl --fail --silent --max-time 3 \
-      --header "Host: $health_host" http://127.0.0.1:8000/api/v1/live >/dev/null \
-      && curl --fail --silent --max-time 3 \
-        --header "Host: $health_host" http://127.0.0.1:8000/api/v1/ready >/dev/null \
-      && curl --fail --silent --max-time 3 \
-        --resolve "$health_host:443:127.0.0.1" "https://$health_host/api/v1/live" >/dev/null \
-      && curl --fail --silent --max-time 3 \
-        --resolve "$health_host:443:127.0.0.1" "https://$health_host/api/v1/ready" >/dev/null; then
+    if ! curl --fail --silent --max-time 3 \
+      --header "Host: $health_host" http://127.0.0.1:8000/api/v1/live >/dev/null; then
+      health_failure_reason="${label}_internal_live_failed"
+    elif ! curl --fail --silent --max-time 3 \
+      --header "Host: $health_host" http://127.0.0.1:8000/api/v1/ready >/dev/null; then
+      health_failure_reason="${label}_internal_ready_failed"
+    elif ! curl --fail --silent --max-time 3 \
+      --resolve "$health_host:443:127.0.0.1" "https://$health_host/api/v1/live" >/dev/null; then
+      health_failure_reason="${label}_public_live_failed"
+    elif ! curl --fail --silent --max-time 3 \
+      --resolve "$health_host:443:127.0.0.1" "https://$health_host/api/v1/ready" >/dev/null; then
+      health_failure_reason="${label}_public_ready_failed"
+    else
       return 0
     fi
     if [ "$attempt" -lt 30 ]; then sleep 1; fi
@@ -316,7 +357,7 @@ restore_previous() {
   fi
   if [ "$restored" = yes ] && ! wait_for_health restore "$current_mode"; then
     restored=no
-    restore_failure_reason=restore_health_failed
+    restore_failure_reason="$health_failure_reason"
   fi
   if [ "$restored" = yes ] && ! atomic_install "$state_backup" "$transition_state" 0600; then
     restored=no
@@ -338,6 +379,7 @@ transition_failed() {
     fail "$reason"
     return $?
   fi
+  printf 'web_mode_transition=original-failure reason=%s\n' "$reason" >&2
   fail "$restore_failure_reason"
 }
 
@@ -424,8 +466,10 @@ cmp -s "$stable_unit" "$installed_unit" \
 validate_unit_mode "$stable_unit" "$current_mode"
 
 test_container_mode="${CO_STORY_TEST_CONTAINER_MODE:-unknown}"
-wait_for_health preflight "$current_mode" \
-  || { fail preflight_health_failed; exit $?; }
+if ! wait_for_health preflight "$current_mode"; then
+  fail "$health_failure_reason"
+  exit $?
+fi
 
 target_unit="$(mktemp "$(dirname "$stable_unit")/.co-story-web-mode-target.XXXXXX")"
 make_target_unit "$stable_unit" "$target_unit" "$current_mode" "$target_mode" \
@@ -465,7 +509,9 @@ elif [ -z "$test_root" ] && ! systemctl daemon-reload; then
   transition_failed target_daemon_reload_failed
 fi
 restart_web target-restart "$target_mode" || transition_failed target_restart_failed
-wait_for_health target "$target_mode" || transition_failed target_health_failed
+if ! wait_for_health target "$target_mode"; then
+  transition_failed "$health_failure_reason"
+fi
 record_event mutation:final-state
 if failure_enabled final-state || ! write_state container-active "$target_unit_sha"; then
   transition_failed final_state_write_failed
