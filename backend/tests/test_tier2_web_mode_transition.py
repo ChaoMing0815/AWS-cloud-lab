@@ -16,6 +16,7 @@ IMAGE = (
     f"co-story-tier3@{DIGEST}"
 )
 LEGACY = "tier1-20260825-4a51e0e"
+DRIVER = b"safe-versioned-deploy-driver\n"
 
 
 def _sha256(content: bytes) -> str:
@@ -45,7 +46,7 @@ def _write_state(host: Path, unit: bytes, *, state: str = "container-active") ->
         f"LEGACY_RELEASE_ID={LEGACY}\n"
         f"LEGACY_RELEASE_TARGET=/opt/co-story/releases/{LEGACY}\n"
         f"LEGACY_UNIT_SHA256={'1' * 64}\n"
-        f"DRIVER_SHA256={'2' * 64}\n"
+        f"DRIVER_SHA256={_sha256(DRIVER)}\n"
         f"CONTAINER_UNIT_SHA256={_sha256(unit)}\n"
         f"CONTAINER_IMAGE={IMAGE}\n"
     ).encode()
@@ -70,7 +71,7 @@ def _sandbox(tmp_path: Path) -> tuple[Path, dict[str, str], Path]:
     stable.write_bytes(sync_unit)
     installed.chmod(0o644)
     stable.chmod(0o644)
-    driver.write_bytes(b"2" * 64)
+    driver.write_bytes(DRIVER)
     driver.chmod(0o755)
     release_env.write_text(
         f"CO_STORY_CONTAINER_IMAGE={IMAGE}\n"
@@ -119,6 +120,7 @@ def test_versioned_transition_contract_is_bounded_and_secret_free() -> None:
     assert "web_mode_transition=stopped reason=" in script
     assert "aws " not in script
     assert "docker login" not in script
+    assert "--show-error" not in script
     assert "cat \"$runtime_env\"" not in script
     assert "cat \"$database_env\"" not in script
 
@@ -236,7 +238,10 @@ def test_preflight_mismatch_is_read_only(tmp_path: Path, mutation: str) -> None:
     assert not events.exists() or "mutation:" not in events.read_text(encoding="utf-8")
 
 
-@pytest.mark.parametrize("failure", ("target-restart", "target-health", "final-state"))
+@pytest.mark.parametrize(
+    "failure",
+    ("target-unit-drift", "target-restart", "target-health", "final-state"),
+)
 def test_activation_failure_restores_exact_sync_unit_and_state(
     tmp_path: Path, failure: str
 ) -> None:
@@ -288,4 +293,3 @@ def test_failure_output_never_includes_environment_or_player_content(tmp_path: P
     assert result.returncode != 0
     assert sensitive not in result.stdout
     assert sensitive not in result.stderr
-

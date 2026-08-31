@@ -51,7 +51,11 @@ Activation batch 只允許：
 - Restore失敗保留root-only forensic state並nonzero停止；不得自動重跑或覆寫failure state。
 - 成功後更新canonical checksum/state，且不把mode寫入secret-bearing env file。
 
-上述 contract 合併、CI 全綠並完成可讀property／script diff之前，不得進入 production approval。
+Repo-local contract 位於[`ops/release/transition_web_resolution_mode.sh`](../../ops/release/transition_web_resolution_mode.sh)，只接受三個參數：`activate|rollback`、目前active Web image digest及既有public health host。它不呼叫AWS API、不登入registry、不讀取或輸出runtime／database env內容，也不建立job或message。執行時必須從已合併、CI全綠的exact main完整複製該檔案內容，以`sudo bash -s -- <action> <digest> <health-host>`透過Console的`AWS-RunShellScript`送達單一既有Web EC2；不得從任意URL下載、局部貼上、手動patch或把檔案永久寫入host。
+
+Script會核對root權限、三個參數、active digest、release env、七行canonical state、installed／stable unit、stable driver、metadata、checksum、service、container、restart count、container mode及internal／public live／ready。它只原子替換unit的唯一mode來源並更新canonical unit checksum；release image、UID、GID及其他state欄位保持不變。成功輸出只能是`web_async_activation=verified previous=sync current=async`或`web_async_rollback=verified previous=async current=sync`；失敗只輸出allowlisted reason。
+
+上述 contract 必須合併、CI 全綠並完成可讀script diff之後，才可進入 production approval。目前repo-local targeted與rollback sensitivity已完成，但尚未push、建立PR或取得production核准。
 
 ## Activation preflight
 
@@ -92,6 +96,8 @@ Rollback 是同一 delivery contract 的明確 `async → sync` 路徑，不做 
 5. 回報`web_async_rollback=verified previous=async current=sync`。
 
 Rollback失敗時保留root-only forensic state並停止；不得反覆restart、手動改unit、清除state或啟動玩家測試。
+
+Script執行成功會移除本次transaction backup；若target失敗且restore成功，會精確恢復原unit與原state並移除backup。若restore任一步失敗，保留`STATE=web-mode-restore-failed`及兩個root-only backup，等待人工判讀；若成功切換後backup cleanup失敗，保留`STATE=web-mode-cleanup-failed`並停止，不得重跑。
 
 ## 停止條件
 
