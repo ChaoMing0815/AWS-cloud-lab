@@ -69,6 +69,6 @@ Application 在呼叫 repository 前與取得回傳草稿後，都會以同一�
 
 `POST /api/v1/support/rules:lookup`是匿名read-only route；request schema、raw JSON body與normalized message都有明確上限，response只序列化固定answer與safe citations。`POST /api/v1/support/reports:draft`先從current Room cookie載入canonical Room，再以Player cookie與Player CSRF驗證session；reporter identity只由server以Room ID與Player ID形成，request不能提供identity、hash、report ID或submission state。
 
-兩條route各有獨立、可注入時鐘的單process fixed-window limiter。超限會在rules knowledge lookup或draft repository寫入前回固定`429`；任何validation、session、CSRF、conflict或dependency failure只回固定public error envelope，不包含raw input、token、DSN、hash或底層例外。Production composition在存在`DATABASE_URL`時使用既有`PostgresSupportReportRepository`；local/test才使用memory repository。
+兩條route各有獨立、可注入時鐘的單process fixed-window limiter。Rules最多保留1024個active source keys，reports最多保留512個active canonical identities；每次判斷先移除已超過window的idle keys，再套用capacity與同key quota。Active capacity已滿時，新key在rules knowledge lookup或draft repository寫入前直接回固定`429`；時鐘倒退不會重設既有quota或移除future-started entry，因此保持fail closed。任何validation、session、CSRF、conflict或dependency failure只回固定public error envelope，不包含raw input、token、DSN、hash或底層例外。Production composition在存在`DATABASE_URL`時使用既有`PostgresSupportReportRepository`；local/test才使用memory repository。
 
 目前程式提供`/support`同源app shell，但Web UI由獨立owner開發，尚未合併或部署。API仍只建立`local_draft_only`且`requires_human_confirmation=true`的本機草稿；沒有Bedrock、RAG、GitHub Issue、Email或其他external submit。任何AWS release仍需後續獨立change envelope。
