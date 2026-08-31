@@ -16,16 +16,36 @@ test("直接以 file 開啟時頁面提供 server-required 提示，且 deep rou
   assert.match(html, /src=["']\/src\/composition\/bootstrap\.js["']/, "deep route 的 bootstrap 必須維持 root-relative");
 });
 
-test("index 內嵌啟動防線僅在 file:// 顯示 server-required 提示", async () => {
+test("既有 module 在 file:// 顯示 server-required 提示，且 HTML 不含 inline script", async () => {
   const html = await readFile(new URL("../../index.html", import.meta.url), "utf8");
+  const bootstrap = await readFile(
+    new URL("../../src/composition/bootstrap.js", import.meta.url),
+    "utf8",
+  );
 
-  assert.match(html, /location\.protocol\s*===\s*["']file:["']/);
-  assert.match(html, /getElementById\(["']serverRequiredNotice["']\)/);
-  assert.match(
+  assert.doesNotMatch(
     html,
+    /<script(?![^>]*\bsrc\s*=)[^>]*>[\s\S]*?<\/script>/i,
+    "CSP default-src 'self' 下不得保留 inline script",
+  );
+  assert.match(bootstrap, /location\.protocol\s*===\s*["']file:["']/);
+  assert.match(bootstrap, /getElementById\(["']serverRequiredNotice["']\)/);
+  assert.match(
+    bootstrap,
     /if\s*\(\s*globalThis\.location\.protocol\s*===\s*["']file:["']\s*\)[\s\S]*serverRequiredNotice\.hidden\s*=\s*false/,
     "HTTP／HTTPS 不得移除預設 hidden",
   );
+});
+
+test("Web 樣式只使用本機或系統 CJK 字型，不載入 Google Fonts", async () => {
+  const css = await readFile(new URL("../../styles.css", import.meta.url), "utf8");
+
+  assert.doesNotMatch(css, /@import\s+url\(/i);
+  assert.doesNotMatch(css, /fonts\.(?:googleapis|gstatic)\.com/i);
+  assert.match(css, /--font-sans:[^;]*system-ui[^;]*"PingFang TC"[^;]*"Microsoft JhengHei"[^;]*sans-serif/);
+  assert.match(css, /--font-serif:[^;]*"Songti TC"[^;]*"Noto Serif TC"[^;]*serif/);
+  assert.match(css, /font-family:\s*var\(--font-sans\)/);
+  assert.match(css, /font-family:\s*var\(--font-serif\)/);
 });
 
 test("browser back／forward 的 popstate 會重新依 server canonical route 載入 shell", async () => {
