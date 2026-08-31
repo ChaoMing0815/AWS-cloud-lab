@@ -1,4 +1,5 @@
 import json
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from fastapi.testclient import TestClient
@@ -186,6 +187,38 @@ def test_report_draft_derives_identity_and_returns_only_safe_local_draft_fields(
     ):
         assert forbidden not in serialized
     assert app.state.support_report_repository.count == 1
+
+
+def test_report_draft_preserves_structured_fields_while_normalizing_length() -> None:
+    app = create_app()
+    description = """問題回報
+分類：gameplay_bug
+摘要：星火按鈕沒有反應
+重現步驟：
+1. 進入等待星火階段
+2. 點選使用星火
+期望：星火成功套用
+實際：畫面沒有更新
+"""
+    with TestClient(app) as client:
+        room = _create_player_session(client, "support-structured-report")
+        response = client.post(
+            REPORTS_PATH,
+            json={"description": description},
+            headers={"X-CSRF-Token": room["session"]["csrfToken"]},
+        )
+
+    assert response.status_code == 201
+    assert response.json() == {
+        "reportId": response.json()["reportId"],
+        "category": "gameplay_bug",
+        "summary": "星火按鈕沒有反應",
+        "reproductionSteps": ["進入等待星火階段", "點選使用星火"],
+        "expectedBehavior": "星火成功套用",
+        "actualBehavior": "畫面沒有更新",
+        "requiresHumanConfirmation": True,
+        "submissionStatus": "local_draft_only",
+    }
 
 
 def test_report_draft_rejects_client_identity_and_state_fields() -> None:
@@ -384,3 +417,50 @@ def test_production_composition_uses_postgres_support_report_repository(
 
     assert received == [database_url]
     assert app.state.support_report_repository is sentinel_repository
+
+
+def test_fixed_routes_do_not_allow_support_model_to_switch_intent() -> None:
+    class FailingModel:
+        def propose(self, _message):
+            pytest.fail("explicit HTTP route intent must not call the support model")
+
+    reports = MemorySupportReportRepository()
+    agent = SupportAgent(
+        model=FailingModel(),
+        rules_knowledge_base=StaticRulesKnowledgeBase.from_default_resource(),
+        report_repository=reports,
+    )
+    app = create_app(support_agent=agent)
+    with TestClient(app) as client:
+        rules = client.post(RULES_PATH, json={"message": "問題回報：交易裝備按鈕壞了。"})
+        room = _create_player_session(client, "support-fixed-route-intent")
+        draft = client.post(
+            REPORTS_PATH,
+            json={"description": "星火可以怎麼使用？"},
+            headers={"X-CSRF-Token": room["session"]["csrfToken"]},
+        )
+
+    assert rules.status_code == 200
+    assert rules.json()["status"] == "unsupported"
+    assert draft.status_code == 201
+    assert reports.count == 1
+
+
+def test_injected_clock_resets_only_the_rules_window() -> None:
+    class MutableClock:
+        def __init__(self):
+            self.current = datetime(2026, 8, 31, tzinfo=timezone.utc)
+
+        def now(self):
+            return self.current
+
+    clock = MutableClock()
+    app = create_app(clock=clock)
+    with TestClient(app) as client:
+        for _ in range(10):
+            assert client.post(RULES_PATH, json={"message": "星火怎麼用？"}).status_code == 200
+        assert client.post(RULES_PATH, json={"message": "星火怎麼用？"}).status_code == 429
+        clock.current += timedelta(seconds=60)
+        reset = client.post(RULES_PATH, json={"message": "星火怎麼用？"})
+
+    assert reset.status_code == 200
