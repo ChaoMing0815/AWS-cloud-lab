@@ -29,6 +29,22 @@ failure_enabled() {
   case "$failures" in *",$wanted,"*) return 0 ;; *) return 1 ;; esac
 }
 
+transient_failure_enabled() {
+  wanted="${1:?transient failure label required}"
+  [ -n "$test_root" ] || return 1
+  failures=",${CO_STORY_TEST_TRANSIENT_FAIL:-},"
+  case "$failures" in
+    *",$wanted,"*) ;;
+    *) return 1 ;;
+  esac
+  marker="$test_root/.co-story-transient-${wanted}"
+  if [ ! -e "$marker" ]; then
+    : >"$marker"
+    return 0
+  fi
+  return 1
+}
+
 file_sha256() {
   path="${1:?file required}"
   if command -v sha256sum >/dev/null 2>&1; then
@@ -170,77 +186,74 @@ wait_for_health() {
   expected_mode="${2:?mode required}"
   record_event "health:$label:$expected_mode"
   health_failure_reason="${label}_unknown_health_failed"
-  if failure_enabled "${label}-health"; then
-    health_failure_reason="${label}_health_failed"
-    return 1
-  fi
-  for phase in service-active container-running restart-count image mode \
-    internal-live internal-ready public-live public-ready; do
-    if failure_enabled "${label}-${phase}"; then
-      normalized_phase="${phase//-/_}"
-      health_failure_reason="${label}_${normalized_phase}_failed"
-      return 1
-    fi
-  done
-  if [ -n "$test_root" ]; then
-    if [ "${CO_STORY_TEST_SERVICE_STATE:-inactive}" != active ]; then
-      health_failure_reason="${label}_service_active_failed"
-      return 1
-    fi
-    if [ "${CO_STORY_TEST_CONTAINER_STATE:-absent}" != running ]; then
-      health_failure_reason="${label}_container_running_failed"
-      return 1
-    fi
-    if [ "${CO_STORY_TEST_CONTAINER_RESTARTS:-unknown}" != 0 ]; then
-      health_failure_reason="${label}_restart_count_failed"
-      return 1
-    fi
-    if [ "$test_container_mode" != "$expected_mode" ]; then
-      health_failure_reason="${label}_mode_failed"
-      return 1
-    fi
-    return 0
-  fi
-  if ! systemctl is-active --quiet co-story.service; then
-    health_failure_reason="${label}_service_active_failed"
-    return 1
-  fi
-  if [ "$(docker inspect --format '{{.State.Status}}' co-story 2>/dev/null || true)" != running ]; then
-    health_failure_reason="${label}_container_running_failed"
-    return 1
-  fi
-  if [ "$(docker inspect --format '{{.RestartCount}}' co-story 2>/dev/null || true)" != 0 ]; then
-    health_failure_reason="${label}_restart_count_failed"
-    return 1
-  fi
-  if [ "$(docker inspect --format '{{.Config.Image}}' co-story 2>/dev/null || true)" != "$release_image" ]; then
-    health_failure_reason="${label}_image_failed"
-    return 1
-  fi
-  observed_mode="$(docker inspect --format '{{range .Config.Env}}{{println .}}{{end}}' co-story 2>/dev/null \
-    | awk -F= '$1 == "CO_STORY_RESOLUTION_MODE" {count++; value=substr($0, length($1) + 2)} END {if (count == 1) print value}')"
-  if [ "$observed_mode" != "$expected_mode" ]; then
-    health_failure_reason="${label}_mode_failed"
-    return 1
-  fi
   attempt=1
   while [ "$attempt" -le 30 ]; do
-    if ! curl --fail --silent --max-time 3 \
-      --header "Host: $health_host" http://127.0.0.1:8000/api/v1/live >/dev/null; then
-      health_failure_reason="${label}_internal_live_failed"
-    elif ! curl --fail --silent --max-time 3 \
-      --header "Host: $health_host" http://127.0.0.1:8000/api/v1/ready >/dev/null; then
-      health_failure_reason="${label}_internal_ready_failed"
-    elif ! curl --fail --silent --max-time 3 \
-      --resolve "$health_host:443:127.0.0.1" "https://$health_host/api/v1/live" >/dev/null; then
-      health_failure_reason="${label}_public_live_failed"
-    elif ! curl --fail --silent --max-time 3 \
-      --resolve "$health_host:443:127.0.0.1" "https://$health_host/api/v1/ready" >/dev/null; then
-      health_failure_reason="${label}_public_ready_failed"
+    injected_phase=
+    if failure_enabled "${label}-health"; then
+      health_failure_reason="${label}_health_failed"
     else
-      return 0
+      for phase in service-active container-running restart-count image mode \
+        internal-live internal-ready public-live public-ready; do
+        if failure_enabled "${label}-${phase}" \
+          || transient_failure_enabled "${label}-${phase}"; then
+          injected_phase="$phase"
+          normalized_phase="${phase//-/_}"
+          health_failure_reason="${label}_${normalized_phase}_failed"
+          break
+        fi
+      done
     fi
-    if [ "$attempt" -lt 30 ]; then sleep 1; fi
+    if [ -n "$injected_phase" ] || failure_enabled "${label}-health"; then
+      :
+    elif [ -n "$test_root" ]; then
+      if [ "${CO_STORY_TEST_SERVICE_STATE:-inactive}" != active ]; then
+        health_failure_reason="${label}_service_active_failed"
+      elif [ "${CO_STORY_TEST_CONTAINER_STATE:-absent}" != running ]; then
+        health_failure_reason="${label}_container_running_failed"
+      elif [ "${CO_STORY_TEST_CONTAINER_RESTARTS:-unknown}" != 0 ]; then
+        health_failure_reason="${label}_restart_count_failed"
+      elif [ "$test_container_mode" != "$expected_mode" ]; then
+        health_failure_reason="${label}_mode_failed"
+      else
+        return 0
+      fi
+    elif ! systemctl is-active --quiet co-story.service; then
+      health_failure_reason="${label}_service_active_failed"
+    elif [ "$(docker inspect --format '{{.State.Status}}' co-story 2>/dev/null || true)" != running ]; then
+      health_failure_reason="${label}_container_running_failed"
+    elif [ "$(docker inspect --format '{{.RestartCount}}' co-story 2>/dev/null || true)" != 0 ]; then
+      health_failure_reason="${label}_restart_count_failed"
+    elif [ "$(docker inspect --format '{{.Config.Image}}' co-story 2>/dev/null || true)" != "$release_image" ]; then
+      health_failure_reason="${label}_image_failed"
+    else
+      observed_mode="$(docker inspect --format '{{range .Config.Env}}{{println .}}{{end}}' co-story 2>/dev/null \
+        | awk -F= '$1 == "CO_STORY_RESOLUTION_MODE" {count++; value=substr($0, length($1) + 2)} END {if (count == 1) print value}')"
+      if [ "$observed_mode" != "$expected_mode" ]; then
+        health_failure_reason="${label}_mode_failed"
+      elif ! curl --fail --silent --max-time 3 \
+        --header "Host: $health_host" http://127.0.0.1:8000/api/v1/live >/dev/null; then
+        health_failure_reason="${label}_internal_live_failed"
+      elif ! curl --fail --silent --max-time 3 \
+        --header "Host: $health_host" http://127.0.0.1:8000/api/v1/ready >/dev/null; then
+        health_failure_reason="${label}_internal_ready_failed"
+      elif ! curl --fail --silent --max-time 3 \
+        --resolve "$health_host:443:127.0.0.1" "https://$health_host/api/v1/live" >/dev/null; then
+        health_failure_reason="${label}_public_live_failed"
+      elif ! curl --fail --silent --max-time 3 \
+        --resolve "$health_host:443:127.0.0.1" "https://$health_host/api/v1/ready" >/dev/null; then
+        health_failure_reason="${label}_public_ready_failed"
+      else
+        return 0
+      fi
+    fi
+    failure_phase="${health_failure_reason#${label}_}"
+    failure_phase="${failure_phase%_failed}"
+    if [ "$attempt" -lt 30 ]; then
+      record_event "health-retry:$label:$failure_phase"
+      if [ -z "$test_root" ]; then sleep 1; fi
+    else
+      return 1
+    fi
     attempt=$((attempt + 1))
   done
   return 1
