@@ -138,6 +138,7 @@
 - [ ] 完成各 Tier 的 current／target architecture diagrams。
 - [ ] 每個 Tier 保存成功與至少一項負面測試。
 - [ ] 同步 README、project plan、gantt、checkpoints、deployment log 與截圖索引。
+- [ ] 盤點工作區內檔名帶 ` 2` 的未追蹤副本：逐一比對 canonical 檔案與 SHA-256，確認不是使用者修改後才依精確清單清理；完成後重驗 `git status`、branch boundary 與必要 regression。未確認前不得批次刪除。
 - [ ] 建立 5–8 分鐘主 Demo 與完整證據附錄。
 - [ ] Demo 後依清理清單停止或刪除資源並驗證帳單。
 
