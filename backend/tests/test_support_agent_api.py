@@ -1,5 +1,6 @@
 import json
 from datetime import datetime, timedelta, timezone
+from inspect import signature
 
 import pytest
 from fastapi.testclient import TestClient
@@ -9,6 +10,7 @@ from app.adapters.memory_support_report_repository import MemorySupportReportRep
 from app.adapters.mock_support_model import MockSupportModel
 from app.adapters.static_rules_knowledge_base import StaticRulesKnowledgeBase
 from app.application.support_agent import SupportAgent
+from app.api.support_routes import FixedWindowRateLimiter
 from app.main import create_app
 import app.main as main_module
 
@@ -41,6 +43,21 @@ def _app_with_counting_knowledge() -> tuple[object, CountingKnowledgeBase]:
         report_repository=MemorySupportReportRepository(),
     )
     return create_app(support_agent=agent), knowledge
+
+
+class MutableClock:
+    def __init__(self) -> None:
+        self.current = datetime(2026, 8, 31, tzinfo=timezone.utc)
+
+    def now(self):
+        return self.current
+
+
+def _limited_limiter(*, capacity: int, limit: int, window: timedelta, clock):
+    arguments = {"limit": limit, "window": window, "clock": clock}
+    if "capacity" in signature(FixedWindowRateLimiter).parameters:
+        arguments["capacity"] = capacity
+    return FixedWindowRateLimiter(**arguments)
 
 
 def _create_player_session(client: TestClient, key: str = "support-room") -> dict:
@@ -470,13 +487,6 @@ def test_fixed_routes_do_not_allow_support_model_to_switch_intent() -> None:
 
 
 def test_injected_clock_resets_only_the_rules_window() -> None:
-    class MutableClock:
-        def __init__(self):
-            self.current = datetime(2026, 8, 31, tzinfo=timezone.utc)
-
-        def now(self):
-            return self.current
-
     clock = MutableClock()
     app = create_app(clock=clock)
     with TestClient(app) as client:
@@ -487,3 +497,106 @@ def test_injected_clock_resets_only_the_rules_window() -> None:
         reset = client.post(RULES_PATH, json={"message": "星火怎麼用？"})
 
     assert reset.status_code == 200
+
+
+def test_limiter_prunes_expired_idle_keys_before_enforcing_capacity() -> None:
+    clock = MutableClock()
+    limiter = _limited_limiter(
+        capacity=2,
+        limit=10,
+        window=timedelta(seconds=60),
+        clock=clock,
+    )
+
+    assert limiter.allow("idle-a") is True
+    assert limiter.allow("idle-b") is True
+    clock.current += timedelta(seconds=60)
+    assert limiter.allow("active-c") is True
+    assert limiter.allow("active-d") is True
+    assert limiter.allow("capacity-e") is False
+
+
+def test_limiter_preserves_same_key_quota_when_clock_moves_backward() -> None:
+    clock = MutableClock()
+    limiter = _limited_limiter(
+        capacity=2,
+        limit=2,
+        window=timedelta(seconds=60),
+        clock=clock,
+    )
+
+    assert limiter.allow("same-key") is True
+    assert limiter.allow("same-key") is True
+    clock.current -= timedelta(hours=1)
+
+    assert limiter.allow("same-key") is False
+
+
+def test_rules_capacity_rejects_new_source_before_support_side_effects() -> None:
+    app, knowledge = _app_with_counting_knowledge()
+    clock = MutableClock()
+    app.state.support_rule_limiter = _limited_limiter(
+        capacity=2,
+        limit=10,
+        window=timedelta(seconds=60),
+        clock=clock,
+    )
+    app = create_app(
+        support_agent=app.state.support_agent,
+        support_rule_limiter=app.state.support_rule_limiter,
+    )
+
+    with TestClient(app, client=("rules-a", 50000)) as first:
+        first_response = first.post(RULES_PATH, json={"message": "星火怎麼用？"})
+    with TestClient(app, client=("rules-b", 50001)) as second:
+        second_response = second.post(RULES_PATH, json={"message": "星火怎麼用？"})
+    with TestClient(app, client=("rules-c", 50002)) as third:
+        rejected = third.post(RULES_PATH, json={"message": "星火怎麼用？"})
+
+    assert first_response.status_code == 200
+    assert second_response.status_code == 200
+    assert rejected.status_code == 429
+    assert rejected.json()["error"]["code"] == "SUPPORT_RATE_LIMITED"
+    assert knowledge.lookup_count == 2
+
+
+def test_reports_capacity_rejects_new_identity_before_repository_side_effect() -> None:
+    reports = MemorySupportReportRepository()
+    agent = SupportAgent(
+        model=MockSupportModel(),
+        rules_knowledge_base=StaticRulesKnowledgeBase.from_default_resource(),
+        report_repository=reports,
+    )
+    limiter = _limited_limiter(
+        capacity=1,
+        limit=3,
+        window=timedelta(minutes=10),
+        clock=MutableClock(),
+    )
+    app = create_app(support_agent=agent, support_report_limiter=limiter)
+
+    with TestClient(app) as first:
+        first_room = _create_player_session(first, "report-capacity-a")
+        first_response = first.post(
+            REPORTS_PATH,
+            json={"description": "問題回報：第一位玩家的問題。"},
+            headers={"X-CSRF-Token": first_room["session"]["csrfToken"]},
+        )
+    with TestClient(app) as second:
+        second_room = _create_player_session(second, "report-capacity-b")
+        rejected = second.post(
+            REPORTS_PATH,
+            json={"description": "問題回報：第二位玩家的問題。"},
+            headers={"X-CSRF-Token": second_room["session"]["csrfToken"]},
+        )
+
+    assert first_response.status_code == 201
+    assert rejected.status_code == 429
+    assert reports.count == 1
+
+
+def test_composition_uses_independent_fixed_limiter_capacities() -> None:
+    app = create_app()
+
+    assert app.state.support_rule_limiter.capacity == 1024
+    assert app.state.support_report_limiter.capacity == 512
