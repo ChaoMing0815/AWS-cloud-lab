@@ -36,3 +36,13 @@
 - Failure-diagnostics Red commit：`9b0733a`；證明restore失敗時會遺失原始target reason，且無法區分service／container／mode／internal／public的live／ready probe。
 - Failure-diagnostics Green commit：`4758577`；restore失敗時同時回報原始target phase與精確restore phase，所有reason固定allowlist，不輸出HTTP body、host、env、secret或玩家內容。
 - Verification：`bash -n`、21項targeted與41項Web transition／container／release rollback contract及`git diff --check`全數通過；未調高timeout、未改transition mutation／restore語意。完整CI與任何production再試均仍需後續關卡。
+
+## Container startup race 診斷與 bounded polling 修正
+
+- PR #62四項CI全綠並合併為exact main `41128eb5daabf1d7a57d1a88ebd0957283dd6d8a`。
+- 第三次 activation 回報原始 `target_container_running_failed` 與 restore `restore_container_running_failed`，證明兩次restart後均在Docker container進入running前即被單次狀態檢查拒絕；candidate已先通過。
+- 唯讀診斷後Web已為service active／container running／restart `0`／mode `sync`／exact image，internal／public live／ready均`200`，Publisher仍active／running，candidate absent。
+- 再次bounded recovery只復原canonical state並刪除已驗證的兩個forensic backup，不restart、不改unit／image／Publisher，輸出 `web_mode_recovery=verified current=sync state=container-active backups=absent health=passed publisher=active`。
+- Startup-polling Red commit：`5ee28ea`；精確證明activation與restore均不會對transient container startup進入retry。
+- Startup-polling Green commit：`c602499`；將service／container／restart／image／mode與原有HTTP probes放入同一個30-attempt bounded polling，不新增repeat restart、無限等待、fallback或自動重跑。
+- Verification：`bash -n`、23項targeted、43項Web transition／container／release rollback contract與`git diff --check`全數通過；transient target／restore container startup皆有代表性sensitivity，永久不符仍以最後exact phase fail closed。
