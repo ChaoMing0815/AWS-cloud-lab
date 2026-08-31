@@ -329,9 +329,39 @@ def test_restore_failure_reports_the_exact_sanitized_phase(tmp_path: Path) -> No
     result = _run(env, "activate")
 
     assert result.returncode == 2
+    assert result.stderr.strip().splitlines() == [
+        "web_mode_transition=original-failure reason=target_health_failed",
+        "web_mode_transition=stopped reason=restore_health_failed",
+    ]
+
+
+def test_health_failure_reports_the_exact_probe_without_response_content(
+    tmp_path: Path,
+) -> None:
+    _host, env, _events = _sandbox(tmp_path)
+    env["CO_STORY_TEST_FAIL"] = "target-public-ready"
+
+    result = _run(env, "activate")
+
+    assert result.returncode == 2
     assert result.stderr.strip() == (
-        "web_mode_transition=stopped reason=restore_health_failed"
+        "web_mode_transition=stopped reason=target_public_ready_failed"
     )
+
+
+def test_failed_restore_preserves_both_exact_health_probe_phases(
+    tmp_path: Path,
+) -> None:
+    _host, env, _events = _sandbox(tmp_path)
+    env["CO_STORY_TEST_FAIL"] = "target-public-ready,restore-internal-live"
+
+    result = _run(env, "activate")
+
+    assert result.returncode == 2
+    assert result.stderr.strip().splitlines() == [
+        "web_mode_transition=original-failure reason=target_public_ready_failed",
+        "web_mode_transition=stopped reason=restore_internal_live_failed",
+    ]
 
 
 def test_failure_output_never_includes_environment_or_player_content(tmp_path: Path) -> None:
