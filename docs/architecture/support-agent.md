@@ -61,4 +61,4 @@ Application 在呼叫 repository 前與取得回傳草稿後，都會以同一�
 
 ## 尚未接線
 
-這個 persistence slice 仍沒有 API／UI、Bedrock、external submit 或 production wiring。Production 現在是已驗證 active 的 migration bridge，schema 尚未 activation；API／UI、Bedrock 與 AWS integration 仍須另行取得精確路徑與 production 權限。
+`004`已在production schema，但這個persistence slice仍沒有API／UI、Bedrock、external submit或production request wiring。`98ae0ff`已把後續工作拆成互斥的`codex/support-agent-api`與`codex/support-agent-web`；兩者須先通過repo-local strict TDD與整合CI，任何AWS release、Bedrock或外部提交仍需獨立核准。

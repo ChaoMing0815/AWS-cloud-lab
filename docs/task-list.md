@@ -54,6 +54,7 @@
 - [x] Action 支援勇氣／洞察／羈絆，擲骰前隱藏、擲骰後一次揭露。
 - [x] Host-only roll 使用 CSPRNG，並保存原始骰點、結果與待結算進度／危機。
 - [x] 完成無重疊的 room polling、完成結局停止與 timer 取消。
+- [x] PR #65以strict TDD清除async terminal Room後殘留的AI pending feedback，並移除沒有room-code rotation contract的建立新房間控制；尚待下一個production release上線。
 - [ ] 完成 polling 離線重試、connection 狀態與前端錯誤提示。
 - [ ] 完成 Loading／Empty／Validation／Session expired／Version conflict 等共通 Screen States。
 - [x] 完成 room version 與 mutation idempotency 基礎邊界。
@@ -120,6 +121,8 @@
 
 ## H. Tier 5：Enterprise Agentic AI
 
+- [x] 建立bounded Support Agent核心、static cited rules、prompt／tool guard、敏感資料清理與PostgreSQL `local_draft_only`草稿持久化／並行耐久性。
+- [ ] 依固定integration contract完成Support Agent API／session／CSRF／rate limit與Web人工確認UI；不接Bedrock或外部submit。
 - [ ] Prompt 有版本、測試集與至少一次 A/B 比較。
 - [ ] 建立世界設定／規則／runbook 的小型 RAG corpus 與引用測試。
 - [ ] 建立一個 allowlisted MCP／tool，拒絕未授權參數與工具。

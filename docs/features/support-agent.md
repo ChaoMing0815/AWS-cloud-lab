@@ -24,4 +24,4 @@ Phase A 建立尚未接入產品的 Support Agent 核心，只提供兩個固定
 
 ## 延後整合
 
-必須等 Tier 2 PR 合併並取得新的 path policy 後，才能設計 migration、PostgreSQL repository、API schema／route、production composition、Web UI、Bedrock adapter、observability、rate limiting 或正式 submit tool。任何外部提交仍須獨立授權與再次人工確認。
+Tier 2與PostgreSQL persistence／durability gates均已合併，`98ae0ff`已建立API與Web互斥的integration path policy。下一步只依[`Support Agent integration contract`](support-agent-integration.md)接入API／session／CSRF／輸入上限／rate limit與Web UI。Bedrock adapter、RAG、observability擴張與正式submit tool仍不在本輪；任何外部提交仍須獨立授權與再次人工確認。

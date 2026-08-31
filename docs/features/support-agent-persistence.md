@@ -1,6 +1,6 @@
 # Bounded Support Agent 持久化（PostgreSQL Draft）
 
-- 狀態：Implemented locally (未接 API / UI / Bedrock)
+- 狀態：Implemented；`004`已在production schema，仍未接 API / UI / Bedrock
 - 上游：ADR-0005、Tier 2 migration 已整併後路徑
 - R3 boundary：本批次僅做 PostgreSQL 草稿持久化與 004 migration；提交/外部傳輸仍禁止。
 
@@ -34,9 +34,9 @@
 
 - 2026-08-28 以一次性、無 volume、僅綁定 localhost 的 PostgreSQL 16 容器驗證。兩個獨立 repository writer 各自建立 PostgreSQL connection，透過 pre-INSERT barrier 同步；winning `INSERT` 在資料庫端暫停，使 competing `ON CONFLICT` 實際與其重疊。
 - 相同正規化草稿與 identity 會收斂為同一 canonical row；相同 idempotency key 的不同 payload 與人工相同 16-hex report ID prefix 的不同 payload 都保留一列並回 `SupportReportConflict`。
-- 每種競態案例均驗證 row count、固定 state、hash／identity constraint 形狀，以及新 repository instance 的 replay。此為本機非 production durability evidence，不代表 production schema 已啟用或 Support Agent 已接入 API／UI。
+- 每種競態案例均驗證 row count、固定 state、hash／identity constraint 形狀，以及新 repository instance 的 replay。此為本機非 production durability evidence；production已套用`004`，但Support Agent repository仍未接入API／UI或線上request flow。
 
 ## 目前未接範圍
 
 - API/route、Web、Bedrock、外部 issue tracker/email、`main.py` composition、dependency manifest、`RoomRepository`、`migration runner`。
-- 任何 production deploy 前置都需另作 migration rollback / readiness 與回退 gate，且本 PR 只會 create migration，不啟動 release。Production bridge 已驗證 active，但 schema 尚未 activation。
+- `004`已隨Tier 2 schema activation套用且migration inventory現為`001`–`005`；API／UI composition與production release仍須獨立strict-TDD、CI與bounded deployment gate，禁止把schema存在誤報為線上客服已啟用。

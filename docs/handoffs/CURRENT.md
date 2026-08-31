@@ -3,13 +3,13 @@
 - 更新日期：2026-08-31
 - 目前里程碑：Tier 1、Tier 2、Tier 3均已完整完成。Tier 2 production玩家流程已完成`202 → polling → applied result`；Room進入Round 02／`COLLECTING_ACTIONS`，新AI故事可見，主Queue／DLQ五項均為`0`且DLQ alarm為`OK`／`No actions`。
 - 交付策略：已驗證的GitHub OIDC／ECR／Trivy／SSM pipeline作為唯一image交付路徑。Production Web已啟用`async`；後續不得沿用已消耗的玩家E2E核准建立第二回合job或額外呼叫Bedrock。
-- Main 整合基準：PR #63 merge commit `bf7de1f4bd8dbb6e3f6791c3160a0532bbe5820f`；startup polling Red `5ee28ea`、Green `c602499`，Backend／Frontend／branch boundary／container build-scan四項CI全綠。
+- Main 整合基準：PR #65 merge commit `58852b915ccb9a7d8ccdac19f51643e77ed73ead`；stale feedback Red `15dd1b5`、Green `cd7a153`，Backend／Frontend／branch boundary／container build-scan四項CI全綠。
 - Tier 1 完成基準 commit：`07a986a`
-- 平行分支治理基準：migration bridge初始註冊Red `4d2decb`／Green `fff9f3f`；Worker第二層guard擴權Red `fcf57d4`／Green `bbfe6dd`。
-- Regression：startup polling targeted 23項、Web transition／container／release rollback affected 43項通過；四項CI全綠。Production activation、rollback與玩家E2E正式證據位於[`Tier 2 Web async activation`](../evidence/2026-08-31-tier2-web-async-activation/validation.md)。
+- 平行分支治理基準：`98ae0ff`註冊`codex/web-stale-feedback`、`codex/support-agent-api`與`codex/support-agent-web`，API／Web owner互斥且禁止migration、外部submit與AWS操作。
+- Regression：stale-feedback targeted 14項、Frontend full 98項通過；PR #65四項CI全綠。Production activation、rollback與玩家E2E正式證據位於[`Tier 2 Web async activation`](../evidence/2026-08-31-tier2-web-async-activation/validation.md)。
 - AWS active release：migration inventory精確`001`–`005`；Web與publisher digest均為`sha256:23357e315e94842cee8455023b1f87f203fca5b1d11b67b714f4af86efaa2a1b`，Web為`async`，publisher為`static`／`active`且container `running`。兩台Worker均為`sha256:2d5d5866f54879e79882644f4b45af2475650ddc9972e6b91cfe786886cddfbc`、service active、container running、restart `0`、mode `async`、safe diagnostics active；Docker config沒有credential material。
 - 操作邊界：Console-first；使用者操作 AWS Console／SSM。Agent 未經新的 bounded batch 核准不得執行 AWS CLI，且不得執行 S3 讀取或 Bedrock 呼叫。
-- 平行工作：Tier 2 local／migration、Worker foundation、SQS consumer、Worker artifact pipeline、replacement bootstrap與Web async分支均已合併並可封存；下一個產品切片為Support Agent production API／security／UI integration。
+- 平行工作：Tier 2與Web stale-feedback分支均已合併；Support Agent durability task已封存。下一個產品切片依固定contract拆成Backend API／security與Web UI兩個repo-local工作流。
 
 ## Current
 
@@ -77,10 +77,10 @@
 
 ## Next
 
-1. 修正polling套用terminal Room後仍殘留「AI 正在整理劇情」operation feedback的Web UI問題；必須採strict TDD，不改async API、job或polling cadence。
-2. 依平行分支治理先形成Support Agent integration boundary，再分成backend API／security與Web UI兩個有限工作流；deployment／smoke evidence仍由整合task順序執行。
-3. Support Agent Phase A只接既有static cited rules與PostgreSQL `local_draft_only`，補齊session／CSRF、輸入長度、rate limit、API composition與UI；不新增Bedrock、RAG或外部submit。
-4. 成本上限USD 35與2026-09-08清理日不變；測試房間停止於Round 02，不再建立job，清理時只保留可快速重建所需repo、IaC、manifest與sanitized evidence。
+1. 依[`Support Agent integration contract`](../features/support-agent-integration.md)在`codex/support-agent-api`完成API／session／CSRF／輸入上限／rate limit與PostgreSQL draft composition的strict TDD。
+2. `codex/support-agent-web`只依固定HTTP contract建立規則引用與`local_draft_only`人工確認UI；Backend與Web從同一治理基準平行開發，API先整合。
+3. PR #65的stale feedback與dead room control修正已合併repo，尚未部署至AWS；後續只可隨新的exact-main release envelope上線，不為此建立未核准的production batch。
+4. Bedrock、RAG與外部submit不在本輪；成本上限USD 35與2026-09-08清理日不變，既有測試房間不再建立job。
 
 ## 操作護欄
 
@@ -98,10 +98,10 @@
 - Nova Lite request、APAC Guardrail profile IAM與safe schema diagnostics均已部署，玩家可見async、一次fail-closed rollback及一次successful bounded retry均已通過；尚未驗證多人長時間連續回合。
 - 三次失敗T3B images與兩個成功release images均保留於immutable ECR並受lifecycle limit `10`管理；舊runs不得re-run，ECR storage／scan仍可能產生少量費用。
 - Docker actions的 Node.js 20 annotation已以test-first更新至官方 Node.js 24相容版本並通過PR #12、#14、#15 CI；後續仍不得無測試任意升版。
-- Story result的PostgreSQL CAS／inbox／completion outbox、async route／composition／Web polling、本機真實PostgreSQL、AWS exactly-one result、production activation／rollback與玩家E2E均已完成；已知UI residual是terminal polling後舊pending feedback未清除。
+- Story result的PostgreSQL CAS／inbox／completion outbox、async route／composition／Web polling、本機真實PostgreSQL、AWS exactly-one result、production activation／rollback與玩家E2E均已完成。Terminal polling的舊pending feedback與誤導的建立新房間控制已由PR #65在repo修正；active production image尚未包含該修正。
 - Worker foundation已建立並持續產生單一NAT、public IPv4、兩台Worker與EBS費用；成本上限USD 35、預定清理日2026-09-08。兩台Worker位於同一AZ，只涵蓋instance replacement、不涵蓋AZ failure；HTTPS經NAT的destination尚未以VPC endpoints收斂。
 - Migration bridge已證明可讀完整`001`／`002`／`003`／`004`前綴並作為schema activation失敗時唯一rollback target；不得回復不認得newer schema的pre-bridge image，也不得做schema downgrade。
-- Support Agent static retrieval無法涵蓋所有自然語言問法；identity digest未加鹽，草稿雖已有本機PostgreSQL restart／parallel-write證據，但尚無API層長度／rate limit、API／UI、Bedrock或外部提交。接線前不得宣稱線上客服、RAG或問題提交已完成。
+- Support Agent static retrieval無法涵蓋所有自然語言問法；identity digest未加鹽，草稿已有本機PostgreSQL restart／parallel-write證據且`004`已在production schema，但尚無API層長度／rate limit、API／UI、Bedrock或外部提交。接線前不得宣稱線上客服、RAG或問題提交已完成。
 - iPhone Safari 短期雙向同步已通過，但長時間 polling／visibility 行為仍需在下一次完整多人遊戲觀察。
 - 刪房後舊分頁 lifecycle 修正已部署，尚未以 `COMPLETED` 房間做 AWS 多分頁重驗。
 - 原始截圖若位於 TemporaryItems／Downloads，不算正式 evidence；入庫前必須去識別化。

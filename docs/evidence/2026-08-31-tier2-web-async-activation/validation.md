@@ -57,4 +57,5 @@
 - Retry結果為`dispatch_attempts=1`、`final_attempt=3`、`invocation_budget=1`、`outcome=applied`，Room進入`COLLECTING_ACTIONS`。Browser顯示Round 02與新的AI故事內容；主Queue available／in-flight／delayed、DLQ available／in-flight均為`0`，DLQ alarm為`OK`／`No actions`。
 - 最終production狀態：Web `async`、Publisher active、兩台Worker active／running／restart `0`／async；Web／Publisher digest仍為`sha256:23357e315e94842cee8455023b1f87f203fca5b1d11b67b714f4af86efaa2a1b`，Worker digest仍為`sha256:2d5d5866f54879e79882644f4b45af2475650ddc9972e6b91cfe786886cddfbc`。沒有IAM、CloudFormation、network、schema或固定成本變更。
 - Residual UI：Room已正確poll至Round 02／`COLLECTING_ACTIONS`，但上一個「AI 正在整理劇情」operation feedback沒有在polling套用terminal Room後清除；右側canonical AI狀態與故事內容正確。此項列為後續Web UI修正，不否定`202 → polling → applied result`證據。
+- 後續repo修正：PR #65（merge `58852b9`）以Red `15dd1b5`／Green `cd7a153`清除該次resolution pending feedback，並移除沒有room-code rotation contract的建立新房間控制；Frontend 98項及四項CI全綠。此註記只代表repo已修正，active production image尚未更新，本production E2E原始結果不變。
 - 測試房間保留作正式報告證據，不進行第二回合，最晚於`2026-09-08`清理；成本上限維持USD 35。
