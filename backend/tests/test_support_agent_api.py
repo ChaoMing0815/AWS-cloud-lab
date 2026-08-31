@@ -1,8 +1,15 @@
 import json
 
+import pytest
 from fastapi.testclient import TestClient
 
+from app.adapters.memory_room_repository import MemoryRoomRepository
+from app.adapters.memory_support_report_repository import MemorySupportReportRepository
+from app.adapters.mock_support_model import MockSupportModel
+from app.adapters.static_rules_knowledge_base import StaticRulesKnowledgeBase
+from app.application.support_agent import SupportAgent
 from app.main import create_app
+import app.main as main_module
 
 
 RULES_PATH = "/api/v1/support/rules:lookup"
@@ -265,3 +272,115 @@ def test_support_app_shell_is_available_without_editing_web_assets() -> None:
 
     assert response.status_code == 200
     assert "text/html" in response.headers["content-type"]
+
+
+def test_room_repository_failure_uses_fixed_500_without_raw_exception() -> None:
+    repository = MemoryRoomRepository()
+    app = create_app(room_repository=repository)
+    with TestClient(app, raise_server_exceptions=False) as client:
+        room = _create_player_session(client, "support-room-store-failure")
+
+        def fail_get(_room_id):
+            raise RuntimeError(
+                "postgresql://fake-user:FAKE_DSN_MARKER@db.invalid/game "
+                "token=FAKE_TOKEN_MARKER"
+            )
+
+        repository.get = fail_get
+        response = client.post(
+            REPORTS_PATH,
+            json={"description": "問題回報：畫面沒有更新。"},
+            headers={"X-CSRF-Token": room["session"]["csrfToken"]},
+        )
+
+    assert response.status_code == 500
+    assert response.json() == {
+        "error": {
+            "code": "SUPPORT_UNAVAILABLE",
+            "message": "客服暫時無法使用，請稍後再試。",
+        }
+    }
+    serialized = _serialized(response.json())
+    assert "fake_dsn_marker" not in serialized
+    assert "fake_token_marker" not in serialized
+    assert "postgresql://" not in serialized
+
+
+@pytest.mark.parametrize("dependency", ["knowledge", "reports"])
+def test_support_dependency_failure_uses_fixed_500_without_raw_exception(
+    dependency: str,
+) -> None:
+    class FailingKnowledgeBase(StaticRulesKnowledgeBase):
+        def lookup(self, _query):
+            raise RuntimeError("raw input FAKE_RULE_MARKER token=FAKE_TOKEN_MARKER")
+
+    class FailingRepository:
+        def get_or_save(self, _draft):
+            raise RuntimeError("dsn=postgresql://fake:FAKE_REPORT_MARKER@db.invalid/game")
+
+    knowledge = StaticRulesKnowledgeBase.from_default_resource()
+    reports = MemorySupportReportRepository()
+    if dependency == "knowledge":
+        knowledge = FailingKnowledgeBase(knowledge.records)
+    else:
+        reports = FailingRepository()
+    agent = SupportAgent(
+        model=MockSupportModel(),
+        rules_knowledge_base=knowledge,
+        report_repository=reports,
+    )
+    app = create_app(support_agent=agent)
+    with TestClient(app) as client:
+        if dependency == "knowledge":
+            response = client.post(RULES_PATH, json={"message": "星火可以怎麼使用？"})
+        else:
+            room = _create_player_session(client, "support-report-store-failure")
+            response = client.post(
+                REPORTS_PATH,
+                json={"description": "問題回報：畫面沒有更新。"},
+                headers={"X-CSRF-Token": room["session"]["csrfToken"]},
+            )
+
+    assert response.status_code == 500
+    assert response.json() == {
+        "error": {
+            "code": "SUPPORT_UNAVAILABLE",
+            "message": "客服暫時無法使用，請稍後再試。",
+        }
+    }
+    serialized = _serialized(response.json())
+    for forbidden in ("fake_rule_marker", "fake_token_marker", "fake_report_marker", "postgresql://"):
+        assert forbidden not in serialized
+
+
+def test_production_composition_uses_postgres_support_report_repository(
+    monkeypatch,
+) -> None:
+    database_url = (
+        "postgresql://app:FAKE_PASSWORD@db.example.test/co_story"
+        "?sslmode=verify-full&sslrootcert=/run/certs/rds-ca.pem"
+    )
+    for name, value in {
+        "CO_STORY_ENV": "production",
+        "DATABASE_URL": database_url,
+        "CO_STORY_COOKIE_SECURE": "true",
+        "CO_STORY_ALLOWED_HOSTS": "app.example.test",
+        "CO_STORY_ALLOWED_ORIGINS": "https://app.example.test",
+    }.items():
+        monkeypatch.setenv(name, value)
+
+    sentinel_repository = object()
+    received = []
+
+    def postgres_repository(dsn):
+        received.append(dsn)
+        return sentinel_repository
+
+    monkeypatch.setattr(main_module, "PostgresSupportReportRepository", postgres_repository)
+    app = create_app(
+        room_repository=MemoryRoomRepository(),
+        storyteller=object(),
+    )
+
+    assert received == [database_url]
+    assert app.state.support_report_repository is sentinel_repository
