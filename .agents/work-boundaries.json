@@ -283,6 +283,16 @@
         "web/tests/ui/support-page.test.js"
       ]
     },
+    "codex/support-csp-corrective": {
+      "purpose": "移除 Web inline script 與外部 Google Fonts 依賴，在不放寬 CSP 下保留 file:// server-required 提示並準備獨立 production patch",
+      "allowed_paths": [
+        "web/index.html",
+        "web/styles.css",
+        "web/src/composition/bootstrap.js",
+        "web/tests/ui/production-navigation.test.js",
+        "docs/evidence/2026-*-support-csp-corrective/**"
+      ]
+    },
     "codex/tier2-web-ui-release": {
       "purpose": "讓既有 Tier 3 digest release 在更新玩家 Web image 時保留已驗證的 Tier 2 async runtime mode，供 stale feedback 與失效房間控制修正安全上線",
       "allowed_paths": [

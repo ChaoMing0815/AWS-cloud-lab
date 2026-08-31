@@ -307,6 +307,18 @@
 - 只修改 policy 白名單中的 release driver、contract tests、runbook與短 evidence；不得執行 AWS CLI／SSM／S3／Bedrock、`workflow_dispatch`或 production deploy。
 - 完成後只可 push／建立 PR，不得自行 merge；production 必須由整合 task 以新的 exact main SHA、既有 active digest與人工 approval gate另行核准。
 
+## `codex/support-csp-corrective`
+
+唯一目標是消除 Support Agent production smoke 發現的 inline script 與 Google Fonts CSP 錯誤，同時保留 `file://` 的 server-required 提示。不得以放寬 CSP、加入 nonce／hash 或新增外部字型來源作為修正。
+
+強制邊界：
+
+- strict TDD 必須先證明 HTML 不含 inline script、CSS 不依賴外部字型，且既有 JavaScript module 負責 `file://` 提示。
+- `default-src 'self'` 與現有 Backend CSP contract必須保持不變；不得加入 `unsafe-inline`、Google Fonts網域或其他第三方來源。
+- 字型改用本機／系統 CJK font stack；不得新增字型 binary、package或網路請求。
+- Support Agent API、草稿、遊戲流程、runtime config、release driver、AWS與protected paths均不得修改。
+- 完成後只可push／建立PR；production必須由整合task在完整CI通過後，以新exact main SHA與當前active digest形成獨立`digest-release`人工核准 envelope。
+
 ### 下一輪整合順序
 
 1. `codex/web-stale-feedback` 先合併，消除 `web/index.html` 的 owner 衝突。
