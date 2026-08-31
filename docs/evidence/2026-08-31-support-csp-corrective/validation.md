@@ -20,7 +20,7 @@
 - Backend full regression：passed；僅既有 Starlette deprecation warning。
 - `default-src 'self'` 未修改；未加入 `unsafe-inline`、nonce、hash或第三方字型來源。
 - `git diff --check`：passed。
-- Branch boundary：待本文件提交後執行。
+- Branch boundary：`branch_boundary=passed:codex/support-csp-corrective:paths=5`。
 
 ## Production 邊界
 

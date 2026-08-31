@@ -3,13 +3,13 @@
 - 更新日期：2026-08-31
 - 目前里程碑：Tier 1、Tier 2、Tier 3均已完整完成。Tier 2 production玩家流程已完成`202 → polling → applied result`；Room進入Round 02／`COLLECTING_ACTIONS`，新AI故事可見，主Queue／DLQ五項均為`0`且DLQ alarm為`OK`／`No actions`。
 - 交付策略：已驗證的GitHub OIDC／ECR／Trivy／SSM pipeline作為唯一image交付路徑。Production Web已啟用`async`；後續不得沿用已消耗的玩家E2E核准建立第二回合job或額外呼叫Bedrock。
-- Main 整合基準：PR #66／#68已將Support Agent Web／API整合，PR #69已修正SSM Document的exact target-driver handoff；目前exact `main`為`7325531847eac77053a6686499f8d18d747262f8`，三個PR的Backend／Frontend／branch boundary／container build-scan均全綠。
+- Main 整合基準：PR #66／#68已將Support Agent Web／API整合，PR #69修正SSM Document的exact target-driver handoff，PR #70移除CSP阻擋的inline script與Google Fonts；production source exact SHA為`372a2cb77c85530b9cb3bedbd39de9d4b88e535a`，PR #70的Backend／Frontend／branch boundary／container build-scan均全綠。
 - Tier 1 完成基準 commit：`07a986a`
-- 平行工作狀態：`codex/support-agent-api`、`codex/support-agent-web`與`codex/tier2-web-ui-release`均已完成、工作樹clean且對應PR已合併；三個task目前idle，可封存。
-- Regression：Support Agent API affected 64項、Frontend full 111項與最終Backend regression無失敗；PR #66／#68／#69四項CI全綠。Production activation、rollback與玩家E2E正式證據位於[`Tier 2 Web async activation`](../evidence/2026-08-31-tier2-web-async-activation/validation.md)。
-- AWS active release：migration inventory精確`001`–`005`；Web digest為`sha256:926f19e03fd509a9874a4c51348f54aae73aa727cbb6b3d09b823c2de7196376`且corrective activation後維持`async`，publisher digest仍為`sha256:23357e315e94842cee8455023b1f87f203fca5b1d11b67b714f4af86efaa2a1b`並為`active`／`running`。兩台Worker均為`sha256:2d5d5866f54879e79882644f4b45af2475650ddc9972e6b91cfe786886cddfbc`、service active、container running、restart `0`、mode `async`、safe diagnostics active。
+- 平行工作狀態：Support Agent API／Web、Tier 2 Web release與CSP corrective均已完成並合併；對應task可維持封存，不需繼續開發。
+- Regression：PR #70 strict TDD targeted 6項、Frontend full 112項、Backend CSP gate 9項與Backend full regression均通過；四項GitHub CI全綠。Production activation、rollback與玩家E2E正式證據位於[`Tier 2 Web async activation`](../evidence/2026-08-31-tier2-web-async-activation/validation.md)，CSP修正證據位於[`Support CSP corrective`](../evidence/2026-08-31-support-csp-corrective/validation.md)。
+- AWS active release：migration inventory精確`001`–`005`；Web digest為`sha256:f9cc0e650231096cc6a14de1997181601558314195ad6ca31319ad62eb1abdd4`且維持`async`，publisher digest仍為`sha256:23357e315e94842cee8455023b1f87f203fca5b1d11b67b714f4af86efaa2a1b`並為`active`／`running`。兩台Worker均為`sha256:2d5d5866f54879e79882644f4b45af2475650ddc9972e6b91cfe786886cddfbc`、service active、container running、restart `0`、mode `async`、safe diagnostics active。
 - 操作邊界：Console-first；使用者操作 AWS Console／SSM。Agent 未經新的 bounded batch 核准不得執行 AWS CLI，且不得執行 S3 讀取或 Bedrock 呼叫。
-- Support Agent Phase A：bounded core、PostgreSQL durability、API／session／CSRF／輸入上限／bounded rate limit與Web人工確認UI均已合併repo；production schema已含`004`，但active Web image尚未包含API／UI，故仍不可宣稱線上客服已完成。
+- Support Agent Phase A：bounded core、PostgreSQL durability、API／session／CSRF／輸入上限／bounded rate limit與Web人工確認UI均已部署production。匿名supported／unsupported規則查詢、Player session草稿、HTTP `200`、無外部submit、service／live／ready與browser rendering均已驗證；inline script與Google Fonts CSP residual亦已由PR #70與run `33398071307`清除。
 
 ## Current
 
@@ -77,10 +77,10 @@
 
 ## Next
 
-1. 以latest `main` template建立只供檢查的CloudFormation Change Set；預期只修改`ContainerReleaseDocument.Properties.Content`，不得接受IAM／OIDC／ECR／replacement或其他resource變更。
-2. Change Set另行核准執行並確認Document Active、latest/default新版本後，再以exact main `7325531847eac77053a6686499f8d18d747262f8`、previous Web digest `sha256:926f19e03fd509a9874a4c51348f54aae73aa727cbb6b3d09b823c2de7196376`形成Support Agent `digest-release` production envelope。
-3. 部署後先驗證runtime仍為`async`、services／container／publisher／Worker與live／ready健康，再以Browser驗證匿名規則引用、unsupported不猜測、Player session＋CSRF本機草稿與無外部submit；不得用壓力方式驗證rate limit。
-4. Bedrock、RAG與外部submit不在本輪；成本上限USD 35與2026-09-08清理日不變，既有測試房間不再建立story job。
+1. 將Support Agent Phase A與CSP corrective的production結果保存為Demo素材；不再重跑規則草稿、模型或玩家E2E。
+2. 若繼續Support Agent Phase B，先建立獨立RAG／Bedrock／external submit產品與安全邊界；目前production仍只允許static cited rules與`local_draft_only`人工確認草稿。
+3. 準備Tier 4前先保存目前monolith、兩台private Worker、SQS／DLQ與單EC2 public edge的baseline；不得直接新增EC2或微服務資源。
+4. 成本上限USD 35與2026-09-08清理日不變；既有測試房間不再建立story job。
 
 ## 操作護欄
 
@@ -101,7 +101,7 @@
 - Story result的PostgreSQL CAS／inbox／completion outbox、async route／composition／Web polling、本機真實PostgreSQL、AWS exactly-one result、production activation／rollback與玩家E2E均已完成。Terminal polling的舊pending feedback與誤導的建立新房間控制已部署；corrective activation已把Web恢復為`async`並通過internal／public live／ready。
 - Worker foundation已建立並持續產生單一NAT、public IPv4、兩台Worker與EBS費用；成本上限USD 35、預定清理日2026-09-08。兩台Worker位於同一AZ，只涵蓋instance replacement、不涵蓋AZ failure；HTTPS經NAT的destination尚未以VPC endpoints收斂。
 - Migration bridge已證明可讀完整`001`／`002`／`003`／`004`前綴並作為schema activation失敗時唯一rollback target；不得回復不認得newer schema的pre-bridge image，也不得做schema downgrade。
-- Support Agent static retrieval無法涵蓋所有自然語言問法；identity digest未加鹽。草稿已有本機PostgreSQL restart／parallel-write證據且`004`已在production schema；API長度／bounded rate limit與Web UI已合併但尚未部署，Bedrock／RAG／外部submit仍不在範圍。production smoke完成前不得宣稱線上客服已完成。
+- Support Agent Phase A已通過production smoke與CSP corrective；static retrieval仍無法涵蓋所有自然語言問法，identity digest未加鹽。Bedrock／RAG／外部submit仍不在範圍，不得把`local_draft_only`描述成已送出客服案件。
 - iPhone Safari 短期雙向同步已通過，但長時間 polling／visibility 行為仍需在下一次完整多人遊戲觀察。
 - 刪房後舊分頁 lifecycle 修正已部署，尚未以 `COMPLETED` 房間做 AWS 多分頁重驗。
 - 原始截圖若位於 TemporaryItems／Downloads，不算正式 evidence；入庫前必須去識別化。

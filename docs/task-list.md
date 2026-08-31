@@ -123,6 +123,8 @@
 
 - [x] 建立bounded Support Agent核心、static cited rules、prompt／tool guard、敏感資料清理與PostgreSQL `local_draft_only`草稿持久化／並行耐久性。
 - [x] 依固定integration contract完成Support Agent API／session／CSRF／rate limit與Web人工確認UI；不接Bedrock或外部submit。
+- [x] 將Support Agent Phase A部署至production，完成supported／unsupported規則查詢、Player草稿、健康檢查與無外部submit smoke。
+- [x] 移除production inline script與Google Fonts外部依賴，在不放寬CSP下完成新digest部署與Browser Console驗證。
 - [ ] Prompt 有版本、測試集與至少一次 A/B 比較。
 - [ ] 建立世界設定／規則／runbook 的小型 RAG corpus 與引用測試。
 - [ ] 建立一個 allowlisted MCP／tool，拒絕未授權參數與工具。
