@@ -315,7 +315,7 @@ check_target_candidate() {
     --tmpfs /tmp:rw,noexec,nosuid,size=64m --env-file "$runtime_env" \
     --env-file "$database_env" \
     --env CO_STORY_APPLICATION_LOG_PATH=/var/log/co-story/candidate.jsonl \
-    --env CO_STORY_RESOLUTION_MODE=sync \
+    --env "CO_STORY_RESOLUTION_MODE=$active_resolution_mode" \
     --mount "type=bind,src=$rds_ca,dst=/etc/pki/rds/rds-ca.pem,readonly" \
     --mount "type=bind,src=$log_dir,dst=/var/log/co-story" \
     --user "$runtime_uid:$runtime_gid" \
@@ -334,6 +334,47 @@ check_target_candidate() {
     return 1
   fi
   docker rm -f co-story-candidate >/dev/null
+}
+
+load_active_resolution_mode() {
+  mode_lines="$(awk '$0 ~ /^Environment=CO_STORY_RESOLUTION_MODE=/ {count++} END {print count + 0}' "$installed_unit")"
+  [ "$mode_lines" -eq 1 ] || fail invalid_active_resolution_mode_shape
+  active_resolution_mode="$(awk -F= '$1 == "Environment" && $2 == "CO_STORY_RESOLUTION_MODE" {print substr($0, length("Environment=CO_STORY_RESOLUTION_MODE=") + 1)}' "$installed_unit")"
+  case "$active_resolution_mode" in
+    sync|async) ;;
+    *) fail invalid_active_resolution_mode_value ;;
+  esac
+}
+
+bind_target_unit_resolution_mode() {
+  [ "$release_mode" = digest-release ] || return 0
+  source_mode_lines="$(awk '$0 ~ /^Environment=CO_STORY_RESOLUTION_MODE=/ {count++} END {print count + 0}' "$container_unit_source")"
+  [ "$source_mode_lines" -eq 1 ] || fail invalid_target_resolution_mode_shape
+  source_mode="$(awk -F= '$1 == "Environment" && $2 == "CO_STORY_RESOLUTION_MODE" {print substr($0, length("Environment=CO_STORY_RESOLUTION_MODE=") + 1)}' "$container_unit_source")"
+  case "$source_mode" in
+    sync|async) ;;
+    *) fail invalid_target_resolution_mode_value ;;
+  esac
+  mode_bound_unit="$(mktemp /tmp/co-story-container-mode.XXXXXX)" \
+    || fail target_mode_unit_create_failed
+  if ! awk -v mode="$active_resolution_mode" '
+      /^Environment=CO_STORY_RESOLUTION_MODE=/ {
+        print "Environment=CO_STORY_RESOLUTION_MODE=" mode
+        next
+      }
+      {print}
+    ' "$container_unit_source" >"$mode_bound_unit" \
+    || ! chmod 0400 "$mode_bound_unit"; then
+    rm -f "$mode_bound_unit"
+    mode_bound_unit=""
+    fail target_mode_unit_create_failed
+    return $?
+  fi
+  container_unit_source="$mode_bound_unit"
+}
+
+cleanup_mode_bound_unit() {
+  if [ -n "${mode_bound_unit:-}" ]; then rm -f "$mode_bound_unit"; fi
 }
 
 mark_legacy_mutation_restore_failed() {
@@ -527,6 +568,7 @@ digest_release() {
   [ "$(file_sha256 "$installed_unit")" = "$state_container_unit_sha" ] || fail active_container_unit_mismatch
   [ "$(file_sha256 "$stable_driver")" = "$state_driver_sha" ] || fail active_driver_asset_mismatch
   [ "$(file_sha256 "$stable_container_unit")" = "$state_container_unit_sha" ] || fail active_unit_asset_mismatch
+  if [ "$release_mode" = digest-release ]; then load_active_resolution_mode; fi
   [ -f "$container_unit_source" ] || fail missing_container_unit_asset
   [ -f "$driver_asset_source" ] || fail missing_driver_asset
   [ ! -e "$previous_driver_backup" ] || fail existing_previous_driver_backup
@@ -537,12 +579,13 @@ digest_release() {
   driver_sha="$previous_driver_sha"
   container_unit_sha="$previous_unit_sha"
   target_driver_sha="$(file_sha256 "$driver_asset_source")"
-  target_unit_sha="$(file_sha256 "$container_unit_source")"
   if [ "$release_action" = preflight-only ]; then
     printf 'container_release=preflight-verified mode=%s previous_image_digest=%s\n' "$release_mode" "$previous_image_digest"
     return 0
   fi
   [ "$release_action" = release ] || fail invalid_release_action
+  bind_target_unit_resolution_mode
+  target_unit_sha="$(file_sha256 "$container_unit_source")"
   state_fence="$(file_sha256 "$transition_state")"
   unit_fence="$(file_sha256 "$installed_unit")"
   driver_fence="$(file_sha256 "$stable_driver")"
@@ -741,6 +784,9 @@ readonly stable_container_unit="$(host_path /usr/local/share/co-story/co-story-c
 readonly previous_driver_backup="$(host_path /etc/co-story/previous-stable-driver)"
 readonly previous_unit_backup="$(host_path /etc/co-story/previous-stable-unit)"
 readonly bridge_marker="$(host_path /etc/co-story/migration-bridge.state)"
+active_resolution_mode=sync
+mode_bound_unit=""
+trap cleanup_mode_bound_unit EXIT
 
 case "$release_mode" in
   legacy-bootstrap) legacy_bootstrap ;;
