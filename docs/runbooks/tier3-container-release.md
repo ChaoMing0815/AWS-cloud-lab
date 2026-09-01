@@ -2,7 +2,7 @@
 
 ## 使用前提
 
-本 runbook 只定義 bounded change envelope，不能視為 AWS 已部署。固定現況是 active legacy release `tier1-20260825-4a51e0e`、ECR 0 images、沒有 previous container digest。使用者尚未逐批核准前，Agent 不執行 AWS CLI、S3 讀取、Bedrock 呼叫、SSM、image push、`workflow_dispatch` 或 production deploy。
+本 runbook 只定義 bounded change envelope，不能用來判定目前 AWS 狀態。每次 release 的 exact main SHA、active image digest、runtime mode 與 rollback 基準，必須取自 `docs/handoffs/CURRENT.md`、最新 canonical production evidence 及同批 host preflight；不得沿用首次 transition 的歷史值。Production 已建立 container state 後只能使用 `digest-release`；`legacy-bootstrap` 僅保留為首次 transition 的歷史模式，不得再次選用。使用者尚未逐批核准前，Agent 不執行 AWS CLI、S3 讀取、Bedrock 呼叫、SSM、image push、`workflow_dispatch` 或 production deploy。
 
 Production GitHub environment 必須設定 required reviewer；repository variables 只放 `AWS_REGION=ap-northeast-1`、ECR repository name、instance ID 與 deploy role ARN，不放 secrets。AWS 帳號若已有 `token.actions.githubusercontent.com` provider，部署 template 時傳入其 ARN，避免建立第二個 account-wide provider。
 
