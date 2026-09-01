@@ -124,6 +124,14 @@
 
 完整 Tier 5 的 Prompt A/B、RAG、MCP／tools、多 Agent 與 AI observability 是 future roadmap，不是本節未勾待辦。此 extension 的完成邊界就是已驗證的 citation、拒答、敏感資料清理、rate limit、`local_draft_only` 與人工確認；沒有 Bedrock、RAG 或 external submit。
 
+## H-1. Production UI與像素Widget refresh
+
+- [x] 完成中性`Release v1.1.0`識別、新同源品牌SVG、終端敘事visual hierarchy與reduced-motion邊界。
+- [x] 將既有bounded Support Agent包裝成保留當前頁面的純CSS像素Widget，保留完整`/support`頁與citation／拒答／人工確認安全語意。
+- [x] 完成整合Frontend `124/124`、desktop／tablet／390px QA、main CI與exact-digest production release；active Web為`sha256:5a10597…`、runtime維持`async`。
+- [x] 修復Direct IP憑證renewal事故：只授予Nginx父目錄穿越ACL，renewal與strict TLS三端點成功；未rollback Web image。
+- [ ] 以strict TDD將ACME父目錄最小權限、challenge probe與憑證到期／renewal failure觀測固化至repo，並在不手動重複renew的前提下觀察下一次timer結果。
+
 ## I. 文件、證據與 Demo
 
 - [x] 逐頁檢查 53 張課程簡報並更正 Tier 0–5 解讀。
@@ -143,4 +151,4 @@
 | 2 | 收斂 production 架構圖與 evidence 索引 | 否 |
 | 3 | 完成 repo secrets 與 screenshots 去識別化稽核 | 否 |
 | 4 | 完成 2026-09-08 資源清理 runbook 與責任清單 | 否 |
-| 5 | 同步 README、project plan、gantt、checkpoints 與 deployment log | 否 |
+| 5 | 固化ACME最小權限與憑證renewal防回歸，再完成最終文件同步 | 需要獨立核准後才部署修正 |

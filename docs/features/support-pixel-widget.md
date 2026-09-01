@@ -1,9 +1,12 @@
 # 像素 Support Agent Widget
 
-- 狀態：Implemented on `codex/support-pixel-widget`
+- 狀態：Production verified（2026-09-01）；`codex/support-pixel-widget`僅為已完成歷史分支，不得續作
 - 上游：`docs/features/support-agent-integration.md`、ADR-0005
 - 風險：R2 可觀察 UX
 - 共同治理基準：`3152a9bc59c284850570ee0ee16ba0964a8966d4`
+- Production source：`1297a6acabaf30ca4ec2205e7641b7ab83cef781`
+- Active Web digest：`sha256:5a10597d473cd21c5b2754b743f4a48de2be7cae9bd0c1816c535523284df9bd`
+- Canonical production evidence：[`2026-09-01-ui-support-production-release`](../evidence/2026-09-01-ui-support-production-release/validation.md)
 
 ## 目標
 
@@ -26,4 +29,4 @@
 
 ## 未納入
 
-本切片不修改 `index.html`、全站 `styles.css`、遊戲頁、Backend／API／資料模型、Docker／workflow／ops／AWS，也不執行 production deploy。
+原分支切片不修改 `index.html`、全站 `styles.css`、遊戲頁、Backend／API／資料模型、Docker／workflow／ops／AWS；production deploy由整合task以既有Tier 3 pipeline另行完成，沒有擴張上述產品與安全邊界。

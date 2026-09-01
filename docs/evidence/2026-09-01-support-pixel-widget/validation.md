@@ -1,5 +1,7 @@
 # 像素 Support Agent Widget 驗證摘要
 
+> 本文件保存功能分支TDD與本機QA；production現況以[`2026-09-01-ui-support-production-release`](../2026-09-01-ui-support-production-release/validation.md)為準。此分支已完成且不得續作。
+
 - Scope／risk／upstream：全站 bounded Support Widget，R2；Support Integration Contract 與 ADR-0005。
 - Base：`3152a9bc59c284850570ee0ee16ba0964a8966d4`；branch `codex/support-pixel-widget`。
 - Baseline：Frontend `113 passed`。
