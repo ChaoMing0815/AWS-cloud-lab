@@ -236,12 +236,14 @@
 
 @media (max-width: 720px) {
   .support-widget {
+    top: .75rem;
     right: .75rem;
-    bottom: max(.75rem, env(safe-area-inset-bottom));
+    bottom: auto;
   }
 
   .support-widget__dialog {
-    bottom: 3.75rem;
+    top: 3.75rem;
+    bottom: auto;
     width: calc(100vw - 1.5rem);
     max-height: min(58dvh, 34rem);
   }
