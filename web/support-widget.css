@@ -236,7 +236,7 @@
 
 @media (max-width: 720px) {
   .support-widget {
-    top: .75rem;
+    top: max(4.5rem, env(safe-area-inset-top));
     right: .75rem;
     bottom: auto;
   }
@@ -245,7 +245,7 @@
     top: 3.75rem;
     bottom: auto;
     width: calc(100vw - 1.5rem);
-    max-height: min(58dvh, 34rem);
+    max-height: min(20dvh, 12rem);
   }
 
   .support-widget__toggle-label {
