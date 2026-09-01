@@ -211,6 +211,10 @@ test("Widget CSS 支援像素角色、手機安全收合與 reduced-motion", asy
   assert.match(css, /image-rendering:\s*pixelated/);
   assert.match(css, /@media\s*\(max-width:\s*720px\)/);
   assert.match(css, /max-height:\s*(?:min|calc)/);
+  assert.match(
+    css,
+    /@media\s*\(max-width:\s*720px\)[\s\S]*?\.support-widget\s*\{[\s\S]*?top:\s*\.75rem;[\s\S]*?bottom:\s*auto;/,
+  );
   assert.match(css, /@media\s*\(prefers-reduced-motion:\s*reduce\)/);
   assert.doesNotMatch(css, /@import|url\s*\(|https?:\/\//i);
 });
