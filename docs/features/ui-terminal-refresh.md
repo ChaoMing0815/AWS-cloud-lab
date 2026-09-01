@@ -1,7 +1,7 @@
 # UI 終端敘事改版驗證摘要
 
 - Scope／risk／upstream source：R2 可觀察 UX；共同基準 `3152a9bc59c284850570ee0ee16ba0964a8966d4`、branch policy 與正式產品邊界。
-- 首頁版本：玩家可見且具穩定 `uiReleaseVersion` DOM id 的人工版本 `UI v1.1.0`；不宣稱為 Git SHA。
+- 首頁版本：玩家可見且具穩定 `releaseVersion` DOM id 的中性人工版本 `Release v1.1.0`；不綁定單一改版類型，也不宣稱為 Git SHA。
 - 品牌資產：新增同源 `co-story-mark.svg`，具可存取名稱且沒有外部資源。
 - 視覺範圍：系統狀態、AI 標籤、房號與骰點採 system monospace；故事正文維持 serif。
 - 狀態語意：一般狀態使用 `>`，錯誤／離線使用 `!`；`RESOLVING` 顯示實際已等待秒數。

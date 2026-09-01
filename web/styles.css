@@ -65,7 +65,7 @@ p, li { text-wrap: pretty; }
 .brand-mark { display: block; width: 42px; height: 42px; }
 .brand strong { display: block; font-family: var(--font-serif); font-size: 1.1rem; letter-spacing: .12em; }
 .brand small { display: block; margin-top: 2px; color: var(--muted); font-size: .6rem; letter-spacing: .24em; }
-.ui-release-version { display: block; margin-top: 3px; color: var(--teal); font-family: var(--font-mono-system); font-size: .58rem; letter-spacing: .08em; }
+.release-version { display: block; margin-top: 3px; color: var(--teal); font-family: var(--font-mono-system); font-size: .58rem; letter-spacing: .08em; }
 .connection { color: var(--muted); font-size: .78rem; }
 .connection span { display: inline-block; width: 7px; height: 7px; margin-right: 8px; border-radius: 50%; background: var(--teal); box-shadow: 0 0 12px var(--teal); }
 .topbar-link { color: var(--muted); font-size: .78rem; text-decoration: none; }
