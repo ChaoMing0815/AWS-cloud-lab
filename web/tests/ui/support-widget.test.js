@@ -222,11 +222,55 @@ test("Widget CSS 支援像素角色、手機安全收合與 reduced-motion", asy
 
   assert.match(css, /image-rendering:\s*pixelated/);
   assert.match(css, /@media\s*\(max-width:\s*720px\)/);
-  assert.match(css, /max-height:\s*(?:min|calc)/);
-  assert.match(
-    css,
-    /@media\s*\(max-width:\s*720px\)[\s\S]*?\.support-widget\s*\{[\s\S]*?top:\s*\.75rem;[\s\S]*?bottom:\s*auto;/,
+  const mobileCss = css.slice(
+    css.indexOf("@media (max-width: 720px)"),
+    css.indexOf("@media (prefers-reduced-motion: reduce)"),
   );
+  const widgetRule = mobileCss.match(/\.support-widget\s*\{([^}]*)\}/)?.[1] ?? "";
+  const dialogRule = mobileCss.match(/\.support-widget__dialog\s*\{([^}]*)\}/)?.[1] ?? "";
+  assert.match(
+    widgetRule,
+    /top:\s*max\(([\d.]+)rem,\s*env\(safe-area-inset-top\)\);/,
+    "mobile toggle 必須位於 topbar 保留帶下方，且保留 safe-area",
+  );
+  assert.match(widgetRule, /right:\s*\.75rem;/);
+  assert.match(widgetRule, /bottom:\s*auto;/);
+  assert.match(dialogRule, /top:\s*([\d.]+)rem;/);
+  assert.match(dialogRule, /max-height:\s*min\(([\d.]+)dvh,\s*([\d.]+)rem\);/);
+
+  const rootFont = 16;
+  const viewport = { width: 390, height: 844 };
+  const topRem = Number(widgetRule.match(/top:\s*max\(([\d.]+)rem/)?.[1]);
+  const dialogTopRem = Number(dialogRule.match(/top:\s*([\d.]+)rem/)?.[1]);
+  const dialogDvh = Number(dialogRule.match(/max-height:\s*min\(([\d.]+)dvh/)?.[1]);
+  const dialogMaxRem = Number(
+    dialogRule.match(/max-height:\s*min\([\d.]+dvh,\s*([\d.]+)rem/)?.[1],
+  );
+  const toggle = {
+    left: viewport.width - 12 - 82,
+    right: viewport.width - 12,
+    top: topRem * rootFont,
+    bottom: topRem * rootFont + 48,
+  };
+  const dialog = {
+    left: 12,
+    right: viewport.width - 12,
+    top: toggle.top + dialogTopRem * rootFont,
+    bottom: toggle.top + dialogTopRem * rootFont
+      + Math.min(viewport.height * dialogDvh / 100, dialogMaxRem * rootFont),
+  };
+  const topbarNav = { left: 254.16, right: 372, top: 29, bottom: 46 };
+  const composer = { left: 25, right: 365, top: 308, bottom: 550 };
+  const overlaps = (first, second) => !(
+    first.right <= second.left
+    || first.left >= second.right
+    || first.bottom <= second.top
+    || first.top >= second.bottom
+  );
+
+  assert.equal(overlaps(toggle, topbarNav), false, "mobile toggle 不得與 topbar nav 相交");
+  assert.equal(overlaps(dialog, composer), false, "mobile dialog 不得遮擋 composer");
+  assert.ok(dialog.left >= 0 && dialog.right <= viewport.width, "mobile dialog 不得水平溢位");
   assert.match(css, /@media\s*\(prefers-reduced-motion:\s*reduce\)/);
   assert.doesNotMatch(css, /@import|url\s*\(|https?:\/\//i);
 });
