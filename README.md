@@ -2,35 +2,41 @@
 
 AWS 雲端工程師培訓期末專題。3–5 位玩家在同一房間建立角色並提交行動，由 deterministic rules 決定結果，再由 AI 故事主持人整合成下一回合的原創劇情。
 
-本專題以同一產品逐層完成 Tier 0–5：從 EC2＋private PostgreSQL 的可玩版本，逐步演進到可觀測性、非同步架構、CI/CD、微服務與 Agentic AI。
+本專題以同一產品完成 AWS 可玩版本、可觀測性、非同步組件化與 CI/CD 自動部署。依 [ADR-0008](docs/decisions/0008-fix-final-delivery-scope.md)，Tier 4 五服務與完整 Tier 5 是 future roadmap，不是本次未完成項目；Support Agent 是已部署的 bounded extension。
 
 ## 目前狀態
 
-截至 2026-08-19，Tier 0 已有可供小規模受測者使用的 AWS 公開 HTTPS 試玩版本：
+截至 2026-09-01，最終 production 主線已完成：
 
 - Tokyo `ap-northeast-1` 自訂 VPC、public app subnet 與兩個 private DB subnets。
-- EC2 AL2023 ARM64 `t4g.micro`，透過 Systems Manager 維運，不開 SSH。
+- 公開 Web／API 與兩台 private Story Worker 透過 SQS／DLQ 完成非同步故事生成。
+- EC2 透過 Systems Manager 維運，不開 SSH；CloudWatch／AIOps 維運證據已完成。
 - Private RDS PostgreSQL `18.3`，Single-AZ、加密、無 public access。
-- FastAPI 與 public Nginx services active，HTTPS readiness `200`；以 short-lived IP certificate 自動續期。
+- FastAPI 與 public Nginx services active，公開 HTTPS 與主要遊戲流程可用。
 - Migration 與 restricted application DB role 完成；service restart 後可讀回相同 PostgreSQL room／session state。
 - Private S3 deployment artifacts、Secrets Manager application secret 與短期 lifecycle 已建立。
-- Amazon Bedrock Nova Lite 已完成真實世界草稿與三玩家回合敘事；固定 Guardrail v1、bounded IAM 與 application-layer 明確 Prompt Injection 前置拒絕已部署。
+- Docker／ECR／GitHub Actions OIDC／Trivy／SSM release、健康檢查與 rollback pipeline 已在 production 驗證。
+- Support Agent 已驗證 supported citation、unsupported 不猜測與 Player `local_draft_only` 人工確認草稿；沒有 RAG、外部 submit 或額外 Tier 5 宣稱。
 
 公開網址含目前 EC2 public IP，只私下提供受測者，不寫入 repository。外部 E2E 驗證方式與 AWS 證據項目見 [`docs/qa/public-trial-guide.md`](docs/qa/public-trial-guide.md)，最新狀態以 [`docs/handoffs/CURRENT.md`](docs/handoffs/CURRENT.md) 為準。
 
-## Tier 0 目前架構
+## 最終 production 架構
 
 ```mermaid
 flowchart LR
     U["玩家瀏覽器"] -->|"public HTTPS"| EC2
     OP["維運人員"] --> SSM["AWS Systems Manager"] --> EC2
-    S3["Private S3<br/>release artifacts"] --> EC2["EC2<br/>Nginx + FastAPI"]
+    EC2["Public Web／API<br/>Nginx + FastAPI"] --> Q["SQS + DLQ"]
+    Q --> W["2 × Private Story Worker"]
     EC2 --> SM["Secrets Manager<br/>application DB secret"]
     EC2 -->|"5432 · App SG only"| RDS["Private RDS PostgreSQL"]
-    EC2 --> BR["Amazon Bedrock<br/>Nova Lite + Guardrail v1"]
+    W --> RDS
+    W --> BR["Amazon Bedrock<br/>bounded story generation"]
+    CW["CloudWatch"] --- EC2
+    CW --- W
 ```
 
-安全與成本邊界：無 NAT Gateway、Elastic IP 或 public SSH；RDS 只接受 App Security Group；應用程式不保存長期 AWS key；新增常駐服務前先估價與核准。
+安全與成本邊界：private workers 共用一個受控 NAT egress，不開 public SSH；RDS 只接受核准的 application／worker Security Group；應用程式不保存長期 AWS key；新增常駐服務前先估價與核准。
 
 ## 核心玩法
 
@@ -77,16 +83,16 @@ python3 -m venv .venv
 npm --prefix web test
 ```
 
-目前基準為 Backend `311 passed, 8 skipped`；Frontend `85 passed`。
+最新 production digest、健康狀態與 regression 結果以 [`CURRENT`](docs/handoffs/CURRENT.md) 及 CI evidence 為準，避免在入口文件複製會過期的計數。
 
-## Tier 0–5 主線
+## 已完成範圍與 future roadmap
 
 - Tier 0：可玩 Web App／API、private PostgreSQL、Bedrock、公私網路隔離。
 - Tier 1：CloudWatch logs／metrics／dashboard／alarm 與 SSM incident runbook。
 - Tier 2：Web／API、SQS、Story Worker 與 private data 分層。
 - Tier 3：Docker、ECR、GitHub Actions OIDC 與自動部署。
-- Tier 4：Lobby／Character／Turn／Rules／Story 微服務與故障隔離。
-- Tier 5：Prompt 版本、RAG、MCP、多 Agent、人工批准與 AI 可觀測性。
+- 已部署 extension：bounded Support Agent，沿用現有 release pipeline 與人工確認邊界。
+- Future roadmap：Tier 4 五服務、完整 Tier 5／RAG／MCP／多 Agent；不列入本次完成條件。
 
 WordPress 僅是課程簡報中的 Tier 0 架構範例，不是本專題的第二套產品。
 
@@ -94,7 +100,7 @@ WordPress 僅是課程簡報中的 Tier 0 架構範例，不是本專題的第�
 
 - [完整文件導覽](docs/README.md)
 - [正式 MVP Spec](docs/specs/text-rpg-mvp-spec.md)
-- [Tier 0–5 AWS 架構](docs/architecture/README.md)
+- [最終 production 與 future roadmap 架構](docs/architecture/README.md)
 - [專題計畫](docs/project-plan.md)
 - [部署紀錄](docs/deployment-log.md)
 - [測試與 TDD 策略](docs/testing-strategy.md)

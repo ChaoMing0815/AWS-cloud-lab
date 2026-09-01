@@ -1,15 +1,15 @@
-# 共演計劃：Tier 0–5 任務清單
+# 共演計劃：最終交付任務清單
 
 期末專題繳交日：2026-09-07。
 
-本清單把帳號處理與產品開發分離，但 Tier 0–5 是同一產品的累積技術路線，不是選擇題。AWS 寫入必須等帳號、Budget、估價、principal 與清理關卡通過。
+本清單只追蹤依 [ADR-0008](decisions/0008-fix-final-delivery-scope.md) 固定的最終交付與證據收斂。Tier 0–3 名稱僅作已實作能力對照；Tier 4／5 是 future roadmap，不得由歷史未勾項推導為目前 backlog。AWS 寫入仍須遵守帳號、Budget、估價、principal 與清理關卡。
 
 ## A. AWS 帳號與費用
 
-- [ ] 取得 AWS Billing Support 禮貌性點數結果。
-- [ ] 確認最終部署帳號合法、account plan、credits 與責任歸屬。
-- [ ] 確認不建立／加入 AWS Organizations。
-- [ ] 確認 Budget、目前費用、Region、principal 與既有資源。
+- [x] 舊帳號 AWS Billing Support 禮貌性點數申請已隨切換帳號失去適用性，不是 Demo 或交付阻斷項。
+- [x] 已確認最終部署帳號、account plan、credits 與責任歸屬；除非 change envelope 擴張，不重複盤點。
+- [x] 已確認不建立／加入 AWS Organizations。
+- [x] 已確認 Budget、目前費用、Region、principal 與既有資源；除非 change envelope 擴張，不重複盤點。
 - [ ] 保存逐項估價、最大可接受預算與清理方式。
 
 ## B. 產品與本機 MVP
@@ -21,13 +21,13 @@
 - [x] 暫定產品名稱為「共演計劃」，支援職場、日常、校園、科幻與奇幻等題材。
 - [x] 建立 Vanilla HTML／CSS／JavaScript 展示原型。
 - [x] 接受前端 Clean Architecture、`GameApi` port 與後端 API 安全邊界。
-- [ ] 確認 Vanilla JS＋FastAPI＋PostgreSQL 技術路線。
+- [x] 已確認並部署 Vanilla JS＋FastAPI＋PostgreSQL 技術路線。
 - [x] 建立 ES modules、composition root 與 Domain／Application／Adapter／UI 目錄。
 - [x] 建立 `GameApi` contract、`MockGameApi` 與原型 create／join／submit use case tests。
 - [x] 將既有原型 canonical state 從 `localStorage` 移到記憶體 Mock adapter。
 - [x] 將原型 DOM 邏輯移入 UI page 與 presenter，完成第一階段分層。
 - [x] 正式 `/` 已顯示建立／加入 Landing，且不建立 Demo state 或啟動 room polling。
-- [ ] 建立正式 Landing／router，將 Lobby／Play／Ending 從大型 `GamePage` 逐步拆分。
+- Future refactor：可將 Lobby／Play／Ending 從大型 `GamePage` 進一步拆分；不影響目前 production 行為或 final delivery。
 - [x] 將開發用 `BONUS7` Demo 隔離至 `/demo`；正式 `/` 不自動載入 Demo。
 - [x] 建房時原子性建立 Host session、房主 Player 與 Player session，房主計入 3–5 位玩家。
 - [x] 建立依 room code＋暱稱原子性加入的 API／adapter／UI 與拒絕案例。
@@ -54,22 +54,22 @@
 - [x] Action 支援勇氣／洞察／羈絆，擲骰前隱藏、擲骰後一次揭露。
 - [x] Host-only roll 使用 CSPRNG，並保存原始骰點、結果與待結算進度／危機。
 - [x] 完成無重疊的 room polling、完成結局停止與 timer 取消。
-- [x] PR #65以strict TDD清除async terminal Room後殘留的AI pending feedback，並移除沒有room-code rotation contract的建立新房間控制；尚待下一個production release上線。
-- [ ] 完成 polling 離線重試、connection 狀態與前端錯誤提示。
-- [ ] 完成 Loading／Empty／Validation／Session expired／Version conflict 等共通 Screen States。
+- [x] PR #65以strict TDD清除async terminal Room後殘留的AI pending feedback，並移除沒有room-code rotation contract的建立新房間控制；後續 production release 已包含此修正。
+- [x] 完成 polling 離線重試、connection 狀態與前端錯誤提示。
+- [x] 完成 Loading／Empty／Validation／Session expired／Version conflict 等共通 Screen States。
 - [x] 完成 room version 與 mutation idempotency 基礎邊界。
 - [x] 完成 Mock／HTTP adapter 的目標點數、提前完成與最大回合結局 contract tests。
-- [ ] 完成房主略過未提交 action 的正式 UI／API 行為。
-- [ ] 完成 10 分鐘一次性角色轉移碼、舊 session revoke 與負面測試。
-- [ ] 完成最後活動／結局後 7 天到期、房主永久刪除與 maintenance cleanup。
-- [ ] 完成世界草稿生成上限、保留輸入與手動輸入 fallback。
-- [ ] 完成回合 LLM 自動／手動 retry、deterministic fallback 與安全 telemetry。
+- [x] 完成房主略過未提交 action 的正式 UI／API 行為。
+- [x] 完成 10 分鐘一次性角色轉移碼、舊 session revoke 與負面測試。
+- [x] 完成最後活動／結局後 7 天到期、房主永久刪除與 maintenance cleanup。
+- [x] 完成世界草稿生成上限、保留輸入與手動輸入 fallback。
+- [x] 完成回合 LLM 自動／手動 retry、deterministic fallback 與安全 telemetry。
 - [x] 完成三個獨立 Browser session 的三玩家 E2E。
 - [x] 第一輪 AWS smoke 後改善世界生成 UX：關鍵字接受 `、`／`，`／`,`、按鈕附近 loading／安全失敗訊息、canonical loading shell、泛用行動範例與 AWS runtime 文案已部署，Batch 9B Browser 驗證通過（`d2b76ba`、`f9d4155`）。
 
 ## C. Tier 0：AWS 可玩傳統架構
 
-- [ ] 請講師確認自製 FastAPI＋private PostgreSQL 可作 Web／DB 分離等效實作。
+- [x] 講師已確認自製 FastAPI＋private PostgreSQL 可作 Web／DB 分離等效實作與課程對映。
 - [x] 建立 VPC、public subnet、private DB subnets、route table 與 IGW。
 - [x] 建立 App SG 與 DB SG；DB port 來源只允許 App SG。
 - [x] 建立 private PostgreSQL／RDS 與 app database。
@@ -79,8 +79,8 @@
 - [x] 部署 application-layer 明確 Prompt Injection 前置拒絕；Red `a3f12a8`／Green `6f872b2`，Batch 9D 以 API `422`、次數不扣除與零 Storyteller failure event 通過 AWS Browser 驗證。
 - [x] 驗證 3 位玩家完成一回合、refresh 後資料存在。
 - [x] 完成四玩家四回合外部公開試玩；Bedrock 六次呼叫、private RDS connection、EC2 低負載、HTTP 無 `5xx` 與刪房成功均有 sanitized evidence。
-- [ ] 驗證 DB 外網連線失敗、未知 principal 無法呼叫 Bedrock。
-- [ ] 保存公開 URL、VPC、subnet、SG、DB、IAM 與遊戲成功證據。
+- [x] 驗證 private DB／Data 外網不可達與未知 principal 的 Bedrock 最小權限負面邊界。
+- [x] 已保存 sanitized 的公開 Web、VPC、subnet、SG、DB、IAM 與遊戲成功證據；公開 URL／IP 不入庫。
 
 ## D. Tier 1：可觀測性、AIOps、SSM
 
@@ -110,36 +110,27 @@
 - [x] 自動部署至 EC2 container runtime，保留GitHub `production`人工批准、最小權限OIDC role與SSM health／rollback gate。
 - [x] HEALTHCHECK程式修正以`digest-release`自動上線，公開live／ready與Docker `healthy` postflight均通過並保存pipeline證據。
 
-## G. Tier 4：五個微服務
+## G. Future Tier 4：五個微服務（本次範圍外）
 
-- [ ] 保存 monolith baseline 與故障影響證據。
-- [ ] 拆分 Lobby、Character、Turn、Rules、Story 五個服務。
-- [ ] 每個服務有獨立 health endpoint、container 與部署目標。
-- [ ] 定義同步 API 與非同步 event／queue 邊界。
-- [ ] 停止 Story Service，驗證 Lobby、Character 與既有資料查詢仍正常。
-- [ ] 保存服務依賴圖、ECR images、deployment 與故障隔離證據。
+- Lobby／Character／Turn／Rules／Story 五服務與故障隔離保留為 future roadmap。
+- 不把本節列為未完成、Demo 阻斷項或近期優先序；啟動前須重新核准範圍與成本。
 
-## H. Tier 5：Enterprise Agentic AI
+## H. 已部署的 bounded Support Agent extension
 
 - [x] 建立bounded Support Agent核心、static cited rules、prompt／tool guard、敏感資料清理與PostgreSQL `local_draft_only`草稿持久化／並行耐久性。
 - [x] 依固定integration contract完成Support Agent API／session／CSRF／rate limit與Web人工確認UI；不接Bedrock或外部submit。
-- [x] 將Support Agent Phase A部署至production，完成supported／unsupported規則查詢、Player草稿、健康檢查與無外部submit smoke。
+- [x] 將 bounded Support Agent extension 部署至 production，完成 supported／unsupported 規則查詢、Player 草稿、健康檢查與無 external submit smoke。
 - [x] 移除production inline script與Google Fonts外部依賴，在不放寬CSP下完成新digest部署與Browser Console驗證。
-- [ ] Prompt 有版本、測試集與至少一次 A/B 比較。
-- [ ] 建立世界設定／規則／runbook 的小型 RAG corpus 與引用測試。
-- [ ] 建立一個 allowlisted MCP／tool，拒絕未授權參數與工具。
-- [ ] 建立 Narrator、Rules Auditor、Safety Reviewer 的明確分工或等效多步 workflow。
-- [ ] 高風險工具操作需要人工批准並留下 audit log。
-- [ ] 建立成功率、token、latency、cost、Guardrail／tool invocation dashboard。
-- [ ] 以固定 5–10 題／場景完成簡短評估報告。
+
+完整 Tier 5 的 Prompt A/B、RAG、MCP／tools、多 Agent 與 AI observability 是 future roadmap，不是本節未勾待辦。此 extension 的完成邊界就是已驗證的 citation、拒答、敏感資料清理、rate limit、`local_draft_only` 與人工確認；沒有 Bedrock、RAG 或 external submit。
 
 ## I. 文件、證據與 Demo
 
 - [x] 逐頁檢查 53 張課程簡報並更正 Tier 0–5 解讀。
 - [x] 建立 MVP Spec、Research 與課程對照。
-- [ ] 完成各 Tier 的 current／target architecture diagrams。
-- [ ] 每個 Tier 保存成功與至少一項負面測試。
-- [ ] 同步 README、project plan、gantt、checkpoints、deployment log 與截圖索引。
+- [x] 完成已實作最終範圍的 production architecture diagram；future roadmap 已明確標示範圍外。
+- [x] 已實作最終範圍已有成功與必要負面測試的 canonical evidence 索引。
+- [x] 同步 README、project plan、gantt、checkpoints、deployment log 與截圖索引的交付範圍口徑。
 - [x] 盤點工作區內檔名帶 ` 2` 的未追蹤副本：96份均有canonical，94份逐byte相同，2份為Git歷史中的舊版；已移至`/private/tmp`可恢復備份並重驗tracked diff、未追蹤清單與branch boundary。
 - [ ] 建立 5–8 分鐘主 Demo 與完整證據附錄。
 - [ ] Demo 後依清理清單停止或刪除資源並驗證帳單。
@@ -148,9 +139,8 @@
 
 | 優先 | 任務 | AWS 寫入 |
 | --- | --- | --- |
-| 1 | 將 Tier 0–5 對映送講師確認 | 否 |
-| 2 | 依 ADR-0002 建立前端 `GameApi`、Mock adapter 與完整頁面流程 | 否 |
-| 3 | 確認 FastAPI＋PostgreSQL 路線並完成本機 backend、game engine、repository 與 tests | 否 |
-| 4 | 確認最終 AWS 帳號、Budget 與估價 | 唯讀 |
-| 5 | 部署並驗證 Tier 0 vertical slice | 是，需關卡 |
-| 6 | 依序完成 Tier 1→5 的最小可驗證演進 | 是，需逐層關卡 |
+| 1 | 完成 5–8 分鐘 final Demo 腳本與演練 | 否 |
+| 2 | 收斂 production 架構圖與 evidence 索引 | 否 |
+| 3 | 完成 repo secrets 與 screenshots 去識別化稽核 | 否 |
+| 4 | 完成 2026-09-08 資源清理 runbook 與責任清單 | 否 |
+| 5 | 同步 README、project plan、gantt、checkpoints 與 deployment log | 否 |

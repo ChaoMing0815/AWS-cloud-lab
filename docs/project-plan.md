@@ -1,12 +1,12 @@
-# 共演計劃：Tier 0–5 專題規劃
+# 共演計劃：AWS 組件化與自動部署專題規劃
 
 期末專題繳交日：2026-09-07。
 
 ## 1. 題目
 
-> 共演計劃：部署於 AWS、由 3–5 位玩家共同遊玩的 AI 故事平台，從傳統 Web／DB 架構逐步演進至可觀測、可自動部署、微服務化與 Agentic AI 系統。
+> 共演計劃：部署於 AWS、由 3–5 位玩家共同遊玩的 AI 故事平台，從傳統 Web／DB 架構演進至可觀測、組件化與可自動部署的系統。
 
-本專題只維護一個產品主題。Tier 0–5 是累積演進，不是互斥選題。
+本專題只維護一個產品主題。依 [ADR-0008](decisions/0008-fix-final-delivery-scope.md)，最終交付範圍止於已部署 AWS 的可玩產品、可觀測性／SSM、Web／Story Worker／Data 組件化，以及 Docker／ECR／GitHub Actions 自動部署。Tier 4 五服務與完整 Tier 5 是 future roadmap，不是本次尚待完成項目。
 
 ## 2. 解決的問題
 
@@ -25,7 +25,7 @@
 
 產品細節以 [`docs/specs/text-rpg-mvp-spec.md`](specs/text-rpg-mvp-spec.md) 為準。
 
-## 4. Tier 0–5 演進
+## 4. 最終交付能力對照
 
 | Tier | 目標 | 完成定義 |
 | --- | --- | --- |
@@ -33,8 +33,8 @@
 | 1 | 可觀測與免 SSH 維運 | CloudWatch logs／metrics／alarm、SSM、一次 AIOps incident Demo |
 | 2 | 多組件與網段隔離 | Web/API、Story Worker、Data 三組件；E2E 成功且資料層外網不可達 |
 | 3 | 自動交付 | Docker、ECR、GitHub Actions OIDC，自動測試與部署成功 |
-| 4 | 微服務故障隔離 | 五個服務可獨立執行；停止一支不影響其餘服務 |
-| 5 | Enterprise Agentic AI | Prompt 版本、RAG、MCP／工具、多 Agent、人工批准、AI 監控 |
+
+Tier 0–3 名稱保留作課程能力對照，不是要求新 Agent 逐 Tier 重新施工。Support Agent 是在既有架構與 pipeline 上完成的 bounded extension；不以「Tier 5 部分完成」描述。
 
 ## 5. 架構演進
 
@@ -54,14 +54,15 @@ flowchart LR
 ```mermaid
 flowchart LR
     User["玩家"] --> API["Public<br/>Web／API"]
-    API --> Q["SQS"]
-    Q --> Worker["Private<br/>Story Worker"]
+    API --> Publisher["Outbox Publisher"]
+    Publisher --> Q["SQS + DLQ"]
+    Q --> Worker["2 × Private<br/>Story Worker"]
     API --> DB["Private<br/>PostgreSQL"]
     Worker --> DB
     Worker --> Bedrock["Bedrock"]
 ```
 
-### Tier 4–5
+### Future roadmap（本次交付範圍外）
 
 ```mermaid
 flowchart LR
@@ -97,10 +98,10 @@ flowchart LR
 
 ## 7. 預期成效
 
-- 展示同一產品如何由 monolith 演進為可維運、多組件、CI/CD、微服務與 Agentic AI。
+- 展示同一產品如何由 monolith 演進為可維運、多組件與 CI/CD 架構。
 - 證明網段、SG、IAM、SSM、CloudWatch 與資料隔離。
-- 證明 AI 不只會生成文字，也能被評估、監控、限制工具與追蹤成本。
-- 建立可向講師與面試官逐層說明的架構演進史。
+- 證明故事生成與 Support Agent 都有明確輸入、引用、拒答及人工確認邊界。
+- 建立可向講師與面試官說明的 AWS 架構演進與自動部署證據。
 
 ## 8. Demo 主線
 
@@ -109,21 +110,21 @@ flowchart LR
 3. 模擬服務錯誤，由 CloudWatch 偵測、AI 摘要，再以 SSM 受控處理。
 4. 展示三組件架構與非同步 Story Worker。
 5. 改一行版本文字，觸發 GitHub Actions 自動部署。
-6. 停止 Story Service，證明 Lobby／Character 等服務仍可用。
-7. 展示 RAG 引用、MCP／tool approval 與 token／cost dashboard。
+6. 展示 Support Agent 的 supported citation、unsupported 不猜測與 `local_draft_only` 人工確認草稿。
+7. 展示 GitHub Actions 以 exact digest 部署、健康檢查與 rollback 能力。
 
 ## 9. 必備交付
 
 - 題目與預期成效。
-- 每個 Tier 的 current／target architecture diagram。
-- 甘特圖與逐層 checkpoints。
+- 已實作範圍的 production architecture diagram；future roadmap 若出現必須明確標示範圍外。
+- 甘特圖與驗收參考 checkpoints。
 - GitHub README、部署步驟與清理方式。
-- AWS 成功截圖、VPC／subnet／SG／IAM／CloudWatch／SSM／CI/CD／AI 監控證據。
-- 5–8 分鐘主 Demo；完整 Tier 證據可放附錄或錄影。
+- AWS 成功截圖、VPC／subnet／SG／IAM／CloudWatch／SSM／CI/CD 與 bounded Support Agent 證據。
+- 5–8 分鐘主 Demo；補充證據可放附錄或錄影。
 
-## 10. 待確認
+## 10. 已固定的交付邊界
 
-- 講師是否接受 FastAPI＋private PostgreSQL 作為 Tier 0 Web／DB 分離的等效題卡。
-- 講師是否接受已由 ADR-0003 決定的 PostgreSQL／RDS 作為 private data layer。
-- 各 Tier 可接受的最低資源數量與 Demo 深度。
-- 最終 AWS 帳號、Budget、Region、模型與逐項估價。
+- 講師已確認 FastAPI＋private PostgreSQL 的 Tier 0 等效性與課程對映，不得再列為待辦。
+- PostgreSQL／RDS private data layer 已由 ADR-0003 接受。
+- 最終交付範圍依 ADR-0008；Tier 4／5 只有 future roadmap 意義。
+- 新增常駐 AWS 資源、Bedrock／RAG 呼叫或其他成本 envelope 擴張，仍須另行核准。

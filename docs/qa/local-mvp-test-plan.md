@@ -4,7 +4,7 @@
 - Owner：QA
 - Source of Truth：是，僅負責本機 Web MVP release gate
 - Depends on：[MVP Spec](../specs/text-rpg-mvp-spec.md)、[Screen States](../product/screen-states.md)、[測試策略](../testing-strategy.md)
-- 最後檢視：2026-08-10
+- 最後檢視：2026-09-01（本機 gate 歷史基準；AWS 後續狀態見 CURRENT）
 
 > 嚴格 Red／Green／Refactor 步驟與 evidence 格式不在此重複，全部引用測試策略。本文件定義「哪些使用者旅程必須通過」。
 
@@ -76,8 +76,8 @@
 
 - 正式 Landing、room-code join、session continue 與基本 deep routes 已完成。
 - 三個獨立 browser contexts 已完成正式單回合 E2E；結局、session expired 與 console 已通過 Browser release gate。
-- PostgreSQL repository contract、FastAPI application restart 與正式 Uvicorn OS process restart 已完成；application container restart 待 Docker image 切片。
-- LLM failure taxonomy、自動／手動 retry、deterministic fallback 與房主 recovery UI 已完成；真實模型 schema／Guardrail adapter 尚未完成。
+- PostgreSQL repository contract、FastAPI application restart、正式 Uvicorn OS process restart 與 production container restart 均已完成。
+- LLM failure taxonomy、自動／手動 retry、deterministic fallback、房主 recovery UI 與真實模型 schema／Guardrail adapter 均已完成後續 AWS gate。
 - Polling 離線／reconnect deterministic UI 與 Browser 503／恢復驗證已完成；Session lifecycle、transfer／revoke 與房主永久刪除已完成。
 
-本機 Web MVP P0 已可標示為 release-ready。真實 Bedrock schema／Guardrail、HTTPS Secure cookie Browser 與 application container restart 在 AWS 部署 gate 驗證，不以本機 Mock／HTTP 冒充。
+本機 Web MVP P0 已完成，且真實 Bedrock schema／Guardrail、HTTPS Secure cookie Browser 與 application container restart 均已在後續 AWS deployment gate 驗證；本文件不取代 production evidence。

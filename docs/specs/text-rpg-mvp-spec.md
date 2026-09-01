@@ -1,6 +1,6 @@
 # 共演計劃：多人 LLM 協作故事遊戲 MVP Spec
 
-> 架構更正（2026-08-07）：本文件的產品規則仍有效；其中 DynamoDB adapter 是先前 AWS 架構假設，不再視為已接受決策。正式 AWS repository 預計改評估 private PostgreSQL／RDS，以符合 Tier 0 Web／DB 分離並銜接 Tier 5 RAG；完成 ADR 前保留 repository interface，不依特定資料庫實作。
+> 架構狀態：本文件的產品規則仍有效；先前 DynamoDB adapter 假設已由 ADR-0003 取代，production 使用 private PostgreSQL／RDS。最終交付範圍依 ADR-0008 止於 AWS 組件化與自動部署，不能由本 Spec 的歷史文字推導 Tier 4／5 或 RAG 待辦。
 
 - 產品名稱：共演計劃（暫定）
 - 文件版本：1.0

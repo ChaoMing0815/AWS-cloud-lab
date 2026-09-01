@@ -1,8 +1,8 @@
-# 共演計劃 Tier 0–5 甘特圖
+# 共演計劃最終交付甘特圖
 
 期末專題繳交日：2026-09-07。
 
-> 排程原則：同一產品逐層演進。每個 Tier 先完成一個能 Demo 的最小切片並保存證據，再增加深度。AWS 帳號與預算關卡未通過前，先完成對應的本機程式、IaC／指令草稿與測試。
+> 排程原則：此表保留已走過的演進路徑；依 [ADR-0008](decisions/0008-fix-final-delivery-scope.md)，最終交付止於 AWS 組件化與自動部署。Tier 4／5 不屬於本次排程或完成條件。
 
 ## 6 週計畫
 
@@ -15,8 +15,7 @@
 | Tier 1：CloudWatch、SSM、AIOps incident |  |  | 設計 | X | X |  |
 | Tier 2：Web/API、Worker、Data 三組件 |  |  |  | X | X |  |
 | Tier 3：Docker、ECR、GitHub Actions |  |  |  | X | X |  |
-| Tier 4：五服務拆分與故障隔離 |  |  |  |  | X | X |
-| Tier 5：Prompt、RAG、MCP／Tools、監控 |  |  |  |  | X | X |
+| Bounded Support Agent extension |  |  |  |  | X | X |
 | 架構圖、證據、README、部署紀錄 | X | X | X | X | X | X |
 | Demo 演練、成本檢查與清理 |  |  |  |  |  | X |
 
@@ -28,8 +27,8 @@
 | M2：本機 MVP 完成 | 8/16 | FastAPI、memory repository、mock storyteller、核心 tests |
 | M3：Tier 0 AWS 可玩 | 8/20 | 公開 Web、private DB、Bedrock 一回合、資料持久化與安全證據 |
 | M4：Tier 1–2 完成 | 8/25 | CloudWatch／SSM incident Demo、三組件 E2E 與網段證據 |
-| M5：Tier 3–4 完成 | 8/31 | 自動部署成功、五服務故障隔離 Demo |
-| M6：Tier 5 與最終交付 | 9/6 | RAG／tool／monitoring Demo、文件、截圖、清理計畫完整 |
+| M5：組件化與自動部署完成 | 8/31 | private workers 非同步 E2E、自動部署、健康檢查與 rollback 成功 |
+| M6：最終交付 | 9/6 | Demo、架構圖、證據索引、secrets／截圖稽核與清理計畫完整 |
 
 ## 關鍵路徑
 
@@ -40,20 +39,17 @@
   → logs／SSM 與 incident data
   → 組件切割
   → container／pipeline
-  → 微服務故障隔離
-  → RAG／MCP／多 Agent 與監控
+  → bounded Support Agent extension
   → 最終 Demo
 ```
 
 ## 延誤時的縮減原則
 
-- 不刪除整個 Tier；縮成一個可驗證案例。
+- 不犧牲已核准範圍的安全、費用或證據關卡來換取速度。
 - Tier 2 只保留 Web/API、Story Worker、Data 三組件與一條 E2E 流程。
 - Tier 3 只保留一條主分支自動部署 pipeline。
-- Tier 4 的五服務只實作必要 API 與健康檢查，不追求完整業務功能複製。
-- Tier 5 只保留一個 RAG corpus、一個 allowlisted tool、一次人工批准與一張監控圖。
-- 不以取消安全、費用或證據關卡換取速度。
+- Tier 4 五服務與完整 Tier 5 已移至 future roadmap，不自動開工。
 
 ## 繳交日
 
-2026-09-07：提交 GitHub、AWS 實作、架構演進圖、成功／負面驗證截圖、README、甘特圖、checkpoints、Demo 與清理紀錄。
+2026-09-07：提交 GitHub、已實作的 AWS 組件化與自動部署成果、架構圖、成功／負面驗證截圖、README、甘特圖、checkpoints、Demo 與清理紀錄。

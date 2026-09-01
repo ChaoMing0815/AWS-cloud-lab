@@ -1,10 +1,10 @@
 # CURRENT：目前工作交接
 
-- 更新日期：2026-08-31
+- 更新日期：2026-09-01
 - 繳交期限：2026-09-07
-- 目前里程碑：Tier 0、Tier 1、Tier 2、Tier 3 production gates 已完成；Tier 4 尚未開始；Tier 5 僅完成 Support Agent Phase A，不得宣稱 Tier 5 全部完成。
+- 目前里程碑：ADR-0008 定義的 AWS production 主線已完成，包含可玩 MVP、可觀測／SSM、Web／Story Worker／Data 組件化與自動部署。Tier 4／5 只是 future roadmap，不是當前缺口或 final delivery blocker。
 - 狀態判定：以目前已實作、production 狀態與 sanitized evidence 為主。`docs/checkpoints.md` 與 `docs/task-list.md` 是驗收參考與證據整合清單，不得以歷史未勾項否定已有實作與證據的成果。
-- 課程對齊：講師已確認 FastAPI＋private PostgreSQL 可作為 Tier 0 Web／DB 分離的等效實作，並已確認 Tier 0–5 的累積演進對映。
+- 課程對齊：講師已確認 FastAPI＋private PostgreSQL 可作為 Tier 0 Web／DB 分離的等效實作，並已確認 Tier 0–5 的課程能力對映；這不表示最終完成目標仍是 Tier 0–5 全部實作。
 - 帳號治理：專案已改用新帳號，舊帳號的 Billing Support 禮貌性點數結果不再適用，不列為 Demo 或繳交阻斷項。已知 MFA、Budget、principal、credits 與基礎資源不重複驗證；只有 change envelope 擴張時才重新核准。
 
 ## Production 基準
@@ -46,11 +46,11 @@
 - Digest release 已實際切換 production container runtime，candidate／public edge／live／ready／Docker health／rollback gates 均有證據。
 - 歷史失敗 runs 只作 fail-closed 與矯正證據，不得把「尚未部署」的當時狀態繼續寫成目前狀態，也不得 re-run 舊 workflow。
 
-### Tier 5：Support Agent Phase A only
+### 已部署的 bounded Support Agent extension
 
 - Bounded core、static cited rules、unsupported fail-closed、PostgreSQL durability、API／session／CSRF／輸入上限／bounded rate limit 與 Web 人工確認 UI 已部署 production。
 - Anonymous supported／unsupported rules lookup、Player `local_draft_only` 草稿、HTTP `200`、service／live／ready、browser rendering 與 CSP corrective 已驗證。
-- Phase A 沒有 Bedrock、RAG、MCP、external submit 或完整 multi-Agent workflow；`local_draft_only` 不得描述為已送出客服案件。
+- 此 extension 沒有 Bedrock、RAG、MCP、external submit 或完整 multi-Agent workflow；`local_draft_only` 不得描述為已送出客服案件。這是已完成功能的誠實邊界，不代表本專題尚欠完整 Tier 5。
 
 ## 正式證據入口
 
@@ -59,18 +59,18 @@
 - Tier 1 completion：[`docs/evidence/2026-08-25-tier1-completion/validation.md`](../evidence/2026-08-25-tier1-completion/validation.md)
 - Tier 2 Web async activation／rollback／player E2E：[`docs/evidence/2026-08-31-tier2-web-async-activation/validation.md`](../evidence/2026-08-31-tier2-web-async-activation/validation.md)
 - Tier 3 production release：[`docs/evidence/2026-08-31-tier3-production-release/validation.md`](../evidence/2026-08-31-tier3-production-release/validation.md)
-- Support Agent Phase A：[`docs/evidence/2026-08-31-support-agent-integration/validation.md`](../evidence/2026-08-31-support-agent-integration/validation.md)
+- Bounded Support Agent production extension：[`docs/evidence/2026-08-31-support-agent-integration/validation.md`](../evidence/2026-08-31-support-agent-integration/validation.md)
 - Support CSP corrective：[`docs/evidence/2026-08-31-support-csp-corrective/validation.md`](../evidence/2026-08-31-support-csp-corrective/validation.md)
 
 ## Next
 
-1. 以現有 Tier 0–3 與 Support Agent Phase A production 證據建立 5–8 分鐘 final Demo，不重跑 Bedrock、玩家 E2E、synthetic incident 或 rules draft。
-2. 整合目前與目標架構圖，明確標示 Tier 0–3 completed、Tier 4 not started、Tier 5 Phase A only。
+1. 以現有 Tier 0–3 與 bounded Support Agent production 證據建立 5–8 分鐘 final Demo，不重跑 Bedrock、玩家 E2E、synthetic incident 或 rules draft。
+2. 整合 final production architecture 與課程能力對映；Tier 4／5 若保留於圖中，必須標示 `Future roadmap / Out of scope for final delivery`。
 3. 建立 final evidence index，使 Demo 每一步只連到一個 canonical sanitized evidence。
 4. 完成 repository secrets 掃描與 tracked screenshots OCR／人工遮罩 audit。
 5. 完成 2026-09-08 清理 runbook，列出現役資源、dependency order、ECR `Retain`、snapshot 決策、owner 與帳單複查方式；未取得人工指示前不執行清理。
 6. 最後同步 README、architecture index、project plan、gantt、checkpoints、task list 與 deployment log，移除已被實作取代的歷史未勾項。
-7. 不自動開始 Tier 4 或 Support Agent Phase B；若要擴張，必須由使用者另行確認範圍、成本與 AWS change envelope。
+7. Tier 4／5、Support Agent Bedrock／RAG／external submit 都是 future scope，不自動開工；若要擴張，必須由使用者另行確認範圍、成本與 AWS change envelope。
 
 ## 操作護欄
 
@@ -89,5 +89,5 @@
 - `CoStoryHealthCheck` 已通過正面 gate，尚未執行 Document 自身的代表性 failure gate。
 - 尚未驗證多人長時間連續回合、iPhone Safari 長時間 polling／visibility，以及 `COMPLETED` 房間刪除後的 AWS 多分頁 lifecycle。
 - ECR 保留歷史 fail-closed 與 successful release images，lifecycle limit 為 `10`；舊 runs 不得 re-run，storage／scan 仍可能產生少量費用。
-- Support Agent static retrieval 無法涵蓋所有自然語言問法，identity digest 未加鹽；Bedrock／RAG／external submit 仍不在 Phase A 範圍。
+- Support Agent static retrieval 無法涵蓋所有自然語言問法，identity digest 未加鹽；Bedrock／RAG／external submit 不在已部署的 bounded scope。
 - 原始截圖若位於 TemporaryItems／Downloads 不算正式 evidence；入庫前必須去識別化。

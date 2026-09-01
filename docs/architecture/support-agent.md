@@ -1,4 +1,6 @@
-# Bounded Support Agent Phase A 架構
+# Bounded Support Agent 架構
+
+狀態：本架構已整合 API、Web UI、PostgreSQL durability 與 production release。這是 bounded extension 的完整已核准範圍，不是「Tier 5 部分完成」；精確 runtime 狀態見 [`CURRENT`](../handoffs/CURRENT.md)。
 
 ## Clean Architecture 邊界
 

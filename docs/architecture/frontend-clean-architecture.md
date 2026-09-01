@@ -1,6 +1,6 @@
 # 共演計劃：前端 Clean Architecture
 
-狀態：已接受的目標架構，尚未完成程式遷移。日期：2026-08-08。
+狀態：已接受且主要 production 路徑已實作；本文保留 2026-08-08 的設計脈絡。
 
 本文件定義瀏覽器前端如何支援本機 MVP、Tier 0 的 EC2／FastAPI，以及後續 SQS、Container、微服務與 Agentic AI 演進。前端只依賴穩定的 HTTP API 契約，不直接依賴任何 AWS SDK 或 AWS credential。
 
@@ -179,6 +179,8 @@ MVP 使用瀏覽器原生 ES modules，不先引入 React 或大型 bundler。�
 | Tier 3 | Docker、ECR、自動部署 | 同一靜態前端隨 image build；runtime config 決定 API base path |
 | Tier 4 | Lobby／Character／Turn／Rules／Story services | 對瀏覽器保留單一 API／BFF，不暴露內部服務拓撲 |
 | Tier 5 | RAG、MCP、多 Agent、人工批准 | 新增狀態與批准畫面；AWS tool 仍只由後端呼叫 |
+
+此表保留架構相容性方向；依 ADR-0008，Tier 4／5 是 future roadmap，不是目前前端待辦。
 
 Tier 0 優先由 FastAPI／Nginx 同源提供靜態前端與 API，以避免額外 CORS、CloudFront 與憑證管理複雜度。S3／CloudFront 是後續可選優化，不是 MVP 前置條件。
 

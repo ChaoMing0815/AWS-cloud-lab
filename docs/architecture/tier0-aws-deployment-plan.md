@@ -28,7 +28,7 @@ Tier 0 採單一 public EC2 執行 `Nginx + FastAPI/Uvicorn`，由 private、Sin
 | 非敏感設定 | Systems Manager Parameter Store Standard | Region、model ID、Guardrail ID、log level | 選配；不得保存明文密碼 |
 | DNS／TLS | Route 53 或既有 DNS；TLS 方案待決 | 提供可信任 HTTPS 與 `Secure` cookie | 部署前決策；沒有 HTTPS 不得宣稱 production-ready |
 
-延後到後續 Tier：SQS／Story Worker（Tier 2）、ECR／GitHub Actions OIDC（Tier 3）、ECS／ALB／五服務（Tier 4）、S3／RAG／MCP／多 Agent（Tier 5）。
+本文件是 Tier 0 歷史部署計畫。其後 SQS／private Story Workers（Tier 2）與 ECR／GitHub Actions OIDC（Tier 3）均已部署；ECS／ALB／五服務（Tier 4）與 RAG／MCP／多 Agent（Tier 5）依 ADR-0008 保留為 future roadmap，不是延後待辦。
 
 ## 3. 目標拓撲
 

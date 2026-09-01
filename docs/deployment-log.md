@@ -7,9 +7,11 @@
 | 項目 | 內容 |
 | --- | --- |
 | 專題名稱 | 共演計劃：多人 AI 故事遊戲 |
-| 主線題目 | 同一產品累積完成 Tier 0–5 |
-| 演進內容 | Web／DB 分離、可觀測性、SSM、分層架構、CI/CD、微服務、RAG、MCP、Agentic AI |
+| 主線題目 | 同一產品完成 AWS 可玩 MVP、可觀測／SSM、Web／Worker／Data 組件化與自動部署 |
+| 演進內容 | 本次交付為 Web／DB 分離、可觀測性、SSM、非同步分層架構與 CI/CD；Tier 4／5 是 future roadmap |
 | 期末專題繳交日 | 2026-09-07 |
+
+> 本表下方是不可改寫的時間序部署紀錄；早期「Tier 0–5 全部完成」敘述已由 [ADR-0008](decisions/0008-fix-final-delivery-scope.md) 取代，不得據此建立目前 backlog。
 | AWS Region | Asia Pacific (Tokyo) — `ap-northeast-1` |
 | VPC CIDR | `10.20.0.0/16` |
 | Public Subnet CIDR | `10.20.10.0/24` |
@@ -59,7 +61,7 @@
 | 2026-08-10 | 日常人員 IAM | 建立 Console-only IAM user `ming-dev` 與 `AWSFinalProjectDevelopers` group；啟用 MFA，Access／API／SSH keys 均為 0 | 群組有 1 位成員；連接 `ReadOnlyAccess`、`IAMUserChangePassword`、`AWSBillingReadOnlyAccess`；未授予 `AdministratorAccess` 或 `PowerUserAccess` | [新帳號基線](evidence/2026-08-10-new-account-baseline/validation.md) |
 | 2026-08-10 | Billing 委派唯讀 | Root 啟用 IAM user／role Billing access；`ming-dev` 可查看當月帳單與 Free plan 狀態 | 群組已連接 `AWSBillingReadOnlyAccess`；2026 年 8 月預估總計 `USD 0.00` | [群組政策](screenshots/phase0-ming-dev-group-policies.png)／[帳單證據](screenshots/phase0-ming-dev-billing-zero.png) |
 | 2026-08-10 | Polling 離線／reconnect UX | 暫時性 network／`5xx` 保留 canonical 畫面並採 3／5／10 秒 bounded backoff；恢復後回 3 秒；`401/403` 停止，`409` reload | Red `4 passed, 5 failed`；Green／還原 mutation 後 Frontend `65 passed`、Backend `59 passed, 7 skipped`；未執行 AWS 寫入 | [TDD 驗證](evidence/2026-08-10-polling-offline-reconnect/tdd-validation.md) |
-| 2026-08-10 | Tier 0 AWS 部署規劃 | 以 Model routing 完成服務、VPC／SG、EC2／RDS／Bedrock、IAM、TLS、成本、驗證與清理設計 | Proposed；尚待講師、帳號、Region、credits、估價與 IAM 關卡；未執行 AWS 寫入 | [Tier 0 部署規劃](architecture/tier0-aws-deployment-plan.md) |
+| 2026-08-10 | Tier 0 AWS 部署規劃 | 以 Model routing 完成服務、VPC／SG、EC2／RDS／Bedrock、IAM、TLS、成本、驗證與清理設計 | 當時為 Proposed 且未執行 AWS 寫入；所列講師、帳號、Region、credits 與 IAM 關卡後續均已完成，不是目前待辦 | [Tier 0 部署規劃](architecture/tier0-aws-deployment-plan.md) |
 | 2026-08-14 | IAM bootstrap | 以 Root＋MFA 一次性建立 account protection deny 與 project-prefixed IAM delegation，並將 `PowerUserAccess` 附加至既有 developer group；隨即改回 `ming-dev` | `co-story-iam-bootstrap` `CREATE_COMPLETE`；group 6 policies；無 Access Key | [IAM／Network 部署驗證](evidence/2026-08-14-tier0-network-deployment/validation.md) |
 | 2026-08-14 | Tier 0 network | 在 Tokyo 建立 `10.20.0.0/16` VPC、1 public app subnet、2 private DB subnets、IGW、route tables 與 App／DB SG；不含 compute、database、NAT 或 EIP | 19 resources `CREATE_COMPLETE`；private route local-only；DB `5432` 只接受 App SG | [IAM／Network 部署驗證](evidence/2026-08-14-tier0-network-deployment/validation.md) |
 | 2026-08-14 | SG egress correction | Console 驗證發現 EC2 default allow-all egress；以 R3 TDD 與 CloudFormation localhost sink 修正 App／DB SG | Red `117bf3b`、Green `a78da19`；stack `UPDATE_COMPLETE`；final egress 截圖通過 | [IAM／Network 部署驗證](evidence/2026-08-14-tier0-network-deployment/validation.md) |

@@ -2,7 +2,7 @@
 
 本目錄用來保存期末專題需要提交或展示的 AWS 截圖。
 
-> ADR-0001 已將主題改為多人 AI 文字 RPG；下方 WordPress 檔名與項目仍待遷移，不得視為最新完成定義。
+> 本頁是實際截圖資產索引，不是工作 backlog。依 [ADR-0008](../decisions/0008-fix-final-delivery-scope.md)，本次交付止於 production 組件化與自動部署；Tier 4／5 不由截圖缺項推導為待辦。下方 WordPress 檔名只保留歷史命名，不是產品要求。
 
 建議檔名使用階段與內容命名，例如：
 
@@ -57,27 +57,12 @@ phase5-ssm-run-command.png
 - [x] Tier 0 EC2＋SSM change set 與建立完成：[`change set`](phase0-tier0-compute-change-set.png)／[`stack`](phase0-tier0-compute-stack-create-complete.png)／[`events`](phase0-tier0-compute-create-complete-events.png)
 - [x] SSM managed node Online 與免 SSH Session Manager：[`managed node`](phase0-tier0-ssm-managed-node-online.png)／[`session validation`](phase0-tier0-ssm-session-validation.png)
 
-### 歷史舊帳號（2026-08-07）
+### 歷史舊帳號（2026-08-07；封存、不適用）
 
-舊帳號的 Budget、Root、Organizations、CloudTrail 與 IAM Identity Center 截圖已於 2026-08-10 全部清除，避免與目前候選部署帳號混淆。事故原因與矯正措施只保留在 `docs/evidence/2026-08-07-*` 文字紀錄；不得把它們當成目前 AWS 狀態或最終報告證據。
-- [ ] IAM Identity Center group、permission set 與 account assignment（遮罩 Email 與帳號識別資訊）
-- [ ] AWS CLI SSO 登入與 caller identity（不得顯示 credential）
-- [ ] 專題 IAM role trust policy 與 permissions policy
-- [ ] VPC overview
-- [ ] Public/private subnets
-- [ ] EC2 位於正確 VPC 與 subnet
-- [ ] RDS 位於 private subnet
-- [ ] Security Group 規則
-- [ ] WordPress 成功部署畫面
-- [ ] WordPress 發文成功與資料持久保存
+舊帳號的 Budget、Root、Organizations、CloudTrail 與 IAM Identity Center 截圖已於 2026-08-10 全部清除，避免與目前部署帳號混淆。事故原因與矯正措施只保留在 `docs/evidence/2026-08-07-*` 文字紀錄；不得把已清除的 IAM Identity Center、VPC、RDS、Security Group 或 WordPress 截圖當成目前待補項、AWS 狀態或最終報告證據。
 
-帳號／Region 的狹窄標頭截圖因遮罩影響可讀性未納入；新帳號 Region 尚待下次 AWS 唯讀盤點重新驗證。
+帳號／Region 的狹窄標頭截圖因遮罩影響可讀性未納入；目前帳號與 Region 已確認，除非 AWS change envelope 擴張，不重複盤點。
 
-## 加分截圖
+## 歷史加分截圖提示
 
-- [ ] CloudWatch Dashboard
-- [ ] CloudWatch Alarm
-- [ ] SSM Session Manager
-- [ ] SSM Run Command
-- [ ] AI 維運 Agent 分析結果
-- [ ] GitHub Actions pipeline
+CloudWatch Dashboard／Alarm、SSM Session Manager／Run Command、AIOps 分析與 GitHub Actions pipeline 均已有 milestone evidence。最終只需從既有安全資產挑選可讀、已遮罩的代表畫面，不將本段當成重新執行 AWS 驗證的清單。

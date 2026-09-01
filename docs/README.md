@@ -6,7 +6,7 @@
 
 - [目前 branch、驗證基準與下一步](handoffs/CURRENT.md)
 - [部署紀錄](deployment-log.md)
-- [Tier checkpoints](checkpoints.md)
+- [最終交付檢核參考](checkpoints.md)
 - [甘特圖](gantt.md)
 
 ## 產品與驗收
@@ -22,7 +22,7 @@
 
 ## AWS 與架構
 
-- [Tier 0–5 AWS 架構](architecture/README.md)
+- [最終 production 與 future roadmap 架構](architecture/README.md)
 - [Tier 0 AWS 部署規劃](architecture/tier0-aws-deployment-plan.md)
 - [Tier 0 AWS change envelope](architecture/tier0-aws-change-envelope.md)
 - [AWS 服務清單](aws-services.md)
@@ -36,6 +36,7 @@
 - [ADR-0001：多人 AI 文字 RPG](decisions/0001-select-multiplayer-ai-text-rpg.md)
 - [ADR-0002：Clean Frontend Architecture](decisions/0002-adopt-clean-frontend-architecture.md)
 - [ADR-0003：PostgreSQL room aggregate repository](decisions/0003-adopt-postgresql-room-aggregate-repository.md)
+- [ADR-0008：固定最終交付範圍](decisions/0008-fix-final-delivery-scope.md)
 
 ## 測試與證據
 
@@ -49,7 +50,7 @@ Evidence 用於 milestone、R2／R3 與 AWS 驗收，不是每次測試的完整
 
 - [專題計畫](project-plan.md)
 - [課程要求對照](course-requirements-alignment.md)
-- [任務拆分](task-list.md)
+- [最終交付任務](task-list.md)
 - [LLM 文字 RPG research](research/llm-text-rpg.md)
 - [WordPress／自製 Web App 歷史評估](research/wordpress-web-platform-evaluation.md)
 

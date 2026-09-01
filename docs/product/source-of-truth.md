@@ -3,7 +3,7 @@
 - 狀態：Active
 - Owner：專題使用者（產品）／專題開發者（技術）
 - Source of Truth：是，僅負責文件權威與衝突處理
-- 最後檢視：2026-08-27
+- 最後檢視：2026-09-01
 
 ## 目的
 
@@ -16,6 +16,7 @@
 | Agent 工作、安全與 AWS 變更關卡 | [`AGENTS.md`](../../AGENTS.md) 與專題 Skill | Active | 所有工作階段 |
 | 目前 branch、驗證基準與下一步 | [`handoffs/CURRENT.md`](../handoffs/CURRENT.md) | Active | 每個新 task 的最小啟動集 |
 | 選題與產品邊界 | [ADR-0001](../decisions/0001-select-multiplayer-ai-text-rpg.md) | Accepted | 產品、架構、課程對照 |
+| 最終交付範圍與 Tier 4／5 future roadmap 邊界 | [ADR-0008](../decisions/0008-fix-final-delivery-scope.md) | Accepted | 所有 task、final review、Demo、架構與清理 |
 | 前端與 API 責任邊界 | [ADR-0002](../decisions/0002-adopt-clean-frontend-architecture.md) | Accepted | 前端、後端、測試 |
 | PostgreSQL persistence 與 repository 邊界 | [ADR-0003](../decisions/0003-adopt-postgresql-room-aggregate-repository.md) | Accepted | 後端、migration、RDS |
 | Tier 2 replay-safe story result 邊界 | [ADR-0004](../decisions/0004-adopt-replay-safe-story-results.md) | Accepted | Web／API、Story Worker、Data、queue |
@@ -27,7 +28,7 @@
 | 實作切片 | [`docs/features/`](../features/README.md) | 各切片獨立標示 | Engineer、QA |
 | 嚴格 TDD 程序 | [測試策略](../testing-strategy.md) | Active | 所有行為變更 |
 | 本機 MVP 驗收範圍 | [本機 MVP Test Plan](../qa/local-mvp-test-plan.md) | Active target | QA、Release gate |
-| AWS 課程交付 | [Project Plan](../project-plan.md)、[Checkpoints](../checkpoints.md) | Active | AWS 各 Tier |
+| AWS 課程交付 | [ADR-0008](../decisions/0008-fix-final-delivery-scope.md)、[Project Plan](../project-plan.md)、[Checkpoints](../checkpoints.md) | Active | 最終 Demo、架構、證據與清理 |
 
 ## 狀態規則
 
@@ -36,6 +37,7 @@
 - `Draft` 只能用於討論，不能單獨作為 production code 的依據。
 - `Superseded` 必須連到替代文件，不得繼續作為驗收標準。
 - Checklist 只能反映完成狀態，不能覆蓋 Spec。
+- `checkpoints.md`、`task-list.md`、Gantt 或歷史 Tier 0–5 文件不得覆蓋 ADR-0008 的 final delivery scope；Tier 4／5 不是當前未完成項。
 
 ## 小型專案角色切換
 

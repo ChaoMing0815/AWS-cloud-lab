@@ -5,6 +5,8 @@
 - 決策者：專題使用者／整合 task
 - 範圍：遊戲規則說明與問題回報草稿
 
+> 後續狀態：本 ADR 的安全與功能邊界仍有效，但本機 core 已完成 API、Web UI、PostgreSQL 與 production 整合。依 ADR-0008，這是已部署的 bounded extension，不是「Tier 5 部分完成」；下文背景與「延後事項」保留為當時決策紀錄。
+
 ## 背景
 
 共演計劃已有靜態遊戲規則頁，但玩家遇到規則疑問或產品問題時，缺少能依問題提供精確說明與整理回報內容的互動入口。此能力可作為Tier 5 Agentic AI的提早驗證，但目前Tier 2正在修改Room／job／migration一致性，若同時接API、UI與資料庫會增加衝突與交付風險。

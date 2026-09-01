@@ -1,6 +1,6 @@
 # 共演計劃：Session、CSRF 與 Idempotency 設計
 
-- 狀態：本機 memory vertical slice 已實作
+- 狀態：production 已實作；下文保留最初設計與演進紀錄
 - 日期：2026-08-08
 - 補充決策日期：2026-08-09
 - AWS 寫入／費用：無
@@ -72,10 +72,9 @@ Idempotency-Key: <client-generated UUID>
 - 當前玩家可以在自己的 player view 看到自己的 action。
 - Action story entries 只在 round 推進後才加入公開 response。
 
-## 尚未完成
+## 後續完成狀態
 
-- Session server-side expiry、revoke、reassign 與 logout；精確 contract 見 [Session lifecycle Feature Spec](../features/session-lifecycle-and-transfer.md)。
-- Production reverse proxy trusted headers 與真實 HTTPS Browser 驗證。
-- Origin／Fetch Metadata defense-in-depth policy。
-- PostgreSQL session／idempotency persistence 與 concurrent transaction test。
-- 正式跨裝置 reassign 與舊 session 失效測試。
+- Session server-side expiry、revoke、reassign、正式跨裝置轉移與舊 session 失效測試已完成。
+- Production reverse proxy、HTTPS／Secure cookie、Origin 與 Fetch Metadata defense-in-depth 已完成部署驗證。
+- PostgreSQL session／idempotency persistence 與 concurrent transaction tests 已完成。
+- 精確合約見 [Session lifecycle Feature Spec](../features/session-lifecycle-and-transfer.md)，production 狀態見 [`CURRENT`](../handoffs/CURRENT.md)。

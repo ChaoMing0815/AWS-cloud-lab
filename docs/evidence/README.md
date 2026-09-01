@@ -1,6 +1,6 @@
 # 驗證證據索引與保留規則
 
-本目錄保存能支持課程驗收、安全聲明與高風險變更的精簡證據。它不是原始 terminal log、每日工作紀錄或每次測試輸出的集中地。
+本目錄保存能支持課程驗收、安全聲明與高風險變更的精簡證據。它不是原始 terminal log、每日工作紀錄或每次測試輸出的集中地。依 [ADR-0008](../decisions/0008-fix-final-delivery-scope.md)，索引重點是已實作的 production 組件化、自動部署與 bounded Support Agent；Tier 4／5 future roadmap 不需要補證據。
 
 ## 保留原則
 
@@ -35,6 +35,12 @@
 - [Bedrock Guardrail baseline](2026-08-15-tier0-bedrock-guardrail/validation.md)
 - [Artifacts、runtime secrets、migration 與 internal staging](2026-08-16-tier0-internal-staging/validation.md)
 - [Batch 9A、Prompt Attack 未歸因結果與公開試玩 readiness](2026-08-19-tier0-public-trial-readiness/validation.md)
+- [Tier 1 CloudWatch／AIOps／SSM 完成驗證](2026-08-25-tier1-completion/validation.md)
+- [Tier 2 production async activation 與最終 runtime 狀態](2026-08-31-tier2-web-async-activation/validation.md)
+- [Tier 2 玩家 UI release](2026-08-31-tier2-web-ui-release/validation.md)
+- [Tier 3 production release](2026-08-31-tier3-production-release/validation.md)
+- [Support Agent production 整合](2026-08-31-support-agent-integration/validation.md)
+- [Support Agent CSP corrective](2026-08-31-support-csp-corrective/validation.md)
 
 ## 產品與 release gates
 

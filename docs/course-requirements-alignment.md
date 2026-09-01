@@ -4,14 +4,14 @@
 - 原始資料：[`docs/inbox/專題.pptx`](inbox/專題.pptx)，共 53 張投影片
 - 原始檔 SHA-256：`8ad62fe7dbf46f9c532219f2fa87e7053271aecd241383bc55e771da9e4d42c8`
 - 解讀依據：使用者澄清、`AGENTS.md`、Project Brief、ADR-0001
-- 狀態：已更正；Tier 0–5 視為同一主題的累積演進
+- 狀態：歷史課程能力對照；最終交付範圍以 [ADR-0008](decisions/0008-fix-final-delivery-scope.md) 為準
 - AWS 變更：無
 
 ## 1. 更正紀錄
 
 先前把「完成 Tier 0 任一題即可達及格門檻」誤讀為 Tier 0–5 是選擇題，並因此推薦另外加入 WordPress 保底。這不符合 Project Brief 所描述的架構演進目標，也不符合使用者提供的課程上下文。
 
-正確解讀：
+當時建立的課程能力對照：
 
 ```text
 同一個產品主題
@@ -23,20 +23,22 @@
   → Tier 5 Enterprise Agentic AI
 ```
 
-投影片中的 WordPress、CS、LINE Bot 等是用來說明能力與檢核點的題卡；共演計劃的目標是用同一產品盡可能完整展示 Tier 0–5，而不是另外拼接多個互不相關專題。
+投影片中的 WordPress、CS、LINE Bot 等是用來說明能力與檢核點的題卡，而不是必須逐字實作的產品清單。共演計劃沿用同一產品完成 Tier 0–3 對應的 production 能力；Tier 4／5 保留為 future roadmap，不是本次未完成項目或 Demo 阻斷項。
 
 ## 2. 全階段共同要求
 
 | 要求 | 來源 | 共演計劃做法 |
 | --- | --- | --- |
-| 所有成果最終部署到 AWS | 投影片 4、8、51；Project Brief | 每一 Tier 都保存 AWS 實作與驗證，不能只交本機 Demo |
+| 所有成果最終部署到 AWS | 投影片 4、8、51；Project Brief | 最終範圍內的產品、組件化、維運與自動部署皆保存 AWS 實作與驗證，不能只交本機 Demo |
 | 能跑與架構正確是基本門檻 | 投影片 4、5、51 | 先完成 Tier 0 可玩 vertical slice，再向上演進 |
 | 控制費用、設 Budget、Demo 後清理 | 投影片 4、9 | 每層先估價，採最小規格與短時展示；不得建立／加入 Organization |
 | 同一架構逐步演進 | Project Brief、AGENTS.md | 不另建孤立 WordPress 專案；所有能力回到共演計劃 |
 | 五項必備文件 | 投影片 10–13 | 題目、架構、預期成效、甘特圖、檢核點同步更新 |
-| GitHub 與可視化證據 | 投影片 5、6、51 | 每層保存架構圖、Demo、README、成功與負面測試截圖 |
+| GitHub 與可視化證據 | 投影片 5、6、51 | 已實作範圍保存架構圖、Demo、README、成功與負面測試證據 |
 
-## 3. 共演計劃的 Tier 0–5 路線
+## 3. 歷史 Tier 0–5 能力對照
+
+下表用於說明課程演進概念，不等同目前 task list。Tier 0–3 已落實為本次 production 主線；Tier 4／5 僅供未來擴充參考。
 
 | Tier | 最小可驗證實作 | 主要技術 | Demo 證據 |
 | --- | --- | --- | --- |
@@ -67,23 +69,22 @@ Tier 0 即應保留的安全邊界：
 - 不使用長期 Access Key，不授予應用程式 `AdministratorAccess`。
 - 遊戲規則由後端決定，LLM 只能生成受 schema 限制的敘事。
 
-## 5. 從 Tier 0 演進到 Tier 5
+## 5. 課程演進圖與最終交付切點
 
 ```mermaid
 flowchart LR
     T0["Tier 0<br/>FastAPI monolith<br/>private PostgreSQL"] --> T1["Tier 1<br/>CloudWatch + SSM<br/>AIOps"]
     T1 --> T2["Tier 2<br/>Web/API + Worker + Data<br/>SQS"]
-    T2 --> T3["Tier 3<br/>Docker + ECR<br/>GitHub Actions"]
-    T3 --> T4["Tier 4<br/>五個獨立服務<br/>故障隔離"]
+    T2 --> T3["Tier 3<br/>Docker + ECR<br/>GitHub Actions<br/>本次最終切點"]
+    T3 -. future .-> T4["Tier 4<br/>五個獨立服務<br/>故障隔離"]
     T4 --> T5["Tier 5<br/>RAG + MCP + Multi-Agent<br/>AI Observability"]
 ```
 
 演進原則：
 
-- 下一 Tier 沿用前一 Tier 的程式、資料與證據，不重做另一個產品。
-- 每層只做一個能 Demo 的最小案例，避免同時追求完整生產規模。
-- 高費用架構只在驗證與 Demo 時啟動，完成證據後停止或刪除。
-- 若期限不足，縮小每層功能深度，但不把某一 Tier 悄悄標成選配完成。
+- 已完成的演進沿用同一產品、程式、資料與證據，不重做另一個產品。
+- ADR-0008 固定本次交付切點，不能由這份歷史對照反推出 Tier 4／5 待辦。
+- future roadmap 若日後啟動，仍須重新核准範圍、成本與 AWS change envelope。
 
 ## 6. WordPress 的位置
 
@@ -94,9 +95,9 @@ WordPress 不加入共演計劃核心架構。它提供的教學重點是：
 - SG-to-SG 僅開必要 DB port。
 - 寫入資料後仍可持久化。
 
-共演計劃以 FastAPI Web App 與 private PostgreSQL 實作同一組 Tier 0 能力。仍需向講師確認這組等效檢核能否取代 P0-2 題卡中的 WordPress 字樣，但確認重點是「自製主題的 Tier 0–5 對映」，不是把 WordPress 當成第二個產品。
+共演計劃以 FastAPI Web App 與 private PostgreSQL 實作同一組 Tier 0 能力；講師已確認其等效性與課程對映。不得再把 WordPress 或講師確認列為待辦。
 
-## 7. Tier 5 邊界
+## 7. Future Tier 5 邊界（本次範圍外）
 
 目前 MVP 的 LLM 故事生成只是生成式 AI，不因呼叫 Bedrock 就自動成為 Agentic AI。到 Tier 5 才加入：
 
@@ -107,13 +108,13 @@ WordPress 不加入共演計劃核心架構。它提供的教學重點是：
 - 高風險操作需要人工批准。
 - 任務成功率、token、latency、cost、Guardrail intervention 與 tool audit log。
 
-## 8. 建議詢問講師的訊息
+## 8. 已確認事項
 
-> 老師您好，我會以同一個「共演計劃」多人 AI 故事 Web App 貫穿 Tier 0–5：Tier 0 做 public Web／private DB 與可玩 MVP；Tier 1 加 CloudWatch、AIOps 與 SSM；Tier 2 拆成 Web/API、Story Worker、Data 三組件；Tier 3 做 Docker／ECR／GitHub Actions；Tier 4 拆分五個服務並展示故障隔離；Tier 5 加 Prompt 管理、RAG、MCP／工具、多 Agent 與 AI 使用監控。請問 Tier 0 以自製 FastAPI Web App＋private PostgreSQL，逐項證明公私網段、SG 限制、DB 外網不可達與資料持久化，是否可視為 WordPress Web/DB 分離題卡的等效實作？另請確認上述 Tier 0–5 對映是否符合期末專題要求。
+講師已確認自製 FastAPI Web App＋private PostgreSQL 可作為 Web／DB 分離的等效實作，課程能力對映亦已確認。此項不是待決策、待詢問或 Demo 阻斷項。
 
-## 9. 目前決策關卡
+## 9. 目前固定邊界
 
-1. 取得講師對自製 Tier 0 等效檢核與 Tier 0–5 路線的確認。
-2. 使用者確認資料層採 PostgreSQL／RDS，讓 Tier 0 持久化與 Tier 5 `pgvector` 共用演進。
-3. 建立架構 ADR 後才修改正式 Spec 的 DynamoDB AWS adapter。
-4. AWS 帳號、Budget、估價與 principal 關卡通過前，只做本機程式與文件。
+1. PostgreSQL／RDS private data layer 已由 ADR-0003 接受並部署。
+2. 最終交付範圍依 ADR-0008，止於 production 組件化與自動部署。
+3. Support Agent 是 bounded deployed extension，不代表 Tier 5 尚待補完。
+4. Tier 4／5 或新 AWS／Bedrock 資源只有在新的範圍與成本核准後才可啟動。

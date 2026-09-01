@@ -4,19 +4,22 @@
 
 ## 專案定位
 
-本專案是 AWS 雲端工程師培訓期末專題，目標是以同一個「共演計劃」多人 AI 故事應用為主題，先建立可運作的 AWS 傳統架構，再逐步演進成可觀測、可自動部署、微服務化與 Agentic AI 系統。
+本專案是 AWS 雲端工程師培訓期末專題，以同一個「共演計劃」多人 AI 故事應用為主題；本次交付完成可運作的 AWS 架構、可觀測性、組件化與自動部署，微服務化與完整 Agentic AI 保留為未來方向。
 
-> 重要：Tier 0–5 是同一專題的累積演進階段，不是六選一，也不是做完 Tier 0 後任選一張題卡。每一層都要留下可運作成果、架構理由與驗證證據。
+> 重要：Tier 0–5 是同一產品的課程能力對映，不是六選一。但依 [ADR-0008](docs/decisions/0008-fix-final-delivery-scope.md)，2026-09-07 最終交付範圍已收斂為 Tier 0–3 對應的 AWS production 可玩 MVP、可觀測／SSM、Web／Worker／Data 組件化與自動部署。Tier 4／5 只是 future roadmap，不得當成當前未完成項或自動啟動的 backlog。
 
 主要路線：
 
 ```text
+Final delivery：
 Tier 0  共演計劃可玩 Web App + 公私網段 + 私有資料層
   -> Tier 1  CloudWatch 可觀測性 + AIOps + SSM 免 SSH
   -> Tier 2  Web／Story Worker／Data 組件切割與網段隔離
   -> Tier 3  Docker + ECR + GitHub Actions OIDC CI/CD
-  -> Tier 4  Lobby／Character／Turn／Rules／Story 微服務
-  -> Tier 5  Prompt 管理 + RAG + MCP／工具 + 多 Agent + AI 監控
+
+Future roadmap／out of scope：
+Tier 4  Lobby／Character／Turn／Rules／Story 微服務
+Tier 5  Prompt 管理 + RAG + MCP／工具 + 多 Agent + AI 監控
 ```
 
 `WordPress Web/DB 分離` 是簡報中的 Tier 0 題目範例與架構基準，不是本專題既定產品。若講師要求逐字完成該題卡，再另建 ADR，不得自行把 WordPress 插入共演計劃核心。
@@ -246,34 +249,18 @@ Red：先寫測試並確認因缺少目標行為而失敗
 
 ## 建議下一步
 
-### Step 1：完成本機 MVP 核心回合
-
-- 完成星火決策、正式進度／危機套用與下一回合
-- 完成結局條件、Mock storyteller fallback 與三玩家 E2E
-- 建立 PostgreSQL repository ADR、schema 與 migrations
-- 補齊 session expiry／revoke／reassign
-
-### Step 2：通過 AWS 部署前關卡
-
-- 確認最終 AWS 帳號、account plan、credits、Budget、principal 與 Region
-- 取得 FastAPI＋private PostgreSQL 的講師等價性確認
-- 完成 VPC、EC2、RDS、Bedrock 逐項估價與清理計畫
-- 定義最小權限 app role、Security Group 與 SSM 邊界
-
-### Step 3：開始共演計劃 Tier 0 實作
-
-- 建立 VPC 與 subnet
-- 建立 EC2 Web／API monolith
-- 建立 private PostgreSQL 資料層
-- 串接共演計劃與資料層、Amazon Bedrock
-- 保存截圖並更新檢核清單
+1. 以已完成的 AWS production 組件化與自動部署證據建立 5–8 分鐘 final Demo。
+2. 整合 current architecture、證據索引、README 與課程能力對映。
+3. 完成 repository secrets 與 tracked screenshots 去識別化稽核。
+4. 完成 2026-09-08 資源清理 runbook 與帳單複查步驟；未核准前不執行 AWS 清理。
+5. 不自動開始 Tier 4、完整 Tier 5 或 Support Agent Bedrock／RAG／external submit；這些都屬於新範圍。
 
 ## 完成定義
 
-一個階段完成時，必須同時具備：
+本次最終交付完成時，必須同時具備：
 
 - AWS 上可驗證的實作
 - GitHub 中可閱讀的文件
 - 對應截圖或 Demo 證據
-- 已更新的檢核清單
+- 已依 ADR-0008 整合的驗收參考與證據索引
 - 可向講師說明的架構理由

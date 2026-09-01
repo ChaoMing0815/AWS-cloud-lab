@@ -17,18 +17,20 @@
 - 排除：圖片、語音、戰鬥地圖、完整技能樹、官方桌上角色扮演遊戲的名稱／Logo／規則內容。
 - 期限：2026-09-07。
 
-## 演進順序
+## 最終交付與未來路線
 
-以下六層是同一專題的累積路線，不是互斥選項；每一層都必須有對應實作與證據：
+依 ADR-0008，2026-09-07 最終交付已收斂至以下 AWS production 能力：
 
-1. Tier 0：AWS 可玩 MVP、傳統 Web／DB 分層、私有資料層、LLM 生成、基本成本與證據。
-2. Tier 1：CloudWatch、SSM 免 SSH、Parameter Store／Secrets Manager、最小權限 IAM與 AIOps incident。
-3. Tier 2：Web/API、Story Worker、Data 三組件，搭配 SQS、retry、網段隔離與端到端驗證。
-4. Tier 3：Docker、ECR、GitHub Actions OIDC、CI/CD。
-5. Tier 4：Lobby、Character、Turn、Rules、Story 服務拆分與故障隔離。
-6. Tier 5：Prompt 版本、RAG、Guardrails、多 Agent、tool calling、MCP、人工批准、AI 監控與 audit log。
+1. 可玩 MVP、傳統 Web／DB 分層、private PostgreSQL、Bedrock 敘事與安全／成本證據。
+2. CloudWatch、SSM 免 SSH、最小權限 IAM 與 bounded AIOps incident。
+3. Web／API、Story Worker、Data 三組件，含 SQS／DLQ、private Worker、retry、idempotency／fencing、網段隔離與 production async E2E。
+4. Docker、ECR、GitHub Actions OIDC、Trivy、SSM release、health gate 與 rollback。
 
-WordPress 是講師簡報中的 Tier 0 範例，不是目前選定產品。共演計劃應用自己的 Web／DB 分離實作對應相同能力；是否可等效取代題卡須保存講師確認。
+Tier 4 的 Lobby／Character／Turn／Rules／Story 微服務，以及 Tier 5 的完整 Prompt／RAG／MCP／Multi-Agent／AI monitoring，只是 future roadmap／out of scope，不得當成當前缺口。
+
+Support Agent 是後續核准平行開發並透過既有 pipeline 上線的 bounded extension；它不代表專題尚欠完整 Tier 5。
+
+WordPress 是講師簡報中的 Tier 0 範例，不是目前選定產品。講師已確認共演計劃的 FastAPI＋private PostgreSQL 可等效對應 Web／DB 分離能力，不再列為待確認項。
 
 ## AWS 成本關卡
 

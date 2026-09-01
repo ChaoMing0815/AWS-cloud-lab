@@ -1,7 +1,7 @@
 # 共演計劃：WordPress 與自製 Web App 評估
 
 - 日期：2026-08-07
-- 狀態：已更正；WordPress 可行但不列為核心或預設保底，專題採單一自製產品累積完成 Tier 0–5
+- 狀態：歷史研究；WordPress 不列為核心或預設保底，最終交付範圍已由 ADR-0008 收斂至 AWS 組件化與自動部署
 - 範圍：本機 MVP 與後續 AWS Tier 0
 - AWS 變更：無
 
@@ -109,14 +109,14 @@ PostgreSQL 可透過 transaction、row lock、unique constraint 與 `room.versio
 
 ## 5. WordPress 的合理使用位置
 
-課程簡報把 WordPress Web／DB 分離列為 Tier 0 範例路線之一，但講師後續補充 Tier 0–5 都要完成。依此脈絡，本專題不應另做一套與主題無關的 WordPress 網站；應以「共演計劃」本身展示相同的 public Web／private DB、資料持久化與網路隔離能力：
+課程簡報把 WordPress Web／DB 分離列為 Tier 0 範例路線之一；後續已確認「共演計劃」的 FastAPI＋private PostgreSQL 可等效展示 public Web／private DB、資料持久化與網路隔離能力。本研究中的早期 Tier 0–5 推論已由 ADR-0008 取代：
 
 ```text
 FastAPI Web App：公開展示入口與遊戲 API
 PostgreSQL：private subnet 內的持久化資料層
 ```
 
-WordPress 只保留為技術評估或非核心內容網站選項，不自動加入交付範圍。開始 AWS Tier 0 前，應請講師確認 FastAPI＋private PostgreSQL 可作為 Web／DB 分離的等價成果。完整對照與證據矩陣見[課程簡報要求與對照方案](../course-requirements-alignment.md)。
+WordPress 只保留為歷史技術評估，不加入交付範圍。講師已確認 FastAPI＋private PostgreSQL 可作為 Web／DB 分離的等價成果，不得再要求重問。完整對照見[課程簡報要求與對照方案](../course-requirements-alignment.md)。
 
 ## 6. 實作順序
 

@@ -13,7 +13,7 @@ description: Safely plan, build, inspect, verify, and document the AWS final pro
    - 涉及 AWS Organizations、Control Tower 或 IAM Identity Center organization instance 時，必須先驗證 Account plan 與 Credits。若為 Free plan，立即停止：建立／加入 Organization 會自動升級 Paid plan、使 Free Tier credits 立即失效且不能降級。列出不建立 Organization 的替代方案並取得使用者對此特定後果的明確確認，普通的「確認啟用」不算充分同意。
 4. 每個 AWS change batch 只建立一次 change envelope：account、principal、Region／profile、精確資源、IAM 邊界、費用上限、驗證、rollback 與清理責任。相同 task 內只要 envelope 未擴張即可沿用；account／principal／Region、權限、成本級別、外部傳輸或不可逆性改變時才重新核准。
    - 帳務、Root、MFA、Email 驗證、權限擴張、外部傳輸、production deploy 與不可逆動作必須明確列入人工核准，不得被一般 envelope 默認涵蓋。
-5. 先完成 Tier 0 可部署 MVP，再依序演進 CloudWatch、SSM、CI/CD、RAG 與 Agentic AI。只建立當前架構確實需要的 AWS 資源。
+5. 依 ADR-0008 執行目前 final delivery scope：可玩 MVP、CloudWatch／SSM、Web／Worker／Data 組件化與 Docker／ECR／GitHub OIDC／SSM 自動部署。Tier 4 微服務與完整 Tier 5 只是 future roadmap，未經新核准不得當成 backlog 或建立資源。
 6. 每個 batch 結束時一次執行正面／負面驗證並保存 sanitized evidence；`deployment-log.md` 只記實際 AWS／環境 batch，`checkpoints.md` 與架構文件只在 milestone／Tier gate 改變時更新。
 
 ## 專題邊界

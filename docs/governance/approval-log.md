@@ -3,7 +3,7 @@
 - 狀態：Active
 - Owner：專題使用者
 - Source of Truth：是，僅記錄已核准補充決策
-- 最後檢視：2026-08-27
+- 最後檢視：2026-09-01
 
 ## 使用原則
 
@@ -58,3 +58,16 @@
 | HEALTHCHECK digest release | Production核准 | 核准 exact main `e82c6839360e10e0cb91b43fa32df5d6a7b4cb69`與verified previous digest `sha256:bab8a1bbbdc5160e5a0ac50546a174ec209cb7187cf79491473654e285fd312a`的`digest-release`；部署後Docker與公開health均通過。 | Tier 3完成gate、後續只使用digest-release |
 
 核准方式：使用者於對話中逐次核准bounded envelope；前三次失敗均fail closed，第四次完成首次container transition，後續HEALTHCHECK digest release通過並完成Tier 3。
+
+## 2026-09-01 最終交付範圍收斂
+
+| 決策 | 類型 | 核准內容 | 影響 |
+| --- | --- | --- | --- |
+| 最終完成目標 | 範圍補充 | 本次繳交以 AWS production 可玩 MVP、可觀測／SSM、Web／Worker／Data 組件化、SQS async E2E 與 Docker／ECR／GitHub OIDC／SSM 自動部署為完成邊界。 | ADR-0008、CURRENT、final Demo、證據與清理工作 |
+| Tier 4／5 | 範圍補充 | 五微服務與完整 Prompt／RAG／MCP／Multi-Agent 只作 future roadmap，不是 2026-09-07 最終交付的未完成項或 blocker。 | Project Plan、Gantt、Checkpoints、Task List、Architecture Index |
+| Support Agent 定位 | 範圍補充 | Support Agent 是主線之外核准平行開發、並透過已驗證 pipeline 部署的 bounded extension，不以「Tier 5 只完成 Phase A」表述專題進度。 | CURRENT、README、Demo 口徑 |
+| Checklist 解讀 | 治理補充 | Checkpoints／Task List 是驗收參考與證據整合清單，不得用歷史未勾項否定已有 production 實作與 sanitized evidence 的成果。 | Agent 開工程序、final review |
+| 課程等效性 | 既有決策確認 | 講師已確認 FastAPI＋private PostgreSQL 可作為 Tier 0 Web／DB 分離的等效實作，並已確認課程能力對映。 | 移除所有「待講師確認」待辦 |
+| 舊帳號點數申請 | 範圍確認 | 專案已改用新 AWS 帳號，舊帳號 Billing Support 禮貌性點數申請不再適用，不列為 backlog 或 Demo blocker。 | Task List、帳號治理口徑 |
+
+核准方式：使用者於整合 task 明確更正最終完成範圍；詳細決策見 [ADR-0008](../decisions/0008-fix-final-delivery-scope.md)。

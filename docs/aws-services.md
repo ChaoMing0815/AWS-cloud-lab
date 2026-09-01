@@ -1,6 +1,6 @@
-# 共演計劃：預計使用的 AWS 服務
+# 共演計劃：AWS 服務範圍
 
-本文件描述同一個產品由 Tier 0 累積演進至 Tier 5 的目標服務，不代表資源已建立。AWS 帳號、預算、估價與部署窗口未確認前，不建立計費資源。
+本文件保留同一產品的課程能力與服務對照，不代表所有列項都應建立。依 [ADR-0008](decisions/0008-fix-final-delivery-scope.md)，本次實作範圍止於 Tier 0–3 對應的 production 組件化與自動部署；Tier 4／5 列項是 future roadmap，沒有新核准不得建立資源。
 
 ## 分層服務清單
 
@@ -16,8 +16,8 @@
 | Tier 1 | Systems Manager Parameter Store | 保存非敏感設定；敏感值是否改用 Secrets Manager依實際需求決定 |
 | Tier 2 | Amazon SQS、額外 EC2 或等價 compute | 將 Story Worker 從 Web/API 拆離，示範至少三個運算／服務元件與非同步處理 |
 | Tier 3 | Amazon ECR、GitHub Actions OIDC | Container image、測試、build 與短期憑證自動部署 |
-| Tier 4 | Amazon ECS 或 EC2 containers、Application Load Balancer（若需要） | 拆分 Lobby、Character、Turn、Rules、Story 等服務；展示服務邊界與故障隔離 |
-| Tier 5 | Amazon S3、Bedrock、RDS PostgreSQL/pgvector 或核准的向量儲存 | Prompt 版本、RAG 知識庫、MCP 工具、多 Agent 與可觀測性 |
+| Future Tier 4（範圍外） | Amazon ECS 或 EC2 containers、Application Load Balancer（若需要） | 拆分 Lobby、Character、Turn、Rules、Story 等服務；展示服務邊界與故障隔離 |
+| Future Tier 5（範圍外） | Amazon S3、Bedrock、RDS PostgreSQL/pgvector 或核准的向量儲存 | Prompt 版本、RAG 知識庫、MCP 工具、多 Agent 與可觀測性 |
 
 ## 成本與安全邊界
 
