@@ -73,14 +73,15 @@
 
 ## Next
 
-1. 以現有 Tier 0–3、UI／Widget與bounded Support Agent production證據建立5–8分鐘final Demo；不重跑Bedrock、玩家E2E、synthetic incident或rules draft。
-2. 整合 final production architecture 與課程能力對映；Tier 4／5 若保留於圖中，必須標示 `Future roadmap / Out of scope for final delivery`。
-3. 建立 final evidence index，使 Demo 每一步只連到一個 canonical sanitized evidence。
-4. 完成 repository secrets 掃描與 tracked screenshots OCR／人工遮罩 audit。
-5. 以strict TDD把ACME父目錄最小穿越權限、公開challenge probe與憑證到期／renewal failure觀測固化至repo；不得放寬`/var/lib/co-story`的list／read／write權限。下一次timer成功前保留此項為residual，不重複手動renew。
-6. 完成 2026-09-08 清理 runbook，列出現役資源、dependency order、ECR `Retain`、snapshot 決策、owner 與帳單複查方式；未取得人工指示前不執行清理。
-7. 最後同步 README、architecture index、project plan、gantt與checkpoints；不得用歷史Tier 4／5未勾項覆蓋ADR-0008。
-8. Tier 4／5、Support Agent Bedrock／RAG／external submit 都是 future scope，不自動開工；若要擴張，必須由使用者另行確認範圍、成本與 AWS change envelope。
+1. 已核准兩日版寵物規則助手，詳細 contract 見 [`docs/features/pet-rules-assistant-two-day.md`](../features/pet-rules-assistant-two-day.md)。平行支線固定為 `codex/pet-rules-chat-ui` 與 `codex/rules-retrieval-expansion`；兩者尚未合併、push 或部署，不得把目標行為描述為 production 現況。
+2. 以現有 Tier 0–3、UI／Widget與bounded Support Agent production證據建立5–8分鐘final Demo；不重跑Bedrock、玩家E2E、synthetic incident或rules draft。
+3. 整合 final production architecture 與課程能力對映；Tier 4／5 若保留於圖中，必須標示 `Future roadmap / Out of scope for final delivery`。
+4. 建立 final evidence index，使 Demo 每一步只連到一個 canonical sanitized evidence。
+5. 完成 repository secrets 掃描與 tracked screenshots OCR／人工遮罩 audit。
+6. 以strict TDD把ACME父目錄最小穿越權限、公開challenge probe與憑證到期／renewal failure觀測固化至repo；不得放寬`/var/lib/co-story`的list／read／write權限。下一次timer成功前保留此項為residual，不重複手動renew。
+7. 完成 2026-09-08 清理 runbook，列出現役資源、dependency order、ECR `Retain`、snapshot 決策、owner 與帳單複查方式；未取得人工指示前不執行清理。
+8. 最後同步 README、architecture index、project plan、gantt與checkpoints；不得用歷史Tier 4／5未勾項覆蓋ADR-0008。
+9. Tier 4／5、Support Agent Bedrock／RAG／external submit 都是 future scope；兩日版不構成 AWS change envelope 擴張。
 
 ## 操作護欄
 

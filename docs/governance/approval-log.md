@@ -71,3 +71,15 @@
 | 舊帳號點數申請 | 範圍確認 | 專案已改用新 AWS 帳號，舊帳號 Billing Support 禮貌性點數申請不再適用，不列為 backlog 或 Demo blocker。 | Task List、帳號治理口徑 |
 
 核准方式：使用者於整合 task 明確更正最終完成範圍；詳細決策見 [ADR-0008](../decisions/0008-fix-final-delivery-scope.md)。
+
+## 2026-09-01 兩日版寵物規則助手
+
+| 決策 | 類型 | 核准內容 | 影響 |
+| --- | --- | --- | --- |
+| 兩日版範圍 | 產品補充 | 將像素史萊姆改為畫面底部會跳動的寵物式入口；玩家點擊後在不離開當前頁面的對話框，以主題捷徑或自然語言詢問遊玩方式。 | Support Widget UI、responsive、accessibility、reduced motion |
+| 規則回答邊界 | 安全確認 | 沿用既有匿名 read-only `rules:lookup`、stable citation 與 unsupported fail-closed；本次只擴充 deterministic static retrieval 與介面呈現，不新增 Bedrock、embedding、vector store、RAG、MCP 或外部提交。 | ADR-0005、成本與 IAM envelope 不擴張 |
+| 支援頁退場 | 導航補充 | 以 Widget 作為唯一玩家可見支援入口，移除 `/support` 導航、Widget 深連結與 route composition；既有 Backend API 與 Player-only `local_draft_only` 草稿能力保留。 | Web navigation、bootstrap、SupportPage tests |
+| 首頁中文斷行 | 排版補充 | 首頁主標題不得讓「都」成為逗點後單字孤行，且「下一段」不得拆行；以語意片語與 responsive contract 處理，不使用固定 `<br>` 綁死單一 viewport。 | Landing markup、typography regression |
+| 平行開發 | 治理補充 | 前端 `codex/pet-rules-chat-ui` 與後端 `codex/rules-retrieval-expansion` 使用互斥 allowed paths；共同 API 路徑與 response schema 固定，只有整合 task 可改共同 Feature Spec、CURRENT、governance 與執行合併。 | work boundaries、strict TDD、merge gate |
+
+核准方式：使用者明確同意建議兩日版本並要求拆分為不同 task 平行開發。

@@ -321,6 +321,34 @@
         "docs/evidence/2026-*-support-pixel-widget/**"
       ]
     },
+    "codex/pet-rules-chat-ui": {
+      "purpose": "在兩日版範圍內把既有像素史萊姆改為底部寵物式入口、以既有 cited rules API 建立主題捷徑與單次問答紀錄、修正首頁中文斷行並讓完整支援頁退場；不修改 Backend、API contract、全域治理或 AWS",
+      "allowed_paths": [
+        "web/index.html",
+        "web/styles.css",
+        "web/support-widget.css",
+        "web/src/composition/bootstrap.js",
+        "web/src/ui/components/support-widget.js",
+        "web/src/ui/pages/support-page.js",
+        "web/tests/ui/landing-markup.test.js",
+        "web/tests/ui/production-navigation.test.js",
+        "web/tests/ui/support-page.test.js",
+        "web/tests/ui/support-widget.test.js",
+        "web/tests/ui/typography-layout.test.js",
+        "docs/evidence/2026-*-pet-rules-chat-ui/**"
+      ]
+    },
+    "codex/rules-retrieval-expansion": {
+      "purpose": "在不使用 Bedrock、embedding 或 vector store 的前提下擴充 deterministic static rules 對自然語言與固定主題問法的涵蓋，維持 citation 與 unsupported fail-closed；不修改 Web、API schema、資料庫、部署或 AWS",
+      "allowed_paths": [
+        "backend/app/adapters/static_rules_knowledge_base.py",
+        "backend/app/resources/game_rules.json",
+        "backend/tests/test_support_agent_api.py",
+        "backend/tests/test_support_agent_rules.py",
+        "backend/tests/test_support_agent_security.py",
+        "docs/evidence/2026-*-rules-retrieval-expansion/**"
+      ]
+    },
     "codex/tier2-web-ui-release": {
       "purpose": "讓既有 Tier 3 digest release 在更新玩家 Web image 時保留已驗證的 Tier 2 async runtime mode，供 stale feedback 與失效房間控制修正安全上線",
       "allowed_paths": [
