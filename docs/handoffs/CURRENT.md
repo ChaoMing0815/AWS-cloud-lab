@@ -73,7 +73,7 @@
 
 ## Next
 
-1. 已核准兩日版寵物規則助手，詳細 contract 見 [`docs/features/pet-rules-assistant-two-day.md`](../features/pet-rules-assistant-two-day.md)。平行支線固定為 `codex/pet-rules-chat-ui` 與 `codex/rules-retrieval-expansion`；兩者尚未合併、push 或部署，不得把目標行為描述為 production 現況。
+1. 兩日版寵物規則助手已在本機整合分支完成合併與 acceptance，詳細 contract 見 [`docs/features/pet-rules-assistant-two-day.md`](../features/pet-rules-assistant-two-day.md)，證據見 [`2026-09-01-pet-rules-assistant-integration`](../evidence/2026-09-01-pet-rules-assistant-integration/validation.md)。候選仍未 push／部署，production source 仍為 `1297a6acabaf30ca4ec2205e7641b7ab83cef781`；不得把候選行為描述為已上線。
 2. 以現有 Tier 0–3、UI／Widget與bounded Support Agent production證據建立5–8分鐘final Demo；不重跑Bedrock、玩家E2E、synthetic incident或rules draft。
 3. 整合 final production architecture 與課程能力對映；Tier 4／5 若保留於圖中，必須標示 `Future roadmap / Out of scope for final delivery`。
 4. 建立 final evidence index，使 Demo 每一步只連到一個 canonical sanitized evidence。

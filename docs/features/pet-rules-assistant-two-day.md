@@ -1,9 +1,10 @@
 # 兩日版像素寵物規則助手
 
-- 狀態：Approved for parallel TDD（2026-09-01）
+- 狀態：Integrated release candidate（2026-09-01）；尚未 push／deploy
 - 上游：ADR-0005、`docs/features/support-pixel-widget.md`、2026-09-01 使用者核准
 - 風險：R2 可觀察 UX／規則 retrieval
-- 整合基線：由 `codex/final-current-reconciliation` 建立；production 仍是 `1297a6acabaf30ca4ec2205e7641b7ab83cef781`
+- 整合基線：`0fea052af5bb60941efa6cd19c6002575cf6ff6e`
+- Integrated candidate：`7b4006e` 後續文件收斂 commit；production 仍是 `1297a6acabaf30ca4ec2205e7641b7ab83cef781`
 
 ## 目的與誠實命名
 
@@ -42,3 +43,12 @@
 
 - Bedrock／LLM grounded generation、embedding、vector database、真正 RAG、prompt injection model guard、跨回合聊天記憶。
 - 新 IAM、AWS 資源、外部 submit、Support ticket 系統、production deploy 自動授權。
+
+## 2026-09-01 整合驗證
+
+- Backend 與 Frontend 支線依序無衝突合併到 `codex/final-current-reconciliation`；兩支線沒有共同修改檔案。
+- 完整 Backend regression exit `0`，只有既有 Starlette／httpx deprecation warning；完整 Frontend regression `127/127`。
+- Browser acceptance 已驗證 390×844、768×844、1440×900：無水平 overflow、nav／寵物不重疊，首頁中文片語不拆分。
+- 390×844 Demo 的寵物 dialog 與 action composer／textarea 均不相交；開啟時動畫 paused，`Esc` focus 回到 toggle。
+- `/support` 玩家導航、Widget 深連結與 route composition 已退場；規則 lookup API 與 `local_draft_only` 草稿能力保留。
+- Canonical candidate evidence：[`2026-09-01-pet-rules-assistant-integration`](../evidence/2026-09-01-pet-rules-assistant-integration/validation.md)。
