@@ -186,6 +186,18 @@ test("Widget 規則結果只顯示 cited answer 或 unsupported不猜測", async
   assert.match(documentRef.getElementById("supportWidgetRuleCitations").textContent, /spark-usage/);
   assert.match(documentRef.getElementById("supportWidgetRuleStatus").textContent, /規則來源/);
   assert.equal(documentRef.getElementById("supportWidgetRuleStatus").getAttribute("aria-live"), "polite");
+
+  const unsupported = createWidget();
+  unsupported.documentRef.getElementById("supportWidgetRuleMessage").value = "規則沒有寫的內容";
+  await unsupported.documentRef.getElementById("supportWidgetRuleForm").dispatch("submit");
+  assert.match(
+    unsupported.documentRef.getElementById("supportWidgetRuleStatus").textContent,
+    /未進行猜測/,
+  );
+  assert.equal(
+    unsupported.documentRef.getElementById("supportWidgetRuleCitations").hidden,
+    true,
+  );
 });
 
 test("Widget 草稿成功仍顯示 local_draft_only 三重安全語意", async () => {
