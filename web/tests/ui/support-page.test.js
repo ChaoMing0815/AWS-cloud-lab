@@ -60,6 +60,9 @@ test("Support UI 有分離表單、可讀狀態與沒有外部提交暗示", asy
   assert.match(html, /maxlength=["']500["']/);
   assert.match(html, /maxlength=["']2000["']/);
   assert.doesNotMatch(html, /建立 GitHub Issue|寄送 Email|送出問題回報/);
+  assert.doesNotMatch(html, /本批次|本機資料層|建立本機草稿/);
+  assert.match(html, /待人工確認/);
+  assert.match(html, /不會對外提交/);
   assert.match(bootstrap, /path === ["']\/support["']/);
   assert.match(bootstrap, /loadRoom\.execute\(\)/);
   assert.match(bootstrap, /room\?\.session/);

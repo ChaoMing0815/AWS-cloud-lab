@@ -88,7 +88,7 @@ export class SupportPage {
     this.reportBusy = true;
     button.disabled = true;
     resultPanel.hidden = true;
-    setFeedback(feedback, "正在建立本機草稿…");
+    setFeedback(feedback, "正在建立待確認草稿…");
     try {
       const result = await this.createSupportReportDraft.execute({
         description: this.document.getElementById("supportReportDescription").value,
@@ -101,7 +101,7 @@ export class SupportPage {
         `submissionStatus=${result.submissionStatus}`,
       ].join("\n");
       resultPanel.hidden = false;
-      setFeedback(feedback, "本機問題草稿已建立。", "success");
+      setFeedback(feedback, "待確認的問題草稿已建立，尚未對外提交。", "success");
     } catch (error) {
       setFeedback(feedback, safeMessage(error, "問題草稿暫時無法建立，請稍後再試。"), "error");
     } finally {

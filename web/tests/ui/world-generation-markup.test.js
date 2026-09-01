@@ -21,7 +21,7 @@ test("DRAFT 房主世界表單提供生成草稿輸入、按鈕與剩餘次數",
   assert.match(html, /id=["']worldGenerationFeedback["'][^>]*aria-live=["']assertive["']/);
 });
 
-test("公開試玩文案使用泛用行動範例並標示 AWS Bedrock 部署", async () => {
+test("production 文案使用泛用行動範例並反映目前組件化部署", async () => {
   const html = await readFile(new URL("../../index.html", import.meta.url), "utf8");
   const bootstrap = await readFile(
     new URL("../../src/composition/bootstrap.js", import.meta.url),
@@ -31,10 +31,14 @@ test("公開試玩文案使用泛用行動範例並標示 AWS Bedrock 部署", a
   assert.doesNotMatch(html, /三個部門的資料整合/);
   assert.match(html, /描述角色想做什麼、如何做，以及希望達成的效果/);
   assert.doesNotMatch(html, /AWS 部署尚未執行/);
-  assert.match(html, /AWS Tier 0 公開試玩/);
+  assert.doesNotMatch(html, /Tier 0|本批次/);
+  assert.match(html, /AWS Production Demo/);
+  assert.match(html, /非同步 AI 敘事/);
+  assert.match(html, /private PostgreSQL/);
   assert.match(html, /Amazon Bedrock/);
   assert.doesNotMatch(bootstrap, /本機 FastAPI 模式|本機原型/);
-  assert.match(bootstrap, /AWS 公開試玩/);
+  assert.match(bootstrap, /AWS Production Demo/);
+  assert.doesNotMatch(bootstrap, /AWS Tier 0|AWS 公開試玩/);
   assert.match(bootstrap, /private PostgreSQL/);
 });
 

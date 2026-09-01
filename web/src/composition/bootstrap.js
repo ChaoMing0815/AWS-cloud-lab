@@ -69,9 +69,9 @@ async function mountGamePage({ forceMock = false } = {}) {
     finishGame: new FinishGame(gameApi),
     deleteRoom: new DeleteRoom(gameApi),
     apiMode,
-    connectionLabel: apiMode === "http" ? "AWS 公開試玩" : "教學 Demo · 不保存進度",
+    connectionLabel: apiMode === "http" ? "AWS Production Demo" : "教學 Demo · 不保存進度",
     persistenceLabel: apiMode === "http"
-      ? "AWS Tier 0 · 遊戲資料儲存於 private PostgreSQL"
+      ? "AWS Production · 遊戲資料儲存於 private PostgreSQL"
       : "教學 Demo · 資料只存在本頁記憶體，重新進入即重設",
     navigate: forceMock ? null : (route) => {
       if (globalThis.location.pathname !== route) {

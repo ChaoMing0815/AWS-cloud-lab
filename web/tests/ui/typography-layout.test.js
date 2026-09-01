@@ -16,6 +16,14 @@ test("responsive typography 避免標題與正文留下孤立短行", async () =
 });
 
 
+test("production footer 的較長狀態文案可在窄螢幕安全換行", async () => {
+  const css = await readFile(new URL("../../styles.css", import.meta.url), "utf8");
+
+  assert.match(css, /footer\s*\{[^}]*flex-wrap:\s*wrap/s);
+  assert.match(css, /footer\s*\{[^}]*gap:\s*[^;}]+/s);
+});
+
+
 test("列印或分頁時不留下單行孤頁並避免敘事卡片被拆開", async () => {
   const css = await readFile(new URL("../../styles.css", import.meta.url), "utf8");
 

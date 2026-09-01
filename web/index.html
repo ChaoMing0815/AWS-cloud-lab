@@ -108,7 +108,7 @@
       <section class="landing-copy">
         <div class="eyebrow">Bounded Support Agent</div>
         <h1>規則查詢與問題草稿</h1>
-        <p>規則答案只引用目前版本的正式資料；問題回報在本批次只會建立本機草稿，尚未提交，必須經過人工確認。</p>
+        <p>規則答案只引用目前版本的正式資料；問題回報只會建立待人工確認的草稿，不會對外提交。</p>
         <a class="secondary-button rules-return" href="/">返回首頁</a>
       </section>
 
@@ -127,13 +127,13 @@
         <form id="supportReportForm" class="entry-panel support-card">
           <div class="eyebrow">玩家工作階段限定</div>
           <h2>建立問題草稿</h2>
-          <p>請描述重現步驟、預期與實際結果。草稿只保存在本機資料層，後續仍需人工確認。</p>
+          <p>請描述重現步驟、預期與實際結果。草稿會安全保存於專案資料層，仍需人工確認，不會對外提交。</p>
           <label for="supportReportDescription">問題描述</label>
           <textarea id="supportReportDescription" maxlength="2000" rows="7" required disabled></textarea>
           <p id="supportReportCapability" class="trial-safety-note" role="note"></p>
           <p id="supportReportFeedback" class="feedback" role="status" aria-live="polite" hidden></p>
           <pre id="supportReportResult" class="support-draft-result" hidden></pre>
-          <button id="supportReportButton" class="secondary-button" type="submit" disabled>建立本機草稿</button>
+          <button id="supportReportButton" class="secondary-button" type="submit" disabled>建立待確認草稿</button>
         </form>
       </section>
     </main>
@@ -397,7 +397,7 @@
 
     <footer>
       <span id="persistenceStatus">正在確認資料來源</span>
-      <span>AWS Tier 0 公開試玩｜AI 敘事由 Amazon Bedrock 生成</span>
+      <span>AWS Production Demo｜非同步 AI 敘事由 Amazon Bedrock 生成｜資料儲存於 private PostgreSQL</span>
     </footer>
 
     <script src="/runtime-config.js"></script>
