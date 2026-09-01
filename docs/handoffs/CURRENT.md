@@ -17,6 +17,13 @@
 - Tier 2 玩家流程已完成 `202 → polling → applied result`；Room 進入 Round 02／`COLLECTING_ACTIONS`，新 AI 故事可見，主 Queue／DLQ 五項皆為 `0`，DLQ alarm 為 `OK`／`No actions`。
 - GitHub OIDC／ECR／Trivy／SSM pipeline 是唯一 image 交付路徑；production environment 保留人工核准與 fail-closed health／rollback gate。
 
+## Repo-local release candidate（尚未部署）
+
+- Web UI／Support Widget application code candidate exact SHA：`0b5aaa87cbf68bb4bb0d686f6b65a3c14c48a7f4`，位於整合分支 `codex/final-current-reconciliation`；尚未 merge／push 到 `main`，也尚未觸發 CI/CD 或 production deploy。上方 Production source SHA 與 active digests 仍是唯一 production 基準。
+- Candidate 包含玩家可見的 `Release v1.1.0`、新同源 SVG 品牌圖示、終端敘事狀態層級，以及保留當前頁面的像素 Support Widget。Widget 仍只提供 cited／unsupported 規則查詢與 Player-only `local_draft_only` 草稿，不擴張 Bedrock、RAG、MCP 或 external submit。
+- 合併後 Frontend regression 為 `124/124`；390×844、768×900、1440×900 browser QA 均確認 Widget toggle 不與 topbar nav 重疊、dialog 不與 composer 相交、無水平溢位，Esc 後 focus 回到 toggle，console 無 error。390 與 768 的 compact dialog 需要內部捲動，屬刻意 responsive 取捨。
+- Branch ownership、TDD commits 與整合順序由 `.agents/work-boundaries.json` 與 `docs/governance/parallel-branch-boundaries.md` 記錄；不得重新啟動已完成的 UI／Widget 開發分支。下一個精確起點是整合 review、main 同步與一次新的 bounded `digest-release` deployment batch。
+
 ## 已完成範圍
 
 ### Tier 0：AWS 可玩 MVP
@@ -64,13 +71,14 @@
 
 ## Next
 
-1. 以現有 Tier 0–3 與 bounded Support Agent production 證據建立 5–8 分鐘 final Demo，不重跑 Bedrock、玩家 E2E、synthetic incident 或 rules draft。
-2. 整合 final production architecture 與課程能力對映；Tier 4／5 若保留於圖中，必須標示 `Future roadmap / Out of scope for final delivery`。
-3. 建立 final evidence index，使 Demo 每一步只連到一個 canonical sanitized evidence。
-4. 完成 repository secrets 掃描與 tracked screenshots OCR／人工遮罩 audit。
-5. 完成 2026-09-08 清理 runbook，列出現役資源、dependency order、ECR `Retain`、snapshot 決策、owner 與帳單複查方式；未取得人工指示前不執行清理。
-6. 最後同步 README、architecture index、project plan、gantt、checkpoints、task list 與 deployment log，移除已被實作取代的歷史未勾項。
-7. Tier 4／5、Support Agent Bedrock／RAG／external submit 都是 future scope，不自動開工；若要擴張，必須由使用者另行確認範圍、成本與 AWS change envelope。
+1. Review repo-local Web candidate，完成 main 同步與 CI gates；取得使用者對 exact main SHA、active digest、health／rollback gate 的新 bounded deployment approval 後，才觸發一次 `digest-release`，並驗證 production `Release v1.1.0`、品牌圖示、Widget desktop／mobile rendering 與既有 async runtime。
+2. 以現有 Tier 0–3 與 bounded Support Agent production 證據建立 5–8 分鐘 final Demo，不重跑 Bedrock、玩家 E2E、synthetic incident 或 rules draft。
+3. 整合 final production architecture 與課程能力對映；Tier 4／5 若保留於圖中，必須標示 `Future roadmap / Out of scope for final delivery`。
+4. 建立 final evidence index，使 Demo 每一步只連到一個 canonical sanitized evidence。
+5. 完成 repository secrets 掃描與 tracked screenshots OCR／人工遮罩 audit。
+6. 完成 2026-09-08 清理 runbook，列出現役資源、dependency order、ECR `Retain`、snapshot 決策、owner 與帳單複查方式；未取得人工指示前不執行清理。
+7. 最後同步 README、architecture index、project plan、gantt、checkpoints、task list 與 deployment log，移除已被實作取代的歷史未勾項。
+8. Tier 4／5、Support Agent Bedrock／RAG／external submit 都是 future scope，不自動開工；若要擴張，必須由使用者另行確認範圍、成本與 AWS change envelope。
 
 ## 操作護欄
 
