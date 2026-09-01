@@ -41,6 +41,8 @@ def test_policy_defines_exact_parallel_branches_and_protects_integration_state()
         "codex/tier2-web-ui-release",
         "codex/ui-terminal-refresh",
         "codex/support-pixel-widget",
+        "codex/pet-rules-chat-ui",
+        "codex/rules-retrieval-expansion",
     }
     assert "docs/handoffs/CURRENT.md" in policy["protected_paths"]
     assert "docs/checkpoints.md" in policy["protected_paths"]
