@@ -27,6 +27,15 @@ function makeElement(documentRef, tagName, options = {}) {
   return element;
 }
 
+const RULE_TOPICS = [
+  { id: "start", label: "開始遊戲", query: "如何開始遊戲？" },
+  { id: "attributes", label: "角色屬性", query: "角色屬性如何分配？" },
+  { id: "turns", label: "回合流程", query: "一個回合如何進行？" },
+  { id: "dice", label: "骰點判定", query: "骰點如何判定結果？" },
+  { id: "spark", label: "星火", query: "星火如何使用？" },
+  { id: "ending", label: "進度／危機／結局", query: "進度、危機與結局如何判定？" },
+];
+
 export class SupportWidget {
   constructor({
     lookupSupportRule,
@@ -41,6 +50,7 @@ export class SupportWidget {
     this.ruleBusy = false;
     this.reportBusy = false;
     this.isOpen = false;
+    this.ruleHistory = [];
   }
 
   mount() {
@@ -49,7 +59,7 @@ export class SupportWidget {
     const root = makeElement(this.document, "aside", {
       id: "supportWidgetRoot",
       className: "support-widget",
-      attributes: { "aria-label": "Support Agent" },
+      attributes: { "aria-label": "規則寵物助手" },
     });
     const toggle = makeElement(this.document, "button", {
       id: "supportWidgetToggle",
@@ -58,7 +68,7 @@ export class SupportWidget {
       attributes: {
         "aria-controls": "supportWidgetDialog",
         "aria-expanded": "false",
-        "aria-label": "開啟 Support Agent",
+        "aria-label": "開啟規則寵物助手",
       },
     });
     const slime = makeElement(this.document, "span", {
@@ -67,7 +77,7 @@ export class SupportWidget {
     });
     const toggleLabel = makeElement(this.document, "span", {
       className: "support-widget__toggle-label",
-      textContent: "支援",
+      textContent: "問規則",
     });
     toggle.append(slime, toggleLabel);
 
@@ -91,7 +101,7 @@ export class SupportWidget {
     });
     const title = makeElement(this.document, "h2", {
       id: "supportWidgetTitle",
-      textContent: "史萊姆支援站",
+      textContent: "史萊姆規則寵物",
     });
     headingGroup.append(eyebrow, title);
     const close = makeElement(this.document, "button", {
@@ -99,14 +109,14 @@ export class SupportWidget {
       className: "support-widget__close",
       textContent: "×",
       type: "button",
-      attributes: { "aria-label": "關閉 Support Agent" },
+      attributes: { "aria-label": "關閉規則寵物助手" },
     });
     header.append(headingGroup, close);
 
     const boundary = makeElement(this.document, "p", {
       id: "supportWidgetBoundary",
       className: "support-widget__boundary",
-      textContent: "只有兩個固定功能：引用來源的規則查詢，以及待確認問題草稿。這不是自由對話 AI。",
+      textContent: "只有兩個固定功能：有來源的規則查詢，以及待確認問題草稿。每次都是獨立查詢，這不是自由對話 AI。",
     });
 
     const intentNav = makeElement(this.document, "div", {
@@ -139,12 +149,7 @@ export class SupportWidget {
 
     const ruleView = this.buildRuleView();
     const reportView = this.buildReportView();
-    const fullPageLink = makeElement(this.document, "a", {
-      className: "support-widget__full-page",
-      href: "/support",
-      textContent: "開啟完整支援頁",
-    });
-    panel.append(header, boundary, intentNav, ruleView, reportView, fullPageLink);
+    panel.append(header, boundary, intentNav, ruleView, reportView);
     root.append(toggle, panel);
     this.document.body.append(root);
 
@@ -155,6 +160,7 @@ export class SupportWidget {
     this.reportIntent = reportIntent;
     this.ruleView = ruleView;
     this.reportView = reportView;
+    this.root = root;
 
     toggle.addEventListener("click", () => this.toggleDialog());
     close.addEventListener("click", () => this.close());
@@ -171,6 +177,29 @@ export class SupportWidget {
       id: "supportWidgetRuleView",
       className: "support-widget__view",
       attributes: { role: "tabpanel", "aria-labelledby": "supportWidgetRuleIntent" },
+    });
+    const topics = makeElement(this.document, "div", {
+      id: "supportWidgetTopics",
+      className: "support-widget__topics",
+      attributes: { "aria-label": "規則主題捷徑" },
+    });
+    for (const topic of RULE_TOPICS) {
+      const shortcut = makeElement(this.document, "button", {
+        id: `supportWidgetTopic-${topic.id}`,
+        className: "support-widget__topic",
+        textContent: topic.label,
+        type: "button",
+      });
+      shortcut.addEventListener("click", () => this.askTopic(topic.query));
+      topics.append(shortcut);
+    }
+    const history = makeElement(this.document, "div", {
+      id: "supportWidgetRuleHistory",
+      className: "support-widget__history",
+      attributes: {
+        "aria-label": "本次開啟的規則問答紀錄",
+        "aria-live": "polite",
+      },
     });
     const form = makeElement(this.document, "form", { id: "supportWidgetRuleForm" });
     const label = makeElement(this.document, "label", {
@@ -207,7 +236,7 @@ export class SupportWidget {
     });
     form.append(label, input, submit, status, answer, citations);
     form.addEventListener("submit", async (event) => this.handleRuleLookup(event));
-    view.append(form);
+    view.append(topics, history, form);
     return view;
   }
 
@@ -291,7 +320,9 @@ export class SupportWidget {
   }
 
   open() {
+    if (!this.isOpen) this.resetRuleHistory();
     this.isOpen = true;
+    this.root.className = "support-widget is-open";
     this.panel.hidden = false;
     this.toggle.setAttribute("aria-expanded", "true");
     this.closeButton.focus();
@@ -299,9 +330,34 @@ export class SupportWidget {
 
   close() {
     this.isOpen = false;
+    this.root.className = "support-widget";
     this.panel.hidden = true;
     this.toggle.setAttribute("aria-expanded", "false");
     this.toggle.focus();
+  }
+
+  resetRuleHistory() {
+    this.ruleHistory = [];
+    const history = this.document.getElementById("supportWidgetRuleHistory");
+    if (history) history.textContent = "";
+  }
+
+  renderRuleHistory() {
+    const history = this.document.getElementById("supportWidgetRuleHistory");
+    history.textContent = this.ruleHistory.flatMap((entry) => {
+      const lines = [`你｜${entry.question}`, `規則寵物｜${entry.answer}`];
+      if (entry.citations.length > 0) {
+        lines.push(`來源｜${entry.citations.map((item) => `${item.ruleId}｜${item.title}`).join("、")}`);
+      }
+      return lines;
+    }).join("\n");
+  }
+
+  async askTopic(query) {
+    if (!this.isOpen) this.open();
+    this.setIntent("rules");
+    this.document.getElementById("supportWidgetRuleMessage").value = query;
+    await this.handleRuleLookup({ preventDefault() {} });
   }
 
   async handleRuleLookup(event) {
@@ -316,9 +372,10 @@ export class SupportWidget {
     answer.hidden = true;
     citations.hidden = true;
     setFeedback(status, "正在查詢 allowlisted 規則…");
+    const question = this.document.getElementById("supportWidgetRuleMessage").value;
     try {
       const result = await this.lookupSupportRule.execute({
-        message: this.document.getElementById("supportWidgetRuleMessage").value,
+        message: question,
       });
       answer.textContent = result.answer;
       answer.hidden = false;
@@ -332,6 +389,12 @@ export class SupportWidget {
         citations.textContent = "";
         setFeedback(status, "規則資料不足，未進行猜測。", "unsupported");
       }
+      this.ruleHistory.push({
+        question,
+        answer: result.answer,
+        citations: result.status === "supported" ? result.citations : [],
+      });
+      this.renderRuleHistory();
     } catch (error) {
       setFeedback(status, safeMessage(error, "規則查詢暫時無法使用，請稍後再試。"), "error");
     } finally {

@@ -89,9 +89,11 @@ function fakeDocument() {
 function createWidget({ canDraftReport = false, ruleResult, reportResult } = {}) {
   assert.equal(typeof SupportWidget, "function", "SupportWidget 尚未建立");
   const documentRef = fakeDocument();
+  const ruleQueries = [];
   const widget = new SupportWidget({
     lookupSupportRule: {
-      async execute() {
+      async execute(input) {
+        ruleQueries.push(input.message);
         return ruleResult ?? {
           status: "unsupported",
           answer: "目前版本的規則資料沒有足夠證據回答這個問題。",
@@ -113,7 +115,7 @@ function createWidget({ canDraftReport = false, ruleResult, reportResult } = {})
     documentRef,
   });
   widget.mount();
-  return { documentRef, widget };
+  return { documentRef, widget, ruleQueries };
 }
 
 test("bootstrap 以同源 stylesheet 在全站掛載 bounded Support Widget", async () => {
@@ -144,11 +146,64 @@ test("Widget 提供可見開關、dialog 語意、Esc 關閉與 focus return", a
   assert.equal(toggle.getAttribute("aria-expanded"), "true");
   assert.equal(panel.hidden, false);
   assert.equal(documentRef.activeElement, close);
+  assert.match(documentRef.getElementById("supportWidgetRoot").className, /is-open/);
 
   await documentRef.dispatch("keydown", { key: "Escape" });
   assert.equal(panel.hidden, true);
   assert.equal(toggle.getAttribute("aria-expanded"), "false");
   assert.equal(documentRef.activeElement, toggle);
+  assert.doesNotMatch(documentRef.getElementById("supportWidgetRoot").className, /is-open/);
+});
+
+test("Widget 提供六類規則主題捷徑，並以同一 lookup 執行獨立查詢", async () => {
+  const { documentRef, ruleQueries } = createWidget({
+    ruleResult: {
+      status: "supported",
+      answer: "canonical answer",
+      citations: [{
+        ruleId: "rule-1",
+        title: "開始遊戲",
+        sourceSection: "MVP",
+        sourceVersion: "mvp-v1",
+      }],
+    },
+  });
+  const topicIds = ["start", "attributes", "turns", "dice", "spark", "ending"];
+  const labels = ["開始遊戲", "角色屬性", "回合流程", "骰點判定", "星火", "進度／危機／結局"];
+
+  for (const [index, id] of topicIds.entries()) {
+    const shortcut = documentRef.getElementById(`supportWidgetTopic-${id}`);
+    assert.equal(shortcut.textContent, labels[index]);
+  }
+
+  await documentRef.getElementById("supportWidgetTopic-spark").dispatch("click");
+  assert.deepEqual(ruleQueries, ["星火如何使用？"]);
+});
+
+test("Widget 在本次開啟期間保留可辨識問答與 citation，不暗示對話記憶", async () => {
+  const { documentRef } = createWidget({
+    ruleResult: {
+      status: "supported",
+      answer: "玩家可在看見骰點後決定是否使用星火。",
+      citations: [{
+        ruleId: "spark-usage",
+        title: "星火",
+        sourceSection: "4. 星火",
+        sourceVersion: "mvp-v1",
+      }],
+    },
+  });
+  await documentRef.getElementById("supportWidgetToggle").dispatch("click");
+  documentRef.getElementById("supportWidgetRuleMessage").value = "星火何時使用？";
+  await documentRef.getElementById("supportWidgetRuleForm").dispatch("submit");
+
+  const history = documentRef.getElementById("supportWidgetRuleHistory");
+  assert.equal(history.getAttribute("aria-live"), "polite");
+  assert.match(history.textContent, /你｜星火何時使用？/);
+  assert.match(history.textContent, /規則寵物｜玩家可在看見骰點後/);
+  assert.match(history.textContent, /spark-usage/);
+  assert.match(documentRef.getElementById("supportWidgetBoundary").textContent, /每次都是獨立查詢/);
+  assert.doesNotMatch(documentRef.getElementById("supportWidgetBoundary").textContent, /RAG|記得上一題/);
 });
 
 test("Widget 明確分離匿名規則查詢與 Player-only 問題草稿", async () => {
@@ -214,13 +269,15 @@ test("Widget 草稿成功仍顯示 local_draft_only 三重安全語意", async (
   assert.match(result, /draft-opaque-1/);
 });
 
-test("Widget CSS 支援像素角色、手機安全收合與 reduced-motion", async () => {
+test("Widget CSS 支援 viewport 底部寵物入口、開啟停跳與 reduced-motion", async () => {
   const css = await readFile(
     new URL("../../support-widget.css", import.meta.url),
     "utf8",
   ).catch(() => "");
 
   assert.match(css, /image-rendering:\s*pixelated/);
+  assert.match(css, /bottom:\s*max\([^;]*env\(safe-area-inset-bottom\)/);
+  assert.match(css, /\.support-widget\.is-open\s+\.support-widget__slime[^}]*animation-play-state:\s*paused/s);
   assert.match(css, /@media\s*\(max-width:\s*720px\)/);
   const mobileCss = css.slice(
     css.indexOf("@media (max-width: 720px)"),
@@ -228,20 +285,15 @@ test("Widget CSS 支援像素角色、手機安全收合與 reduced-motion", asy
   );
   const widgetRule = mobileCss.match(/\.support-widget\s*\{([^}]*)\}/)?.[1] ?? "";
   const dialogRule = mobileCss.match(/\.support-widget__dialog\s*\{([^}]*)\}/)?.[1] ?? "";
-  assert.match(
-    widgetRule,
-    /top:\s*max\(([\d.]+)rem,\s*env\(safe-area-inset-top\)\);/,
-    "mobile toggle 必須位於 topbar 保留帶下方，且保留 safe-area",
-  );
   assert.match(widgetRule, /right:\s*\.75rem;/);
-  assert.match(widgetRule, /bottom:\s*auto;/);
-  assert.match(dialogRule, /top:\s*([\d.]+)rem;/);
+  assert.match(widgetRule, /bottom:\s*max\([^;]*env\(safe-area-inset-bottom\)/);
+  assert.match(dialogRule, /bottom:\s*([\d.]+)rem;/);
   assert.match(dialogRule, /max-height:\s*min\(([\d.]+)dvh,\s*([\d.]+)rem\);/);
 
   const rootFont = 16;
   const viewport = { width: 390, height: 844 };
-  const topRem = Number(widgetRule.match(/top:\s*max\(([\d.]+)rem/)?.[1]);
-  const dialogTopRem = Number(dialogRule.match(/top:\s*([\d.]+)rem/)?.[1]);
+  const bottomRem = Number(widgetRule.match(/bottom:\s*max\(([\d.]+)rem/)?.[1]);
+  const dialogBottomRem = Number(dialogRule.match(/bottom:\s*([\d.]+)rem/)?.[1]);
   const dialogDvh = Number(dialogRule.match(/max-height:\s*min\(([\d.]+)dvh/)?.[1]);
   const dialogMaxRem = Number(
     dialogRule.match(/max-height:\s*min\([\d.]+dvh,\s*([\d.]+)rem/)?.[1],
@@ -249,15 +301,15 @@ test("Widget CSS 支援像素角色、手機安全收合與 reduced-motion", asy
   const toggle = {
     left: viewport.width - 12 - 82,
     right: viewport.width - 12,
-    top: topRem * rootFont,
-    bottom: topRem * rootFont + 48,
+    top: viewport.height - bottomRem * rootFont - 48,
+    bottom: viewport.height - bottomRem * rootFont,
   };
   const dialog = {
     left: 12,
     right: viewport.width - 12,
-    top: toggle.top + dialogTopRem * rootFont,
-    bottom: toggle.top + dialogTopRem * rootFont
-      + Math.min(viewport.height * dialogDvh / 100, dialogMaxRem * rootFont),
+    bottom: viewport.height - bottomRem * rootFont - dialogBottomRem * rootFont,
+    top: viewport.height - bottomRem * rootFont - dialogBottomRem * rootFont
+      - Math.min(viewport.height * dialogDvh / 100, dialogMaxRem * rootFont),
   };
   const topbarNav = { left: 254.16, right: 372, top: 29, bottom: 46 };
   const composer = { left: 25, right: 365, top: 308, bottom: 550 };
@@ -272,6 +324,7 @@ test("Widget CSS 支援像素角色、手機安全收合與 reduced-motion", asy
   assert.equal(overlaps(dialog, composer), false, "mobile dialog 不得遮擋 composer");
   assert.ok(dialog.left >= 0 && dialog.right <= viewport.width, "mobile dialog 不得水平溢位");
   assert.match(css, /@media\s*\(prefers-reduced-motion:\s*reduce\)/);
+  assert.match(css, /@media\s*\(prefers-reduced-motion:\s*reduce\)[\s\S]*animation:\s*none/);
   assert.doesNotMatch(css, /@import|url\s*\(|https?:\/\//i);
 });
 
