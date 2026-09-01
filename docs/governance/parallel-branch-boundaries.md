@@ -1,7 +1,7 @@
 # 平行分支工作邊界
 
 - 狀態：Active
-- 生效分支：`codex/story-quality`、`codex/tier3-delivery`、`codex/tier3-production-release`、`codex/tier3-healthcheck-correction`、`codex/tier2-components`、`codex/tier2-async-flow`、`codex/tier2-production-worker`、`codex/tier2-aws-worker-foundation`、`codex/tier2-migration-bridge`、`codex/support-agent-core`、`codex/support-agent-persistence`、`codex/support-agent-durability`
+- 生效分支以 `.agents/work-boundaries.json` 為準；本輪新增 `codex/ui-terminal-refresh` 與 `codex/support-pixel-widget`。
 - 機器可讀規則：`.agents/work-boundaries.json`
 - 自動檢查：`scripts/check_branch_boundaries.py`
 
@@ -10,6 +10,37 @@
 多個 Codex task 使用獨立 Git worktree 平行工作，但共享同一個 Git repository 與最終 AWS environment。本規範以路徑白名單、protected paths 與單一整合責任人避免檔案覆寫、語意衝突和相互部署。
 
 白名單之外一律拒絕。分支不得自行修改本文件、policy、checker 或 protected paths；需要擴張範圍時，停止工作並回到整合 task 修改治理基準，再讓兩個分支同步新 commit。
+
+## `codex/ui-terminal-refresh`
+
+兩日切片只負責非 Support 的 Web 視覺改版：首頁顯示可人工遞增的 release／UI 版本標記，讓 digest release 後可從畫面辨識新版本；以新的同源 SVG 品牌圖示取代旋轉「共」菱形；保留夜色劇場色彩語意，加入系統等寬字體、終端狀態層級與必要的 responsive／reduced-motion 修正。Claude handoff 是設計建議，實際行為仍以正式 Spec、CURRENT 與 tests 為準。
+
+強制邊界：
+
+- `web/index.html`、`web/styles.css`、`game-page.js` 與列出的 UI tests 由本分支獨占；不得修改 `bootstrap.js`、Support 頁、Support Widget stylesheet 或 Support assets。
+- 版本標記必須是玩家可見文字且包含穩定 DOM hook；本輪不改 Docker、workflow 或 release driver。每次要展示不同 CI/CD release 時，由整合 task 在候選 commit 明確遞增版本，不把靜態字串宣稱為自動產生的 Git SHA。
+- AI `RESOLVING` 只改善既有狀態呈現；不得偽造串流、完成內容、自動 retry／cancel／fallback。逐字動畫只有在 Red／Green 測試、`prefers-reduced-motion` 與完整內容可立即進入 accessibility tree 均可證明時才納入，否則兩日版降級為靜態終端狀態。
+- 新品牌圖示使用同源 SVG 或原生 CSS，不依賴外部字型、CDN、inline script 或第三方 asset。
+- 分支只做 repo-local strict TDD、完整 Frontend regression 與 boundary check；不得自行 push、merge、觸發 workflow 或 production deploy。
+
+## `codex/support-pixel-widget`
+
+兩日切片把已部署的 bounded Support Agent 包裝成全站可開關的像素角色聊天視窗，使玩家保留當前頁面與遊戲狀態即可查規則或建立待確認草稿。既有 `/support` 頁可保留作為可分享／無 JavaScript fallback 的完整入口；浮動介面不得把固定的兩條 intent 偽裝成自由對話模型。
+
+強制邊界：
+
+- 本分支獨占 `bootstrap.js`、Support UI、`support-widget.css`、Support assets 與專屬 tests；不得修改 `index.html`、全站 `styles.css`、遊戲頁、Backend/API 或 release 檔案。
+- Widget 以 JavaScript 建立 DOM 並載入同源 stylesheet；像素角色使用同源 SVG／PNG 或純 CSS，不新增外部 request、框架、字型或第三方依賴。
+- 介面必須提供可見開關、Esc 關閉、focus return、合理 focus order、`aria-expanded`／dialog 語意、reduced-motion 與手機不遮擋核心操作的驗證。
+- Anonymous 只能使用 cited／unsupported 規則查詢；有效 Player session 才能建立 `local_draft_only` 草稿。任何畫面都要保留「需人工確認、不會對外提交」，不得新增 Bedrock、RAG、MCP、external submit、任意 route switching 或新的 Backend capability。
+- 分支只做 repo-local strict TDD、完整 Frontend regression 與 boundary check；不得自行 push、merge、觸發 workflow 或 production deploy。
+
+## 本輪 UI 整合與部署順序
+
+1. 兩分支從同一治理 commit 建立 worktree 並平行完成 Red → Green → Frontend regression → boundary check。
+2. 整合 task 先 cherry-pick `codex/ui-terminal-refresh`，再 cherry-pick `codex/support-pixel-widget`；兩者沒有共同 owner 檔案，整合後仍須跑完整 Frontend 與 release contract regression。
+3. 整合 task 在候選 release commit 核對首頁版本字串、CSP／無外部 request、桌機與手機互動、Support 安全語意及 secrets／screenshot audit。
+4. Production 只走既有 GitHub OIDC／ECR／Trivy／SSM `digest-release`。觸發 workflow 與 production approval 是新的 bounded deployment batch，必須由使用者明確核准；兩個功能分支不得各自部署。
 
 ## `codex/story-quality`
 

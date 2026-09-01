@@ -39,6 +39,8 @@ def test_policy_defines_exact_parallel_branches_and_protects_integration_state()
         "codex/support-agent-web",
         "codex/support-csp-corrective",
         "codex/tier2-web-ui-release",
+        "codex/ui-terminal-refresh",
+        "codex/support-pixel-widget",
     }
     assert "docs/handoffs/CURRENT.md" in policy["protected_paths"]
     assert "docs/checkpoints.md" in policy["protected_paths"]
@@ -130,6 +132,57 @@ def test_support_csp_corrective_accepts_only_the_static_web_slice() -> None:
     assert "backend/tests/test_internet_release_gates.py" in rejected.stderr
     assert ".github/workflows/tier3-release.yml" in rejected.stderr
     assert "docs/handoffs/CURRENT.md" in rejected.stderr
+
+
+def test_ui_refresh_and_support_widget_have_disjoint_web_ownership() -> None:
+    ui_accepted = _check(
+        "codex/ui-terminal-refresh",
+        "web/index.html",
+        "web/styles.css",
+        "web/assets/co-story-mark.svg",
+        "web/src/ui/pages/game-page.js",
+        "web/tests/ui/landing-markup.test.js",
+        "web/tests/ui/typography-layout.test.js",
+        "web/tests/ui/game-page-polling.test.js",
+        "docs/features/ui-terminal-refresh.md",
+    )
+    ui_rejected = _check(
+        "codex/ui-terminal-refresh",
+        "web/src/composition/bootstrap.js",
+        "web/src/ui/pages/support-page.js",
+        "web/support-widget.css",
+        "docs/handoffs/CURRENT.md",
+    )
+    widget_accepted = _check(
+        "codex/support-pixel-widget",
+        "web/support-widget.css",
+        "web/assets/support-agent/slime.svg",
+        "web/src/composition/bootstrap.js",
+        "web/src/ui/components/support-widget.js",
+        "web/src/ui/pages/support-page.js",
+        "web/tests/ui/support-widget.test.js",
+        "web/tests/ui/support-page.test.js",
+        "docs/features/support-pixel-widget.md",
+    )
+    widget_rejected = _check(
+        "codex/support-pixel-widget",
+        "web/index.html",
+        "web/styles.css",
+        "web/src/ui/pages/game-page.js",
+        "backend/app/api/support_routes.py",
+        "docs/handoffs/CURRENT.md",
+    )
+
+    assert ui_accepted.returncode == 0, ui_accepted.stderr
+    assert ui_rejected.returncode == 2
+    assert "web/src/composition/bootstrap.js" in ui_rejected.stderr
+    assert "web/src/ui/pages/support-page.js" in ui_rejected.stderr
+    assert "web/support-widget.css" in ui_rejected.stderr
+    assert widget_accepted.returncode == 0, widget_accepted.stderr
+    assert widget_rejected.returncode == 2
+    assert "web/index.html" in widget_rejected.stderr
+    assert "web/styles.css" in widget_rejected.stderr
+    assert "backend/app/api/support_routes.py" in widget_rejected.stderr
 
 
 def test_tier2_web_ui_release_accepts_only_async_preserving_release_paths() -> None:
@@ -517,6 +570,8 @@ def test_governance_guide_and_pull_request_gate_are_present() -> None:
     assert "codex/support-agent-durability" in guide
     assert "codex/support-agent-persistence" in guide
     assert "codex/tier2-web-ui-release" in guide
+    assert "codex/ui-terminal-refresh" in guide
+    assert "codex/support-pixel-widget" in guide
     assert "單一部署 owner" in guide
     assert "branch-boundary:" in workflow
     assert "scripts/check_branch_boundaries.py" in workflow

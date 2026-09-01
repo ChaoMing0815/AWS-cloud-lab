@@ -293,6 +293,34 @@
         "docs/evidence/2026-*-support-csp-corrective/**"
       ]
     },
+    "codex/ui-terminal-refresh": {
+      "purpose": "在兩日工程規模內完成首頁版本標記、新品牌圖示、終端敘事視覺 token 與玩家狀態層級改善；不修改 Support Widget、Backend、交付流程或 AWS",
+      "allowed_paths": [
+        "web/index.html",
+        "web/styles.css",
+        "web/assets/co-story-mark.svg",
+        "web/src/ui/pages/game-page.js",
+        "web/tests/ui/landing-markup.test.js",
+        "web/tests/ui/typography-layout.test.js",
+        "web/tests/ui/game-page-polling.test.js",
+        "docs/features/ui-terminal-refresh.md",
+        "docs/evidence/2026-*-ui-terminal-refresh/**"
+      ]
+    },
+    "codex/support-pixel-widget": {
+      "purpose": "把既有 bounded Support Agent 轉為可保留當前頁面的像素角色彈出聊天介面；不修改既有 API、安全邊界、全站主樣式或 AWS",
+      "allowed_paths": [
+        "web/support-widget.css",
+        "web/assets/support-agent/**",
+        "web/src/composition/bootstrap.js",
+        "web/src/ui/components/support-widget.js",
+        "web/src/ui/pages/support-page.js",
+        "web/tests/ui/support-widget.test.js",
+        "web/tests/ui/support-page.test.js",
+        "docs/features/support-pixel-widget.md",
+        "docs/evidence/2026-*-support-pixel-widget/**"
+      ]
+    },
     "codex/tier2-web-ui-release": {
       "purpose": "讓既有 Tier 3 digest release 在更新玩家 Web image 時保留已驗證的 Tier 2 async runtime mode，供 stale feedback 與失效房間控制修正安全上線",
       "allowed_paths": [
