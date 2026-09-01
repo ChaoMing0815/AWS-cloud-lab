@@ -42,3 +42,15 @@ test("正式 Play 與 Ending deep link 會組裝遊戲頁", async () => {
   assert.match(bootstrap, /\/play/);
   assert.match(bootstrap, /\/ending/);
 });
+
+
+test("首頁以穩定 DOM hook 顯示人工 UI release version 與同源可存取品牌圖示", async () => {
+  const html = await readFile(new URL("../../index.html", import.meta.url), "utf8");
+
+  assert.match(html, /id=["']uiReleaseVersion["'][^>]*>UI v1\.1\.0</);
+  assert.match(html, /<img[^>]+src=["']\/assets\/co-story-mark\.svg["'][^>]+alt=["']共演計劃品牌圖示["']/);
+  assert.doesNotMatch(html, /class=["']brand-mark["'][^>]*>共</);
+  const mark = await readFile(new URL("../../assets/co-story-mark.svg", import.meta.url), "utf8");
+  assert.match(mark, /<title>共演計劃品牌圖示<\/title>/);
+  assert.doesNotMatch(mark, /(?:https?:)?\/\//, "品牌 SVG 不得依賴外部資源");
+});

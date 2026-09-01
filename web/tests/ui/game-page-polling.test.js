@@ -283,7 +283,10 @@ test("AI 結算超過 60 秒仍只讀 polling，不取消、不重送或自動 f
     assert.equal(page.pollingStopped, false);
     assert.equal(scheduler.tasks.length, 2, "逾時後仍維持 bounded room polling");
     assert.equal(statusDocument.pollingStatus.dataset.kind, "resolution-delayed");
-    assert.match(statusDocument.pollingStatus.textContent, /仍在處理/);
+    assert.equal(
+      statusDocument.pollingStatus.textContent,
+      "> RESOLVING… 已等待 60 秒\n! Amazon Bedrock 非同步 AI 敘事仍在處理；不會自動取消或重送。",
+    );
   } finally {
     statusDocument.restore();
   }
@@ -423,4 +426,20 @@ test("遊戲頁提供不只依賴顏色的 polling live status", async () => {
   assert.match(html, /id=["']pollingStatus["']/);
   assert.match(html, /id=["']pollingStatus["'][^>]*role=["']status["']/);
   assert.match(html, /id=["']pollingStatus["'][^>]*aria-live=["']polite["']/);
+});
+
+
+test("GamePage 以終端前綴呈現一般 polling 層級，錯誤不只依賴顏色", () => {
+  const statusDocument = installPollingStatusDocument();
+  const page = new GamePage({});
+
+  try {
+    page.showPollingStatus("連線中斷，將在 3 秒後重試。", "offline");
+    assert.equal(statusDocument.pollingStatus.textContent, "! 連線中斷，將在 3 秒後重試。");
+
+    page.showPollingStatus("已重新連線，資料已同步。", "reconnected");
+    assert.equal(statusDocument.pollingStatus.textContent, "> 已重新連線，資料已同步。");
+  } finally {
+    statusDocument.restore();
+  }
 });
