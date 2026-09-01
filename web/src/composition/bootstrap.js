@@ -23,6 +23,7 @@ import {
 } from "../application/use-cases/ask-support-agent.js";
 import { GamePage } from "../ui/pages/game-page.js";
 import { LandingPage } from "../ui/pages/landing-page.js";
+import { SupportWidget } from "../ui/components/support-widget.js";
 import { SupportPage } from "../ui/pages/support-page.js";
 
 function showServerRequiredNoticeForFileProtocol() {
@@ -44,6 +45,44 @@ function showLoading() {
 function showSurface(surfaceId) {
   SURFACE_IDS.forEach((id) => { document.getElementById(id).hidden = id !== surfaceId; });
   document.getElementById("appLoadingStatus").hidden = true;
+}
+
+function ensureSupportWidgetStyles() {
+  if (document.getElementById("supportWidgetStyles")) return;
+  const stylesheet = document.createElement("link");
+  stylesheet.id = "supportWidgetStyles";
+  stylesheet.rel = "stylesheet";
+  stylesheet.href = "/support-widget.css";
+  document.head.append(stylesheet);
+}
+
+async function mountSupportWidget() {
+  ensureSupportWidgetStyles();
+  const config = globalThis.CO_STORY_CONFIG ?? { apiBasePath: "/api/v1" };
+  const gameApi = new FetchGameApi({ basePath: config.apiBasePath });
+  let playerSession = null;
+  const supportApi = new FetchSupportApi({
+    basePath: config.apiBasePath,
+    playerSessionProvider: async () => playerSession,
+  });
+  const widget = new SupportWidget({
+    lookupSupportRule: new LookupSupportRule(supportApi),
+    createSupportReportDraft: new CreateSupportReportDraft(supportApi),
+    canDraftReport: false,
+  });
+  widget.mount();
+
+  try {
+    const room = await new LoadRoom(gameApi).execute();
+    playerSession = room?.session ?? null;
+  } catch {
+    playerSession = null;
+  }
+  widget.setDraftCapability(
+    playerSession?.principalType === "player"
+      && typeof playerSession?.csrfToken === "string"
+      && playerSession.csrfToken.trim().length > 0,
+  );
 }
 
 async function mountGamePage({ forceMock = false } = {}) {
@@ -138,6 +177,7 @@ async function bootstrap() {
     landing.mount();
     showSurface("landingPage");
   }
+  await mountSupportWidget();
 }
 
 showServerRequiredNoticeForFileProtocol();
