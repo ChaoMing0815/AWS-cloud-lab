@@ -13,10 +13,11 @@
 
     <header class="topbar">
       <a class="brand" href="/" aria-label="共演計劃首頁">
-        <span class="brand-mark">共</span>
+        <img class="brand-mark" src="/assets/co-story-mark.svg" alt="共演計劃品牌圖示" width="42" height="42" />
         <span>
           <strong>共演計劃</strong>
           <small>CO-STORY PROJECT</small>
+          <span id="uiReleaseVersion" class="ui-release-version">UI v1.1.0</span>
         </span>
       </a>
       <div id="connectionStatus" class="connection"><span></span> 準備開始</div>
@@ -309,6 +310,7 @@
 
       <aside class="panel status-panel">
         <div class="eyebrow">本回合狀態</div>
+        <p id="phaseStatus" class="terminal-log phase-status">&gt; WAITING</p>
         <p id="pollingStatus" class="polling-status" role="status" aria-live="polite" hidden></p>
         <div class="objective">
           <span class="objective-label">共同目標</span>
@@ -385,8 +387,8 @@
         <div class="ai-card">
           <div class="ai-orb">✧</div>
           <div>
-            <strong>AI 故事主持人</strong>
-            <p id="aiStatus">等待所有玩家提交行動後，將整合結果並推進劇情。</p>
+            <strong class="ai-label">&gt; AI 故事主持人</strong>
+            <p id="aiStatus" class="terminal-log">&gt; 等待所有玩家提交行動後，將整合結果並推進劇情。</p>
           </div>
         </div>
 

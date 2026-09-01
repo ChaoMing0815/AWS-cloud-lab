@@ -51,6 +51,6 @@ test("首頁以穩定 DOM hook 顯示人工 UI release version 與同源可存�
   assert.match(html, /<img[^>]+src=["']\/assets\/co-story-mark\.svg["'][^>]+alt=["']共演計劃品牌圖示["']/);
   assert.doesNotMatch(html, /class=["']brand-mark["'][^>]*>共</);
   const mark = await readFile(new URL("../../assets/co-story-mark.svg", import.meta.url), "utf8");
-  assert.match(mark, /<title>共演計劃品牌圖示<\/title>/);
-  assert.doesNotMatch(mark, /(?:https?:)?\/\//, "品牌 SVG 不得依賴外部資源");
+  assert.match(mark, /<title(?:\s+[^>]*)?>共演計劃品牌圖示<\/title>/);
+  assert.doesNotMatch(mark, /(?:href|src)=["']https?:/i, "品牌 SVG 不得依賴外部資源");
 });

@@ -174,7 +174,7 @@ test("GamePage 暫時離線時保留 canonical 畫面並以 3、5、10 秒 bound
     assert.equal(statusDocument.pollingStatus.dataset.kind, "offline");
     assert.equal(
       statusDocument.pollingStatus.textContent,
-      "連線中斷，將在 10 秒後重試。",
+      "! 連線中斷，將在 10 秒後重試。",
     );
   } finally {
     statusDocument.restore();
@@ -211,7 +211,7 @@ test("GamePage 重新連線後更新 canonical state 並恢復 3 秒 polling", a
     assert.equal(renderCount, 1);
     assert.equal(scheduler.tasks[2].delay, 3000);
     assert.equal(statusDocument.pollingStatus.dataset.kind, "reconnected");
-    assert.equal(statusDocument.pollingStatus.textContent, "已重新連線，資料已同步。");
+    assert.equal(statusDocument.pollingStatus.textContent, "> 已重新連線，資料已同步。");
   } finally {
     statusDocument.restore();
   }
@@ -316,7 +316,7 @@ test("GamePage 遇到 401 或 403 時停止 polling 並顯示 session 下一步"
       assert.equal(statusDocument.pollingStatus.dataset.kind, "session-expired");
       assert.equal(
         statusDocument.pollingStatus.textContent,
-        "登入狀態已失效，請回首頁重新加入。",
+        "! 登入狀態已失效，請回首頁重新加入。",
       );
     } finally {
       statusDocument.restore();
@@ -355,7 +355,7 @@ test("GamePage 房間被刪除後停止 polling、清除舊房間並只導回首
     assert.equal(statusDocument.pollingStatus.dataset.kind, "room-removed");
     assert.equal(
       statusDocument.pollingStatus.textContent,
-      "房間已結束或刪除，已返回首頁。",
+      "! 房間已結束或刪除，已返回首頁。",
     );
   } finally {
     statusDocument.restore();
@@ -414,7 +414,7 @@ test("GamePage 遇到 409 時立即重新載入 canonical state", async () => {
     assert.equal(renderCount, 1);
     assert.equal(scheduler.tasks[1].delay, 3000);
     assert.equal(statusDocument.pollingStatus.dataset.kind, "conflict-reloaded");
-    assert.equal(statusDocument.pollingStatus.textContent, "資料已更新，已重新載入。");
+    assert.equal(statusDocument.pollingStatus.textContent, "> 資料已更新，已重新載入。");
   } finally {
     statusDocument.restore();
   }

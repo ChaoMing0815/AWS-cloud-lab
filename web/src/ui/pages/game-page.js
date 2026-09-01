@@ -231,8 +231,9 @@ export class GamePage {
       && this.resolutionStartedAtMs !== null
       && this.now() - this.resolutionStartedAtMs >= this.resolutionTimeoutMs
     ) {
+      const elapsedSeconds = Math.floor((this.now() - this.resolutionStartedAtMs) / 1000);
       this.showPollingStatus(
-        "AI 仍在處理本回合；可以保留此頁，完成後會自動更新。",
+        `> RESOLVING… 已等待 ${elapsedSeconds} 秒\n! Amazon Bedrock 非同步 AI 敘事仍在處理；不會自動取消或重送。`,
         "resolution-delayed",
       );
     } else if (reconnected) {
@@ -269,7 +270,9 @@ export class GamePage {
     const status = globalThis.document?.getElementById("pollingStatus");
     if (!status) return;
     status.hidden = !message;
-    status.textContent = message;
+    const errorKinds = new Set(["offline", "session-expired", "room-removed"]);
+    const prefix = errorKinds.has(kind) ? "! " : "> ";
+    status.textContent = message && !/^[>!] /.test(message) ? `${prefix}${message}` : message;
     status.dataset.kind = kind;
   }
 
@@ -541,7 +544,18 @@ export class GamePage {
     byId("actionCount").textContent = view.completed;
     byId("progressText").textContent = view.progressLabel;
     byId("progressBar").style.width = `${view.progressPercent}%`;
-    byId("aiStatus").textContent = view.aiStatus;
+    byId("phaseStatus").textContent = `> ${view.status}`;
+    const aiStatus = byId("aiStatus");
+    if (view.status === "RESOLVING") {
+      const cursor = element("span", { className: "terminal-cursor", text: "▍" });
+      cursor.setAttribute("aria-hidden", "true");
+      aiStatus.replaceChildren(
+        globalThis.document.createTextNode("> Amazon Bedrock 非同步 AI 敘事生成中 "),
+        cursor,
+      );
+    } else {
+      aiStatus.textContent = `> ${view.aiStatus}`;
+    }
     byId("worldName").textContent = view.world.name;
     byId("worldPremise").textContent = view.world.premise;
     byId("storyTitle").textContent = view.world.storyTitle;

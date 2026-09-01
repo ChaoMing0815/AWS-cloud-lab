@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img" aria-labelledby="mark-title mark-desc">
+  <title id="mark-title">共演計劃品牌圖示</title>
+  <desc id="mark-desc">三個角色節點共同連結成一條發光故事路徑</desc>
+  <rect x="1" y="1" width="46" height="46" rx="8" fill="#071113" stroke="#e3b66b" stroke-opacity=".58" />
+  <path d="M13 31C17 22 22 18 34 15M14 31C23 34 29 30 34 15" fill="none" stroke="#63cbb7" stroke-width="2.4" stroke-linecap="round" />
+  <circle cx="13" cy="31" r="4" fill="#e3b66b" />
+  <circle cx="24" cy="25" r="3.2" fill="#63cbb7" />
+  <circle cx="35" cy="14" r="4" fill="#e27b6c" />
+  <path d="M17 11h11" stroke="#e3b66b" stroke-width="2" stroke-linecap="round" />
+</svg>
