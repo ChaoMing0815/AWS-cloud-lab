@@ -234,6 +234,26 @@
   50% { transform: translateY(-2px); }
 }
 
+@media (min-width: 721px) and (max-width: 1050px) {
+  .support-widget__dialog {
+    position: fixed;
+    top: max(4.5rem, env(safe-area-inset-top));
+    right: 1rem;
+    bottom: auto;
+    max-height: min(20dvh, 12rem);
+  }
+}
+
+@media (min-width: 1051px) {
+  .support-widget__dialog {
+    position: fixed;
+    top: max(4.5rem, env(safe-area-inset-top));
+    right: 1rem;
+    bottom: auto;
+    max-height: min(50dvh, 28rem);
+  }
+}
+
 @media (max-width: 720px) {
   .support-widget {
     top: max(4.5rem, env(safe-area-inset-top));
