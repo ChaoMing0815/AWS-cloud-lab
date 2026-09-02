@@ -33,6 +33,15 @@
 - Production Browser QA 已驗證 390／768／1440 viewport、中文片語不拆分、寵物動畫／dialog、六個規則主題、supported citation、unsupported不猜測、`/support`玩家頁退場、無水平溢位及 console error／warning；strict TLS首頁／live／ready皆為`200`。
 - 這仍是 cited deterministic rules assistant，不是 RAG；沒有 LLM、embedding、vector store、Bedrock、MCP、external submit、第二個 story job 或新的 rules draft。
 
+## 2026-09-02 寵物視覺 v1.1.1 local candidate
+
+- Branch `codex/pet-visual-refresh-v1-1-1` 只調整 Frontend；rules retrieval、Backend、資料庫、RAG、IAM、AWS資源與workflow均未修改。
+- Red `1b284dc`、Browser corrective Red `0700ab0`、initial Green `8693e57`、jelly visual Red `8dfd379`、jelly visual Green `786dbae`；完整 Frontend regression `129/129`。
+- Launcher已由帶小圖示的矩形按鈕改為半透明圓潤膠體、直接長在身體上的眼睛與微笑、底部果凍裙邊／偽足、陰影、跳動與提示泡泡；沒有深色螢幕臉或分離機械腳，底層仍保留原生button與ARIA。
+- 390×844首頁／Demo、768×844、1440×900 Browser QA均無水平溢位或nav overlap；390 Demo的寵物與dialog不和composer／textarea相交。
+- 玩家可見candidate為`Release v1.1.1`。每次玩家可見patch必須遞增SemVer patch並由regression test拒絕上一版號；docs-only commit不遞增。
+- 此版本尚未push、merge或deploy；production仍是`Release v1.1.0`與source SHA `4db923f4d24aae0aca25c3fbe525f765f9d5023b`。
+
 ## 已完成範圍
 
 ### Tier 0：AWS 可玩 MVP
@@ -82,14 +91,15 @@
 
 ## Next
 
-1. 以現有 Tier 0–3、UI／寵物規則助手與bounded Support Agent production證據建立5–8分鐘final Demo；不重跑Bedrock、玩家E2E、synthetic incident或rules draft。
-2. 整合 final production architecture 與課程能力對映；Tier 4／5 若保留於圖中，必須標示 `Future roadmap / Out of scope for final delivery`。
-3. 建立 final evidence index，使 Demo 每一步只連到一個 canonical sanitized evidence。
-4. 完成 repository secrets 掃描與 tracked screenshots OCR／人工遮罩 audit。
-5. 以strict TDD把ACME父目錄最小穿越權限、公開challenge probe與憑證到期／renewal failure觀測固化至repo；不得放寬`/var/lib/co-story`的list／read／write權限。下一次timer成功前保留此項為residual，不重複手動renew。
-6. 完成 2026-09-08 清理 runbook，列出現役資源、dependency order、ECR `Retain`、snapshot 決策、owner 與帳單複查方式；未取得人工指示前不執行清理。
-7. 最後同步 README、architecture index、project plan、gantt與checkpoints；不得用歷史Tier 4／5未勾項覆蓋ADR-0008。
-8. Tier 4／5、Support Agent Bedrock／RAG／external submit 都是 future scope；兩日版不構成 AWS change envelope 擴張。
+1. Review並push `codex/pet-visual-refresh-v1-1-1`；PR CI全綠後才合併。Production deployment仍需新的exact-main／active-digest／rollback envelope與人工核准。
+2. 以現有 Tier 0–3、UI／寵物規則助手與bounded Support Agent production證據建立5–8分鐘final Demo；不重跑Bedrock、玩家E2E、synthetic incident或rules draft。
+3. 整合 final production architecture 與課程能力對映；Tier 4／5 若保留於圖中，必須標示 `Future roadmap / Out of scope for final delivery`。
+4. 建立 final evidence index，使 Demo 每一步只連到一個 canonical sanitized evidence。
+5. 完成 repository secrets 掃描與 tracked screenshots OCR／人工遮罩 audit。
+6. 以strict TDD把ACME父目錄最小穿越權限、公開challenge probe與憑證到期／renewal failure觀測固化至repo；不得放寬`/var/lib/co-story`的list／read／write權限。下一次timer成功前保留此項為residual，不重複手動renew。
+7. 完成 2026-09-08 清理 runbook，列出現役資源、dependency order、ECR `Retain`、snapshot 決策、owner 與帳單複查方式；未取得人工指示前不執行清理。
+8. 最後同步 README、architecture index、project plan、gantt與checkpoints；不得用歷史Tier 4／5未勾項覆蓋ADR-0008。
+9. Tier 4／5、Support Agent Bedrock／RAG／external submit 都是 future scope；本UI patch不構成 AWS change envelope 擴張。
 
 ## 操作護欄
 

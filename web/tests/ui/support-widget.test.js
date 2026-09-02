@@ -23,6 +23,13 @@ class FakeElement {
     this.value = "";
     this.className = "";
     this.id = "";
+    this.rect = { left: 0, right: 0, top: 0, bottom: 0, width: 0, height: 0 };
+    this.styleValues = new Map();
+    this.style = {
+      setProperty: (name, value) => this.styleValues.set(name, value),
+      removeProperty: (name) => this.styleValues.delete(name),
+      getPropertyValue: (name) => this.styleValues.get(name) ?? "",
+    };
   }
 
   append(...children) {
@@ -52,6 +59,10 @@ class FakeElement {
   focus() {
     this.documentRef.activeElement = this;
   }
+
+  getBoundingClientRect() {
+    return this.rect;
+  }
 }
 
 function fakeDocument() {
@@ -79,6 +90,19 @@ function fakeDocument() {
         return null;
       };
       return visit(this.body) ?? visit(this.head);
+    },
+  };
+  documentRef.defaultView = {
+    innerWidth: 390,
+    innerHeight: 844,
+    listeners: new Map(),
+    addEventListener(type, handler) {
+      const handlers = this.listeners.get(type) ?? [];
+      handlers.push(handler);
+      this.listeners.set(type, handlers);
+    },
+    requestAnimationFrame(callback) {
+      callback();
     },
   };
   documentRef.body = new FakeElement("body", documentRef);
@@ -153,6 +177,60 @@ test("Widget 提供可見開關、dialog 語意、Esc 關閉與 focus return", a
   assert.equal(toggle.getAttribute("aria-expanded"), "false");
   assert.equal(documentRef.activeElement, toggle);
   assert.doesNotMatch(documentRef.getElementById("supportWidgetRoot").className, /is-open/);
+});
+
+test("Widget launcher 以果凍狀史萊姆呈現，不帶機器人面板或分離雙腳", async () => {
+  const { documentRef } = createWidget();
+  const toggle = documentRef.getElementById("supportWidgetToggle");
+
+  assert.equal(toggle.tagName, "BUTTON", "仍需保留原生 button 鍵盤與點擊語意");
+  assert.ok(documentRef.getElementById("supportWidgetPetBody"));
+  assert.ok(documentRef.getElementById("supportWidgetPetFace"));
+  assert.ok(documentRef.getElementById("supportWidgetPetJellyBase"));
+  assert.ok(documentRef.getElementById("supportWidgetPetShadow"));
+  assert.equal(documentRef.getElementById("supportWidgetPetFeet"), null);
+  assert.equal(documentRef.getElementById("supportWidgetPetHint").textContent, "問規則");
+
+  const css = await readFile(
+    new URL("../../support-widget.css", import.meta.url),
+    "utf8",
+  );
+  const toggleRule = css.match(/\.support-widget__toggle\s*\{([^}]*)\}/)?.[1] ?? "";
+  const petRule = css.match(/\.support-widget__slime\s*\{([^}]*)\}/)?.[1] ?? "";
+  const bodyRule = css.match(/\.support-widget__slime-body\s*\{([^}]*)\}/)?.[1] ?? "";
+  const faceRule = css.match(/\.support-widget__slime-face\s*\{([^}]*)\}/)?.[1] ?? "";
+  const hintRule = css.match(/\.support-widget__toggle-label\s*\{([^}]*)\}/)?.[1] ?? "";
+
+  assert.match(toggleRule, /width:\s*6(?:\.\d+)?rem/);
+  assert.match(toggleRule, /height:\s*7(?:\.\d+)?rem/);
+  assert.match(toggleRule, /padding:\s*0/);
+  assert.match(toggleRule, /border:\s*0/);
+  assert.match(toggleRule, /background:\s*transparent/);
+  assert.match(toggleRule, /box-shadow:\s*none/);
+  assert.match(petRule, /width:\s*5(?:\.\d+)?rem/);
+  assert.match(petRule, /height:\s*6(?:\.\d+)?rem/);
+  assert.match(bodyRule, /border-radius:\s*5\d%\s+5\d%\s+4\d%\s+4\d%/);
+  assert.match(bodyRule, /background:\s*(?:linear-gradient|rgba)/);
+  assert.match(faceRule, /border:\s*0/);
+  assert.match(faceRule, /background:\s*transparent/);
+  assert.match(faceRule, /box-shadow:\s*none/);
+  assert.doesNotMatch(css, /support-widget__slime-feet|#102b31|#0a1b20/);
+  assert.match(hintRule, /position:\s*absolute/);
+  assert.match(hintRule, /border-radius:\s*999px/);
+});
+
+test("Widget 在 mobile 核心 composer 進入 viewport 時停靠於控制區上方", () => {
+  const { documentRef, widget } = createWidget();
+  const composer = new FakeElement("form", documentRef);
+  composer.id = "actionForm";
+  composer.rect = { left: 25, right: 365, top: 567, bottom: 810, width: 340, height: 243 };
+  documentRef.body.append(composer);
+
+  widget.updateControlAvoidance();
+
+  const root = documentRef.getElementById("supportWidgetRoot");
+  assert.match(root.className, /is-avoiding-controls/);
+  assert.equal(root.style.getPropertyValue("--support-widget-bottom"), "289px");
 });
 
 test("Widget 提供六類規則主題捷徑，並以同一 lookup 執行獨立查詢", async () => {

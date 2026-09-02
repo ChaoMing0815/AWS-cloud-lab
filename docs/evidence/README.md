@@ -46,6 +46,7 @@
 
 ## 產品與 release gates
 
+- [寵物視覺 refresh v1.1.1 local validation](2026-09-02-pet-visual-refresh-v1-1-1/validation.md)
 - [三玩家 Browser E2E](2026-08-10-three-player-browser-e2e/validation.md)
 - [PostgreSQL persistence](2026-08-10-postgres-persistence/tdd-validation.md)
 - [LLM failure recovery](2026-08-10-llm-recovery/tdd-validation.md)

@@ -50,6 +50,7 @@ export class SupportWidget {
     this.ruleBusy = false;
     this.reportBusy = false;
     this.isOpen = false;
+    this.isAvoidingControls = false;
     this.ruleHistory = [];
   }
 
@@ -75,7 +76,25 @@ export class SupportWidget {
       className: "support-widget__slime",
       attributes: { "aria-hidden": "true" },
     });
+    const petShadow = makeElement(this.document, "span", {
+      id: "supportWidgetPetShadow",
+      className: "support-widget__slime-shadow",
+    });
+    const petBody = makeElement(this.document, "span", {
+      id: "supportWidgetPetBody",
+      className: "support-widget__slime-body",
+    });
+    const petFace = makeElement(this.document, "span", {
+      id: "supportWidgetPetFace",
+      className: "support-widget__slime-face",
+    });
+    const petJellyBase = makeElement(this.document, "span", {
+      id: "supportWidgetPetJellyBase",
+      className: "support-widget__slime-jelly-base",
+    });
+    slime.append(petShadow, petJellyBase, petBody, petFace);
     const toggleLabel = makeElement(this.document, "span", {
+      id: "supportWidgetPetHint",
       className: "support-widget__toggle-label",
       textContent: "問規則",
     });
@@ -161,6 +180,15 @@ export class SupportWidget {
     this.ruleView = ruleView;
     this.reportView = reportView;
     this.root = root;
+
+    const view = this.document.defaultView;
+    if (view?.addEventListener) {
+      this.controlAvoidanceHandler = () => this.updateControlAvoidance();
+      view.addEventListener("resize", this.controlAvoidanceHandler);
+      view.addEventListener("scroll", this.controlAvoidanceHandler, { passive: true });
+      if (view.requestAnimationFrame) view.requestAnimationFrame(this.controlAvoidanceHandler);
+      else this.controlAvoidanceHandler();
+    }
 
     toggle.addEventListener("click", () => this.toggleDialog());
     close.addEventListener("click", () => this.close());
@@ -322,7 +350,8 @@ export class SupportWidget {
   open() {
     if (!this.isOpen) this.resetRuleHistory();
     this.isOpen = true;
-    this.root.className = "support-widget is-open";
+    this.updateControlAvoidance();
+    this.syncRootClass();
     this.panel.hidden = false;
     this.toggle.setAttribute("aria-expanded", "true");
     this.closeButton.focus();
@@ -330,10 +359,49 @@ export class SupportWidget {
 
   close() {
     this.isOpen = false;
-    this.root.className = "support-widget";
+    this.updateControlAvoidance();
+    this.syncRootClass();
     this.panel.hidden = true;
     this.toggle.setAttribute("aria-expanded", "false");
     this.toggle.focus();
+  }
+
+  syncRootClass() {
+    this.root.className = [
+      "support-widget",
+      this.isOpen ? "is-open" : "",
+      this.isAvoidingControls ? "is-avoiding-controls" : "",
+    ].filter(Boolean).join(" ");
+  }
+
+  updateControlAvoidance() {
+    const view = this.document.defaultView;
+    const composer = this.document.getElementById("actionForm");
+    const canMeasure = view
+      && Number.isFinite(view.innerWidth)
+      && Number.isFinite(view.innerHeight)
+      && view.innerWidth <= 720
+      && composer
+      && !composer.hidden
+      && typeof composer.getBoundingClientRect === "function";
+
+    if (!canMeasure) {
+      this.isAvoidingControls = false;
+      this.root.style?.removeProperty("--support-widget-bottom");
+      this.syncRootClass();
+      return;
+    }
+
+    const rect = composer.getBoundingClientRect();
+    const intersectsViewport = rect.height > 0 && rect.top < view.innerHeight && rect.bottom > 0;
+    this.isAvoidingControls = intersectsViewport;
+    if (intersectsViewport) {
+      const safeBottom = Math.ceil(view.innerHeight - rect.top + 12);
+      this.root.style?.setProperty("--support-widget-bottom", `${safeBottom}px`);
+    } else {
+      this.root.style?.removeProperty("--support-widget-bottom");
+    }
+    this.syncRootClass();
   }
 
   resetRuleHistory() {
