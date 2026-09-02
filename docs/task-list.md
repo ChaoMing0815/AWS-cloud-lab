@@ -129,6 +129,7 @@
 - [x] 完成中性`Release v1.1.0`識別、新同源品牌SVG、終端敘事visual hierarchy與reduced-motion邊界。
 - [x] 先將既有bounded Support Agent包裝成保留當前頁面的純CSS像素Widget，再以寵物式史萊姆、六個規則主題與自然語言查詢取代玩家`/support`頁；citation／拒答／人工確認安全語意與Backend API保留。
 - [x] 完成寵物規則助手整合Frontend `127/127`、desktop／tablet／390px QA、main CI與exact-digest production release；active Web為`sha256:14d8e0f…`、runtime維持`async`。
+- [x] 完成果凍史萊姆視覺與`Release v1.1.1`，Frontend `129/129`、PR／main CI與exact-digest production release全綠；active Web為`sha256:ad0ee896…`、runtime維持`async`。
 - [x] 修復Direct IP憑證renewal事故：只授予Nginx父目錄穿越ACL，renewal與strict TLS三端點成功；未rollback Web image。
 - [ ] 以strict TDD將ACME父目錄最小權限、challenge probe與憑證到期／renewal failure觀測固化至repo，並在不手動重複renew的前提下觀察下一次timer結果。
 
