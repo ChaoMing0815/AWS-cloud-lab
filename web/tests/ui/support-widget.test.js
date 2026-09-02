@@ -23,6 +23,13 @@ class FakeElement {
     this.value = "";
     this.className = "";
     this.id = "";
+    this.rect = { left: 0, right: 0, top: 0, bottom: 0, width: 0, height: 0 };
+    this.styleValues = new Map();
+    this.style = {
+      setProperty: (name, value) => this.styleValues.set(name, value),
+      removeProperty: (name) => this.styleValues.delete(name),
+      getPropertyValue: (name) => this.styleValues.get(name) ?? "",
+    };
   }
 
   append(...children) {
@@ -52,6 +59,10 @@ class FakeElement {
   focus() {
     this.documentRef.activeElement = this;
   }
+
+  getBoundingClientRect() {
+    return this.rect;
+  }
 }
 
 function fakeDocument() {
@@ -79,6 +90,18 @@ function fakeDocument() {
         return null;
       };
       return visit(this.body) ?? visit(this.head);
+    },
+  };
+  documentRef.defaultView = {
+    innerHeight: 844,
+    listeners: new Map(),
+    addEventListener(type, handler) {
+      const handlers = this.listeners.get(type) ?? [];
+      handlers.push(handler);
+      this.listeners.set(type, handlers);
+    },
+    requestAnimationFrame(callback) {
+      callback();
     },
   };
   documentRef.body = new FakeElement("body", documentRef);
@@ -184,6 +207,20 @@ test("Widget launcher 以獨立像素生物呈現，不再是帶小圖示的矩�
   assert.match(petRule, /height:\s*6(?:\.\d+)?rem/);
   assert.match(hintRule, /position:\s*absolute/);
   assert.match(hintRule, /border-radius:\s*999px/);
+});
+
+test("Widget 在 mobile 核心 composer 進入 viewport 時停靠於控制區上方", () => {
+  const { documentRef, widget } = createWidget();
+  const composer = new FakeElement("form", documentRef);
+  composer.id = "actionForm";
+  composer.rect = { left: 25, right: 365, top: 567, bottom: 810, width: 340, height: 243 };
+  documentRef.body.append(composer);
+
+  widget.updateControlAvoidance();
+
+  const root = documentRef.getElementById("supportWidgetRoot");
+  assert.match(root.className, /is-avoiding-controls/);
+  assert.equal(root.style.getPropertyValue("--support-widget-bottom"), "289px");
 });
 
 test("Widget 提供六類規則主題捷徑，並以同一 lookup 執行獨立查詢", async () => {
