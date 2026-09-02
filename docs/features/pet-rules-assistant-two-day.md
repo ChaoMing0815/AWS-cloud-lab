@@ -1,10 +1,11 @@
 # 兩日版像素寵物規則助手
 
-- 狀態：Integrated release candidate（2026-09-01）；尚未 push／deploy
+- 狀態：Merged to main（2026-09-02）；尚未 deploy
 - 上游：ADR-0005、`docs/features/support-pixel-widget.md`、2026-09-01 使用者核准
 - 風險：R2 可觀察 UX／規則 retrieval
 - 整合基線：`0fea052af5bb60941efa6cd19c6002575cf6ff6e`
-- Integrated candidate：`7b4006e` 後續文件收斂 commit；production 仍是 `1297a6acabaf30ca4ec2205e7641b7ab83cef781`
+- Integrated candidate：`2a0f67993ede7c88504e2905ea1da62d9cb05dc9`
+- Merged main：`add0d5ff0f9cf393b7e9323e498452c974b06170`；production 仍是 `1297a6acabaf30ca4ec2205e7641b7ab83cef781`
 
 ## 目的與誠實命名
 
@@ -51,4 +52,5 @@
 - Browser acceptance 已驗證 390×844、768×844、1440×900：無水平 overflow、nav／寵物不重疊，首頁中文片語不拆分。
 - 390×844 Demo 的寵物 dialog 與 action composer／textarea 均不相交；開啟時動畫 paused，`Esc` focus 回到 toggle。
 - `/support` 玩家導航、Widget 深連結與 route composition 已退場；規則 lookup API 與 `local_draft_only` 草稿能力保留。
-- Canonical candidate evidence：[`2026-09-01-pet-rules-assistant-integration`](../evidence/2026-09-01-pet-rules-assistant-integration/validation.md)。
+- Canonical integration evidence：[`2026-09-01-pet-rules-assistant-integration`](../evidence/2026-09-01-pet-rules-assistant-integration/validation.md)。
+- PR #71 與 exact-main CI run `33577514504` 已成功；合併不等於 production deployment 授權。
