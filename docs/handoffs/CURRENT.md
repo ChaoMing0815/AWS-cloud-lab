@@ -1,6 +1,6 @@
 # CURRENT：目前工作交接
 
-- 更新日期：2026-09-01
+- 更新日期：2026-09-02
 - 繳交期限：2026-09-07
 - 目前里程碑：ADR-0008 定義的 AWS production 主線已完成，包含可玩 MVP、可觀測／SSM、Web／Story Worker／Data 組件化與自動部署。Tier 4／5 只是 future roadmap，不是當前缺口或 final delivery blocker。
 - 狀態判定：以目前已實作、production 狀態與 sanitized evidence 為主。`docs/checkpoints.md` 與 `docs/task-list.md` 是驗收參考與證據整合清單，不得以歷史未勾項否定已有實作與證據的成果。
@@ -73,7 +73,7 @@
 
 ## Next
 
-1. 兩日版寵物規則助手已在本機整合分支完成合併與 acceptance，詳細 contract 見 [`docs/features/pet-rules-assistant-two-day.md`](../features/pet-rules-assistant-two-day.md)，證據見 [`2026-09-01-pet-rules-assistant-integration`](../evidence/2026-09-01-pet-rules-assistant-integration/validation.md)。候選仍未 push／部署，production source 仍為 `1297a6acabaf30ca4ec2205e7641b7ab83cef781`；不得把候選行為描述為已上線。
+1. 兩日版寵物規則助手已透過 PR #71 合併 `main`，exact main 為 `add0d5ff0f9cf393b7e9323e498452c974b06170`，main CI run `33577514504` 全綠；詳細 contract 見 [`docs/features/pet-rules-assistant-two-day.md`](../features/pet-rules-assistant-two-day.md)，證據見 [`2026-09-01-pet-rules-assistant-integration`](../evidence/2026-09-01-pet-rules-assistant-integration/validation.md)。尚未部署，production source 仍為 `1297a6acabaf30ca4ec2205e7641b7ab83cef781`；不得把 main 能力描述為已上線。
 2. 以現有 Tier 0–3、UI／Widget與bounded Support Agent production證據建立5–8分鐘final Demo；不重跑Bedrock、玩家E2E、synthetic incident或rules draft。
 3. 整合 final production architecture 與課程能力對映；Tier 4／5 若保留於圖中，必須標示 `Future roadmap / Out of scope for final delivery`。
 4. 建立 final evidence index，使 Demo 每一步只連到一個 canonical sanitized evidence。
