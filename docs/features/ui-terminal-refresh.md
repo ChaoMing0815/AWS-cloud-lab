@@ -1,5 +1,10 @@
 # UI 終端敘事改版驗證摘要
 
+- 狀態：Production verified（2026-09-01）
+- Production source：`1297a6acabaf30ca4ec2205e7641b7ab83cef781`
+- Active Web digest：`sha256:5a10597d473cd21c5b2754b743f4a48de2be7cae9bd0c1816c535523284df9bd`
+- Canonical production evidence：[`2026-09-01-ui-support-production-release`](../evidence/2026-09-01-ui-support-production-release/validation.md)
+
 - Scope／risk／upstream source：R2 可觀察 UX；共同基準 `3152a9bc59c284850570ee0ee16ba0964a8966d4`、branch policy 與正式產品邊界。
 - 首頁版本：玩家可見且具穩定 `releaseVersion` DOM id 的中性人工版本 `Release v1.1.0`；不綁定單一改版類型，也不宣稱為 Git SHA。
 - 品牌資產：新增同源 `co-story-mark.svg`，具可存取名稱且沒有外部資源。

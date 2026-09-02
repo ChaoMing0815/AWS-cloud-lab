@@ -47,11 +47,66 @@ def test_lookup_game_rules_returns_canonical_content_and_stable_citation() -> No
 
 
 @pytest.mark.parametrize(
+    ("rule_id", "queries"),
+    [
+        (
+            "player-count-and-round-limit",
+            ("我要怎麼開始遊戲？", "開局需要多少人？"),
+        ),
+        (
+            "character-attributes",
+            ("角色的屬性點要如何分配？", "勇氣洞察跟羈絆要怎麼加點？"),
+        ),
+        (
+            "round-flow",
+            ("每一輪大家依序要做哪些事情？", "玩家的行動什麼時候會給其他人看到？"),
+        ),
+        (
+            "dice-outcomes",
+            ("擲骰之後怎樣才算成功？", "骰到七點會發生什麼結果？"),
+        ),
+        (
+            "spark-usage",
+            ("星火拿來做什麼？", "用掉星火會有什麼效果？"),
+        ),
+        (
+            "progress-danger-ending",
+            ("進度和危機值會怎麼改變？", "什麼情況會進入不同結局？"),
+        ),
+    ],
+)
+def test_common_traditional_chinese_questions_return_one_grounded_rule(
+    rule_id: str,
+    queries: tuple[str, ...],
+) -> None:
+    rules_path = Path(__file__).parents[1] / "app" / "resources" / "game_rules.json"
+    rules = json.loads(rules_path.read_text(encoding="utf-8"))
+    expected = next(record for record in rules["rules"] if record["id"] == rule_id)
+    agent = _agent()
+
+    for query in queries:
+        answer = agent.respond(query)
+
+        assert answer.status == "supported"
+        assert answer.answer == expected["content"]
+        assert len(answer.citations) == 1
+        citation = answer.citations[0]
+        assert citation.rule_id == rule_id
+        assert citation.title == expected["title"]
+        assert citation.source_section == expected["source_section"]
+        assert citation.source_version == rules["version"]
+
+
+@pytest.mark.parametrize(
     ("query", "reason"),
     [
         ("可以交易裝備嗎？", "no_grounded_rule"),
         ("星火可以復活角色嗎？", "no_grounded_rule"),
         ("星火和骰點分別怎麼算？", "ambiguous_rule_query"),
+        (
+            "我想知道開局人數和角色屬性如何分配？",
+            "ambiguous_rule_query",
+        ),
     ],
 )
 def test_lookup_game_rules_fails_closed_without_one_grounded_record(

@@ -23,7 +23,6 @@
       <div id="connectionStatus" class="connection"><span></span> 準備開始</div>
       <nav class="topbar-nav" aria-label="主要導覽">
         <a class="topbar-link" href="/rules">遊戲規則</a>
-        <a class="topbar-link" href="/support">客服支援</a>
       </nav>
     </header>
 
@@ -33,7 +32,7 @@
     <main id="landingPage" class="landing-shell" hidden>
       <section class="landing-copy">
         <div class="eyebrow">3–5 人 AI 共創故事</div>
-        <h1>每個選擇，都會成為下一段共同故事。</h1>
+        <h1 class="landing-headline"><span class="headline-phrase">每個選擇，</span><span class="headline-phrase">都會成為</span><span class="headline-phrase">下一段共同故事。</span></h1>
         <p>建立一個故事房間，邀請朋友自由創作角色與行動；規則負責判定後果，AI 故事主持人負責把眾人的選擇編成同一場冒險。</p>
         <ul class="landing-features" aria-label="遊戲特色">
           <li>3–5 位玩家共同遊玩</li>
@@ -92,6 +91,14 @@
         <div class="eyebrow">新手快速說明</div>
         <h1>遊戲規則</h1>
         <p>自由決定角色與行動；骰子、星火與進度決定結果，故事主持人只負責把既定結果寫成劇情。</p>
+        <div class="rules-shortcuts" aria-label="詢問規則寵物">
+          <button type="button" data-support-rule-query="如何開始遊戲？">開始遊戲</button>
+          <button type="button" data-support-rule-query="角色屬性如何分配？">角色屬性</button>
+          <button type="button" data-support-rule-query="一個回合如何進行？">回合流程</button>
+          <button type="button" data-support-rule-query="骰點如何判定結果？">骰點判定</button>
+          <button type="button" data-support-rule-query="星火如何使用？">星火</button>
+          <button type="button" data-support-rule-query="進度、危機與結局如何判定？">進度／危機／結局</button>
+        </div>
         <a class="secondary-button rules-return" href="/">返回首頁</a>
       </section>
 
@@ -102,40 +109,6 @@
         <section><div class="eyebrow">4. 星火</div><h2>看見骰點後再決定</h2><p>每位角色開始時有 1 點星火。使用星火會讓本次總值 +1；失敗結算後可獲得星火，最多持有 3 點。</p></section>
         <section><div class="eyebrow">5. 結局</div><h2>推進目標、控制危機</h2><p>成功會推進共同目標，失敗可能增加危機。達成目標或到達選定的回合上限後，故事會依結果與代價收束。</p></section>
         <p class="muted">房主負責世界設定、開始、擲骰與結算；所有玩家都能建立角色、提交行動與決定自己的星火。</p>
-      </section>
-    </main>
-
-    <main id="supportPage" class="landing-shell support-shell" hidden>
-      <section class="landing-copy">
-        <div class="eyebrow">Bounded Support Agent</div>
-        <h1>規則查詢與問題草稿</h1>
-        <p>規則答案只引用目前版本的正式資料；問題回報只會建立待人工確認的草稿，不會對外提交。</p>
-        <a class="secondary-button rules-return" href="/">返回首頁</a>
-      </section>
-
-      <section class="support-workspace" aria-label="客服支援工具">
-        <form id="supportRuleForm" class="entry-panel support-card">
-          <div class="eyebrow">匿名可用</div>
-          <h2>查詢遊戲規則</h2>
-          <label for="supportRuleMessage">你的規則問題</label>
-          <textarea id="supportRuleMessage" maxlength="500" rows="4" required></textarea>
-          <p id="supportRuleFeedback" class="feedback" role="status" aria-live="polite" hidden></p>
-          <p id="supportRuleAnswer" class="support-answer" hidden></p>
-          <pre id="supportRuleCitations" class="support-citations" hidden></pre>
-          <button id="supportRuleButton" class="primary-button" type="submit">查詢規則</button>
-        </form>
-
-        <form id="supportReportForm" class="entry-panel support-card">
-          <div class="eyebrow">玩家工作階段限定</div>
-          <h2>建立問題草稿</h2>
-          <p>請描述重現步驟、預期與實際結果。草稿會安全保存於專案資料層，仍需人工確認，不會對外提交。</p>
-          <label for="supportReportDescription">問題描述</label>
-          <textarea id="supportReportDescription" maxlength="2000" rows="7" required disabled></textarea>
-          <p id="supportReportCapability" class="trial-safety-note" role="note"></p>
-          <p id="supportReportFeedback" class="feedback" role="status" aria-live="polite" hidden></p>
-          <pre id="supportReportResult" class="support-draft-result" hidden></pre>
-          <button id="supportReportButton" class="secondary-button" type="submit" disabled>建立待確認草稿</button>
-        </form>
       </section>
     </main>
 

@@ -41,6 +41,7 @@
 - [Tier 3 production release](2026-08-31-tier3-production-release/validation.md)
 - [Support Agent production 整合](2026-08-31-support-agent-integration/validation.md)
 - [Support Agent CSP corrective](2026-08-31-support-csp-corrective/validation.md)
+- [UI／像素 Support Widget production release與HTTPS恢復](2026-09-01-ui-support-production-release/validation.md)
 
 ## 產品與 release gates
 

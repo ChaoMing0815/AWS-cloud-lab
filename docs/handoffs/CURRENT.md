@@ -9,20 +9,21 @@
 
 ## Production 基準
 
-- Production source exact SHA：`372a2cb77c85530b9cb3bedbd39de9d4b88e535a`。
+- Production source exact SHA：`1297a6acabaf30ca4ec2205e7641b7ab83cef781`。
 - Migration inventory：精確 `001`–`005`。
-- Web：`sha256:f9cc0e650231096cc6a14de1997181601558314195ad6ca31319ad62eb1abdd4`，runtime `async`，container healthy，restart `0`。
+- Web：`sha256:5a10597d473cd21c5b2754b743f4a48de2be7cae9bd0c1816c535523284df9bd`，runtime `async`；run `33494151458` 的 exact-digest scan、bounded SSM release 與 delivery metrics均成功，container／public live／ready healthy。
 - Publisher：`sha256:23357e315e94842cee8455023b1f87f203fca5b1d11b67b714f4af86efaa2a1b`，service active，container running。
 - 兩台 private Worker：`sha256:2d5d5866f54879e79882644f4b45af2475650ddc9972e6b91cfe786886cddfbc`，service active，container running，restart `0`，mode `async`。
 - Tier 2 玩家流程已完成 `202 → polling → applied result`；Room 進入 Round 02／`COLLECTING_ACTIONS`，新 AI 故事可見，主 Queue／DLQ 五項皆為 `0`，DLQ alarm 為 `OK`／`No actions`。
 - GitHub OIDC／ECR／Trivy／SSM pipeline 是唯一 image 交付路徑；production environment 保留人工核准與 fail-closed health／rollback gate。
 
-## Repo-local release candidate（尚未部署）
+## 2026-09-01 UI／Support Widget production release
 
-- Web UI／Support Widget application code candidate exact SHA：`0b5aaa87cbf68bb4bb0d686f6b65a3c14c48a7f4`，位於整合分支 `codex/final-current-reconciliation`；尚未 merge／push 到 `main`，也尚未觸發 CI/CD 或 production deploy。上方 Production source SHA 與 active digests 仍是唯一 production 基準。
-- Candidate 包含玩家可見的 `Release v1.1.0`、新同源 SVG 品牌圖示、終端敘事狀態層級，以及保留當前頁面的像素 Support Widget。Widget 仍只提供 cited／unsupported 規則查詢與 Player-only `local_draft_only` 草稿，不擴張 Bedrock、RAG、MCP 或 external submit。
-- 合併後 Frontend regression 為 `124/124`；390×844、768×900、1440×900 browser QA 均確認 Widget toggle 不與 topbar nav 重疊、dialog 不與 composer 相交、無水平溢位，Esc 後 focus 回到 toggle，console 無 error。390 與 768 的 compact dialog 需要內部捲動，屬刻意 responsive 取捨。
-- Branch ownership、TDD commits 與整合順序由 `.agents/work-boundaries.json` 與 `docs/governance/parallel-branch-boundaries.md` 記錄；不得重新啟動已完成的 UI／Widget 開發分支。下一個精確起點是整合 review、main 同步與一次新的 bounded `digest-release` deployment batch。
+- UI terminal refresh 與像素 Support Widget 已合併、push 至 `main` 並部署 production，不再是 repo-local candidate；不得重新啟動或延續已完成的 `codex/ui-terminal-refresh`、`codex/support-pixel-widget` 分支。
+- 玩家可見 `Release v1.1.0`、新同源 SVG 品牌圖示、終端敘事狀態層級與保留當前頁面的像素 Support Widget 均已上線。Widget 仍只提供 cited／unsupported 規則查詢與 Player-only `local_draft_only` 草稿，不擴張 Bedrock、RAG、MCP 或 external submit。
+- Exact main CI run `33493821544` 全綠；release run `33494151458` 綁定 exact SHA `1297a6acabaf30ca4ec2205e7641b7ab83cef781`，以 previous digest `sha256:f9cc0e6…` 完成 `digest-release`，新 active Web digest 為 `sha256:5a10597…`。Publisher 與兩台 Worker digest未變。
+- 整合 Frontend regression `124/124`；production Browser QA確認 `Release v1.1.0`、品牌圖示、Widget、Esc focus return，390×844 下 toggle／nav與dialog／composer均不重疊、無水平溢位、console無error／warning。390與768的compact dialog內部捲動是刻意responsive取捨。
+- Release後發現既有Direct IP憑證已過期；根因不是本次Web image，而是`/var/lib/co-story`為`root:co-story 0750`，Nginx worker無法穿越，造成ACME token雖存在仍回`404`。Production已加入精確ACL `user:nginx:--x`、同一renewal unit成功換發並reload；外部strict TLS首頁／live／ready均回`200`。下一次timer自動執行尚未觀察，repo防回歸仍是明確未完成項。
 
 ## 已完成範圍
 
@@ -68,17 +69,19 @@
 - Tier 3 production release：[`docs/evidence/2026-08-31-tier3-production-release/validation.md`](../evidence/2026-08-31-tier3-production-release/validation.md)
 - Bounded Support Agent production extension：[`docs/evidence/2026-08-31-support-agent-integration/validation.md`](../evidence/2026-08-31-support-agent-integration/validation.md)
 - Support CSP corrective：[`docs/evidence/2026-08-31-support-csp-corrective/validation.md`](../evidence/2026-08-31-support-csp-corrective/validation.md)
+- UI／像素 Support Widget production release與HTTPS恢復：[`docs/evidence/2026-09-01-ui-support-production-release/validation.md`](../evidence/2026-09-01-ui-support-production-release/validation.md)
 
 ## Next
 
-1. Review repo-local Web candidate，完成 main 同步與 CI gates；取得使用者對 exact main SHA、active digest、health／rollback gate 的新 bounded deployment approval 後，才觸發一次 `digest-release`，並驗證 production `Release v1.1.0`、品牌圖示、Widget desktop／mobile rendering 與既有 async runtime。
-2. 以現有 Tier 0–3 與 bounded Support Agent production 證據建立 5–8 分鐘 final Demo，不重跑 Bedrock、玩家 E2E、synthetic incident 或 rules draft。
+1. 兩日版寵物規則助手已在本機整合分支完成合併與 acceptance，詳細 contract 見 [`docs/features/pet-rules-assistant-two-day.md`](../features/pet-rules-assistant-two-day.md)，證據見 [`2026-09-01-pet-rules-assistant-integration`](../evidence/2026-09-01-pet-rules-assistant-integration/validation.md)。候選仍未 push／部署，production source 仍為 `1297a6acabaf30ca4ec2205e7641b7ab83cef781`；不得把候選行為描述為已上線。
+2. 以現有 Tier 0–3、UI／Widget與bounded Support Agent production證據建立5–8分鐘final Demo；不重跑Bedrock、玩家E2E、synthetic incident或rules draft。
 3. 整合 final production architecture 與課程能力對映；Tier 4／5 若保留於圖中，必須標示 `Future roadmap / Out of scope for final delivery`。
 4. 建立 final evidence index，使 Demo 每一步只連到一個 canonical sanitized evidence。
 5. 完成 repository secrets 掃描與 tracked screenshots OCR／人工遮罩 audit。
-6. 完成 2026-09-08 清理 runbook，列出現役資源、dependency order、ECR `Retain`、snapshot 決策、owner 與帳單複查方式；未取得人工指示前不執行清理。
-7. 最後同步 README、architecture index、project plan、gantt、checkpoints、task list 與 deployment log，移除已被實作取代的歷史未勾項。
-8. Tier 4／5、Support Agent Bedrock／RAG／external submit 都是 future scope，不自動開工；若要擴張，必須由使用者另行確認範圍、成本與 AWS change envelope。
+6. 以strict TDD把ACME父目錄最小穿越權限、公開challenge probe與憑證到期／renewal failure觀測固化至repo；不得放寬`/var/lib/co-story`的list／read／write權限。下一次timer成功前保留此項為residual，不重複手動renew。
+7. 完成 2026-09-08 清理 runbook，列出現役資源、dependency order、ECR `Retain`、snapshot 決策、owner 與帳單複查方式；未取得人工指示前不執行清理。
+8. 最後同步 README、architecture index、project plan、gantt與checkpoints；不得用歷史Tier 4／5未勾項覆蓋ADR-0008。
+9. Tier 4／5、Support Agent Bedrock／RAG／external submit 都是 future scope；兩日版不構成 AWS change envelope 擴張。
 
 ## 操作護欄
 
@@ -92,7 +95,7 @@
 
 ## Residual risks
 
-- Direct IP certificate 約 160 小時效期，須保留 renewal timer 驗證。EC2 stop／start 若 public IP 改變，URL、certificate 與 allowlist 都需重建。
+- Direct IP certificate為短效憑證；2026-09-01曾因ACME webroot父目錄缺少Nginx穿越權限而過期，production ACL修復與人工bounded renewal已成功，新憑證到期日為2026-09-08。下一次timer自動renew尚未觀察，且repo尚未固化ACL／strict-TLS gate；EC2 stop／start若public IP改變，URL、certificate與allowlist都需重建。
 - EC2 與 RDS 最近一次已知狀態均為運行中。RDS stop 後 storage／backup 仍可能計費，且最長 7 天會自動啟動。
 - `CoStoryHealthCheck` 已通過正面 gate，尚未執行 Document 自身的代表性 failure gate。
 - 尚未驗證多人長時間連續回合、iPhone Safari 長時間 polling／visibility，以及 `COMPLETED` 房間刪除後的 AWS 多分頁 lifecycle。

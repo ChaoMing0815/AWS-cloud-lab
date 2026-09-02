@@ -95,3 +95,24 @@ test("遊戲規則頁有獨立路徑、返回首頁與核心規則摘要", async
   assert.match(html, /href=["']\/["'][^>]*>返回首頁/);
   assert.match(bootstrap, /path === ["']\/rules["']/);
 });
+
+test("規則頁提供六類寵物助手捷徑，並移除完整支援頁 route composition", async () => {
+  const html = await readFile(new URL("../../index.html", import.meta.url), "utf8");
+  const bootstrap = await readFile(
+    new URL("../../src/composition/bootstrap.js", import.meta.url),
+    "utf8",
+  );
+  const widget = await readFile(
+    new URL("../../src/ui/components/support-widget.js", import.meta.url),
+    "utf8",
+  );
+
+  for (const topic of ["開始遊戲", "角色屬性", "回合流程", "骰點判定", "星火", "進度／危機／結局"]) {
+    assert.match(html, new RegExp(`data-support-rule-query=["'][^"']+["'][^>]*>${topic}<`));
+  }
+  assert.match(bootstrap, /querySelectorAll\(["']\[data-support-rule-query\]["']\)/);
+  assert.doesNotMatch(html, /href=["']\/support["']/);
+  assert.doesNotMatch(html, /id=["']supportPage["']/);
+  assert.doesNotMatch(bootstrap, /path === ["']\/support["']|mountSupportPage|SupportPage/);
+  assert.doesNotMatch(widget, /href:\s*["']\/support["']|開啟完整支援頁/);
+});

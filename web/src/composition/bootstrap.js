@@ -24,7 +24,6 @@ import {
 import { GamePage } from "../ui/pages/game-page.js";
 import { LandingPage } from "../ui/pages/landing-page.js";
 import { SupportWidget } from "../ui/components/support-widget.js";
-import { SupportPage } from "../ui/pages/support-page.js";
 
 function showServerRequiredNoticeForFileProtocol() {
   const serverRequiredNotice = document.getElementById("serverRequiredNotice");
@@ -35,7 +34,7 @@ function showServerRequiredNoticeForFileProtocol() {
 
 globalThis.addEventListener("popstate", () => globalThis.location.reload());
 
-const SURFACE_IDS = ["landingPage", "gamePage", "rulesPage", "supportPage"];
+const SURFACE_IDS = ["landingPage", "gamePage", "rulesPage"];
 
 function showLoading() {
   SURFACE_IDS.forEach((id) => { document.getElementById(id).hidden = true; });
@@ -83,6 +82,13 @@ async function mountSupportWidget() {
       && typeof playerSession?.csrfToken === "string"
       && playerSession.csrfToken.trim().length > 0,
   );
+  return widget;
+}
+
+function wireRulesShortcuts(widget) {
+  document.querySelectorAll("[data-support-rule-query]").forEach((shortcut) => {
+    shortcut.addEventListener("click", () => widget.askTopic(shortcut.dataset.supportRuleQuery));
+  });
 }
 
 async function mountGamePage({ forceMock = false } = {}) {
@@ -123,41 +129,12 @@ async function mountGamePage({ forceMock = false } = {}) {
   showSurface("gamePage");
 }
 
-async function mountSupportPage() {
-  showLoading();
-  const config = globalThis.CO_STORY_CONFIG ?? { apiBasePath: "/api/v1" };
-  const gameApi = new FetchGameApi({ basePath: config.apiBasePath });
-  const loadRoom = new LoadRoom(gameApi);
-  let playerSession = null;
-  try {
-    const room = await loadRoom.execute();
-    playerSession = room?.session ?? null;
-  } catch {
-    playerSession = null;
-  }
-  const canDraftReport = playerSession?.principalType === "player"
-    && typeof playerSession?.csrfToken === "string"
-    && playerSession.csrfToken.trim().length > 0;
-  const supportApi = new FetchSupportApi({
-    basePath: config.apiBasePath,
-    playerSessionProvider: async () => playerSession,
-  });
-  const page = new SupportPage({
-    lookupSupportRule: new LookupSupportRule(supportApi),
-    createSupportReportDraft: new CreateSupportReportDraft(supportApi),
-    canDraftReport,
-  });
-  page.mount();
-  showSurface("supportPage");
-}
-
 async function bootstrap() {
   const path = globalThis.location?.pathname ?? "/";
   const formalRoomPath = /^\/room\/[A-HJ-NP-Z2-9]{6}/;
   const formalGameSuffixes = ["/lobby", "/play", "/ending"];
   if (path === "/demo") await mountGamePage({ forceMock: true });
   else if (path === "/host/setup") await mountGamePage();
-  else if (path === "/support") await mountSupportPage();
   else if (path === "/rules") showSurface("rulesPage");
   else if (formalRoomPath.test(path) && formalGameSuffixes.some((suffix) => path.endsWith(suffix))) {
     await mountGamePage();
@@ -177,7 +154,8 @@ async function bootstrap() {
     landing.mount();
     showSurface("landingPage");
   }
-  await mountSupportWidget();
+  const supportWidget = await mountSupportWidget();
+  wireRulesShortcuts(supportWidget);
 }
 
 showServerRequiredNoticeForFileProtocol();

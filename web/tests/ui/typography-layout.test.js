@@ -13,6 +13,13 @@ test("responsive typography 避免標題與正文留下孤立短行", async () =
   );
   assert.match(css, /p,\s*li\s*\{[^}]*text-wrap:\s*pretty/s);
   assert.doesNotMatch(html, /<h1>[^<]*<br\s*\/?\s*>/i);
+  assert.match(
+    html,
+    /<h1[^>]*class=["'][^"']*landing-headline[^"']*["'][^>]*>[\s\S]*<span[^>]*>每個選擇，<\/span>[\s\S]*<span[^>]*>都會成為<\/span>[\s\S]*<span[^>]*>下一段共同故事。<\/span>[\s\S]*<\/h1>/,
+    "首頁主標題必須以語意片語控制中文斷行",
+  );
+  assert.match(css, /\.landing-headline\s+\.headline-phrase\s*\{[^}]*display:\s*inline-block[^}]*white-space:\s*nowrap/s);
+  assert.doesNotMatch(html, /每個選擇，<br|<br[^>]*>都會成為/i);
 });
 
 
