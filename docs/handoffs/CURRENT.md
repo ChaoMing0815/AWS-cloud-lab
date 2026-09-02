@@ -9,9 +9,9 @@
 
 ## Production 基準
 
-- Production source exact SHA：`4db923f4d24aae0aca25c3fbe525f765f9d5023b`。
+- Production source exact SHA：`4fb06d0fa33c6b4152d20288c7db4ef7d3927794`。
 - Migration inventory：精確 `001`–`005`。
-- Web：`sha256:14d8e0fbc2ef6a5c8363b40e30160a7cd76f42a29d8a506be250263026486d90`，runtime `async`；run `33578331749` 的 exact-digest scan、bounded SSM release 與 delivery metrics均成功，container／public live／ready healthy。前一個可回復 digest 為 `sha256:5a10597d473cd21c5b2754b743f4a48de2be7cae9bd0c1816c535523284df9bd`。
+- Web：`sha256:ad0ee896c1a3e292229a97102b42f2eabd6fd6d2f8590d8c65b255bba163dca4`，runtime `async`；run `33583003508` 的 exact-digest scan、bounded SSM release 與 delivery metrics均成功，strict TLS首頁／live／ready皆為`200`。前一個可回復 digest 為 `sha256:14d8e0fbc2ef6a5c8363b40e30160a7cd76f42a29d8a506be250263026486d90`。
 - Publisher：`sha256:23357e315e94842cee8455023b1f87f203fca5b1d11b67b714f4af86efaa2a1b`，service active，container running。
 - 兩台 private Worker：`sha256:2d5d5866f54879e79882644f4b45af2475650ddc9972e6b91cfe786886cddfbc`，service active，container running，restart `0`，mode `async`。
 - Tier 2 玩家流程已完成 `202 → polling → applied result`；Room 進入 Round 02／`COLLECTING_ACTIONS`，新 AI 故事可見，主 Queue／DLQ 五項皆為 `0`，DLQ alarm 為 `OK`／`No actions`。
@@ -33,14 +33,14 @@
 - Production Browser QA 已驗證 390／768／1440 viewport、中文片語不拆分、寵物動畫／dialog、六個規則主題、supported citation、unsupported不猜測、`/support`玩家頁退場、無水平溢位及 console error／warning；strict TLS首頁／live／ready皆為`200`。
 - 這仍是 cited deterministic rules assistant，不是 RAG；沒有 LLM、embedding、vector store、Bedrock、MCP、external submit、第二個 story job 或新的 rules draft。
 
-## 2026-09-02 寵物視覺 v1.1.1 local candidate
+## 2026-09-02 寵物視覺 v1.1.1 production release
 
-- Branch `codex/pet-visual-refresh-v1-1-1` 只調整 Frontend；rules retrieval、Backend、資料庫、RAG、IAM、AWS資源與workflow均未修改。
+- PR #74 已將 `codex/pet-visual-refresh-v1-1-1` 合併至 exact main `4fb06d0fa33c6b4152d20288c7db4ef7d3927794`；變更只調整 Frontend，rules retrieval、Backend、資料庫、RAG、IAM、AWS資源與workflow均未修改。
 - Red `1b284dc`、Browser corrective Red `0700ab0`、initial Green `8693e57`、jelly visual Red `8dfd379`、jelly visual Green `786dbae`；完整 Frontend regression `129/129`。
 - Launcher已由帶小圖示的矩形按鈕改為半透明圓潤膠體、直接長在身體上的眼睛與微笑、底部果凍裙邊／偽足、陰影、跳動與提示泡泡；沒有深色螢幕臉或分離機械腳，底層仍保留原生button與ARIA。
 - 390×844首頁／Demo、768×844、1440×900 Browser QA均無水平溢位或nav overlap；390 Demo的寵物與dialog不和composer／textarea相交。
-- 玩家可見candidate為`Release v1.1.1`。每次玩家可見patch必須遞增SemVer patch並由regression test拒絕上一版號；docs-only commit不遞增。
-- 此版本尚未push、merge或deploy；production仍是`Release v1.1.0`與source SHA `4db923f4d24aae0aca25c3fbe525f765f9d5023b`。
+- PR CI與merge後main CI均全綠；release run `33583003508`通過production approval、OIDC、ARM64 immutable image、digest fence、Trivy、bounded SSM與delivery metrics，active Web更新為`sha256:ad0ee896…`，previous `sha256:14d8e0f…`保留為rollback。
+- 玩家可見production為`Release v1.1.1`。Browser驗證果凍本體、裙邊與直接表情存在，舊機器人面板／分離腿不存在，對話框可開啟且無水平溢位；strict TLS首頁／live／ready皆為`200`。每次玩家可見patch必須遞增SemVer patch並由regression test拒絕上一版號；docs-only commit不遞增。
 
 ## 已完成範圍
 
@@ -88,18 +88,18 @@
 - Support CSP corrective：[`docs/evidence/2026-08-31-support-csp-corrective/validation.md`](../evidence/2026-08-31-support-csp-corrective/validation.md)
 - UI／像素 Support Widget production release與HTTPS恢復：[`docs/evidence/2026-09-01-ui-support-production-release/validation.md`](../evidence/2026-09-01-ui-support-production-release/validation.md)
 - 寵物規則助手 production release：[`docs/evidence/2026-09-02-pet-rules-production-release/validation.md`](../evidence/2026-09-02-pet-rules-production-release/validation.md)
+- 寵物視覺 v1.1.1 production release：[`docs/evidence/2026-09-02-pet-visual-v1-1-1-production-release/validation.md`](../evidence/2026-09-02-pet-visual-v1-1-1-production-release/validation.md)
 
 ## Next
 
-1. Review並push `codex/pet-visual-refresh-v1-1-1`；PR CI全綠後才合併。Production deployment仍需新的exact-main／active-digest／rollback envelope與人工核准。
-2. 以現有 Tier 0–3、UI／寵物規則助手與bounded Support Agent production證據建立5–8分鐘final Demo；不重跑Bedrock、玩家E2E、synthetic incident或rules draft。
-3. 整合 final production architecture 與課程能力對映；Tier 4／5 若保留於圖中，必須標示 `Future roadmap / Out of scope for final delivery`。
-4. 建立 final evidence index，使 Demo 每一步只連到一個 canonical sanitized evidence。
-5. 完成 repository secrets 掃描與 tracked screenshots OCR／人工遮罩 audit。
-6. 以strict TDD把ACME父目錄最小穿越權限、公開challenge probe與憑證到期／renewal failure觀測固化至repo；不得放寬`/var/lib/co-story`的list／read／write權限。下一次timer成功前保留此項為residual，不重複手動renew。
-7. 完成 2026-09-08 清理 runbook，列出現役資源、dependency order、ECR `Retain`、snapshot 決策、owner 與帳單複查方式；未取得人工指示前不執行清理。
-8. 最後同步 README、architecture index、project plan、gantt與checkpoints；不得用歷史Tier 4／5未勾項覆蓋ADR-0008。
-9. Tier 4／5、Support Agent Bedrock／RAG／external submit 都是 future scope；本UI patch不構成 AWS change envelope 擴張。
+1. 以現有 Tier 0–3、UI／寵物規則助手與bounded Support Agent production證據建立5–8分鐘final Demo；不重跑Bedrock、玩家E2E、synthetic incident或rules draft。
+2. 整合 final production architecture 與課程能力對映；Tier 4／5 若保留於圖中，必須標示 `Future roadmap / Out of scope for final delivery`。
+3. 建立 final evidence index，使 Demo 每一步只連到一個 canonical sanitized evidence。
+4. 完成 repository secrets 掃描與 tracked screenshots OCR／人工遮罩 audit。
+5. 以strict TDD把ACME父目錄最小穿越權限、公開challenge probe與憑證到期／renewal failure觀測固化至repo；不得放寬`/var/lib/co-story`的list／read／write權限。下一次timer成功前保留此項為residual，不重複手動renew。
+6. 完成 2026-09-08 清理 runbook，列出現役資源、dependency order、ECR `Retain`、snapshot 決策、owner 與帳單複查方式；未取得人工指示前不執行清理。
+7. 最後同步 README、architecture index、project plan、gantt與checkpoints；不得用歷史Tier 4／5未勾項覆蓋ADR-0008。
+8. Tier 4／5、Support Agent Bedrock／RAG／external submit 都是 future scope；本UI patch不構成 AWS change envelope 擴張。
 
 ## 操作護欄
 
