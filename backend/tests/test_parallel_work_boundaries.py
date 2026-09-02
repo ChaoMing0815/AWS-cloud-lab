@@ -43,11 +43,62 @@ def test_policy_defines_exact_parallel_branches_and_protects_integration_state()
         "codex/support-pixel-widget",
         "codex/pet-rules-chat-ui",
         "codex/rules-retrieval-expansion",
+        "codex/demo-patch-v1-1-2",
+        "codex/spark-rules-clarity",
+        "codex/final-report-deck",
     }
     assert "docs/handoffs/CURRENT.md" in policy["protected_paths"]
     assert "docs/checkpoints.md" in policy["protected_paths"]
     assert "docs/deployment-log.md" in policy["protected_paths"]
     assert ".agents/work-boundaries.json" in policy["protected_paths"]
+
+
+def test_final_report_round_keeps_ui_rules_and_report_ownership_disjoint() -> None:
+    ui_accepted = _check(
+        "codex/demo-patch-v1-1-2",
+        "web/index.html",
+        "web/styles.css",
+        "web/support-widget.css",
+        "web/tests/ui/support-widget.test.js",
+        "docs/features/demo-patch-v1.1.2.md",
+    )
+    ui_rejected = _check(
+        "codex/demo-patch-v1-1-2",
+        "backend/app/resources/game_rules.json",
+        "README.md",
+        ".github/workflows/tier3-release.yml",
+    )
+    rules_accepted = _check(
+        "codex/spark-rules-clarity",
+        "backend/app/resources/game_rules.json",
+        "backend/tests/test_support_agent_rules.py",
+        "docs/features/spark-rules-clarity.md",
+    )
+    rules_rejected = _check(
+        "codex/spark-rules-clarity",
+        "web/index.html",
+        "backend/app/application/support_agent.py",
+        "README.md",
+    )
+    report_accepted = _check(
+        "codex/final-report-deck",
+        "docs/presentations/2026-09-02-co-story-final-report.pptx",
+        "docs/reports/2026-09-02-co-story-final-report/readme-update-draft.md",
+        "docs/architecture/final-report-diagram-brief.md",
+    )
+    report_rejected = _check(
+        "codex/final-report-deck",
+        "README.md",
+        "docs/handoffs/CURRENT.md",
+        "web/index.html",
+    )
+
+    assert ui_accepted.returncode == 0, ui_accepted.stderr
+    assert ui_rejected.returncode == 2
+    assert rules_accepted.returncode == 0, rules_accepted.stderr
+    assert rules_rejected.returncode == 2
+    assert report_accepted.returncode == 0, report_accepted.stderr
+    assert report_rejected.returncode == 2
 
 
 def test_web_stale_feedback_branch_accepts_only_the_existing_game_ui_slice() -> None:

@@ -1,7 +1,7 @@
 # 平行分支工作邊界
 
 - 狀態：Active
-- 生效分支以 `.agents/work-boundaries.json` 為準；本輪新增 `codex/ui-terminal-refresh` 與 `codex/support-pixel-widget`。
+- 生效分支以 `.agents/work-boundaries.json` 為準；2026-09-02 報告收斂輪新增 `codex/demo-patch-v1-1-2`、`codex/spark-rules-clarity` 與 `codex/final-report-deck`。
 - 機器可讀規則：`.agents/work-boundaries.json`
 - 自動檢查：`scripts/check_branch_boundaries.py`
 
@@ -10,6 +10,46 @@
 多個 Codex task 使用獨立 Git worktree 平行工作，但共享同一個 Git repository 與最終 AWS environment。本規範以路徑白名單、protected paths 與單一整合責任人避免檔案覆寫、語意衝突和相互部署。
 
 白名單之外一律拒絕。分支不得自行修改本文件、policy、checker 或 protected paths；需要擴張範圍時，停止工作並回到整合 task 修改治理基準，再讓兩個分支同步新 commit。
+
+## 2026-09-02 報告收斂與 CICD 展示 patch
+
+三個分支必須從同一個已合併治理 SHA 建立，路徑所有權如下：
+
+- `codex/demo-patch-v1-1-2` 獨占本輪 `web/index.html`、`web/styles.css`、`web/support-widget.css` 與列出的 Frontend tests。
+- `codex/spark-rules-clarity` 獨占 `game_rules.json` 與列出的 Support Agent Backend tests。
+- `codex/final-report-deck` 獨占期末簡報、報告工作目錄與架構圖需求稿；`README.md`、CURRENT、task list、deployment log與所有其他protected paths仍由整合task獨占。
+
+### `codex/demo-patch-v1-1-2`
+
+- 玩家可見版本固定遞增為`Release v1.1.2`，不得改workflow或宣稱版本自動等同Git SHA。
+- 寵物從右下角向畫面內側移動，但仍不得遮擋topbar、遊戲composer、主要按鈕或窄螢幕內容；mobile仍須保留既有collision avoidance與safe-area語意。
+- 外觀採更清楚的像素史萊姆：可參考使用者提供的方格輪廓、亮綠膠體與簡單表情，但不得複製第三方圖片、加入外部request或退回機器人面板／分離機械腿。飛龍不在本輪scope。
+- `返回故事`／`繼續目前遊戲`區塊與`加入故事房間`按鈕必須有可辨識的垂直分隔；不得改session、join或continue行為。
+- 依strict TDD完成targeted Red／Green、完整Frontend regression、390／768／1440 Browser幾何與reduced-motion驗證。
+- 不修改Backend、規則答案、API、資料庫、RAG、IAM、AWS、Docker、workflow或ops；不得push、merge或deploy，完成後交回整合task。
+
+### `codex/spark-rules-clarity`
+
+- 正式MVP Spec §9–§12已是上游規則，不建立新公式：每次最多消耗1點使總值`+1`，可能跨過`6→7`或`9→10`門檻；最終`success／partial／failure`再分別產生`進度+2／進度+1且危機+1／危機+2`。
+- Support答案要明確說明：星火不是直接要求LLM改劇情，而是先改固定骰點結果；LLM只把已確定的成功等級、進度與危機後果寫成故事。
+- 答案必須維持stable citation、unsupported與ambiguous fail-closed，不把星火說成保證成功、自由改寫故事、復活、共享或追溯使用。
+- 若現有正式Spec已足夠，不得為製造變更而修改Spec；只對版本化knowledge record與contract tests做最小strict TDD patch。
+- 不修改Web、API schema、application flow、database、RAG、Bedrock、IAM、AWS、Docker、workflow或ops；不得push、merge或deploy，完成後交回整合task。
+
+### `codex/final-report-deck`
+
+- 受眾是期末專題講師與同學；簡報工作是讓受眾理解「共演計劃」如何從可玩MVP演進到可觀測、組件化與可自動部署的AWS系統，並能用證據說明安全、成本與rollback取捨。
+- 使用Presentations Skill，以目前深色夜色劇場、金色／青綠色語意作為明確自訂視覺方向；產出可編輯PPTX並完成逐頁render、overflow與視覺QA。
+- 只採用CURRENT與canonical evidence中的已實作狀態。Tier 4／5必須標示future roadmap／out of scope；不得恢復「Tier 4尚未開始＝專題未完成」或把deterministic rules assistant說成RAG。
+- 架構圖需求稿要分開標示current production與future roadmap，並列出public edge、Web/API、private RDS、Publisher、兩台private Worker、SQS/DLQ、Bedrock、ECR/OIDC/SSM、CloudWatch與human approval關係；不得把IAM user畫成workload元件或加入不存在的DynamoDB、ALB、ECS、EKS。
+- README只產生整合用草稿，保存於本分支允許的report目錄；不得直接修改protected `README.md`。
+- 不修改程式、規則、CURRENT、AWS、workflow或部署；可commit，完成後不得push、merge或deploy，交回整合task。
+
+### 整合順序
+
+1. `codex/spark-rules-clarity`與`codex/demo-patch-v1-1-2`路徑互斥，可平行完成；整合task先合併rules，再合併UI並跑完整Backend／Frontend與release contract regression。
+2. `codex/final-report-deck`可同時工作，但最終PPTX與README必須在兩個產品patch狀態確定後由整合task更新版本與截圖口徑。
+3. 所有repo-local工作完成後，整合task才建立新的exact-main／active-digest／rollback production envelope；未取得使用者明確核准不得觸發deploy。
 
 ## `codex/ui-terminal-refresh`
 
