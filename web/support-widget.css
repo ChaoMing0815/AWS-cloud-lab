@@ -470,6 +470,11 @@
     bottom: var(--support-widget-bottom, max(.75rem, env(safe-area-inset-bottom)));
   }
 
+  body:has(#landingPage:not([hidden])) .support-widget {
+    bottom: max(10rem, env(safe-area-inset-bottom));
+    bottom: var(--support-widget-bottom, max(10rem, env(safe-area-inset-bottom)));
+  }
+
   .support-widget__dialog {
     top: auto;
     bottom: 8rem;
