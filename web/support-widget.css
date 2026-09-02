@@ -459,7 +459,7 @@
     top: max(4.5rem, env(safe-area-inset-top));
     right: 1rem;
     bottom: auto;
-    max-height: min(28dvh, 16rem);
+    max-height: min(20dvh, 12rem);
   }
 }
 
