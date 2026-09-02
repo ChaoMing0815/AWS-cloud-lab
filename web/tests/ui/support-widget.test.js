@@ -179,15 +179,16 @@ test("Widget 提供可見開關、dialog 語意、Esc 關閉與 focus return", a
   assert.doesNotMatch(documentRef.getElementById("supportWidgetRoot").className, /is-open/);
 });
 
-test("Widget launcher 以獨立像素生物呈現，不再是帶小圖示的矩形按鈕", async () => {
+test("Widget launcher 以果凍狀史萊姆呈現，不帶機器人面板或分離雙腳", async () => {
   const { documentRef } = createWidget();
   const toggle = documentRef.getElementById("supportWidgetToggle");
 
   assert.equal(toggle.tagName, "BUTTON", "仍需保留原生 button 鍵盤與點擊語意");
   assert.ok(documentRef.getElementById("supportWidgetPetBody"));
   assert.ok(documentRef.getElementById("supportWidgetPetFace"));
-  assert.ok(documentRef.getElementById("supportWidgetPetFeet"));
+  assert.ok(documentRef.getElementById("supportWidgetPetJellyBase"));
   assert.ok(documentRef.getElementById("supportWidgetPetShadow"));
+  assert.equal(documentRef.getElementById("supportWidgetPetFeet"), null);
   assert.equal(documentRef.getElementById("supportWidgetPetHint").textContent, "問規則");
 
   const css = await readFile(
@@ -196,6 +197,8 @@ test("Widget launcher 以獨立像素生物呈現，不再是帶小圖示的矩�
   );
   const toggleRule = css.match(/\.support-widget__toggle\s*\{([^}]*)\}/)?.[1] ?? "";
   const petRule = css.match(/\.support-widget__slime\s*\{([^}]*)\}/)?.[1] ?? "";
+  const bodyRule = css.match(/\.support-widget__slime-body\s*\{([^}]*)\}/)?.[1] ?? "";
+  const faceRule = css.match(/\.support-widget__slime-face\s*\{([^}]*)\}/)?.[1] ?? "";
   const hintRule = css.match(/\.support-widget__toggle-label\s*\{([^}]*)\}/)?.[1] ?? "";
 
   assert.match(toggleRule, /width:\s*6(?:\.\d+)?rem/);
@@ -206,6 +209,12 @@ test("Widget launcher 以獨立像素生物呈現，不再是帶小圖示的矩�
   assert.match(toggleRule, /box-shadow:\s*none/);
   assert.match(petRule, /width:\s*5(?:\.\d+)?rem/);
   assert.match(petRule, /height:\s*6(?:\.\d+)?rem/);
+  assert.match(bodyRule, /border-radius:\s*5\d%\s+5\d%\s+4\d%\s+4\d%/);
+  assert.match(bodyRule, /background:\s*(?:linear-gradient|rgba)/);
+  assert.match(faceRule, /border:\s*0/);
+  assert.match(faceRule, /background:\s*transparent/);
+  assert.match(faceRule, /box-shadow:\s*none/);
+  assert.doesNotMatch(css, /support-widget__slime-feet|#102b31|#0a1b20/);
   assert.match(hintRule, /position:\s*absolute/);
   assert.match(hintRule, /border-radius:\s*999px/);
 });
