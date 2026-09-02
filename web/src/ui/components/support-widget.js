@@ -88,11 +88,11 @@ export class SupportWidget {
       id: "supportWidgetPetFace",
       className: "support-widget__slime-face",
     });
-    const petFeet = makeElement(this.document, "span", {
-      id: "supportWidgetPetFeet",
-      className: "support-widget__slime-feet",
+    const petJellyBase = makeElement(this.document, "span", {
+      id: "supportWidgetPetJellyBase",
+      className: "support-widget__slime-jelly-base",
     });
-    slime.append(petShadow, petBody, petFace, petFeet);
+    slime.append(petShadow, petJellyBase, petBody, petFace);
     const toggleLabel = makeElement(this.document, "span", {
       id: "supportWidgetPetHint",
       className: "support-widget__toggle-label",
