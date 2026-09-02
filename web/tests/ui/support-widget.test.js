@@ -449,7 +449,7 @@ test("Widget 中尺寸與桌機保留 composer 與首頁核心控制區", async 
     assert.match(rule, /bottom:\s*auto;/);
   }
   assert.match(mediumRule, /max-height:\s*min\(20dvh,\s*12rem\);/);
-  assert.match(desktopRule, /max-height:\s*min\(28dvh,\s*16rem\);/);
+  assert.match(desktopRule, /max-height:\s*min\(20dvh,\s*12rem\);/);
   assert.match(
     mediumGameWidgetRule,
     /bottom:\s*var\(--support-widget-bottom,\s*max\(18rem,\s*env\(safe-area-inset-bottom\)\)\);/,
@@ -458,11 +458,13 @@ test("Widget 中尺寸與桌機保留 composer 與首頁核心控制區", async 
   const mediumDialog = { left: 352, right: 752, top: 72, bottom: 252 };
   const mediumComposer = { left: 308.36, right: 727.63, top: 577, bottom: 810.09 };
   const mediumToggle = { left: 624, right: 720, top: 444, bottom: 556 };
-  const desktopDialog = { left: 1024, right: 1424, top: 72, bottom: 324 };
+  const desktopDialog = { left: 1024, right: 1424, top: 72, bottom: 252 };
+  const desktopNickname = { left: 848.35, right: 1252.99, top: 314.1, bottom: 348.11 };
   const desktopCreateButton = { left: 848.35, right: 1252.99, top: 361.1, bottom: 403.61 };
   const desktopComposer = { left: 371.8, right: 1088.2, top: 579.41, bottom: 812.5 };
   assert.equal(overlap(mediumDialog, mediumComposer), false);
   assert.equal(overlap(mediumToggle, mediumComposer), false);
   assert.equal(overlap(desktopDialog, desktopComposer), false);
+  assert.equal(overlap(desktopDialog, desktopNickname), false);
   assert.equal(overlap(desktopDialog, desktopCreateButton), false);
 });
