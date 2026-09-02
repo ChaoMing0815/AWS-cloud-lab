@@ -93,6 +93,7 @@ function fakeDocument() {
     },
   };
   documentRef.defaultView = {
+    innerWidth: 390,
     innerHeight: 844,
     listeners: new Map(),
     addEventListener(type, handler) {
