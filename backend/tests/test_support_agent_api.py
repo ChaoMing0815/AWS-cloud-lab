@@ -81,12 +81,18 @@ def test_rules_lookup_is_anonymous_and_returns_only_grounded_citations() -> None
     assert response.status_code == 200
     assert response.json() == {
         "status": "supported",
-        "answer": "角色初始有 1 點星火、上限 3；看見原始骰子後，每次行動最多消耗 1 點讓最終總值 +1。最終結果仍為失敗時獲得 1 點，星火不能轉讓、共享或追溯使用。",
+        "answer": (
+            "角色初始有 1 點星火、上限 3；看見原始骰子後，每次行動最多消耗 1 點，"
+            "先讓最終總值 +1：6→7 會從失敗變為部分成功，9→10 會從部分成功變為成功。"
+            "最終成功等級再固定套用後果：成功為進度 +2，部分成功為進度 +1 且危機 +1，"
+            "失敗為危機 +2。LLM 只依這個既定判定敘事，不能修改成功等級、進度或危機。"
+            "最終結果仍為失敗時獲得 1 點；星火不能轉讓、共享或追溯使用，也不保證成功。"
+        ),
         "citations": [
             {
                 "ruleId": "spark-usage",
                 "title": "星火的使用與取得",
-                "sourceSection": "正式 MVP Spec §10 星火",
+                "sourceSection": "正式 MVP Spec §9–§12",
                 "sourceVersion": "mvp-spec-2026-08-27",
             }
         ],

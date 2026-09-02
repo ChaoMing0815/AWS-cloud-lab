@@ -42,8 +42,26 @@ def test_lookup_game_rules_returns_canonical_content_and_stable_citation() -> No
     citation = answer.citations[0]
     assert citation.rule_id == "spark-usage"
     assert citation.title == spark["title"]
-    assert citation.source_section == "正式 MVP Spec §10 星火"
+    assert citation.source_section == "正式 MVP Spec §9–§12"
     assert citation.source_version == rules["version"]
+
+
+def test_spark_answer_explains_threshold_and_fixed_consequence_causality() -> None:
+    answer = _agent().respond("星火實際有什麼作用？")
+
+    assert answer.status == "supported"
+    assert "每次行動最多消耗 1 點" in answer.answer
+    assert "最終總值 +1" in answer.answer
+    assert "6→7 會從失敗變為部分成功" in answer.answer
+    assert "9→10 會從部分成功變為成功" in answer.answer
+    assert "成功為進度 +2" in answer.answer
+    assert "部分成功為進度 +1 且危機 +1" in answer.answer
+    assert "失敗為危機 +2" in answer.answer
+    assert "LLM 只依這個既定判定敘事" in answer.answer
+    assert "不保證成功" in answer.answer
+    assert len(answer.citations) == 1
+    assert answer.citations[0].rule_id == "spark-usage"
+    assert answer.citations[0].source_section == "正式 MVP Spec §9–§12"
 
 
 @pytest.mark.parametrize(
