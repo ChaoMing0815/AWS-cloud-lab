@@ -179,7 +179,7 @@ test("Widget 提供可見開關、dialog 語意、Esc 關閉與 focus return", a
   assert.doesNotMatch(documentRef.getElementById("supportWidgetRoot").className, /is-open/);
 });
 
-test("Widget launcher 以果凍狀史萊姆呈現，不帶機器人面板或分離雙腳", async () => {
+test("Widget launcher 以原創像素果凍史萊姆呈現，不帶恐龍或機器人輪廓", async () => {
   const { documentRef } = createWidget();
   const toggle = documentRef.getElementById("supportWidgetToggle");
 
@@ -209,12 +209,13 @@ test("Widget launcher 以果凍狀史萊姆呈現，不帶機器人面板或分�
   assert.match(toggleRule, /box-shadow:\s*none/);
   assert.match(petRule, /width:\s*5(?:\.\d+)?rem/);
   assert.match(petRule, /height:\s*6(?:\.\d+)?rem/);
-  assert.match(bodyRule, /border-radius:\s*5\d%\s+5\d%\s+4\d%\s+4\d%/);
+  assert.match(bodyRule, /clip-path:\s*polygon\(/);
+  assert.match(bodyRule, /border-radius:\s*0/);
   assert.match(bodyRule, /background:\s*(?:linear-gradient|rgba)/);
   assert.match(faceRule, /border:\s*0/);
   assert.match(faceRule, /background:\s*transparent/);
   assert.match(faceRule, /box-shadow:\s*none/);
-  assert.doesNotMatch(css, /support-widget__slime-feet|#102b31|#0a1b20/);
+  assert.doesNotMatch(css, /support-widget__slime-feet|dino|dinosaur|#102b31|#0a1b20/i);
   assert.match(hintRule, /position:\s*absolute/);
   assert.match(hintRule, /border-radius:\s*999px/);
 });
@@ -354,6 +355,8 @@ test("Widget CSS 支援 viewport 底部寵物入口、開啟停跳與 reduced-mo
   ).catch(() => "");
 
   assert.match(css, /image-rendering:\s*pixelated/);
+  const desktopWidgetRule = css.match(/\.support-widget\s*\{([^}]*)\}/)?.[1] ?? "";
+  assert.match(desktopWidgetRule, /right:\s*clamp\(3rem,\s*6vw,\s*6rem\)/);
   assert.match(css, /bottom:\s*max\([^;]*env\(safe-area-inset-bottom\)/);
   assert.match(css, /\.support-widget\.is-open\s+\.support-widget__slime[^}]*animation-play-state:\s*paused/s);
   assert.match(css, /@media\s*\(max-width:\s*720px\)/);
@@ -363,7 +366,7 @@ test("Widget CSS 支援 viewport 底部寵物入口、開啟停跳與 reduced-mo
   );
   const widgetRule = mobileCss.match(/\.support-widget\s*\{([^}]*)\}/)?.[1] ?? "";
   const dialogRule = mobileCss.match(/\.support-widget__dialog\s*\{([^}]*)\}/)?.[1] ?? "";
-  assert.match(widgetRule, /right:\s*\.75rem;/);
+  assert.match(widgetRule, /right:\s*1\.5rem;/);
   assert.match(widgetRule, /bottom:\s*max\([^;]*env\(safe-area-inset-bottom\)/);
   assert.match(dialogRule, /bottom:\s*([\d.]+)rem;/);
   assert.match(dialogRule, /max-height:\s*min\(([\d.]+)dvh,\s*([\d.]+)rem\);/);
@@ -376,15 +379,16 @@ test("Widget CSS 支援 viewport 底部寵物入口、開啟停跳與 reduced-mo
   const dialogMaxRem = Number(
     dialogRule.match(/max-height:\s*min\([\d.]+dvh,\s*([\d.]+)rem/)?.[1],
   );
+  const mobileRight = Number(widgetRule.match(/right:\s*([\d.]+)rem/)?.[1]) * rootFont;
   const toggle = {
-    left: viewport.width - 12 - 82,
-    right: viewport.width - 12,
+    left: viewport.width - mobileRight - 82,
+    right: viewport.width - mobileRight,
     top: viewport.height - bottomRem * rootFont - 48,
     bottom: viewport.height - bottomRem * rootFont,
   };
   const dialog = {
-    left: 12,
-    right: viewport.width - 12,
+    left: 0,
+    right: viewport.width - mobileRight,
     bottom: viewport.height - bottomRem * rootFont - dialogBottomRem * rootFont,
     top: viewport.height - bottomRem * rootFont - dialogBottomRem * rootFont
       - Math.min(viewport.height * dialogDvh / 100, dialogMaxRem * rootFont),
