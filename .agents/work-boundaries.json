@@ -349,6 +349,38 @@
         "docs/evidence/2026-*-rules-retrieval-expansion/**"
       ]
     },
+    "codex/demo-patch-v1-1-2": {
+      "purpose": "準備一次可供CI/CD展示的Release v1.1.2玩家UI patch：調整寵物位置、將外觀收斂為更清楚的像素史萊姆並修正入口表單間距；不修改規則、Backend、部署流程或AWS",
+      "allowed_paths": [
+        "web/index.html",
+        "web/styles.css",
+        "web/support-widget.css",
+        "web/tests/ui/landing-markup.test.js",
+        "web/tests/ui/production-navigation.test.js",
+        "web/tests/ui/support-widget.test.js",
+        "web/tests/ui/typography-layout.test.js",
+        "docs/features/demo-patch-v1.1.2.md",
+        "docs/evidence/2026-*-demo-patch-v1-1-2/**"
+      ]
+    },
+    "codex/spark-rules-clarity": {
+      "purpose": "依既有正式MVP規則補強星火的deterministic Support答案，清楚連結+1、成功等級、進度／危機與LLM只敘述既定結果的因果；不改遊戲公式、Web、API schema、資料庫、部署或AWS",
+      "allowed_paths": [
+        "backend/app/resources/game_rules.json",
+        "backend/tests/test_support_agent_api.py",
+        "backend/tests/test_support_agent_rules.py",
+        "docs/features/spark-rules-clarity.md",
+        "docs/evidence/2026-*-spark-rules-clarity/**"
+      ]
+    },
+    "codex/final-report-deck": {
+      "purpose": "建立期末簡報、講述大綱、最終AWS架構圖需求稿與README更新草稿；只根據目前production與canonical evidence，不修改README、CURRENT、程式、AWS或部署",
+      "allowed_paths": [
+        "docs/presentations/2026-09-*-co-story-final-report*.pptx",
+        "docs/reports/2026-09-*-co-story-final-report/**",
+        "docs/architecture/final-report-diagram-brief.md"
+      ]
+    },
     "codex/tier2-web-ui-release": {
       "purpose": "讓既有 Tier 3 digest release 在更新玩家 Web image 時保留已驗證的 Tier 2 async runtime mode，供 stale feedback 與失效房間控制修正安全上線",
       "allowed_paths": [
