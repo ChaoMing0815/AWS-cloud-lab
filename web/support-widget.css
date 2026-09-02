@@ -439,6 +439,11 @@
 }
 
 @media (min-width: 721px) and (max-width: 1050px) {
+  body:has(#gamePage:not([hidden])) .support-widget {
+    bottom: max(18rem, env(safe-area-inset-bottom));
+    bottom: var(--support-widget-bottom, max(18rem, env(safe-area-inset-bottom)));
+  }
+
   .support-widget__dialog {
     position: fixed;
     top: max(4.5rem, env(safe-area-inset-top));

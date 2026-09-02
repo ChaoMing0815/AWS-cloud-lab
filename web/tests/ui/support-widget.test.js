@@ -444,7 +444,7 @@ test("Widget 中尺寸與桌機 dialog 保留 composer 幾何區", async () => {
   );
 
   const mediumDialog = { left: 352, right: 752, top: 72, bottom: 252 };
-  const mediumComposer = { left: 308.36, right: 727.63, top: 336, bottom: 569.09 };
+  const mediumComposer = { left: 308.36, right: 727.63, top: 577, bottom: 810.09 };
   const mediumToggle = { left: 624, right: 720, top: 444, bottom: 556 };
   const desktopDialog = { left: 1024, right: 1424, top: 72, bottom: 520 };
   const desktopComposer = { left: 371.8, right: 1088.2, top: 579.41, bottom: 812.5 };
