@@ -1,6 +1,6 @@
 .support-widget {
   position: fixed;
-  right: 1rem;
+  right: clamp(3rem, 6vw, 6rem);
   bottom: max(1rem, env(safe-area-inset-bottom));
   bottom: var(--support-widget-bottom, max(1rem, env(safe-area-inset-bottom)));
   z-index: 90;
@@ -70,7 +70,7 @@
   width: 4.5rem;
   height: 4.45rem;
   border: 4px solid #071113;
-  border-radius: 56% 54% 44% 46% / 64% 62% 38% 40%;
+  border-radius: 0;
   background: linear-gradient(
     145deg,
     rgba(210, 255, 240, .98) 0 10%,
@@ -83,6 +83,20 @@
     inset -.38rem -.5rem rgba(18, 97, 88, .42),
     0 .35rem 0 rgba(0, 0, 0, .18),
     0 0 22px rgba(99, 203, 183, .24);
+  clip-path: polygon(
+    25% 0, 75% 0,
+    75% 6.25%, 87.5% 6.25%,
+    87.5% 12.5%, 93.75% 12.5%,
+    93.75% 25%, 100% 25%,
+    100% 75%, 93.75% 75%,
+    93.75% 87.5%, 81.25% 87.5%,
+    81.25% 100%, 18.75% 100%,
+    18.75% 93.75%, 6.25% 93.75%,
+    6.25% 81.25%, 0 81.25%,
+    0 31.25%, 6.25% 31.25%,
+    6.25% 18.75%, 12.5% 18.75%,
+    12.5% 12.5%, 25% 12.5%
+  );
 }
 
 .support-widget__slime-body::before {
@@ -154,9 +168,10 @@
   width: 4.65rem;
   height: 1.35rem;
   border: 4px solid #071113;
-  border-radius: 48% 52% 42% 46%;
+  border-radius: 0;
   background: rgba(66, 169, 143, .98);
   box-shadow: inset 0 -.28rem rgba(18, 97, 88, .5);
+  clip-path: polygon(0 0, 100% 0, 100% 60%, 90% 60%, 90% 100%, 70% 100%, 70% 78%, 30% 78%, 30% 100%, 10% 100%, 10% 60%, 0 60%);
 }
 
 .support-widget__slime-jelly-base::before,
@@ -445,7 +460,7 @@
 
 @media (max-width: 720px) {
   .support-widget {
-    right: .75rem;
+    right: 1.5rem;
     bottom: max(.75rem, env(safe-area-inset-bottom));
     bottom: var(--support-widget-bottom, max(.75rem, env(safe-area-inset-bottom)));
   }
