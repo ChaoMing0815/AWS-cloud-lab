@@ -9,9 +9,9 @@
 
 ## Production 基準
 
-- Production source exact SHA：`1297a6acabaf30ca4ec2205e7641b7ab83cef781`。
+- Production source exact SHA：`4db923f4d24aae0aca25c3fbe525f765f9d5023b`。
 - Migration inventory：精確 `001`–`005`。
-- Web：`sha256:5a10597d473cd21c5b2754b743f4a48de2be7cae9bd0c1816c535523284df9bd`，runtime `async`；run `33494151458` 的 exact-digest scan、bounded SSM release 與 delivery metrics均成功，container／public live／ready healthy。
+- Web：`sha256:14d8e0fbc2ef6a5c8363b40e30160a7cd76f42a29d8a506be250263026486d90`，runtime `async`；run `33578331749` 的 exact-digest scan、bounded SSM release 與 delivery metrics均成功，container／public live／ready healthy。前一個可回復 digest 為 `sha256:5a10597d473cd21c5b2754b743f4a48de2be7cae9bd0c1816c535523284df9bd`。
 - Publisher：`sha256:23357e315e94842cee8455023b1f87f203fca5b1d11b67b714f4af86efaa2a1b`，service active，container running。
 - 兩台 private Worker：`sha256:2d5d5866f54879e79882644f4b45af2475650ddc9972e6b91cfe786886cddfbc`，service active，container running，restart `0`，mode `async`。
 - Tier 2 玩家流程已完成 `202 → polling → applied result`；Room 進入 Round 02／`COLLECTING_ACTIONS`，新 AI 故事可見，主 Queue／DLQ 五項皆為 `0`，DLQ alarm 為 `OK`／`No actions`。
@@ -24,6 +24,14 @@
 - Exact main CI run `33493821544` 全綠；release run `33494151458` 綁定 exact SHA `1297a6acabaf30ca4ec2205e7641b7ab83cef781`，以 previous digest `sha256:f9cc0e6…` 完成 `digest-release`，新 active Web digest 為 `sha256:5a10597…`。Publisher 與兩台 Worker digest未變。
 - 整合 Frontend regression `124/124`；production Browser QA確認 `Release v1.1.0`、品牌圖示、Widget、Esc focus return，390×844 下 toggle／nav與dialog／composer均不重疊、無水平溢位、console無error／warning。390與768的compact dialog內部捲動是刻意responsive取捨。
 - Release後發現既有Direct IP憑證已過期；根因不是本次Web image，而是`/var/lib/co-story`為`root:co-story 0750`，Nginx worker無法穿越，造成ACME token雖存在仍回`404`。Production已加入精確ACL `user:nginx:--x`、同一renewal unit成功換發並reload；外部strict TLS首頁／live／ready均回`200`。下一次timer自動執行尚未觀察，repo防回歸仍是明確未完成項。
+
+## 2026-09-02 寵物規則助手 production release
+
+- 兩日版寵物規則助手與擴充的 deterministic rules retrieval 已透過 PR #71 合併；PR #72 完成文件口徑收斂，production source exact SHA 為 `4db923f4d24aae0aca25c3fbe525f765f9d5023b`。
+- Main CI run `33577941894` 第一次只因 Docker Hub 拉取 BuildKit timeout、在 build／scan 前停止；failed jobs rerun 的 attempt 2 全綠。Release run `33578331749` 通過 production approval、OIDC、ARM64 build／immutable push、digest fence、Trivy、bounded SSM 與 delivery metrics。
+- Active Web 已更新為 `sha256:14d8e0f…` 並維持 `async`；前一個 `sha256:5a10597…` 保留為 rollback。Publisher、兩台 private Worker 與 migration inventory `001`–`005` 未變。
+- Production Browser QA 已驗證 390／768／1440 viewport、中文片語不拆分、寵物動畫／dialog、六個規則主題、supported citation、unsupported不猜測、`/support`玩家頁退場、無水平溢位及 console error／warning；strict TLS首頁／live／ready皆為`200`。
+- 這仍是 cited deterministic rules assistant，不是 RAG；沒有 LLM、embedding、vector store、Bedrock、MCP、external submit、第二個 story job 或新的 rules draft。
 
 ## 已完成範圍
 
@@ -70,18 +78,18 @@
 - Bounded Support Agent production extension：[`docs/evidence/2026-08-31-support-agent-integration/validation.md`](../evidence/2026-08-31-support-agent-integration/validation.md)
 - Support CSP corrective：[`docs/evidence/2026-08-31-support-csp-corrective/validation.md`](../evidence/2026-08-31-support-csp-corrective/validation.md)
 - UI／像素 Support Widget production release與HTTPS恢復：[`docs/evidence/2026-09-01-ui-support-production-release/validation.md`](../evidence/2026-09-01-ui-support-production-release/validation.md)
+- 寵物規則助手 production release：[`docs/evidence/2026-09-02-pet-rules-production-release/validation.md`](../evidence/2026-09-02-pet-rules-production-release/validation.md)
 
 ## Next
 
-1. 兩日版寵物規則助手已透過 PR #71 合併 `main`，exact main 為 `add0d5ff0f9cf393b7e9323e498452c974b06170`，main CI run `33577514504` 全綠；詳細 contract 見 [`docs/features/pet-rules-assistant-two-day.md`](../features/pet-rules-assistant-two-day.md)，證據見 [`2026-09-01-pet-rules-assistant-integration`](../evidence/2026-09-01-pet-rules-assistant-integration/validation.md)。尚未部署，production source 仍為 `1297a6acabaf30ca4ec2205e7641b7ab83cef781`；不得把 main 能力描述為已上線。
-2. 以現有 Tier 0–3、UI／Widget與bounded Support Agent production證據建立5–8分鐘final Demo；不重跑Bedrock、玩家E2E、synthetic incident或rules draft。
-3. 整合 final production architecture 與課程能力對映；Tier 4／5 若保留於圖中，必須標示 `Future roadmap / Out of scope for final delivery`。
-4. 建立 final evidence index，使 Demo 每一步只連到一個 canonical sanitized evidence。
-5. 完成 repository secrets 掃描與 tracked screenshots OCR／人工遮罩 audit。
-6. 以strict TDD把ACME父目錄最小穿越權限、公開challenge probe與憑證到期／renewal failure觀測固化至repo；不得放寬`/var/lib/co-story`的list／read／write權限。下一次timer成功前保留此項為residual，不重複手動renew。
-7. 完成 2026-09-08 清理 runbook，列出現役資源、dependency order、ECR `Retain`、snapshot 決策、owner 與帳單複查方式；未取得人工指示前不執行清理。
-8. 最後同步 README、architecture index、project plan、gantt與checkpoints；不得用歷史Tier 4／5未勾項覆蓋ADR-0008。
-9. Tier 4／5、Support Agent Bedrock／RAG／external submit 都是 future scope；兩日版不構成 AWS change envelope 擴張。
+1. 以現有 Tier 0–3、UI／寵物規則助手與bounded Support Agent production證據建立5–8分鐘final Demo；不重跑Bedrock、玩家E2E、synthetic incident或rules draft。
+2. 整合 final production architecture 與課程能力對映；Tier 4／5 若保留於圖中，必須標示 `Future roadmap / Out of scope for final delivery`。
+3. 建立 final evidence index，使 Demo 每一步只連到一個 canonical sanitized evidence。
+4. 完成 repository secrets 掃描與 tracked screenshots OCR／人工遮罩 audit。
+5. 以strict TDD把ACME父目錄最小穿越權限、公開challenge probe與憑證到期／renewal failure觀測固化至repo；不得放寬`/var/lib/co-story`的list／read／write權限。下一次timer成功前保留此項為residual，不重複手動renew。
+6. 完成 2026-09-08 清理 runbook，列出現役資源、dependency order、ECR `Retain`、snapshot 決策、owner 與帳單複查方式；未取得人工指示前不執行清理。
+7. 最後同步 README、architecture index、project plan、gantt與checkpoints；不得用歷史Tier 4／5未勾項覆蓋ADR-0008。
+8. Tier 4／5、Support Agent Bedrock／RAG／external submit 都是 future scope；兩日版不構成 AWS change envelope 擴張。
 
 ## 操作護欄
 

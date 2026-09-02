@@ -1,11 +1,11 @@
 # 兩日版像素寵物規則助手
 
-- 狀態：Merged to main（2026-09-02）；尚未 deploy
+- 狀態：Production verified（2026-09-02）
 - 上游：ADR-0005、`docs/features/support-pixel-widget.md`、2026-09-01 使用者核准
 - 風險：R2 可觀察 UX／規則 retrieval
 - 整合基線：`0fea052af5bb60941efa6cd19c6002575cf6ff6e`
 - Integrated candidate：`2a0f67993ede7c88504e2905ea1da62d9cb05dc9`
-- Merged main：`add0d5ff0f9cf393b7e9323e498452c974b06170`；production 仍是 `1297a6acabaf30ca4ec2205e7641b7ab83cef781`
+- Feature merge：`add0d5ff0f9cf393b7e9323e498452c974b06170`；production source：`4db923f4d24aae0aca25c3fbe525f765f9d5023b`
 
 ## 目的與誠實命名
 
@@ -54,3 +54,9 @@
 - `/support` 玩家導航、Widget 深連結與 route composition 已退場；規則 lookup API 與 `local_draft_only` 草稿能力保留。
 - Canonical integration evidence：[`2026-09-01-pet-rules-assistant-integration`](../evidence/2026-09-01-pet-rules-assistant-integration/validation.md)。
 - PR #71 與 exact-main CI run `33577514504` 已成功；合併不等於 production deployment 授權。
+
+## 2026-09-02 Production 驗證
+
+- PR #72 合併後的 exact source `4db923f4d24aae0aca25c3fbe525f765f9d5023b` 已由 release run `33578331749` 部署；active Web digest 為 `sha256:14d8e0fbc2ef6a5c8363b40e30160a7cd76f42a29d8a506be250263026486d90`，runtime 維持 `async`。
+- 390／768／1440 production Browser QA、supported citation、unsupported fail-closed、`/support`退場與 strict TLS首頁／live／ready均通過。
+- Canonical production evidence：[`2026-09-02-pet-rules-production-release`](../evidence/2026-09-02-pet-rules-production-release/validation.md)。
