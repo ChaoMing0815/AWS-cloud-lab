@@ -36,8 +36,8 @@
 ## 2026-09-02 寵物視覺 v1.1.1 local candidate
 
 - Branch `codex/pet-visual-refresh-v1-1-1` 只調整 Frontend；rules retrieval、Backend、資料庫、RAG、IAM、AWS資源與workflow均未修改。
-- Red `1b284dc`、Browser corrective Red `0700ab0`、Green `8693e57`；完整 Frontend regression `129/129`。
-- Launcher已由帶小圖示的矩形按鈕改為具頭身、臉、腳、陰影、跳動與提示泡泡的原創像素史萊姆；底層仍保留原生button與ARIA。
+- Red `1b284dc`、Browser corrective Red `0700ab0`、initial Green `8693e57`、jelly visual Red `8dfd379`、jelly visual Green `786dbae`；完整 Frontend regression `129/129`。
+- Launcher已由帶小圖示的矩形按鈕改為半透明圓潤膠體、直接長在身體上的眼睛與微笑、底部果凍裙邊／偽足、陰影、跳動與提示泡泡；沒有深色螢幕臉或分離機械腳，底層仍保留原生button與ARIA。
 - 390×844首頁／Demo、768×844、1440×900 Browser QA均無水平溢位或nav overlap；390 Demo的寵物與dialog不和composer／textarea相交。
 - 玩家可見candidate為`Release v1.1.1`。每次玩家可見patch必須遞增SemVer patch並由regression test拒絕上一版號；docs-only commit不遞增。
 - 此版本尚未push、merge或deploy；production仍是`Release v1.1.0`與source SHA `4db923f4d24aae0aca25c3fbe525f765f9d5023b`。

@@ -89,7 +89,7 @@
 | 決策 | 類型 | 核准內容 | 影響 |
 | --- | --- | --- | --- |
 | UI-only 範圍 | 範圍確認 | 本輪只調整寵物 launcher 與必要 responsive／accessibility；不修改 rules retrieval、Backend、資料庫、RAG、IAM 或 AWS 資源。 | Frontend、tests、Web image candidate |
-| 獨立寵物視覺 | 產品補充 | 保留原生 button 語意，但移除可見矩形底板；以具頭身、臉、腳、陰影、跳動與提示泡泡的原創像素生物作為玩家入口。 | Support Widget DOM／CSS、Browser QA |
+| 獨立寵物視覺 | 產品補充 | 保留原生 button 語意，但移除可見矩形底板；角色必須是半透明圓潤膠體、直接長在身體上的表情與底部攤開偽足，不使用深色螢幕臉、分離雙腳或其他機器人語彙。 | Support Widget DOM／CSS、Browser QA |
 | Patch 版號治理 | Release治理 | 每次玩家可見 patch 必須遞增 `releaseVersion` 的 SemVer patch，並由 regression test拒絕重用上一版號；docs-only commit不遞增。此輪由`v1.1.0`升至`v1.1.1`。 | 後續所有 UI patch、merge gate、Demo識別 |
 
 核准方式：使用者明確限定 UI-only 範圍，並要求往後每次 patch 改版同步更新版號。

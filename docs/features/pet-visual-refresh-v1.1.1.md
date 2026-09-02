@@ -14,7 +14,7 @@
 ## 可驗收行為
 
 - Launcher底層保留原生`button`、ARIA、鍵盤、Esc focus return與至少44×44觸控區。
-- 視覺上不呈現矩形按鈕；原創像素史萊姆具頭身、臉、腳、陰影、跳動與獨立提示泡泡。
+- 視覺上不呈現矩形按鈕；原創像素史萊姆使用半透明膠體、直接長在身體上的眼睛與微笑、底部果凍裙邊／偽足、陰影、跳動與獨立提示泡泡。不得使用深色螢幕臉或分離機械腳。
 - 開啟dialog時停止跳動；`prefers-reduced-motion`時完全停用動效。
 - 390px下核心composer進入viewport時，寵物與dialog自動停靠於控制區上方；不得遮擋action form／textarea。
 - 390／768／1440均不得與topbar nav相交或造成水平溢位。
