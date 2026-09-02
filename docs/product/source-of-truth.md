@@ -3,7 +3,7 @@
 - 狀態：Active
 - Owner：專題使用者（產品）／專題開發者（技術）
 - Source of Truth：是，僅負責文件權威與衝突處理
-- 最後檢視：2026-09-01
+- 最後檢視：2026-09-02
 
 ## 目的
 
@@ -38,6 +38,7 @@
 - `Superseded` 必須連到替代文件，不得繼續作為驗收標準。
 - Checklist 只能反映完成狀態，不能覆蓋 Spec。
 - `checkpoints.md`、`task-list.md`、Gantt 或歷史 Tier 0–5 文件不得覆蓋 ADR-0008 的 final delivery scope；Tier 4／5 不是當前未完成項。
+- 每次玩家可見的 patch release 都必須在同一 cohesive change 中遞增 `releaseVersion` 的 SemVer patch，並以 regression test 拒絕沿用上一版號；版本是人工 release 識別，不宣稱為 Git SHA，也不因 docs-only commit 遞增。
 
 ## 小型專案角色切換
 
