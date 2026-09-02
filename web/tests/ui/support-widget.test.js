@@ -424,6 +424,9 @@ test("Widget 中尺寸與桌機 dialog 保留 composer 幾何區", async () => {
   const mediumRule = css.match(
     /@media\s*\(min-width:\s*721px\)\s*and\s*\(max-width:\s*1050px\)\s*\{[\s\S]*?\.support-widget__dialog\s*\{([^}]*)\}/,
   )?.[1] ?? "";
+  const mediumGameWidgetRule = css.match(
+    /@media\s*\(min-width:\s*721px\)\s*and\s*\(max-width:\s*1050px\)\s*\{[\s\S]*?body:has\(#gamePage:not\(\[hidden\]\)\)\s+\.support-widget\s*\{([^}]*)\}/,
+  )?.[1] ?? "";
   const desktopRule = css.match(
     /@media\s*\(min-width:\s*1051px\)\s*\{[\s\S]*?\.support-widget__dialog\s*\{([^}]*)\}/,
   )?.[1] ?? "";
@@ -435,11 +438,17 @@ test("Widget 中尺寸與桌機 dialog 保留 composer 幾何區", async () => {
   }
   assert.match(mediumRule, /max-height:\s*min\(20dvh,\s*12rem\);/);
   assert.match(desktopRule, /max-height:\s*min\(50dvh,\s*28rem\);/);
+  assert.match(
+    mediumGameWidgetRule,
+    /bottom:\s*var\(--support-widget-bottom,\s*max\(18rem,\s*env\(safe-area-inset-bottom\)\)\);/,
+  );
 
   const mediumDialog = { left: 352, right: 752, top: 72, bottom: 252 };
   const mediumComposer = { left: 308.36, right: 727.63, top: 336, bottom: 569.09 };
+  const mediumToggle = { left: 624, right: 720, top: 444, bottom: 556 };
   const desktopDialog = { left: 1024, right: 1424, top: 72, bottom: 520 };
   const desktopComposer = { left: 371.8, right: 1088.2, top: 579.41, bottom: 812.5 };
   assert.equal(overlap(mediumDialog, mediumComposer), false);
+  assert.equal(overlap(mediumToggle, mediumComposer), false);
   assert.equal(overlap(desktopDialog, desktopComposer), false);
 });
