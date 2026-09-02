@@ -365,9 +365,16 @@ test("Widget CSS 支援 viewport 底部寵物入口、開啟停跳與 reduced-mo
     css.indexOf("@media (prefers-reduced-motion: reduce)"),
   );
   const widgetRule = mobileCss.match(/\.support-widget\s*\{([^}]*)\}/)?.[1] ?? "";
+  const landingWidgetRule = mobileCss.match(
+    /body:has\(#landingPage:not\(\[hidden\]\)\)\s+\.support-widget\s*\{([^}]*)\}/,
+  )?.[1] ?? "";
   const dialogRule = mobileCss.match(/\.support-widget__dialog\s*\{([^}]*)\}/)?.[1] ?? "";
   assert.match(widgetRule, /right:\s*1\.5rem;/);
   assert.match(widgetRule, /bottom:\s*max\([^;]*env\(safe-area-inset-bottom\)/);
+  assert.match(
+    landingWidgetRule,
+    /bottom:\s*var\(--support-widget-bottom,\s*max\(10rem,\s*env\(safe-area-inset-bottom\)\)\);/,
+  );
   assert.match(dialogRule, /bottom:\s*([\d.]+)rem;/);
   assert.match(dialogRule, /max-height:\s*min\(([\d.]+)dvh,\s*([\d.]+)rem\);/);
 
@@ -395,6 +402,9 @@ test("Widget CSS 支援 viewport 底部寵物入口、開啟停跳與 reduced-mo
   };
   const topbarNav = { left: 254.16, right: 372, top: 29, bottom: 46 };
   const composer = { left: 25, right: 365, top: 308, bottom: 550 };
+  const landingToggle = { left: 270, right: 366, top: 572, bottom: 684 };
+  const landingNickname = { left: 36.6, right: 369, top: 761.9, bottom: 795.93 };
+  const landingCreateButton = { left: 36.6, right: 369, top: 808.9, bottom: 852.93 };
   const overlaps = (first, second) => !(
     first.right <= second.left
     || first.left >= second.right
@@ -403,6 +413,8 @@ test("Widget CSS 支援 viewport 底部寵物入口、開啟停跳與 reduced-mo
   );
 
   assert.equal(overlaps(toggle, topbarNav), false, "mobile toggle 不得與 topbar nav 相交");
+  assert.equal(overlaps(landingToggle, landingNickname), false, "mobile landing toggle 不得遮擋暱稱輸入");
+  assert.equal(overlaps(landingToggle, landingCreateButton), false, "mobile landing toggle 不得遮擋建立按鈕");
   assert.equal(overlaps(dialog, composer), false, "mobile dialog 不得遮擋 composer");
   assert.ok(dialog.left >= 0 && dialog.right <= viewport.width, "mobile dialog 不得水平溢位");
   assert.match(css, /@media\s*\(prefers-reduced-motion:\s*reduce\)/);
