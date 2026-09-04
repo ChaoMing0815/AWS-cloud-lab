@@ -356,7 +356,16 @@ test("Widget CSS 支援 viewport 底部寵物入口、開啟停跳與 reduced-mo
 
   assert.match(css, /image-rendering:\s*pixelated/);
   const desktopWidgetRule = css.match(/\.support-widget\s*\{([^}]*)\}/)?.[1] ?? "";
+  const baseDialogRule = css.match(/\.support-widget__dialog\s*\{([^}]*)\}/)?.[1] ?? "";
   assert.match(desktopWidgetRule, /right:\s*clamp\(3rem,\s*6vw,\s*6rem\)/);
+  assert.match(baseDialogRule, /position:\s*absolute;/);
+  assert.match(baseDialogRule, /bottom:\s*6\.75rem;/);
+  assert.match(baseDialogRule, /max-height:\s*min\(68dvh,\s*36rem\);/);
+  assert.match(
+    baseDialogRule,
+    /background:\s*color-mix\(in srgb,\s*var\(--night,\s*#071113\)\s*85%,\s*white\s*15%\);/,
+    "dialog 背景需比主頁 night 色提高 15% 明度",
+  );
   assert.match(css, /bottom:\s*max\([^;]*env\(safe-area-inset-bottom\)/);
   assert.match(css, /\.support-widget\.is-open\s+\.support-widget__slime[^}]*animation-play-state:\s*paused/s);
   assert.match(css, /@media\s*\(max-width:\s*720px\)/);
@@ -375,8 +384,12 @@ test("Widget CSS 支援 viewport 底部寵物入口、開啟停跳與 reduced-mo
     landingWidgetRule,
     /bottom:\s*var\(--support-widget-bottom,\s*max\(10rem,\s*env\(safe-area-inset-bottom\)\)\);/,
   );
-  assert.match(dialogRule, /bottom:\s*([\d.]+)rem;/);
-  assert.match(dialogRule, /max-height:\s*min\(([\d.]+)dvh,\s*([\d.]+)rem\);/);
+  assert.match(dialogRule, /bottom:\s*6\.75rem;/);
+  assert.match(dialogRule, /max-height:\s*min\(62dvh,\s*32rem\);/);
+  assert.match(
+    mobileCss,
+    /\.support-widget\.is-avoiding-controls\s+\.support-widget__dialog\s*\{[^}]*max-height:\s*min\(20dvh,\s*10rem\);/s,
+  );
 
   const rootFont = 16;
   const viewport = { width: 390, height: 844 };
@@ -422,7 +435,7 @@ test("Widget CSS 支援 viewport 底部寵物入口、開啟停跳與 reduced-mo
   assert.doesNotMatch(css, /@import|url\s*\(|https?:\/\//i);
 });
 
-test("Widget 中尺寸與桌機保留 composer 與首頁核心控制區", async () => {
+test("Widget 中尺寸與桌機在可展開時仍保留 composer 核心控制區", async () => {
   const css = await readFile(
     new URL("../../support-widget.css", import.meta.url),
     "utf8",
@@ -439,17 +452,17 @@ test("Widget 中尺寸與桌機保留 composer 與首頁核心控制區", async 
   const mediumGameWidgetRule = css.match(
     /@media\s*\(min-width:\s*721px\)\s*and\s*\(max-width:\s*1050px\)\s*\{[\s\S]*?body:has\(#gamePage:not\(\[hidden\]\)\)\s+\.support-widget\s*\{([^}]*)\}/,
   )?.[1] ?? "";
-  const desktopRule = css.match(
-    /@media\s*\(min-width:\s*1051px\)\s*\{[\s\S]*?\.support-widget__dialog\s*\{([^}]*)\}/,
+  const desktopGameRule = css.match(
+    /@media\s*\(min-width:\s*1051px\)\s*\{[\s\S]*?body:has\(#gamePage:not\(\[hidden\]\)\)\s+\.support-widget__dialog\s*\{([^}]*)\}/,
   )?.[1] ?? "";
 
-  for (const rule of [mediumRule, desktopRule]) {
-    assert.match(rule, /position:\s*fixed;/);
-    assert.match(rule, /top:\s*max\(4\.5rem,\s*env\(safe-area-inset-top\)\);/);
-    assert.match(rule, /bottom:\s*auto;/);
-  }
-  assert.match(mediumRule, /max-height:\s*min\(20dvh,\s*12rem\);/);
-  assert.match(desktopRule, /max-height:\s*min\(20dvh,\s*12rem\);/);
+  assert.match(mediumRule, /max-height:\s*min\(45dvh,\s*25rem\);/);
+  assert.match(desktopGameRule, /position:\s*fixed;/);
+  assert.match(desktopGameRule, /top:\s*max\(4\.5rem,\s*env\(safe-area-inset-top\)\);/);
+  assert.match(desktopGameRule, /right:\s*1rem;/);
+  assert.match(desktopGameRule, /bottom:\s*auto;/);
+  assert.match(desktopGameRule, /width:\s*21rem;/);
+  assert.match(desktopGameRule, /max-height:\s*min\(76dvh,\s*42rem\);/);
   assert.match(
     mediumGameWidgetRule,
     /bottom:\s*var\(--support-widget-bottom,\s*max\(18rem,\s*env\(safe-area-inset-bottom\)\)\);/,
