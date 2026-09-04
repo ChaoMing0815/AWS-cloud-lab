@@ -630,7 +630,12 @@ def test_round_and_ending_force_output_only_tools_and_leave_canonical_room_state
         "required": ["player_id", "action_consequence"],
         "properties": {
             "player_id": {"type": "string", "minLength": 1, "maxLength": 64},
-            "action_consequence": {"type": "string", "minLength": 1, "maxLength": 240},
+            "action_consequence": {
+                "type": "string",
+                "description": "Use at most 220 Traditional Chinese characters.",
+                "minLength": 1,
+                "maxLength": 280,
+            },
         },
     }
     assert ending_schema["additionalProperties"] is False
@@ -762,6 +767,17 @@ def test_nova_v1_tool_request_omits_unsupported_structured_output_fields() -> No
 
     assert_compatible(tool_spec["inputSchema"]["json"])
 
+    properties = tool_spec["inputSchema"]["json"]["properties"]
+    assert properties["narrative"]["description"] == (
+        "Use at most 600 Traditional Chinese characters."
+    )
+    assert properties["player_consequences"]["items"]["properties"][
+        "action_consequence"
+    ]["description"] == "Use at most 220 Traditional Chinese characters."
+    assert "Keep every text value within its field description" in client.calls[0][
+        "system"
+    ][0]["text"]
+
 
 @pytest.mark.parametrize(
     "case",
@@ -834,10 +850,6 @@ def test_round_rejects_any_response_other_than_one_exact_valid_output_tool(case:
         ("invalid-player-id", "round_player_id_bounds"),
         ("invalid-action-consequence", "round_action_consequence_bounds"),
         ("wrong-player-set", "round_player_set"),
-        ("overlong-narrative", "round_narrative_bounds"),
-        ("overlong-progress", "round_progress_consequence_bounds"),
-        ("overlong-crisis", "round_crisis_consequence_bounds"),
-        ("overlong-next-scene", "round_next_scene_hook_bounds"),
     ],
 )
 def test_round_schema_failure_exposes_only_safe_diagnostic_code(
@@ -891,18 +903,8 @@ def test_round_schema_failure_exposes_only_safe_diagnostic_code(
     elif case == "wrong-player-set":
         tool_input["player_consequences"][0]["player_id"] = secret
         response = tool_response(ROUND_TOOL_NAME, tool_input)
-    elif case == "overlong-narrative":
-        tool_input["narrative"] = secret + ("x" * 1200)
-        response = tool_response(ROUND_TOOL_NAME, tool_input)
-    elif case == "overlong-progress":
-        tool_input["progress_consequence"] = secret + ("x" * 300)
-        response = tool_response(ROUND_TOOL_NAME, tool_input)
-    elif case == "overlong-crisis":
-        tool_input["crisis_consequence"] = secret + ("x" * 300)
-        response = tool_response(ROUND_TOOL_NAME, tool_input)
     else:
-        tool_input["next_scene_hook"] = secret + ("x" * 500)
-        response = tool_response(ROUND_TOOL_NAME, tool_input)
+        raise AssertionError(case)
 
     with pytest.raises(StorytellerFailure) as captured:
         adapter(FakeBedrockClient(response)).resolve_round(resolution_room())
@@ -965,26 +967,56 @@ def test_round_prompt_limits_recent_story_to_latest_five_entries() -> None:
     assert "第 1 幕" not in guarded["text"]
 
 
-@pytest.mark.parametrize(
-    ("method_name", "response"),
-    [
-        (
-            "resolve_round",
-            tool_response(ROUND_TOOL_NAME, round_tool_input(narrative="x" * 1201)),
-        ),
-        (
-            "resolve_ending",
-            tool_response(ENDING_TOOL_NAME, ending_tool_input(ending_narrative="x" * 1201)),
-        ),
-    ],
-)
-def test_overlong_narrative_output_is_schema_failure(method_name: str, response: dict) -> None:
-    client = FakeBedrockClient(response)
+def test_valid_overlong_round_text_is_compacted_without_changing_player_mapping(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    payload = round_tool_input(
+        narrative="敘事句。" * 250,
+        player_consequences=[
+            {
+                "player_id": "player-1",
+                "action_consequence": "行動後果。" * 80,
+            }
+        ],
+        progress_consequence="進度後果。" * 80,
+        crisis_consequence="危機後果。" * 80,
+        next_scene_hook="下一幕。" * 120,
+    )
+    caplog.set_level(logging.INFO, logger="co_story.storyteller_metrics")
 
-    with pytest.raises(StorytellerFailure) as captured:
-        getattr(adapter(client), method_name)(resolution_room())
+    result = adapter(FakeBedrockClient(tool_response(ROUND_TOOL_NAME, payload))).resolve_round(
+        resolution_room()
+    )
 
-    assert captured.value.code == "SCHEMA_INVALID"
+    lines = result.splitlines()
+    assert 1 <= len(lines[0]) <= 720
+    assert 1 <= len(lines[1]) <= 280
+    assert 1 <= len(lines[2].removeprefix("進度後果：")) <= 280
+    assert 1 <= len(lines[3].removeprefix("危機後果：")) <= 280
+    assert 1 <= len(lines[4].removeprefix("下一幕：")) <= 460
+    assert all(line.endswith("。") for line in lines)
+    assert "storyteller_output_compacted" in caplog.text
+    assert "敘事句。敘事句。" not in caplog.text
+
+
+def test_valid_overlong_ending_text_is_compacted_within_modest_hard_limits() -> None:
+    payload = ending_tool_input(
+        ending_narrative="終局句。" * 250,
+        achieved_outcome="成果句。" * 100,
+        paid_cost_or_sacrifice="代價句。" * 100,
+        unresolved_consequence="後果句。" * 100,
+    )
+
+    result = adapter(
+        FakeBedrockClient(tool_response(ENDING_TOOL_NAME, payload))
+    ).resolve_ending(resolution_room())
+
+    lines = result.splitlines()
+    assert 1 <= len(lines[0]) <= 720
+    assert 1 <= len(lines[1].removeprefix("達成成果：")) <= 340
+    assert 1 <= len(lines[2].removeprefix("付出代價：")) <= 340
+    assert 1 <= len(lines[3].removeprefix("未解後果：")) <= 340
+    assert all(line.endswith("。") for line in lines)
 
 
 def test_resolve_round_and_ending_uses_single_composite_tool_and_returns_round_plus_ending() -> None:
