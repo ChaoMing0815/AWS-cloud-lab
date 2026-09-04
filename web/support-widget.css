@@ -446,10 +446,6 @@
   }
 
   body:has(#gamePage:not([hidden])) .support-widget__dialog {
-    position: fixed;
-    top: max(4.5rem, env(safe-area-inset-top));
-    right: 1rem;
-    bottom: auto;
     max-height: min(45dvh, 25rem);
   }
 }
@@ -457,11 +453,10 @@
 @media (min-width: 1051px) {
   body:has(#gamePage:not([hidden])) .support-widget__dialog {
     position: fixed;
-    top: max(4.5rem, env(safe-area-inset-top));
-    right: 1rem;
-    bottom: auto;
+    top: auto;
+    right: 0;
+    bottom: calc(max(1rem, env(safe-area-inset-bottom)) + 6.75rem);
     width: 21rem;
-    max-height: min(76dvh, 42rem);
   }
 }
 
