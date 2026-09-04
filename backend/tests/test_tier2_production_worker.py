@@ -169,6 +169,28 @@ def test_build_production_worker_constructs_without_converse(monkeypatch) -> Non
     assert runner.__class__.__name__ == "SqsStoryResolutionWorkerRunner"
 
 
+def test_production_storyteller_accepts_bounded_tooluse_hotfix_budget(monkeypatch) -> None:
+    _configure_production_env(monkeypatch)
+    monkeypatch.setenv("CO_STORY_BEDROCK_MAX_TOKENS", "3000")
+    factory_module, _ = _load_modules(monkeypatch)
+    created = {}
+
+    class RecordingStoryteller:
+        def __init__(self, **settings):
+            created.update(settings)
+
+    monkeypatch.setattr(factory_module, "BedrockStoryteller", RecordingStoryteller)
+    monkeypatch.setattr(
+        factory_module,
+        "_create_bedrock_client",
+        lambda _region, config=None: object(),
+    )
+
+    factory_module.create_production_bedrock_storyteller()
+
+    assert created["max_tokens"] == 3000
+
+
 @pytest.mark.parametrize(
     "queue_url",
     [

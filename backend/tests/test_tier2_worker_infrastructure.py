@@ -71,6 +71,13 @@ def test_foundation_has_one_nat_one_private_subnet_and_exactly_two_workers() -> 
     }
 
 
+def test_worker_runtime_uses_bounded_nova_tooluse_hotfix_budget() -> None:
+    template_text = TEMPLATE.read_text(encoding="utf-8")
+
+    assert "CO_STORY_BEDROCK_MAX_TOKENS=3000" in template_text
+    assert "CO_STORY_BEDROCK_MAX_TOKENS=800" not in template_text
+
+
 def test_worker_network_has_no_ingress_and_db_only_accepts_worker_sg() -> None:
     template = _template()
     resources = template["Resources"]

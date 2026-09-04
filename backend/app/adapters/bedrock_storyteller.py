@@ -9,7 +9,7 @@ from app.application.ports import Storyteller, StorytellerFailure
 from app.domain.models import Room, World
 
 
-MAX_TOKENS = 1200
+MAX_TOKENS = 3000
 MAX_NARRATIVE_LENGTH = 1200
 ROUND_TOOL_NAME = "submit_round_narrative"
 ENDING_TOOL_NAME = "submit_ending_narrative"
@@ -551,6 +551,10 @@ class BedrockStoryteller(Storyteller):
                 "tools": [request_tool],
                 "toolChoice": {"tool": {"name": tool_name}},
             }
+            if self._model_id == _NOVA_LITE_V1_MODEL_ID:
+                request["additionalModelRequestFields"] = {
+                    "inferenceConfig": {"topK": 1}
+                }
         try:
             response = self._client.converse(**request)
         except Exception as error:

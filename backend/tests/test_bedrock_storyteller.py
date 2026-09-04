@@ -8,7 +8,7 @@ from app.application.ports import StorytellerFailure
 from app.domain.models import Character, DiceResult, Player, Room, StoryEntry, World
 
 
-MAX_BEDROCK_TOKENS = 1200
+MAX_BEDROCK_TOKENS = 3000
 ROUND_TOOL_NAME = "submit_round_narrative"
 ENDING_TOOL_NAME = "submit_ending_narrative"
 ROUND_AND_ENDING_TOOL_NAME = "submit_round_and_ending_narrative"
@@ -263,6 +263,7 @@ def test_generate_world_uses_injected_converse_client_with_bounded_tokens_guardr
     assert request["modelId"] == "anthropic.claude-test-v1"
     assert request["inferenceConfig"]["maxTokens"] == MAX_BEDROCK_TOKENS
     assert request["inferenceConfig"]["temperature"] == 0
+    assert "additionalModelRequestFields" not in request
     assert request["guardrailConfig"] == {
         "guardrailIdentifier": "gr-story-safety",
         "guardrailVersion": "7",
@@ -393,6 +394,20 @@ def test_constructor_rejects_token_limits_outside_the_fixed_cost_boundary(invali
         adapter(client, max_tokens=invalid_max_tokens)
 
 
+def test_constructor_accepts_bounded_nova_tooluse_hotfix_budget() -> None:
+    client = FakeBedrockClient(converse_response(json.dumps(expected_world_payload())))
+
+    storyteller = adapter(client, max_tokens=3000)
+
+    storyteller.generate_world(
+        keywords=["夜班", "便利商店", "盤點"],
+        tone="mystery",
+        custom_tone=None,
+        supplemental_request=None,
+    )
+    assert client.calls[0]["inferenceConfig"]["maxTokens"] == 3000
+
+
 def test_generate_world_maps_world_draft_title_and_ignores_unknown_fields() -> None:
     payload = expected_world_payload()
     payload["unknown_model_field"] = {"progress_delta": 99, "danger_delta": -99}
@@ -490,6 +505,7 @@ def test_invalid_world_draft_output_is_a_safe_schema_failure(text: str) -> None:
     [
         ("ThrottlingException", "THROTTLED"),
         ("ServiceUnavailableException", "TRANSIENT_SERVICE_ERROR"),
+        ("ModelErrorException", "TRANSIENT_SERVICE_ERROR"),
         ("ModelTimeoutException", "TIMEOUT"),
     ],
 )
@@ -721,6 +737,9 @@ def test_nova_v1_tool_request_omits_unsupported_structured_output_fields() -> No
 
     storyteller.resolve_round(resolution_room())
 
+    assert client.calls[0]["additionalModelRequestFields"] == {
+        "inferenceConfig": {"topK": 1}
+    }
     tool_spec = client.calls[0]["toolConfig"]["tools"][0]["toolSpec"]
     assert "strict" not in tool_spec
 
