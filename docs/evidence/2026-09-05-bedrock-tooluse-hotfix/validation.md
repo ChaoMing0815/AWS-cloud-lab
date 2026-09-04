@@ -14,6 +14,7 @@
 - Worker artifact：run `33897173518` 通過 production approval、ARM64 immutable build／push、exact-digest Trivy `HIGH/CRITICAL` fail-closed scan與manifest保存；新 digest為`sha256:1655de7a07b93b08564693d2bfc678ba2d1f616dda01cf74a8efbd920cf084f4`。
 - Production rollout：使用者透過 Systems Manager 依序更新兩台private Worker。`ip-10-20-20-170`與`ip-10-20-20-91`均回`worker_hotfix=verified`；雙節點postflight確認service enabled／active、container running、restart `0`、mode `async`、token budget `3000`、exact digest一致且registry auth absent。
 - Non-goals：本次未修改或部署Web／Publisher，玩家可見production仍是`Release v1.1.2`；repo main內的`Release v1.1.3`保留供後續獨立Web release。沒有DB、schema、IAM、Queue、CloudFormation資源或固定成本變更。
-- Live production validation：使用者另行核准並以一個新房間執行一次bounded玩家故事生成。Browser顯示三位玩家的Round 01行動完整保留、`故事主持人`產生新的完整敘事與下一幕，且沒有`系統備援敘事`或`ModelErrorException`；證明新Worker digest至少成功完成一次live玩家流程。
-- Residual：Browser結果無法證明實際Bedrock invocation／retry次數，也不能保證Nova未來永不再產生invalid sequence；未另行查詢或保存raw CloudTrail、DB job payload或模型輸出。驗收只宣稱一次玩家流程成功，不宣稱全面消除服務端模型錯誤。
+- Live production validation：使用者另行核准同一新房間的bounded玩家測試。Round 01 job於第一次嘗試`completed/applied`，Browser保留三筆行動並顯示新的AI敘事與下一幕。Round 02 job則為dispatch一次、Worker attempts `3`、`completed/failed`，約六分鐘後顯示備援敘事控制；Publisher、SQS dispatch與completion皆正常。
+- Safe diagnostics：Round 02 failure code為`SCHEMA_INVALID`。CloudWatch Worker allowlist log對第二、第三次嘗試分別記錄`round_narrative_bounds`與`round_action_consequence_bounds`；第一個failure沒有diagnostic record。沒有保存raw model output、prompt、story payload或secret。
+- Root cause／residual：Nova Lite相容轉換會移除model不支援的`maxLength` schema欄位，而目前system instruction沒有逐欄重述600／240字元限制；提高到`3000`只擴張單次輸出budget，沒有改變application validator。現行hotfix可成功但不穩定，不得宣稱問題已解決；需以新的strict-TDD corrective收斂prompt／token budget，不能放寬canonical narrative bounds來掩蓋錯誤。
 - Rollback：previous Worker digest＋runtime token值`800`；不影響已合併但尚待展示部署的`Release v1.1.3` Web patch。

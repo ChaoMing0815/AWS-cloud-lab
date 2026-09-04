@@ -51,7 +51,7 @@
 - Production CloudTrail 將失敗 round 的三次 Worker 嘗試歸因為 Nova Lite `Converse` 的 `ModelErrorException`／invalid ToolUse sequence。PR #81 只為 Nova forced-tool request加入 `topK=1`，並將 Worker token budget由 `800`提高到 bounded `3000`；不修改 Web、DB、schema、IAM、Queue、Publisher或AWS資源。
 - Worker artifact run `33897173518` 綁定 exact main `3246f2a…`，production approval、ARM64 immutable build／push、exact-digest Trivy `HIGH/CRITICAL` gate與manifest均成功；新 digest為 `sha256:1655de7a…`。
 - 使用者透過 Systems Manager 逐台更新 `ip-10-20-20-170` 與 `ip-10-20-20-91`。雙 Worker postflight皆為service enabled／active、container running、restart `0`、mode `async`、max tokens `3000`、exact digest一致且registry auth absent。
-- 使用者另行核准並執行一次bounded玩家故事生成。Production Browser顯示三位玩家的Round 01行動完整保留、`故事主持人`產生新的完整敘事與下一幕，且未顯示`系統備援敘事`或`ModelErrorException`；因此可宣稱此hotfix至少完成一次live玩家流程。但Browser證據無法判定實際invocation／retry次數，不得外推為所有未來請求都不會失敗。
+- 使用者另行核准同一房間的bounded玩家測試：Round 01於第一次嘗試`applied`；Round 02則在三次嘗試後`failed`，dispatch與completion正常。Safe CloudWatch diagnostics對後兩次分別為`round_narrative_bounds`與`round_action_consequence_bounds`；第一個failure沒有diagnostic record。這證明`topK=1`可成功一次但hotfix仍不穩定，且`3000`輸出上限與應用程式600／240字元欄位邊界未對齊；不得宣稱問題已解決。
 
 ## 已完成範圍
 
