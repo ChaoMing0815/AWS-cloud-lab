@@ -114,7 +114,7 @@ def test_production_default_storyteller_requires_each_bedrock_setting(monkeypatc
     assert str(error.value) == name
 
 
-@pytest.mark.parametrize("max_tokens", ["0", "1201", "not-an-integer"])
+@pytest.mark.parametrize("max_tokens", ["0", "3001", "not-an-integer"])
 def test_production_default_storyteller_rejects_invalid_bedrock_token_limit(monkeypatch, max_tokens) -> None:
     configure_production(monkeypatch)
     configure_bedrock(monkeypatch, max_tokens=max_tokens)
