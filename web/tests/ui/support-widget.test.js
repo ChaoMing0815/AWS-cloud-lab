@@ -179,7 +179,7 @@ test("Widget 提供可見開關、dialog 語意、Esc 關閉與 focus return", a
   assert.doesNotMatch(documentRef.getElementById("supportWidgetRoot").className, /is-open/);
 });
 
-test("Widget launcher 以果凍狀史萊姆呈現，不帶機器人面板或分離雙腳", async () => {
+test("Widget launcher 以原創像素果凍史萊姆呈現，不帶恐龍或機器人輪廓", async () => {
   const { documentRef } = createWidget();
   const toggle = documentRef.getElementById("supportWidgetToggle");
 
@@ -209,12 +209,13 @@ test("Widget launcher 以果凍狀史萊姆呈現，不帶機器人面板或分�
   assert.match(toggleRule, /box-shadow:\s*none/);
   assert.match(petRule, /width:\s*5(?:\.\d+)?rem/);
   assert.match(petRule, /height:\s*6(?:\.\d+)?rem/);
-  assert.match(bodyRule, /border-radius:\s*5\d%\s+5\d%\s+4\d%\s+4\d%/);
+  assert.match(bodyRule, /clip-path:\s*polygon\(/);
+  assert.match(bodyRule, /border-radius:\s*0/);
   assert.match(bodyRule, /background:\s*(?:linear-gradient|rgba)/);
   assert.match(faceRule, /border:\s*0/);
   assert.match(faceRule, /background:\s*transparent/);
   assert.match(faceRule, /box-shadow:\s*none/);
-  assert.doesNotMatch(css, /support-widget__slime-feet|#102b31|#0a1b20/);
+  assert.doesNotMatch(css, /support-widget__slime-feet|dino|dinosaur|#102b31|#0a1b20/i);
   assert.match(hintRule, /position:\s*absolute/);
   assert.match(hintRule, /border-radius:\s*999px/);
 });
@@ -354,6 +355,8 @@ test("Widget CSS 支援 viewport 底部寵物入口、開啟停跳與 reduced-mo
   ).catch(() => "");
 
   assert.match(css, /image-rendering:\s*pixelated/);
+  const desktopWidgetRule = css.match(/\.support-widget\s*\{([^}]*)\}/)?.[1] ?? "";
+  assert.match(desktopWidgetRule, /right:\s*clamp\(3rem,\s*6vw,\s*6rem\)/);
   assert.match(css, /bottom:\s*max\([^;]*env\(safe-area-inset-bottom\)/);
   assert.match(css, /\.support-widget\.is-open\s+\.support-widget__slime[^}]*animation-play-state:\s*paused/s);
   assert.match(css, /@media\s*\(max-width:\s*720px\)/);
@@ -362,9 +365,16 @@ test("Widget CSS 支援 viewport 底部寵物入口、開啟停跳與 reduced-mo
     css.indexOf("@media (prefers-reduced-motion: reduce)"),
   );
   const widgetRule = mobileCss.match(/\.support-widget\s*\{([^}]*)\}/)?.[1] ?? "";
+  const landingWidgetRule = mobileCss.match(
+    /body:has\(#landingPage:not\(\[hidden\]\)\)\s+\.support-widget\s*\{([^}]*)\}/,
+  )?.[1] ?? "";
   const dialogRule = mobileCss.match(/\.support-widget__dialog\s*\{([^}]*)\}/)?.[1] ?? "";
-  assert.match(widgetRule, /right:\s*\.75rem;/);
+  assert.match(widgetRule, /right:\s*1\.5rem;/);
   assert.match(widgetRule, /bottom:\s*max\([^;]*env\(safe-area-inset-bottom\)/);
+  assert.match(
+    landingWidgetRule,
+    /bottom:\s*var\(--support-widget-bottom,\s*max\(10rem,\s*env\(safe-area-inset-bottom\)\)\);/,
+  );
   assert.match(dialogRule, /bottom:\s*([\d.]+)rem;/);
   assert.match(dialogRule, /max-height:\s*min\(([\d.]+)dvh,\s*([\d.]+)rem\);/);
 
@@ -376,21 +386,25 @@ test("Widget CSS 支援 viewport 底部寵物入口、開啟停跳與 reduced-mo
   const dialogMaxRem = Number(
     dialogRule.match(/max-height:\s*min\([\d.]+dvh,\s*([\d.]+)rem/)?.[1],
   );
+  const mobileRight = Number(widgetRule.match(/right:\s*([\d.]+)rem/)?.[1]) * rootFont;
   const toggle = {
-    left: viewport.width - 12 - 82,
-    right: viewport.width - 12,
+    left: viewport.width - mobileRight - 82,
+    right: viewport.width - mobileRight,
     top: viewport.height - bottomRem * rootFont - 48,
     bottom: viewport.height - bottomRem * rootFont,
   };
   const dialog = {
-    left: 12,
-    right: viewport.width - 12,
+    left: 0,
+    right: viewport.width - mobileRight,
     bottom: viewport.height - bottomRem * rootFont - dialogBottomRem * rootFont,
     top: viewport.height - bottomRem * rootFont - dialogBottomRem * rootFont
       - Math.min(viewport.height * dialogDvh / 100, dialogMaxRem * rootFont),
   };
   const topbarNav = { left: 254.16, right: 372, top: 29, bottom: 46 };
   const composer = { left: 25, right: 365, top: 308, bottom: 550 };
+  const landingToggle = { left: 270, right: 366, top: 572, bottom: 684 };
+  const landingNickname = { left: 36.6, right: 369, top: 761.9, bottom: 795.93 };
+  const landingCreateButton = { left: 36.6, right: 369, top: 808.9, bottom: 852.93 };
   const overlaps = (first, second) => !(
     first.right <= second.left
     || first.left >= second.right
@@ -399,6 +413,8 @@ test("Widget CSS 支援 viewport 底部寵物入口、開啟停跳與 reduced-mo
   );
 
   assert.equal(overlaps(toggle, topbarNav), false, "mobile toggle 不得與 topbar nav 相交");
+  assert.equal(overlaps(landingToggle, landingNickname), false, "mobile landing toggle 不得遮擋暱稱輸入");
+  assert.equal(overlaps(landingToggle, landingCreateButton), false, "mobile landing toggle 不得遮擋建立按鈕");
   assert.equal(overlaps(dialog, composer), false, "mobile dialog 不得遮擋 composer");
   assert.ok(dialog.left >= 0 && dialog.right <= viewport.width, "mobile dialog 不得水平溢位");
   assert.match(css, /@media\s*\(prefers-reduced-motion:\s*reduce\)/);
@@ -406,7 +422,7 @@ test("Widget CSS 支援 viewport 底部寵物入口、開啟停跳與 reduced-mo
   assert.doesNotMatch(css, /@import|url\s*\(|https?:\/\//i);
 });
 
-test("Widget 中尺寸與桌機 dialog 保留 composer 幾何區", async () => {
+test("Widget 中尺寸與桌機保留 composer 與首頁核心控制區", async () => {
   const css = await readFile(
     new URL("../../support-widget.css", import.meta.url),
     "utf8",
@@ -420,6 +436,9 @@ test("Widget 中尺寸與桌機 dialog 保留 composer 幾何區", async () => {
   const mediumRule = css.match(
     /@media\s*\(min-width:\s*721px\)\s*and\s*\(max-width:\s*1050px\)\s*\{[\s\S]*?\.support-widget__dialog\s*\{([^}]*)\}/,
   )?.[1] ?? "";
+  const mediumGameWidgetRule = css.match(
+    /@media\s*\(min-width:\s*721px\)\s*and\s*\(max-width:\s*1050px\)\s*\{[\s\S]*?body:has\(#gamePage:not\(\[hidden\]\)\)\s+\.support-widget\s*\{([^}]*)\}/,
+  )?.[1] ?? "";
   const desktopRule = css.match(
     /@media\s*\(min-width:\s*1051px\)\s*\{[\s\S]*?\.support-widget__dialog\s*\{([^}]*)\}/,
   )?.[1] ?? "";
@@ -430,12 +449,22 @@ test("Widget 中尺寸與桌機 dialog 保留 composer 幾何區", async () => {
     assert.match(rule, /bottom:\s*auto;/);
   }
   assert.match(mediumRule, /max-height:\s*min\(20dvh,\s*12rem\);/);
-  assert.match(desktopRule, /max-height:\s*min\(50dvh,\s*28rem\);/);
+  assert.match(desktopRule, /max-height:\s*min\(20dvh,\s*12rem\);/);
+  assert.match(
+    mediumGameWidgetRule,
+    /bottom:\s*var\(--support-widget-bottom,\s*max\(18rem,\s*env\(safe-area-inset-bottom\)\)\);/,
+  );
 
   const mediumDialog = { left: 352, right: 752, top: 72, bottom: 252 };
-  const mediumComposer = { left: 308.36, right: 727.63, top: 336, bottom: 569.09 };
-  const desktopDialog = { left: 1024, right: 1424, top: 72, bottom: 520 };
+  const mediumComposer = { left: 308.36, right: 727.63, top: 577, bottom: 810.09 };
+  const mediumToggle = { left: 624, right: 720, top: 444, bottom: 556 };
+  const desktopDialog = { left: 1024, right: 1424, top: 72, bottom: 252 };
+  const desktopNickname = { left: 848.35, right: 1252.99, top: 314.1, bottom: 348.11 };
+  const desktopCreateButton = { left: 848.35, right: 1252.99, top: 361.1, bottom: 403.61 };
   const desktopComposer = { left: 371.8, right: 1088.2, top: 579.41, bottom: 812.5 };
   assert.equal(overlap(mediumDialog, mediumComposer), false);
+  assert.equal(overlap(mediumToggle, mediumComposer), false);
   assert.equal(overlap(desktopDialog, desktopComposer), false);
+  assert.equal(overlap(desktopDialog, desktopNickname), false);
+  assert.equal(overlap(desktopDialog, desktopCreateButton), false);
 });
