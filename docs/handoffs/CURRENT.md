@@ -51,7 +51,7 @@
 - Production CloudTrail 將失敗 round 的三次 Worker 嘗試歸因為 Nova Lite `Converse` 的 `ModelErrorException`／invalid ToolUse sequence。PR #81 只為 Nova forced-tool request加入 `topK=1`，並將 Worker token budget由 `800`提高到 bounded `3000`；不修改 Web、DB、schema、IAM、Queue、Publisher或AWS資源。
 - Worker artifact run `33897173518` 綁定 exact main `3246f2a…`，production approval、ARM64 immutable build／push、exact-digest Trivy `HIGH/CRITICAL` gate與manifest均成功；新 digest為 `sha256:1655de7a…`。
 - 使用者透過 Systems Manager 逐台更新 `ip-10-20-20-170` 與 `ip-10-20-20-91`。雙 Worker postflight皆為service enabled／active、container running、restart `0`、mode `async`、max tokens `3000`、exact digest一致且registry auth absent。
-- 這只證明新 Worker artifact與runtime rollout成功；尚未建立新story job或呼叫Bedrock，因此不得宣稱invalid ToolUse已在production live模型驗證消失。若要驗證，需另行核准一次bounded玩家故事生成。
+- 使用者另行核准並執行一次bounded玩家故事生成。Production Browser顯示三位玩家的Round 01行動完整保留、`故事主持人`產生新的完整敘事與下一幕，且未顯示`系統備援敘事`或`ModelErrorException`；因此可宣稱此hotfix至少完成一次live玩家流程。但Browser證據無法判定實際invocation／retry次數，不得外推為所有未來請求都不會失敗。
 
 ## 已完成範圍
 

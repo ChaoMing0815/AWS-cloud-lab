@@ -14,5 +14,6 @@
 - Worker artifact：run `33897173518` 通過 production approval、ARM64 immutable build／push、exact-digest Trivy `HIGH/CRITICAL` fail-closed scan與manifest保存；新 digest為`sha256:1655de7a07b93b08564693d2bfc678ba2d1f616dda01cf74a8efbd920cf084f4`。
 - Production rollout：使用者透過 Systems Manager 依序更新兩台private Worker。`ip-10-20-20-170`與`ip-10-20-20-91`均回`worker_hotfix=verified`；雙節點postflight確認service enabled／active、container running、restart `0`、mode `async`、token budget `3000`、exact digest一致且registry auth absent。
 - Non-goals：本次未修改或部署Web／Publisher，玩家可見production仍是`Release v1.1.2`；repo main內的`Release v1.1.3`保留供後續獨立Web release。沒有DB、schema、IAM、Queue、CloudFormation資源或固定成本變更。
-- Residual：repo-local測試與runtime rollout不能保證Nova不再產生invalid sequence；本批未建立新story job、未傳送SQS message、未呼叫Bedrock。一次bounded玩家故事驗證仍需獨立明確核准，完成前不得宣稱live模型修正已驗證。
+- Live production validation：使用者另行核准並以一個新房間執行一次bounded玩家故事生成。Browser顯示三位玩家的Round 01行動完整保留、`故事主持人`產生新的完整敘事與下一幕，且沒有`系統備援敘事`或`ModelErrorException`；證明新Worker digest至少成功完成一次live玩家流程。
+- Residual：Browser結果無法證明實際Bedrock invocation／retry次數，也不能保證Nova未來永不再產生invalid sequence；未另行查詢或保存raw CloudTrail、DB job payload或模型輸出。驗收只宣稱一次玩家流程成功，不宣稱全面消除服務端模型錯誤。
 - Rollback：previous Worker digest＋runtime token值`800`；不影響已合併但尚待展示部署的`Release v1.1.3` Web patch。
