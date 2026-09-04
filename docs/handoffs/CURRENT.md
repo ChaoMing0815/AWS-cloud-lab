@@ -1,6 +1,6 @@
 # CURRENT：目前工作交接
 
-- 更新日期：2026-09-02
+- 更新日期：2026-09-05
 - 繳交期限：2026-09-07
 - 目前里程碑：ADR-0008 定義的 AWS production 主線已完成，包含可玩 MVP、可觀測／SSM、Web／Story Worker／Data 組件化與自動部署。Tier 4／5 只是 future roadmap，不是當前缺口或 final delivery blocker。
 - 狀態判定：以目前已實作、production 狀態與 sanitized evidence 為主。`docs/checkpoints.md` 與 `docs/task-list.md` 是驗收參考與證據整合清單，不得以歷史未勾項否定已有實作與證據的成果。
@@ -9,11 +9,13 @@
 
 ## Production 基準
 
-- Production source exact SHA：`4fb06d0fa33c6b4152d20288c7db4ef7d3927794`。
+- Repository `main` exact SHA：`3246f2a4ea8c7c1dc9751b8add30ab60dcd4c696`；此 SHA 已包含尚未部署的 Web `Release v1.1.3`，不得把 repo main 誤認為目前 Web production source。
+- Active Web source exact SHA：`09dc09af12b3903f34aefe910699a066a3b56798`；玩家目前看到 `Release v1.1.2`。待展示的 Web `Release v1.1.3` 尚未觸發 production release。
+- Active Worker source exact SHA：`3246f2a4ea8c7c1dc9751b8add30ab60dcd4c696`；2026-09-05 ToolUse hotfix 已只部署至兩台 private Worker。
 - Migration inventory：精確 `001`–`005`。
-- Web：`sha256:ad0ee896c1a3e292229a97102b42f2eabd6fd6d2f8590d8c65b255bba163dca4`，runtime `async`；run `33583003508` 的 exact-digest scan、bounded SSM release 與 delivery metrics均成功，strict TLS首頁／live／ready皆為`200`。前一個可回復 digest 為 `sha256:14d8e0fbc2ef6a5c8363b40e30160a7cd76f42a29d8a506be250263026486d90`。
+- Web：`sha256:c3e6c215c26043678962528d65f73f39761b141170455e279cc89cc1f6b6b27c`，runtime `async`；run `33844595314` 由 exact source `09dc09a…` 完成 `Release v1.1.2` deployment。Web、首頁版號與 Publisher 均未被本次 Worker hotfix 修改。
 - Publisher：`sha256:23357e315e94842cee8455023b1f87f203fca5b1d11b67b714f4af86efaa2a1b`，service active，container running。
-- 兩台 private Worker：`sha256:2d5d5866f54879e79882644f4b45af2475650ddc9972e6b91cfe786886cddfbc`，service active，container running，restart `0`，mode `async`。
+- 兩台 private Worker：`sha256:1655de7a07b93b08564693d2bfc678ba2d1f616dda01cf74a8efbd920cf084f4`，`CO_STORY_BEDROCK_MAX_TOKENS=3000`，service enabled／active、container running、restart `0`、mode `async`、ECR registry credential absent。Rollback 基準為 digest `sha256:2d5d5866f54879e79882644f4b45af2475650ddc9972e6b91cfe786886cddfbc` 加 token budget `800`。
 - Tier 2 玩家流程已完成 `202 → polling → applied result`；Room 進入 Round 02／`COLLECTING_ACTIONS`，新 AI 故事可見，主 Queue／DLQ 五項皆為 `0`，DLQ alarm 為 `OK`／`No actions`。
 - GitHub OIDC／ECR／Trivy／SSM pipeline 是唯一 image 交付路徑；production environment 保留人工核准與 fail-closed health／rollback gate。
 
@@ -41,6 +43,15 @@
 - 390×844首頁／Demo、768×844、1440×900 Browser QA均無水平溢位或nav overlap；390 Demo的寵物與dialog不和composer／textarea相交。
 - PR CI與merge後main CI均全綠；release run `33583003508`通過production approval、OIDC、ARM64 immutable image、digest fence、Trivy、bounded SSM與delivery metrics，active Web更新為`sha256:ad0ee896…`，previous `sha256:14d8e0f…`保留為rollback。
 - 玩家可見production為`Release v1.1.1`。Browser驗證果凍本體、裙邊與直接表情存在，舊機器人面板／分離腿不存在，對話框可開啟且無水平溢位；strict TLS首頁／live／ready皆為`200`。每次玩家可見patch必須遞增SemVer patch並由regression test拒絕上一版號；docs-only commit不遞增。
+
+## 2026-09-04～05 v1.1.2 與 Worker ToolUse hotfix
+
+- PR #77 已將 `Release v1.1.2` 星火規則與展示 UI patch 合併至 `09dc09af12b3903f34aefe910699a066a3b56798`；main CI run `33844447220`、Web release run `33844595314` 均成功，active Web digest為 `sha256:c3e6c215…`。玩家目前仍看到 v1.1.2。
+- PR #78 的 `Release v1.1.3` support dialog layout 已合併，並隨後包含於目前 repo main；它是後續另行展示的 Web release，尚未部署。Worker hotfix 不得改寫此版號或觸發 Tier 3 Web workflow。
+- Production CloudTrail 將失敗 round 的三次 Worker 嘗試歸因為 Nova Lite `Converse` 的 `ModelErrorException`／invalid ToolUse sequence。PR #81 只為 Nova forced-tool request加入 `topK=1`，並將 Worker token budget由 `800`提高到 bounded `3000`；不修改 Web、DB、schema、IAM、Queue、Publisher或AWS資源。
+- Worker artifact run `33897173518` 綁定 exact main `3246f2a…`，production approval、ARM64 immutable build／push、exact-digest Trivy `HIGH/CRITICAL` gate與manifest均成功；新 digest為 `sha256:1655de7a…`。
+- 使用者透過 Systems Manager 逐台更新 `ip-10-20-20-170` 與 `ip-10-20-20-91`。雙 Worker postflight皆為service enabled／active、container running、restart `0`、mode `async`、max tokens `3000`、exact digest一致且registry auth absent。
+- 這只證明新 Worker artifact與runtime rollout成功；尚未建立新story job或呼叫Bedrock，因此不得宣稱invalid ToolUse已在production live模型驗證消失。若要驗證，需另行核准一次bounded玩家故事生成。
 
 ## 已完成範圍
 
@@ -89,6 +100,7 @@
 - UI／像素 Support Widget production release與HTTPS恢復：[`docs/evidence/2026-09-01-ui-support-production-release/validation.md`](../evidence/2026-09-01-ui-support-production-release/validation.md)
 - 寵物規則助手 production release：[`docs/evidence/2026-09-02-pet-rules-production-release/validation.md`](../evidence/2026-09-02-pet-rules-production-release/validation.md)
 - 寵物視覺 v1.1.1 production release：[`docs/evidence/2026-09-02-pet-visual-v1-1-1-production-release/validation.md`](../evidence/2026-09-02-pet-visual-v1-1-1-production-release/validation.md)
+- Nova Lite ToolUse Worker-only hotfix：[`docs/evidence/2026-09-05-bedrock-tooluse-hotfix/validation.md`](../evidence/2026-09-05-bedrock-tooluse-hotfix/validation.md)
 
 ## Next
 

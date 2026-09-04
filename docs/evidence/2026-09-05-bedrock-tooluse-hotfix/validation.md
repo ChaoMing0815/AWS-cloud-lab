@@ -10,6 +10,9 @@
 - UI coexistence：完整Frontend `130/130`通過；branch沿用已含`Release v1.1.3`的exact main base，diff沒有`web/**`。
 - Negative：非Nova／無tool request不含`additionalModelRequestFields`；`3001`仍fail closed；raw `ModelErrorException`訊息不外洩。
 - Sensitivity：暫時把`topK`改為`2`時新增contract test如預期失敗；還原`1`後targeted重新通過。
-- Residual：repo-local測試不能保證Nova不再產生invalid sequence；production仍需新Worker digest、兩台runtime env同步、一次bounded故事驗證。
-- Governance gate：hotfix branch尚未登記於受保護的`.agents/work-boundaries.json`；機器檢查目前只因`unregistered branch`失敗，需整合task取得明確治理修改授權後補登記，不得繞過。
+- Governance／integration：PR #80 完成 hotfix branch boundary 登記與機器檢查；PR #81 合併 hotfix，exact main 為 `3246f2a4ea8c7c1dc9751b8add30ab60dcd4c696`。Main CI run `33896333755` 成功。
+- Worker artifact：run `33897173518` 通過 production approval、ARM64 immutable build／push、exact-digest Trivy `HIGH/CRITICAL` fail-closed scan與manifest保存；新 digest為`sha256:1655de7a07b93b08564693d2bfc678ba2d1f616dda01cf74a8efbd920cf084f4`。
+- Production rollout：使用者透過 Systems Manager 依序更新兩台private Worker。`ip-10-20-20-170`與`ip-10-20-20-91`均回`worker_hotfix=verified`；雙節點postflight確認service enabled／active、container running、restart `0`、mode `async`、token budget `3000`、exact digest一致且registry auth absent。
+- Non-goals：本次未修改或部署Web／Publisher，玩家可見production仍是`Release v1.1.2`；repo main內的`Release v1.1.3`保留供後續獨立Web release。沒有DB、schema、IAM、Queue、CloudFormation資源或固定成本變更。
+- Residual：repo-local測試與runtime rollout不能保證Nova不再產生invalid sequence；本批未建立新story job、未傳送SQS message、未呼叫Bedrock。一次bounded玩家故事驗證仍需獨立明確核准，完成前不得宣稱live模型修正已驗證。
 - Rollback：previous Worker digest＋runtime token值`800`；不影響已合併但尚待展示部署的`Release v1.1.3` Web patch。
