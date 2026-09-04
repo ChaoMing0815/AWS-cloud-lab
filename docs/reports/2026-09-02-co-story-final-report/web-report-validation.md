@@ -1,0 +1,22 @@
+# 共演計劃期末報告網站驗證摘要
+
+- Scope／risk：R2 可觀察 UX；純本機 scrollytelling、架構動畫、鍵盤導覽、reduced-motion 與固定截圖。
+- Upstream source：`source-of-truth.md`、`CURRENT.md`、報告 task packet、前次簡報、技術核心檢核點與指定 evidence。
+- Baseline：`deaa81df5eeda3bee811ad0097103d23e2a7a167`，分支 `codex/final-report-web`。
+- Red commit：`89b7c45`；AWS-first 十五章、真實產品截圖、架構拓樸、投影排版與互動契約先產生預期失敗。
+- Green：15 個章節、同步／非同步同頁比較、repo-local 官方 AWS 圖示、真實遊戲證據截圖、靜態 build 與本機 server。
+- Targeted verification：Node contract tests `10/10 passed`，包含 Chrome `file://` 直接開啟、無腳本靜態保底、P4／P5 固定正交關係線及 P6 無路徑契約。
+- Build：`build=passed assets=4 runtime_network_assets=0`。
+- Desktop Browser QA：1920×1080 共 15 章；每章精確停駐於 viewport，document width 均為 1920，可見內容字級皆不低於 16px，瀏覽器 log 為 0。
+- Architecture QA：P4 以藍／青綠／金色正交路徑呈現公開入口、共同狀態與模型推論；P5 同頁上下比較同步與非同步工作流；P6 暫時不顯示路徑。三頁皆無水平溢位或卡片文字裁切。
+- Icon-layout QA：服務葉節點皆為無框、無底色、無陰影；玩家頭像為 CSS 圖示。維運標題與最近 Subnet 虛線間距 `38px`；P4～P6 可見節點裁切皆為 `0`。
+- Refinement QA：P6 的 Gateway 圖示中心與 VPC 左界誤差收斂為 `0px`，三個 SG 標題皆為 `17px / 700`；P5 同步／非同步兩列均無文字裁切，Web/API 說明與 Private RDS 保持完整成行。
+- Navigation QA：Page／Arrow Up／Down 逐章移動；Home／End 精確抵達 opening／demo；深連結與右側章節進度同步。
+- Route QA：P4 顯示 4 條固定路徑；P5 同步列顯示 4 條、非同步列顯示 5 條固定路徑；P6 路徑數為 `0`。P4、P5 路徑皆由水平／垂直線段構成，平頭線段由實心 marker 覆蓋端點。
+- Alignment QA：P4 玩家／Gateway／EC2／RDS 圖示中心皆為約 `229px`；P5 水平箭頭端點與相鄰圖示垂直邊誤差不超過 `1px`。P4、P6 的 Gateway 中心仍落在 VPC 左界，頁面無文字裁切或水平溢位。
+- Reduced-motion QA：P4、P5 的 `?reduced=1` 將線條停駐於完整可見狀態；P5 的同步與非同步兩列同時保持可見，P6 沒有動畫路徑。
+- Architecture QA captures：十五張章節 PNG 與 P4～P6 三張 JPG 已更新為無頁首的 1920×1080 畫面；P6 截圖不含關係線。
+- Responsive QA：390×844 首頁 document width 為 390，沒有水平溢位；長內容以垂直捲動保留可讀性。
+- Capture validation：15 張 `1920×1080` PNG 通過 signature／尺寸驗證。
+- Negative scan：頁面沒有外部 runtime asset、敏感識別、越界服務、課程分級、自我提示或完整 image digest。
+- Residual risk：兩台 Worker 同一 Availability Zone、單一 public Web EC2 與單一 NAT Gateway 仍依 production 證據誠實呈現。
