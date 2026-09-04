@@ -47,6 +47,7 @@ def test_policy_defines_exact_parallel_branches_and_protects_integration_state()
         "codex/spark-rules-clarity",
         "codex/final-report-deck",
         "codex/final-report-web",
+        "codex/bedrock-tooluse-hotfix",
     }
     assert "docs/handoffs/CURRENT.md" in policy["protected_paths"]
     assert "docs/checkpoints.md" in policy["protected_paths"]
@@ -132,6 +133,39 @@ def test_final_report_web_is_local_only_and_cannot_modify_product_or_delivery() 
         ".github/workflows/ci.yml",
         "infra/cloudformation/tier2-worker-foundation.yaml",
         "ops/release/deploy_container.sh",
+    ):
+        assert path in rejected.stderr
+
+
+def test_bedrock_tooluse_hotfix_is_worker_only_and_cannot_modify_web_or_delivery() -> None:
+    accepted = _check(
+        "codex/bedrock-tooluse-hotfix",
+        "backend/app/adapters/bedrock_storyteller.py",
+        "backend/app/adapters/production_storyteller_factory.py",
+        "backend/tests/test_bedrock_storyteller.py",
+        "backend/tests/test_production_composition.py",
+        "backend/tests/test_tier2_production_worker.py",
+        "backend/tests/test_tier2_worker_infrastructure.py",
+        "infra/cloudformation/tier2-worker-foundation.yaml",
+        "ops/runtime/co-story.env.example",
+        "docs/features/bedrock-tooluse-hotfix.md",
+        "docs/evidence/2026-09-05-bedrock-tooluse-hotfix/validation.md",
+    )
+    rejected = _check(
+        "codex/bedrock-tooluse-hotfix",
+        "web/index.html",
+        ".github/workflows/tier2-worker-image.yml",
+        "backend/migrations/006_hotfix.sql",
+        "docs/handoffs/CURRENT.md",
+    )
+
+    assert accepted.returncode == 0, accepted.stderr
+    assert rejected.returncode == 2
+    for path in (
+        "web/index.html",
+        ".github/workflows/tier2-worker-image.yml",
+        "backend/migrations/006_hotfix.sql",
+        "docs/handoffs/CURRENT.md",
     ):
         assert path in rejected.stderr
 
