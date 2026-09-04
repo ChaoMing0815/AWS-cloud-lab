@@ -9,7 +9,7 @@
 
 ## Production 基準
 
-- Repository `main` exact SHA：`c5f3d038f363a29c8ac1b402d501f0a1ed6bad19`；此 SHA 已包含尚未部署的 Web `Release v1.1.3`與已部署的corrective Worker hotfix，不得把 repo main 誤認為目前 Web production source。
+- Latest application-bearing `main` SHA：`c5f3d038f363a29c8ac1b402d501f0a1ed6bad19`；此 SHA 已包含尚未部署的 Web `Release v1.1.3`與已部署的corrective Worker hotfix。後續docs-only merge可能繼續推進repository tip；新task必須以`git rev-parse origin/main`查詢即時tip，不得把docs-only SHA、repo tip或application-bearing SHA誤認為目前Web production source。
 - Active Web source exact SHA：`09dc09af12b3903f34aefe910699a066a3b56798`；玩家目前看到 `Release v1.1.2`。待展示的 Web `Release v1.1.3` 尚未觸發 production release。
 - Active Worker source exact SHA：`c5f3d038f363a29c8ac1b402d501f0a1ed6bad19`；2026-09-05 corrective ToolUse hotfix 已只部署至兩台 private Worker。
 - Migration inventory：精確 `001`–`005`。
