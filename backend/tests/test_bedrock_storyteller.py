@@ -638,6 +638,10 @@ def test_round_and_ending_force_output_only_tools_and_leave_canonical_room_state
             },
         },
     }
+    assert round_schema["properties"]["narrative"]["maxLength"] == 720
+    assert round_schema["properties"]["progress_consequence"]["maxLength"] == 280
+    assert round_schema["properties"]["crisis_consequence"]["maxLength"] == 280
+    assert round_schema["properties"]["next_scene_hook"]["maxLength"] == 460
     assert ending_schema["additionalProperties"] is False
     assert ending_schema["required"] == [
         "ending_narrative",
@@ -1049,6 +1053,28 @@ def test_resolve_round_and_ending_uses_single_composite_tool_and_returns_round_p
         "tool": {"name": ROUND_AND_ENDING_TOOL_NAME}
     }
     assert request["toolConfig"]["tools"][0]["toolSpec"]["name"] == ROUND_AND_ENDING_TOOL_NAME
+    composite_properties = request["toolConfig"]["tools"][0]["toolSpec"]["inputSchema"][
+        "json"
+    ]["properties"]
+    assert composite_properties["narrative"]["maxLength"] == 720
+    assert composite_properties["ending_narrative"]["maxLength"] == 720
+    assert composite_properties["achieved_outcome"]["maxLength"] == 340
+
+
+def test_resolve_round_and_ending_compacts_valid_overlong_text_for_final_round() -> None:
+    room = resolution_room(round_number=6, max_rounds=6)
+    payload = round_and_ending_tool_input(
+        narrative="回合句。" * 250,
+        ending_narrative="終局句。" * 250,
+    )
+    client = FakeBedrockClient(tool_response(ROUND_AND_ENDING_TOOL_NAME, payload))
+
+    result = adapter(client).resolve_round_and_ending(room)
+
+    assert len(result["narration"].splitlines()[0]) <= 720
+    assert len(result["ending_narration"].splitlines()[0]) <= 720
+    assert result["narration"].splitlines()[0].endswith("。")
+    assert result["ending_narration"].splitlines()[0].endswith("。")
 
 
 @pytest.mark.parametrize(
