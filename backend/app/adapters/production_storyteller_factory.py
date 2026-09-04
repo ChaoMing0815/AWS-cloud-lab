@@ -27,7 +27,7 @@ def _required_positive_int(
     name: str,
     *,
     minimum: int = 1,
-    maximum: int = 1200,
+    maximum: int = 3000,
 ) -> int:
     raw = _required_setting(name)
     try:

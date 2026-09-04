@@ -494,7 +494,7 @@ Resources:
                 'CO_STORY_BEDROCK_MODEL_ID=${BedrockModelId}' \
                 'CO_STORY_BEDROCK_GUARDRAIL_ID=${BedrockGuardrailId}' \
                 'CO_STORY_BEDROCK_GUARDRAIL_VERSION=${BedrockGuardrailVersion}' \
-                'CO_STORY_BEDROCK_MAX_TOKENS=800' \
+                'CO_STORY_BEDROCK_MAX_TOKENS=3000' \
                 > /etc/co-story/worker-runtime.env
               printf '%s\n' \
                 "CO_STORY_WORKER_IMAGE=$target_image" \

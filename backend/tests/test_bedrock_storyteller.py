@@ -8,7 +8,7 @@ from app.application.ports import StorytellerFailure
 from app.domain.models import Character, DiceResult, Player, Room, StoryEntry, World
 
 
-MAX_BEDROCK_TOKENS = 1200
+MAX_BEDROCK_TOKENS = 3000
 ROUND_TOOL_NAME = "submit_round_narrative"
 ENDING_TOOL_NAME = "submit_ending_narrative"
 ROUND_AND_ENDING_TOOL_NAME = "submit_round_and_ending_narrative"
@@ -263,6 +263,7 @@ def test_generate_world_uses_injected_converse_client_with_bounded_tokens_guardr
     assert request["modelId"] == "anthropic.claude-test-v1"
     assert request["inferenceConfig"]["maxTokens"] == MAX_BEDROCK_TOKENS
     assert request["inferenceConfig"]["temperature"] == 0
+    assert "additionalModelRequestFields" not in request
     assert request["guardrailConfig"] == {
         "guardrailIdentifier": "gr-story-safety",
         "guardrailVersion": "7",
