@@ -408,6 +408,20 @@
 5. `codex/tier2-web-ui-release` 與兩個 Support Agent 分支路徑互斥，可平行完成；它只服務已合併 UI patch 的獨立 production envelope。
 6. Support Agent production deployment、Bedrock adapter與 external submit 均為後續獨立 change envelope。
 
+## `codex/bedrock-tooluse-hotfix`
+
+唯一目標是修正 production CloudTrail 已確認的 Nova Lite forced ToolUse `ModelErrorException`，提高回合敘事結構化輸出的穩定性，並保留既有 bounded retry、fallback、單次模型呼叫與安全錯誤邊界。
+
+強制邊界：
+
+- 分支必須從已包含 `Release v1.1.3` UI patch 的 exact `main` 建立；禁止修改 `web/**`、玩家可見 release marker或 Support Agent。
+- strict TDD 必須先證明 Nova Lite request 使用 greedy decoding 所需的 `temperature=0`／`topK=1`，並讓 production Worker token budget足以容納既有 round／ending tool schema。
+- `ModelErrorException` 的處理不得保存或輸出 raw prompt、response、玩家內容、ARN、request ID或 AWS exception message；既有 retryable generic玩家訊息與 deterministic fallback不得降級。
+- 只可修改 policy 白名單中的 adapter、Worker runtime／replacement bootstrap contract、測試、Feature Spec與短 validation manifest；不得修改資料庫、migration、IAM、Queue、Web release workflow或建立 AWS 資源。
+- Repo-local完成後停在production核准前；Worker image build、兩台private Worker rollout及唯一bounded Bedrock驗證必須由整合 task另建 exact-SHA／digest／rollback envelope。
+
+此 hotfix 與 `v1.1.3` 的路徑互斥；合併後的 exact `main` 同時包含 UI patch與 Worker修正，但 Web與Worker仍使用各自既有的部署流程，禁止以 Worker rollout 取代明日 Web CI/CD展示。
+
 ## 共用檔案與交接
 
 `AGENTS.md`、policy、checker、治理文件、README、CURRENT、checkpoints、task list、deployment log、project plan 與 source-of-truth 都是 protected paths，只能由整合 task 修改。

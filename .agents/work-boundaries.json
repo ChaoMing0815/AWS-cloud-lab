@@ -398,6 +398,21 @@
         "docs/runbooks/tier3-container-release.md",
         "docs/evidence/2026-*-tier2-web-ui-release/**"
       ]
+    },
+    "codex/bedrock-tooluse-hotfix": {
+      "purpose": "修正 Nova Lite forced ToolUse 反覆產生 ModelErrorException 的 Worker 穩定性；不修改玩家 Web、release version、資料庫、IAM、AWS 資源或部署 workflow",
+      "allowed_paths": [
+        "backend/app/adapters/bedrock_storyteller.py",
+        "backend/app/adapters/production_storyteller_factory.py",
+        "backend/tests/test_bedrock_storyteller.py",
+        "backend/tests/test_production_composition.py",
+        "backend/tests/test_tier2_production_worker.py",
+        "backend/tests/test_tier2_worker_infrastructure.py",
+        "infra/cloudformation/tier2-worker-foundation.yaml",
+        "ops/runtime/co-story.env.example",
+        "docs/features/bedrock-tooluse-hotfix.md",
+        "docs/evidence/2026-*-bedrock-tooluse-hotfix/**"
+      ]
     }
   }
 }
