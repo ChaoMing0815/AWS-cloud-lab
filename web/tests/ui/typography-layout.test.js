@@ -31,6 +31,16 @@ test("production footer 的較長狀態文案可在窄螢幕安全換行", async
 });
 
 
+test("返回故事區塊與加入房間按鈕有明確垂直分隔", async () => {
+  const css = await readFile(new URL("../../styles.css", import.meta.url), "utf8");
+
+  const continueRule = css.match(/#continueGamePanel\s*\{([^}]*)\}/)?.[1] ?? "";
+  assert.match(continueRule, /margin-top:\s*(?:2[0-9]|[3-9]\d)px/);
+  assert.match(continueRule, /padding-top:\s*(?:1[6-9]|[2-9]\d)px/);
+  assert.match(continueRule, /border-top:\s*1px\s+solid\s+var\(--line\)/);
+});
+
+
 test("列印或分頁時不留下單行孤頁並避免敘事卡片被拆開", async () => {
   const css = await readFile(new URL("../../styles.css", import.meta.url), "utf8");
 
