@@ -399,6 +399,8 @@ test("Widget CSS 支援 viewport 底部寵物入口、開啟停跳與 reduced-mo
   const dialogMaxRem = Number(
     dialogRule.match(/max-height:\s*min\([\d.]+dvh,\s*([\d.]+)rem/)?.[1],
   );
+  const avoidingDialogDvh = 20;
+  const avoidingDialogMaxRem = 10;
   const mobileRight = Number(widgetRule.match(/right:\s*([\d.]+)rem/)?.[1]) * rootFont;
   const toggle = {
     left: viewport.width - mobileRight - 82,
@@ -406,7 +408,7 @@ test("Widget CSS 支援 viewport 底部寵物入口、開啟停跳與 reduced-mo
     top: viewport.height - bottomRem * rootFont - 48,
     bottom: viewport.height - bottomRem * rootFont,
   };
-  const dialog = {
+  const landingDialog = {
     left: 0,
     right: viewport.width - mobileRight,
     bottom: viewport.height - bottomRem * rootFont - dialogBottomRem * rootFont,
@@ -415,6 +417,14 @@ test("Widget CSS 支援 viewport 底部寵物入口、開啟停跳與 reduced-mo
   };
   const topbarNav = { left: 254.16, right: 372, top: 29, bottom: 46 };
   const composer = { left: 25, right: 365, top: 308, bottom: 550 };
+  const avoidingBottom = Math.ceil(viewport.height - composer.top + 12);
+  const avoidingDialog = {
+    left: 0,
+    right: viewport.width - mobileRight,
+    bottom: viewport.height - avoidingBottom - dialogBottomRem * rootFont,
+    top: viewport.height - avoidingBottom - dialogBottomRem * rootFont
+      - Math.min(viewport.height * avoidingDialogDvh / 100, avoidingDialogMaxRem * rootFont),
+  };
   const landingToggle = { left: 270, right: 366, top: 572, bottom: 684 };
   const landingNickname = { left: 36.6, right: 369, top: 761.9, bottom: 795.93 };
   const landingCreateButton = { left: 36.6, right: 369, top: 808.9, bottom: 852.93 };
@@ -428,8 +438,8 @@ test("Widget CSS 支援 viewport 底部寵物入口、開啟停跳與 reduced-mo
   assert.equal(overlaps(toggle, topbarNav), false, "mobile toggle 不得與 topbar nav 相交");
   assert.equal(overlaps(landingToggle, landingNickname), false, "mobile landing toggle 不得遮擋暱稱輸入");
   assert.equal(overlaps(landingToggle, landingCreateButton), false, "mobile landing toggle 不得遮擋建立按鈕");
-  assert.equal(overlaps(dialog, composer), false, "mobile dialog 不得遮擋 composer");
-  assert.ok(dialog.left >= 0 && dialog.right <= viewport.width, "mobile dialog 不得水平溢位");
+  assert.equal(overlaps(avoidingDialog, composer), false, "mobile dialog 不得遮擋 composer");
+  assert.ok(landingDialog.left >= 0 && landingDialog.right <= viewport.width, "mobile dialog 不得水平溢位");
   assert.match(css, /@media\s*\(prefers-reduced-motion:\s*reduce\)/);
   assert.match(css, /@media\s*\(prefers-reduced-motion:\s*reduce\)[\s\S]*animation:\s*none/);
   assert.doesNotMatch(css, /@import|url\s*\(|https?:\/\//i);
