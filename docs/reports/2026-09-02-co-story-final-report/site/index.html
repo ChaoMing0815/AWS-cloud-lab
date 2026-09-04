@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#080b12" />
+    <meta name="description" content="共演計劃 AWS 期末專題：從產品需求、AWS 服務選型到可觀測、組件化與自動部署的正式環境架構。" />
+    <title>共演計劃｜AWS 期末專題</title>
+    <link rel="stylesheet" href="./src/main.css" />
+  </head>
+  <body>
+    <nav class="rail" aria-label="章節導覽">
+      <div class="rail-track"><span id="rail-progress"></span></div>
+      <a href="#opening" aria-label="序幕"><span>01</span></a><a href="#product" aria-label="產品概覽"><span>02</span></a><a href="#scenarios" aria-label="潛在應用場景"><span>03</span></a><a href="#classic" aria-label="第一版雲端架構"><span>04</span></a><a href="#evolution" aria-label="演進動機"><span>05</span></a><a href="#production" aria-label="現況架構"><span>06</span></a><a href="#async" aria-label="非同步工作鏈"><span>07</span></a><a href="#components" aria-label="程式組件化"><span>08</span></a><a href="#delivery" aria-label="自動部署"><span>09</span></a><a href="#security" aria-label="安全邊界"><span>10</span></a><a href="#operations" aria-label="觀測與處置"><span>11</span></a><a href="#stewardship" aria-label="成本與清理"><span>12</span></a><a href="#ai" aria-label="AI 應用"><span>13</span></a><a href="#demo" aria-label="成品展示"><span>14</span></a>
+    </nav>
+
+    <main id="report">
+      <section id="opening" class="chapter chapter-opening" data-capture data-title="序幕">
+        <div class="curtain curtain-left" aria-hidden="true"></div><div class="curtain curtain-right" aria-hidden="true"></div><div class="spotlight" aria-hidden="true"></div>
+        <div class="opening-copy reveal"><p class="eyebrow"><span>01</span> AWS 雲端工程師培訓期末專題</p><h1 class="rhythm-title"><span>共演計劃</span><span>在雲端一起創作</span></h1><p class="lead">使用可部署、可觀測、可回復的產品架構，建構多人互動與 AI 編排故事系統。</p></div>
+        <div class="opening-concept reveal" aria-hidden="true"><img class="opening-hero-art" src="./public/visuals/cloud-collaboration-hero.png" alt="" /></div>
+        <div class="scroll-cue" aria-hidden="true"><span></span>SCROLL TO BEGIN</div>
+      </section>
+
+      <section id="product" class="chapter chapter-product" data-capture data-title="產品概覽"><div class="product-shell"><div class="product-copy reveal"><p class="eyebrow"><span>02</span> PRODUCT OVERVIEW</p><h2 class="rhythm-title"><span>各自天馬行空</span><span>AI 續寫故事</span><span>一起迎向結局</span></h2><p>玩家在同一房間建立角色，各自描述想採取的行動。<br />系統依規則擲骰並公布結果，再由生成式 AI 續寫成共同故事。</p></div><figure class="evidence-frame reveal"><img src="./public/evidence/gameplay-evidence.png" alt="共演計劃實際遊戲畫面，呈現玩家行動、擲骰結果與 AI 續寫故事" /><figcaption>2026-08-20 AWS 公開試玩｜已去識別化證據</figcaption></figure></div></section>
+
+      <section id="scenarios" class="chapter chapter-scenarios" data-capture data-title="潛在應用場景"><div class="scenario-shell"><div class="scenario-heading reveal"><p class="eyebrow"><span>03</span> POTENTIAL APPLICATIONS</p><h2 class="rhythm-title"><span>同一套協作核心</span><span>延伸不同應用場景</span></h2><p>多人輸入、共享狀態、流程規則與 AI 整理的設計，<br />也能延伸到其他多人協作場景。</p></div><div class="scenario-track reveal"><article><span>01</span><b>多人文字 RPG</b><p class="scenario-lines">共同輸入<br />規則結算<br />同步敘事</p></article><article><span>02</span><b>AI 輔助會議</b><p class="scenario-lines">多人發言<br />議題整理<br />行動摘要</p></article><article><span>03</span><b>培訓工作坊</b><p class="scenario-lines">角色任務<br />情境評估<br />回顧復盤</p></article></div><div class="scenario-foundation reveal"><b>範圍說明</b><span>目前完成作品為多人文字 RPG，其餘為潛在應用構想。</span></div></div></section>
+
+      <section id="classic" class="chapter chapter-classic" data-capture data-title="起始架構">
+        <div class="section-intro reveal">
+          <p class="eyebrow"><span>04</span> FIRST AWS ARCHITECTURE</p>
+          <h2 class="rhythm-title"><span>了解產品需求</span><span>選擇相應服務</span></h2>
+          <p>網站需要讓玩家從網路進入、安全保存共同進度，並使用生成式 AI 續寫故事；第一版選用 EC2、RDS 與 Bedrock 完成可運作的雲端架構。</p>
+        </div>
+        <figure class="drawio-architecture classic-board reveal" aria-label="共演計劃起始 AWS 架構關係圖">
+          <img src="./public/diagrams/classic-architecture.svg" alt="玩家經 Internet Gateway 連入 public EC2，使用 private RDS 保存共同狀態，並由 Amazon Bedrock 續寫故事。" />
+        </figure>
+      </section>
+
+      <section id="evolution" class="chapter chapter-evolution" data-capture data-title="演進動機">
+        <div class="evolution-shell">
+          <div class="evolution-copy reveal">
+            <p class="eyebrow"><span>05</span> ARCHITECTURE EVOLUTION</p>
+            <h2 class="single-title">同步轉非同步</h2>
+            <p>第一版由網站伺服器直接等待 AI 生成故事；生成時間拉長時，網站入口、故事工作與部署風險會集中在一起。</p>
+            <ul><li>網站等待故事回應</li><li>入口與故事責任集中</li><li>故障影響玩家操作</li></ul>
+          </div>
+          <figure class="drawio-architecture evolution-stage reveal" aria-label="同步與非同步架構比較">
+            <img src="./public/diagrams/architecture-evolution.svg" alt="同步架構等待故事完成；非同步架構由 Amazon SQS 將工作交給 Story Worker 背景處理。" />
+          </figure>
+        </div>
+      </section>
+
+      <section id="production" class="chapter chapter-production" data-capture data-title="現況架構">
+        <div class="wide-heading reveal">
+          <p class="eyebrow"><span>06</span> CURRENT PRODUCTION</p>
+          <h2 class="rhythm-title"><span>依職責劃分網段</span><span>入口公開、運算資料私有</span></h2>
+          <p>玩家只連到公開網站入口；故事工作與資料庫位於私有網段，<br />再透過指定路徑連接 AWS 託管服務。</p>
+        </div>
+        <figure class="drawio-architecture topology-board reveal" aria-label="共演計劃目前正式環境 AWS 網路拓樸">
+          <img src="./public/diagrams/production-architecture.svg" alt="共演計劃正式環境架構，包含 public Web EC2、private Workers、SQS、RDS、Bedrock、Systems Manager 與 CloudWatch。" />
+        </figure>
+        <p class="architecture-limits reveal">現況限制｜單一 Web EC2、RDS Single-AZ、兩台 Worker 位於同一 Availability Zone、單一 NAT Gateway；尚未配置負載平衡與自動擴縮。</p>
+      </section>
+
+      <section id="async" class="chapter chapter-async" data-capture data-title="非同步工作鏈"><div class="split-heading reveal"><p class="eyebrow"><span>07</span> RELIABLE ASYNC WORK</p><h2 class="rhythm-title"><span>快速接收行動</span><span>背景完成故事</span></h2><p>網站先接受玩家行動，再把故事工作交給佇列與背景伺服器。</p></div><div class="async-decoration" aria-hidden="true"><i></i><i></i><i></i><span>QUEUE</span></div><ol class="async-flow reveal" aria-label="非同步故事工作流程"><li><span>01</span><b>建立工作</b><p>記錄玩家行動與故事需求</p></li><li><span>02</span><b>送入佇列</b><p>Publisher 把工作交給 SQS</p></li><li><span>03</span><b>可靠交付</b><p>失敗工作保留在 DLQ</p></li><li><span>04</span><b>Worker 接手</b><p>私有伺服器在背景處理</p></li><li><span>05</span><b>生成故事</b><p>Bedrock 依既定結果續寫</p></li><li><span>06</span><b>寫回結果</b><p>完成後更新共同故事</p></li></ol><div class="reliability-strip reveal"><b>安全重試</b><span>即使重新提交需求，系統也只保留一次有效結果。</span></div></section>
+
+      <section id="components" class="chapter chapter-components" data-capture data-title="程式組件化"><div class="wide-heading reveal"><p class="eyebrow"><span>08</span> SOFTWARE BOUNDARIES</p><h2 class="rhythm-title"><span>組件化上雲</span><span>增加架構彈性</span><span>故障隔離</span></h2><p>將程式依責任拆分，前端負責玩家操作，後端處理房間狀態與遊戲規則；資料庫、生成式 AI 與維運功能透過明確介面接入，讓各部分可以分別調整。</p></div><div class="component-board reveal"><div class="component-column front"><h3>前端</h3><article><b>UI / Pages</b><span>玩家操作畫面</span></article><article><b>Application use cases</b><span>載入房間、提交行動</span></article><article><b>Game API port</b><span>唯一對外介面</span></article></div><div class="component-arrow" aria-hidden="true">HTTPS →</div><div class="component-column back"><h3>後端</h3><article><b>FastAPI routes</b><span>接收與驗證請求</span></article><article><b>RoomService</b><span>房間與回合流程</span></article><article><b>Domain rules</b><span>擲骰、進度、危機與結局</span></article><article><b>Repository / Storyteller ports</b><span>資料與故事介面</span></article></div><div class="component-arrow" aria-hidden="true">ports →</div><div class="component-column cloud"><h3>AWS 服務</h3><article><img src="./public/aws-icons/amazon-rds.svg" alt="Amazon RDS 官方架構圖示" /><b>Postgres adapter</b><span>保存共同狀態</span></article><article><img src="./public/aws-icons/amazon-bedrock.svg" alt="Amazon Bedrock 官方架構圖示" /><b>BedrockStoryteller</b><span>受規則約束的續寫</span></article><article><img src="./public/aws-icons/amazon-cloudwatch.svg" alt="Amazon CloudWatch 官方架構圖示" /><b>Operations adapters</b><span>安全日誌與健康檢查</span></article></div></div></section>
+
+      <section id="delivery" class="chapter chapter-delivery" data-capture data-title="自動部署"><div class="wide-heading reveal"><p class="eyebrow"><span>09</span> AUTOMATED DELIVERY</p><h2 class="rhythm-title"><span>可驗證、可回復</span><span>核准後自動上線</span></h2><p>提交版本後，測試、建置、安全掃描與正式環境更新依固定流程執行；工程師只需核准正式發布，系統會驗證上線結果，失敗時回復已驗證版本。</p></div><div class="delivery-compare reveal"><article><h3>自動部署前</h3><p>工程師逐項處理：本機測試 → 手動封裝 → 上傳 S3 → 連入環境 → 安裝依賴 → 切換服務 → 健康檢查 → 失敗時手動回復</p></article><article><h3>自動部署後</h3><p>核准正式環境後，系統自動取得短期權限，接續完成測試、ARM64 建置、digest 掃描、ECR 保存、SSM 更新、健康檢查與失敗回復。</p></article></div><div class="delivery-metrics reveal"><strong>8 個發布環節</strong><strong>1 次人工核准</strong><strong>失敗自動回復</strong></div></section>
+
+      <section id="security" class="chapter chapter-security" data-capture data-title="安全邊界"><div class="security-shell"><div class="security-copy reveal"><p class="eyebrow"><span>10</span> SECURITY BY BOUNDARY</p><h2 class="rhythm-title"><span>入口分層開放</span><span>服務限制來源</span><span>發布必須核准</span></h2><p>玩家只能透過 HTTPS 進入公開網站；背景伺服器不接受外部連線，資料庫只允許指定的應用服務存取。</p></div><div class="security-layers reveal"><article><b>公開入口</b><strong>HTTPS 443</strong><p>玩家經 Internet Gateway 進入 Nginx，並關閉公開 SSH。</p></article><article><b>私有運算</b><strong>無外部連入</strong><p>Worker 無 public IP，只透過 NAT Gateway 對外呼叫。</p></article><article><b>私有資料</b><strong>TLS 5432</strong><p>只有 Web SG 與 Worker SG 能連到 DB SG。</p></article><article><b>發布身分</b><strong>短期權限</strong><p>GitHub OIDC、instance role 與人工核准限制正式環境操作。</p></article></div></div></section>
+
+      <section id="operations" class="chapter chapter-operations" data-capture data-title="觀測與處置"><div class="wide-heading reveal"><p class="eyebrow"><span>11</span> OBSERVE AND OPERATE</p><h2 class="rhythm-title"><span>看見訊號</span><span>執行受控處置</span><span>留下紀錄</span></h2><p>CloudWatch 集中收集安全日誌、效能指標與告警；AI 協助整理可能原因與建議動作，再由維運人員決定是否執行受限檢查。</p></div><div class="ops-flow reveal"><article><img src="./public/aws-icons/amazon-cloudwatch.svg" alt="Amazon CloudWatch 官方架構圖示" /><span>01</span><b>安全日誌</b><p>只記錄允許的欄位</p></article><i>→</i><article><span>02</span><b>指標與告警</b><p>健康狀態、延遲與錯誤</p></article><i>→</i><article><span>03</span><b>AI 協助整理</b><p>彙整症狀、影響與建議</p></article><i>→</i><article class="human"><span>04</span><b>人工決定</b><p>確認處置範圍與方式</p></article><i>→</i><article><img src="./public/aws-icons/aws-systems-manager.svg" alt="AWS Systems Manager 官方架構圖示" /><span>05</span><b>SSM 受控處置</b><p>免 SSH 執行健康檢查</p></article></div><div class="ops-rule reveal"><b>免 public SSH</b><span>訊號 → 建議 → 人工決策 → 受控動作</span></div></section>
+
+      <section id="stewardship" class="chapter chapter-stewardship" data-capture data-title="成本與清理"><div class="stewardship-shell"><div class="stewardship-copy reveal"><p class="eyebrow"><span>12</span> COST STEWARDSHIP</p><h2 class="rhythm-title"><span>成本透明</span><span>建立費用邊界</span><span>持續運作</span></h2><p>專案透過預算告警掌握支出，分別管理持續運作與實際使用產生的費用；日誌、映像與暫存檔案設有保存期限，展示完成後依計畫清理資源。</p></div><div class="cost-stage reveal"><div class="budget-ring"><span>費用告警門檻</span><strong>US$35</strong><small>AWS Budget alert</small></div><div class="cost-list"><article><b>持續運作費用</b><p>EC2、RDS 與 NAT Gateway 採最小合理規格。</p></article><article><b>使用與保存費用</b><p>Bedrock、CloudWatch、SQS 與 ECR 依用量或保存量計費。</p></article><article><b>保留與回收</b><p>日誌與映像設有期限；清理資源後再複查帳單。</p></article></div></div></div></section>
+
+      <section id="ai" class="chapter chapter-ai" data-capture data-title="AI 應用"><div class="ai-shell"><div class="ai-copy reveal"><p class="eyebrow"><span>13</span> BOUNDED AI</p><h2 class="rhythm-title"><span>規則先定</span><span>責任可控</span></h2><p>故事主持人依規則續寫；規則助理回答玩法。</p></div><div class="ai-stage reveal"><article class="ai-role story-host"><header><img src="./public/aws-icons/amazon-bedrock.svg" alt="Amazon Bedrock 官方架構圖示" /><div><small>STORY HOST</small><h3>故事主持人</h3></div></header><div class="ai-role-flow"><span>後端規則</span><i>→</i><strong>Nova Lite 續寫</strong><i>→</i><span>共同故事</span></div><p>Amazon Bedrock 依擲骰、成功等級、進度與危機續寫，不改變玩家行動。</p></article><article class="ai-role rules-assistant"><header><img class="assistant-avatar" src="./public/visuals/rules-assistant-slime.png" alt="像素史萊姆規則助理" /><div><small>RULES ASSISTANT</small><h3>規則助理</h3></div></header><div class="ai-role-flow"><span>玩法問題</span><i>→</i><strong>引用規則</strong><i>→</i><span>清楚回答</span></div><p>deterministic cited lookup；未涵蓋時回覆資訊不足，目前不使用 LLM、RAG 或向量資料庫。</p></article></div></div></section>
+
+      <section id="demo" class="chapter chapter-demo" data-capture data-title="成品展示"><div class="wide-heading reveal"><p class="eyebrow"><span>14</span> LIVE DEMO</p><h2 class="demo-title">成品展示</h2><p>共演計劃已完成 AWS 正式環境部署。<br />接下來透過實際操作，展示玩家體驗與背後的雲端工作流程。</p></div><ol class="demo-flow reveal"><li><span>01</span><b>進入房間</b><p>開啟正式環境並加入遊戲</p></li><li><span>02</span><b>建立角色</b><p>設定名稱與故事背景</p></li><li><span>03</span><b>自由行動</b><p>描述這一回合想做的事</p></li><li><span>04</span><b>背景續寫故事</b><p>觀察工作入列與結果更新</p></li><li><span>05</span><b>規則查詢</b><p>確認已實作玩法與限制</p></li></ol><div class="demo-guard reveal">現在，進入共演計劃。</div></section>
+    </main>
+    <script defer src="./src/app.js"></script>
+  </body>
+</html>

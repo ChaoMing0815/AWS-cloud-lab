@@ -1,7 +1,7 @@
 # 平行分支工作邊界
 
 - 狀態：Active
-- 生效分支以 `.agents/work-boundaries.json` 為準；2026-09-02 報告收斂輪新增 `codex/demo-patch-v1-1-2`、`codex/spark-rules-clarity` 與 `codex/final-report-deck`。
+- 生效分支以 `.agents/work-boundaries.json` 為準；2026-09-02 報告收斂輪新增 `codex/demo-patch-v1-1-2`、`codex/spark-rules-clarity`、`codex/final-report-deck` 與 `codex/final-report-web`。
 - 機器可讀規則：`.agents/work-boundaries.json`
 - 自動檢查：`scripts/check_branch_boundaries.py`
 
@@ -45,11 +45,20 @@
 - README只產生整合用草稿，保存於本分支允許的report目錄；不得直接修改protected `README.md`。
 - 不修改程式、規則、CURRENT、AWS、workflow或部署；可commit，完成後不得push、merge或deploy，交回整合task。
 
+### `codex/final-report-web`
+
+- 唯一目的為建立本機期末報告 scrollytelling 網頁、動畫架構演進與可重現的 16:9 capture；輸出只可位於本分支白名單中的 `site/**`、`captures/**` 與 `web-report-*.md`。
+- 可使用 Sites building 完成本機網站，但不得使用 Sites hosting、建立公開 URL、修改 `.openai/hosting.json` 或執行任何 deploy／publish。
+- 禁止修改產品 `web/**`、`backend/**`、根 `README.md`、CURRENT、task list、deployment log、source-of-truth、既有期末 PPTX、AWS、workflow、infra與ops。
+- 內容必須依 task packet 與 canonical evidence，使用本機資產、官方 AWS Architecture Icons，並去除帳號、Email、public IP、endpoint、session、token、secret與完整digest。
+- 分支只做 local build、tests、capture與browser QA；不得執行AWS CLI、S3、Bedrock、SSM、workflow dispatch、Sites hosting/deploy、push或merge，完成後交回整合task。
+
 ### 整合順序
 
 1. `codex/spark-rules-clarity`與`codex/demo-patch-v1-1-2`路徑互斥，可平行完成；整合task先合併rules，再合併UI並跑完整Backend／Frontend與release contract regression。
 2. `codex/final-report-deck`可同時工作，但最終PPTX與README必須在兩個產品patch狀態確定後由整合task更新版本與截圖口徑。
-3. 所有repo-local工作完成後，整合task才建立新的exact-main／active-digest／rollback production envelope；未取得使用者明確核准不得觸發deploy。
+3. `codex/final-report-web`只能從包含報告素材與其專屬治理登記的 exact commit 建立；網站與captures完成後，再由獨立交付階段決定是否編排進PPTX。
+4. 所有repo-local工作完成後，整合task才建立新的exact-main／active-digest／rollback production envelope；未取得使用者明確核准不得觸發deploy。
 
 ## `codex/ui-terminal-refresh`
 

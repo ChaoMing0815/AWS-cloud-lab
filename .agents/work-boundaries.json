@@ -381,6 +381,14 @@
         "docs/architecture/final-report-diagram-brief.md"
       ]
     },
+    "codex/final-report-web": {
+      "purpose": "建立本機期末報告 scrollytelling 網頁、動畫架構演進與可重現的 16:9 capture；不修改產品 Web、Backend、README、AWS、workflow、production 或既有 PPTX。",
+      "allowed_paths": [
+        "docs/reports/2026-09-*-co-story-final-report/site/**",
+        "docs/reports/2026-09-*-co-story-final-report/captures/**",
+        "docs/reports/2026-09-*-co-story-final-report/web-report-*.md"
+      ]
+    },
     "codex/tier2-web-ui-release": {
       "purpose": "讓既有 Tier 3 digest release 在更新玩家 Web image 時保留已驗證的 Tier 2 async runtime mode，供 stale feedback 與失效房間控制修正安全上線",
       "allowed_paths": [

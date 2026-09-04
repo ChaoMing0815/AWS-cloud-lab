@@ -1,0 +1,19 @@
+{
+  "viewport": { "width": 1920, "height": 1080 },
+  "sections": [
+    { "id": "opening", "file": "01-opening.png" },
+    { "id": "product", "file": "02-product.png" },
+    { "id": "scenarios", "file": "03-scenarios.png" },
+    { "id": "classic", "file": "04-classic.png" },
+    { "id": "evolution", "file": "05-evolution.png" },
+    { "id": "production", "file": "06-production.png" },
+    { "id": "async", "file": "07-async.png" },
+    { "id": "components", "file": "08-components.png" },
+    { "id": "delivery", "file": "09-delivery.png" },
+    { "id": "security", "file": "10-security.png" },
+    { "id": "operations", "file": "11-operations.png" },
+    { "id": "stewardship", "file": "12-stewardship.png" },
+    { "id": "ai", "file": "13-ai.png" },
+    { "id": "demo", "file": "14-demo.png" }
+  ]
+}

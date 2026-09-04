@@ -46,6 +46,7 @@ def test_policy_defines_exact_parallel_branches_and_protects_integration_state()
         "codex/demo-patch-v1-1-2",
         "codex/spark-rules-clarity",
         "codex/final-report-deck",
+        "codex/final-report-web",
     }
     assert "docs/handoffs/CURRENT.md" in policy["protected_paths"]
     assert "docs/checkpoints.md" in policy["protected_paths"]
@@ -99,6 +100,40 @@ def test_final_report_round_keeps_ui_rules_and_report_ownership_disjoint() -> No
     assert rules_rejected.returncode == 2
     assert report_accepted.returncode == 0, report_accepted.stderr
     assert report_rejected.returncode == 2
+
+
+def test_final_report_web_is_local_only_and_cannot_modify_product_or_delivery() -> None:
+    accepted = _check(
+        "codex/final-report-web",
+        "docs/reports/2026-09-02-co-story-final-report/site/index.html",
+        "docs/reports/2026-09-02-co-story-final-report/captures/01-opening.png",
+        "docs/reports/2026-09-02-co-story-final-report/web-report-validation.md",
+    )
+    rejected = _check(
+        "codex/final-report-web",
+        "web/index.html",
+        "backend/app/main.py",
+        "README.md",
+        "docs/presentations/2026-09-02-co-story-final-report.pptx",
+        ".openai/hosting.json",
+        ".github/workflows/ci.yml",
+        "infra/cloudformation/tier2-worker-foundation.yaml",
+        "ops/release/deploy_container.sh",
+    )
+
+    assert accepted.returncode == 0, accepted.stderr
+    assert rejected.returncode == 2
+    for path in (
+        "web/index.html",
+        "backend/app/main.py",
+        "README.md",
+        "docs/presentations/2026-09-02-co-story-final-report.pptx",
+        ".openai/hosting.json",
+        ".github/workflows/ci.yml",
+        "infra/cloudformation/tier2-worker-foundation.yaml",
+        "ops/release/deploy_container.sh",
+    ):
+        assert path in rejected.stderr
 
 
 def test_web_stale_feedback_branch_accepts_only_the_existing_game_ui_slice() -> None:

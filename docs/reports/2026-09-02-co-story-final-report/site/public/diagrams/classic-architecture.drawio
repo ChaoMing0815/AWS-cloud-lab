@@ -1,0 +1,113 @@
+<mxfile host="app.diagrams.net" modified="2026-09-04T00:00:00.000Z" agent="Codex Draw.io MCP" version="28.2.8" type="device" compressed="false">
+  <diagram id="p4-classic" name="P4 起始架構">
+    <mxGraphModel dx="1600" dy="760" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="760" math="0" shadow="0" background="#0B1019">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="classic-base" value="Base · classic services" parent="0" visible="1"/>
+        <mxCell id="classic-ingress-layer" value="Ingress · HTTPS 443" parent="0" visible="1"/>
+        <mxCell id="classic-data-layer" value="Data · RDS" parent="0" visible="1"/>
+        <mxCell id="classic-inference-layer" value="Inference · Bedrock" parent="0" visible="1"/>
+
+        <mxCell id="classic-backdrop" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#0B1019;strokeColor=none;" vertex="1" parent="classic-base">
+          <mxGeometry x="0" y="0" width="1600" height="760" as="geometry"/>
+        </mxCell>
+        <mxCell id="classic-managed-title" value="AWS MANAGED&lt;br&gt;SERVICE · VPC 外" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;fontFamily=PingFang TC;fontSize=20;fontStyle=1;fontColor=#F2BD57;" vertex="1" parent="classic-base">
+          <mxGeometry x="1305" y="108" width="275" height="58" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="classic-vpc" value="Amazon VPC" style="swimlane;fontFamily=PingFang TC;fontSize=24;fontStyle=1;fontColor=#A9D6F5;horizontal=1;startSize=44;rounded=0;fillColor=none;swimlaneFillColor=none;strokeColor=#5B91BC;strokeWidth=2;collapsible=0;recursiveResize=0;container=1;whiteSpace=wrap;html=1;align=left;spacingLeft=16;" vertex="1" parent="classic-base">
+          <mxGeometry x="230" y="100" width="1080" height="440" as="geometry"/>
+        </mxCell>
+        <mxCell id="classic-public-subnet" value="public app subnet" style="swimlane;fontFamily=PingFang TC;fontSize=20;fontStyle=1;fontColor=#9CCBF1;horizontal=1;startSize=44;rounded=1;arcSize=4;fillColor=#101723;swimlaneFillColor=#101723;fillOpacity=72;strokeColor=#5B91BC;strokeWidth=2;dashed=1;dashPattern=8 5;collapsible=0;recursiveResize=0;container=1;whiteSpace=wrap;html=1;align=left;spacingLeft=14;" vertex="1" parent="classic-vpc">
+          <mxGeometry x="50" y="55" width="450" height="350" as="geometry"/>
+        </mxCell>
+        <mxCell id="classic-data-subnets" value="private data subnets · DB subnet group" style="swimlane;fontFamily=PingFang TC;fontSize=20;fontStyle=1;fontColor=#73D4C5;horizontal=1;startSize=44;rounded=1;arcSize=4;fillColor=#0F191C;swimlaneFillColor=#0F191C;fillOpacity=72;strokeColor=#3E9B8F;strokeWidth=2;dashed=1;dashPattern=8 5;collapsible=0;recursiveResize=0;container=1;whiteSpace=wrap;html=1;align=left;spacingLeft=14;" vertex="1" parent="classic-vpc">
+          <mxGeometry x="550" y="55" width="480" height="350" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="classic-web-sg" value="Web Security Group" style="swimlane;fontFamily=PingFang TC;fontSize=20;fontStyle=1;fontColor=#FFB8B2;horizontal=1;startSize=42;rounded=1;arcSize=7;fillColor=#161D29;swimlaneFillColor=#161D29;strokeColor=#C7645D;strokeWidth=1;collapsible=0;recursiveResize=0;container=1;whiteSpace=wrap;html=1;align=left;spacingLeft=12;" vertex="1" parent="classic-public-subnet">
+          <mxGeometry x="25" y="90" width="400" height="190" as="geometry"/>
+        </mxCell>
+        <mxCell id="classic-web-group" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=none;container=1;pointerEvents=0;" vertex="1" connectable="1" parent="classic-web-sg">
+          <mxGeometry x="40" y="70" width="330" height="66" as="geometry"/>
+        </mxCell>
+        <mxCell id="classic-web-icon" value="" style="sketch=0;outlineConnect=0;fontColor=#F4F7F5;fillColor=#ED7100;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.ec2;" vertex="1" parent="classic-web-group">
+          <mxGeometry x="0" y="4" width="58" height="58" as="geometry"/>
+        </mxCell>
+        <mxCell id="classic-web-label" value="Amazon EC2&lt;br&gt;&lt;font color=&quot;#AEB8B4&quot;&gt;Nginx · Web · API&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=#161D29;fillOpacity=100;align=left;verticalAlign=middle;whiteSpace=wrap;fontFamily=PingFang TC;fontSize=20;fontStyle=1;fontColor=#9ED4F5;spacingLeft=8;" vertex="1" parent="classic-web-group">
+          <mxGeometry x="66" y="0" width="264" height="66" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="classic-az-a" value="private data subnet · AZ A" style="swimlane;fontFamily=PingFang TC;fontSize=19;fontStyle=1;fontColor=#73D4C5;horizontal=1;startSize=40;rounded=0;fillColor=#101A1D;swimlaneFillColor=#101A1D;strokeColor=#347E75;strokeWidth=1;dashed=1;dashPattern=4 4;collapsible=0;recursiveResize=0;container=1;whiteSpace=wrap;html=1;align=left;spacingLeft=10;" vertex="1" parent="classic-data-subnets">
+          <mxGeometry x="20" y="50" width="440" height="235" as="geometry"/>
+        </mxCell>
+        <mxCell id="classic-db-sg" value="DB Security Group" style="swimlane;fontFamily=PingFang TC;fontSize=20;fontStyle=1;fontColor=#FFB8B2;horizontal=1;startSize=38;rounded=1;arcSize=7;fillColor=#161D29;swimlaneFillColor=#161D29;strokeColor=#C7645D;strokeWidth=1;collapsible=0;recursiveResize=0;container=1;whiteSpace=wrap;html=1;align=left;spacingLeft=10;" vertex="1" parent="classic-az-a">
+          <mxGeometry x="15" y="45" width="410" height="165" as="geometry"/>
+        </mxCell>
+        <mxCell id="classic-rds-group" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=none;container=1;pointerEvents=0;" vertex="1" connectable="1" parent="classic-db-sg">
+          <mxGeometry x="30" y="65" width="340" height="66" as="geometry"/>
+        </mxCell>
+        <mxCell id="classic-rds-icon" value="" style="sketch=0;outlineConnect=0;fontColor=#F4F7F5;fillColor=#C925D1;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.rds;" vertex="1" parent="classic-rds-group">
+          <mxGeometry x="0" y="4" width="58" height="58" as="geometry"/>
+        </mxCell>
+        <mxCell id="classic-rds-label" value="RDS for PostgreSQL&lt;br&gt;&lt;font color=&quot;#AEB8B4&quot;&gt;Private · 共同狀態&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=#161D29;fillOpacity=100;align=left;verticalAlign=middle;whiteSpace=wrap;fontFamily=PingFang TC;fontSize=20;fontStyle=1;fontColor=#72DCCB;spacingLeft=8;" vertex="1" parent="classic-rds-group">
+          <mxGeometry x="66" y="0" width="274" height="66" as="geometry"/>
+        </mxCell>
+        <mxCell id="classic-az-b" value="private data subnet · AZ B" style="text;html=1;strokeColor=#347E75;strokeWidth=1;dashed=1;dashPattern=4 4;fillColor=#101A1D;fillOpacity=80;align=left;verticalAlign=middle;whiteSpace=wrap;fontFamily=PingFang TC;fontSize=19;fontStyle=1;fontColor=#73D4C5;spacingLeft=12;" vertex="1" parent="classic-data-subnets">
+          <mxGeometry x="20" y="295" width="440" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="classic-browser-icon" value="" style="sketch=0;outlineConnect=0;fontColor=#F4F7F5;fillColor=#47C9B8;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;aspect=fixed;shape=mxgraph.aws4.authenticated_user;" vertex="1" parent="classic-base">
+          <mxGeometry x="38" y="316" width="64" height="64" as="geometry"/>
+        </mxCell>
+        <mxCell id="classic-browser-label" value="玩家瀏覽器&lt;br&gt;&lt;font color=&quot;#AEB8B4&quot;&gt;HTTPS 443&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=#0B1019;fillOpacity=100;align=center;verticalAlign=middle;whiteSpace=wrap;fontFamily=PingFang TC;fontSize=20;fontStyle=1;fontColor=#F4F7F5;" vertex="1" parent="classic-base">
+          <mxGeometry x="0" y="390" width="140" height="58" as="geometry"/>
+        </mxCell>
+        <mxCell id="classic-igw-icon" value="" style="sketch=0;outlineConnect=0;fontColor=#F4F7F5;fillColor=#8C4FFF;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;aspect=fixed;shape=mxgraph.aws4.internet_gateway;" vertex="1" parent="classic-base">
+          <mxGeometry x="198" y="316" width="64" height="64" as="geometry"/>
+        </mxCell>
+        <mxCell id="classic-igw-label" value="Internet Gateway&lt;br&gt;&lt;font color=&quot;#AEB8B4&quot;&gt;VPC 公開入口&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=#0B1019;fillOpacity=100;align=center;verticalAlign=middle;whiteSpace=wrap;fontFamily=PingFang TC;fontSize=19;fontStyle=1;fontColor=#F4F7F5;" vertex="1" parent="classic-base">
+          <mxGeometry x="155" y="390" width="150" height="58" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="classic-bedrock-group" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=none;container=1;pointerEvents=0;" vertex="1" connectable="1" parent="classic-base">
+          <mxGeometry x="1320" y="250" width="220" height="140" as="geometry"/>
+        </mxCell>
+        <mxCell id="classic-bedrock-icon" value="" style="sketch=0;outlineConnect=0;fontColor=#F4F7F5;fillColor=#01A88D;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.bedrock;" vertex="1" parent="classic-bedrock-group">
+          <mxGeometry x="81" y="0" width="58" height="58" as="geometry"/>
+        </mxCell>
+        <mxCell id="classic-bedrock-label" value="Amazon Bedrock&lt;br&gt;&lt;font color=&quot;#AEB8B4&quot;&gt;受約束的故事續寫&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=#15171B;fillOpacity=100;align=center;verticalAlign=middle;whiteSpace=wrap;fontFamily=PingFang TC;fontSize=20;fontStyle=1;fontColor=#F4F7F5;" vertex="1" parent="classic-bedrock-group">
+          <mxGeometry x="0" y="70" width="220" height="66" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="classic-reason-ec2" value="&lt;font color=&quot;#F2BD57&quot;&gt;&lt;b&gt;EC2&lt;/b&gt;&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#AEB8B4&quot;&gt;完整控制 Web 與 API 執行環境&lt;/font&gt;" style="text;html=1;strokeColor=#514329;strokeWidth=1;fillColor=#0F141D;align=left;verticalAlign=middle;whiteSpace=wrap;fontFamily=PingFang TC;fontSize=20;spacingLeft=20;" vertex="1" parent="classic-base">
+          <mxGeometry x="230" y="610" width="360" height="110" as="geometry"/>
+        </mxCell>
+        <mxCell id="classic-reason-rds" value="&lt;font color=&quot;#F2BD57&quot;&gt;&lt;b&gt;RDS&lt;/b&gt;&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#AEB8B4&quot;&gt;以關聯式交易保存共同狀態&lt;/font&gt;" style="text;html=1;strokeColor=#514329;strokeWidth=1;fillColor=#0F141D;align=left;verticalAlign=middle;whiteSpace=wrap;fontFamily=PingFang TC;fontSize=20;spacingLeft=20;" vertex="1" parent="classic-base">
+          <mxGeometry x="590" y="610" width="360" height="110" as="geometry"/>
+        </mxCell>
+        <mxCell id="classic-reason-bedrock" value="&lt;font color=&quot;#F2BD57&quot;&gt;&lt;b&gt;Bedrock&lt;/b&gt;&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#AEB8B4&quot;&gt;透過 IAM 使用可替換模型&lt;/font&gt;" style="text;html=1;strokeColor=#514329;strokeWidth=1;fillColor=#0F141D;align=left;verticalAlign=middle;whiteSpace=wrap;fontFamily=PingFang TC;fontSize=20;spacingLeft=20;" vertex="1" parent="classic-base">
+          <mxGeometry x="950" y="610" width="360" height="110" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="classic-browser-igw" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#69B9F2;strokeWidth=3;endArrow=blockThin;endFill=1;endSize=10;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="classic-ingress-layer" source="classic-browser-icon" target="classic-igw-icon">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="classic-igw-web" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#69B9F2;strokeWidth=3;endArrow=blockThin;endFill=1;endSize=10;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="classic-ingress-layer" source="classic-igw-icon" target="classic-web-group">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="classic-web-rds" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#47C9B8;strokeWidth=3;endArrow=blockThin;endFill=1;endSize=10;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="classic-data-layer" source="classic-web-group" target="classic-rds-group">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="classic-web-bedrock" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#F2BD57;strokeWidth=3;endArrow=blockThin;endFill=1;endSize=10;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="classic-inference-layer" source="classic-web-group" target="classic-bedrock-group">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="510" y="560"/>
+              <mxPoint x="1430" y="560"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
