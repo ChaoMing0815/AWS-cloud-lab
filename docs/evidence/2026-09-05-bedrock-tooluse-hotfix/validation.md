@@ -16,5 +16,10 @@
 - Non-goals：本次未修改或部署Web／Publisher，玩家可見production仍是`Release v1.1.2`；repo main內的`Release v1.1.3`保留供後續獨立Web release。沒有DB、schema、IAM、Queue、CloudFormation資源或固定成本變更。
 - Live production validation：使用者另行核准同一新房間的bounded玩家測試。Round 01 job於第一次嘗試`completed/applied`，Browser保留三筆行動並顯示新的AI敘事與下一幕。Round 02 job則為dispatch一次、Worker attempts `3`、`completed/failed`，約六分鐘後顯示備援敘事控制；Publisher、SQS dispatch與completion皆正常。
 - Safe diagnostics：Round 02 failure code為`SCHEMA_INVALID`。CloudWatch Worker allowlist log對第二、第三次嘗試分別記錄`round_narrative_bounds`與`round_action_consequence_bounds`；第一個failure沒有diagnostic record。沒有保存raw model output、prompt、story payload或secret。
-- Root cause／residual：Nova Lite相容轉換會移除model不支援的`maxLength` schema欄位，而目前system instruction沒有逐欄重述600／240字元限制；提高到`3000`只擴張單次輸出budget，沒有改變application validator。現行hotfix可成功但不穩定，不得宣稱問題已解決；需以新的strict-TDD corrective收斂prompt／token budget，不能放寬canonical narrative bounds來掩蓋錯誤。
-- Rollback：previous Worker digest＋runtime token值`800`；不影響已合併但尚待展示部署的`Release v1.1.3` Web patch。
+- Root cause：Nova Lite相容轉換會移除model不支援的`maxLength` schema欄位，而第一版system instruction沒有逐欄重述600／240字元限制；提高到`3000`只擴張單次輸出budget，沒有改變application validator。
+- Corrective TDD：Red `c9470fb`與Green `6948d7f`將硬上限小幅調整為主敘事`720`、玩家／進度／危機後果`280`、下一幕`460`、結局摘要`340`；model-facing description仍要求更短文字。只有結構正確的超長文字會依句界壓縮，欄位、類型、玩家集合或canonical state異常仍fail closed，且log只記錄長度與診斷碼，不寫raw story。
+- Corrective integration：PR #83合併後exact main為`c5f3d038f363a29c8ac1b402d501f0a1ed6bad19`；CI run `33904289566`的Backend、Frontend、branch boundary與container build／scan全綠，diff沒有`web/**`。
+- Corrective artifact／rollout：Worker image run `33904742833`通過production approval、OIDC、ARM64 immutable build／push、exact-digest Trivy與manifest；candidate digest為`sha256:439059c4a3f94657c2a9403732237ec3e576041cd962c7e789b89b1ec7d9fd73`。使用者以Systems Manager逐台更新，雙Worker postflight均為service enabled／active、container running、restart `0`、mode `async`、tokens `3000`、registry與暫存auth absent。
+- Corrective live validation：使用者在原Round 02 `RESOLUTION_FAILED`畫面只按一次手動重試；系統沿用已鎖定行動、骰點與星火決策，成功產生AI故事並進入Round 03。原失敗job沒有重複套用，規則結果只提交一次。
+- Final status：已修正本次觀察到的`round_narrative_bounds`與`round_action_consequence_bounds`失敗路徑，並以production手動重試驗證。Bedrock仍可能發生獨立的service、guardrail或結構錯誤，現有bounded retry與deterministic fallback仍保留，不宣稱LLM永不失敗。
+- Rollback：corrective的立即previous為`sha256:1655de7a07b93b08564693d2bfc678ba2d1f616dda01cf74a8efbd920cf084f4`加tokens `3000`；更早的baseline為`sha256:2d5d5866f54879e79882644f4b45af2475650ddc9972e6b91cfe786886cddfbc`加tokens `800`。全程不影響已合併但尚待展示部署的`Release v1.1.3` Web patch。

@@ -9,14 +9,14 @@
 
 ## Production 基準
 
-- Repository `main` exact SHA：`3246f2a4ea8c7c1dc9751b8add30ab60dcd4c696`；此 SHA 已包含尚未部署的 Web `Release v1.1.3`，不得把 repo main 誤認為目前 Web production source。
+- Repository `main` exact SHA：`c5f3d038f363a29c8ac1b402d501f0a1ed6bad19`；此 SHA 已包含尚未部署的 Web `Release v1.1.3`與已部署的corrective Worker hotfix，不得把 repo main 誤認為目前 Web production source。
 - Active Web source exact SHA：`09dc09af12b3903f34aefe910699a066a3b56798`；玩家目前看到 `Release v1.1.2`。待展示的 Web `Release v1.1.3` 尚未觸發 production release。
-- Active Worker source exact SHA：`3246f2a4ea8c7c1dc9751b8add30ab60dcd4c696`；2026-09-05 ToolUse hotfix 已只部署至兩台 private Worker。
+- Active Worker source exact SHA：`c5f3d038f363a29c8ac1b402d501f0a1ed6bad19`；2026-09-05 corrective ToolUse hotfix 已只部署至兩台 private Worker。
 - Migration inventory：精確 `001`–`005`。
 - Web：`sha256:c3e6c215c26043678962528d65f73f39761b141170455e279cc89cc1f6b6b27c`，runtime `async`；run `33844595314` 由 exact source `09dc09a…` 完成 `Release v1.1.2` deployment。Web、首頁版號與 Publisher 均未被本次 Worker hotfix 修改。
 - Publisher：`sha256:23357e315e94842cee8455023b1f87f203fca5b1d11b67b714f4af86efaa2a1b`，service active，container running。
-- 兩台 private Worker：`sha256:1655de7a07b93b08564693d2bfc678ba2d1f616dda01cf74a8efbd920cf084f4`，`CO_STORY_BEDROCK_MAX_TOKENS=3000`，service enabled／active、container running、restart `0`、mode `async`、ECR registry credential absent。Rollback 基準為 digest `sha256:2d5d5866f54879e79882644f4b45af2475650ddc9972e6b91cfe786886cddfbc` 加 token budget `800`。
-- Tier 2 玩家流程已完成 `202 → polling → applied result`；Room 進入 Round 02／`COLLECTING_ACTIONS`，新 AI 故事可見，主 Queue／DLQ 五項皆為 `0`，DLQ alarm 為 `OK`／`No actions`。
+- 兩台 private Worker：`sha256:439059c4a3f94657c2a9403732237ec3e576041cd962c7e789b89b1ec7d9fd73`，`CO_STORY_BEDROCK_MAX_TOKENS=3000`，service enabled／active、container running、restart `0`、mode `async`、ECR registry與暫存credential absent。立即rollback為 digest `sha256:1655de7a07b93b08564693d2bfc678ba2d1f616dda01cf74a8efbd920cf084f4` 加 token budget `3000`。
+- Tier 2 玩家流程已完成 `202 → polling → applied result`；corrective production驗證於原Round 02失敗畫面手動重試，沿用鎖定行動／骰點／星火並成功產生AI故事、進入Round 03；規則結果只套用一次。
 - GitHub OIDC／ECR／Trivy／SSM pipeline 是唯一 image 交付路徑；production environment 保留人工核准與 fail-closed health／rollback gate。
 
 ## 2026-09-01 UI／Support Widget production release
@@ -51,7 +51,9 @@
 - Production CloudTrail 將失敗 round 的三次 Worker 嘗試歸因為 Nova Lite `Converse` 的 `ModelErrorException`／invalid ToolUse sequence。PR #81 只為 Nova forced-tool request加入 `topK=1`，並將 Worker token budget由 `800`提高到 bounded `3000`；不修改 Web、DB、schema、IAM、Queue、Publisher或AWS資源。
 - Worker artifact run `33897173518` 綁定 exact main `3246f2a…`，production approval、ARM64 immutable build／push、exact-digest Trivy `HIGH/CRITICAL` gate與manifest均成功；新 digest為 `sha256:1655de7a…`。
 - 使用者透過 Systems Manager 逐台更新 `ip-10-20-20-170` 與 `ip-10-20-20-91`。雙 Worker postflight皆為service enabled／active、container running、restart `0`、mode `async`、max tokens `3000`、exact digest一致且registry auth absent。
-- 使用者另行核准同一房間的bounded玩家測試：Round 01於第一次嘗試`applied`；Round 02則在三次嘗試後`failed`，dispatch與completion正常。Safe CloudWatch diagnostics對後兩次分別為`round_narrative_bounds`與`round_action_consequence_bounds`；第一個failure沒有diagnostic record。這證明`topK=1`可成功一次但hotfix仍不穩定，且`3000`輸出上限與應用程式600／240字元欄位邊界未對齊；不得宣稱問題已解決。
+- 第一版hotfix的bounded玩家測試：Round 01於第一次嘗試`applied`；Round 02則在三次嘗試後`failed`，dispatch與completion正常。Safe CloudWatch diagnostics對後兩次分別為`round_narrative_bounds`與`round_action_consequence_bounds`；第一個failure沒有diagnostic record。此為corrective部署前的歷史失敗與根因證據，不是當前production結論。
+- PR #83 以strict TDD修正上述邊界不對齊：Nova可見的description要求更短文字，結構正確但超長的文字才會依句界壓縮；主敘事／玩家後果等硬上限只小幅調整為`720`／`280`，結構、玩家集合與canonical state錯誤仍fail closed。Exact main為`c5f3d038…`，CI run `33904289566`四項全綠。
+- Worker artifact run `33904742833`建置並掃描exact digest `sha256:439059c4…`；雙Worker postflight皆通過。使用者對原Round 02只按一次手動重試，成功生成故事並進入Round 03。已修正本次觀察到的length-bounds失敗路徑；仍保留bounded retry／fallback，不宣稱Bedrock永不失敗。Web仍是v1.1.2，Publisher不變，v1.1.3仍待獨立展示部署。
 
 ## 已完成範圍
 
