@@ -467,12 +467,15 @@ test("Widget 中尺寸與桌機在可展開時仍保留 composer 核心控制區
   )?.[1] ?? "";
 
   assert.match(mediumRule, /max-height:\s*min\(45dvh,\s*25rem\);/);
+  assert.doesNotMatch(mediumRule, /position:\s*fixed|top:\s*max|bottom:\s*auto/);
   assert.match(desktopGameRule, /position:\s*fixed;/);
-  assert.match(desktopGameRule, /top:\s*max\(4\.5rem,\s*env\(safe-area-inset-top\)\);/);
-  assert.match(desktopGameRule, /right:\s*1rem;/);
-  assert.match(desktopGameRule, /bottom:\s*auto;/);
+  assert.match(desktopGameRule, /top:\s*auto;/);
+  assert.match(desktopGameRule, /right:\s*0;/);
+  assert.match(
+    desktopGameRule,
+    /bottom:\s*calc\(max\(1rem,\s*env\(safe-area-inset-bottom\)\)\s*\+\s*6\.75rem\);/,
+  );
   assert.match(desktopGameRule, /width:\s*21rem;/);
-  assert.match(desktopGameRule, /max-height:\s*min\(76dvh,\s*42rem\);/);
   assert.match(
     mediumGameWidgetRule,
     /bottom:\s*var\(--support-widget-bottom,\s*max\(18rem,\s*env\(safe-area-inset-bottom\)\)\);/,
