@@ -673,7 +673,6 @@ def test_round_and_ending_force_output_only_tools_and_leave_canonical_room_state
         "title": "夜班盤點迷蹤",
         "premise": "凌晨盤點資料突然消失，夜班夥伴必須在店長抵達前找回被改寫的正確紀錄，同時查明是誰在監視器關閉時動過共用電腦。",
         "objective": "找回正確盤點紀錄並完成報表。",
-        "opening_scene": "凌晨兩點，收銀機重開機，交班紀錄變成空白。",
         "core_obstacle": "備份硬碟被鎖在倉庫，密碼只剩一半線索。",
         "tone": "mystery",
         "custom_tone": None,
@@ -719,10 +718,11 @@ def test_round_and_ending_force_output_only_tools_and_leave_canonical_room_state
         }
     ]
     assert round_prompt["narrative_requirements"] == [
-        "承接 recent_story 的最後場景，不能重置時間線。",
-        "逐一描述每個 resolved action 如何因固定骰點結果成功、付出代價或失敗前進。",
-        "把 progress_delta 與 danger_delta 寫成具體事件及後果，不得另行計算或修改數值。",
-        "結尾提出由本回合後果自然形成的下一場景。",
+        "只從 recent_story 的最後一筆接續，不得重述開場或更早回合。",
+        "narrative 只寫本回合的連續場景，不得重複其他輸出欄位的文字。",
+        "player_consequences 逐一說明每個 resolved action 如何因固定骰點結果成功、付出代價或失敗前進。",
+        "progress_consequence 與 crisis_consequence 把固定 delta 寫成具體後果，不得另行計算或修改數值。",
+        "next_scene_hook 只寫由本回合後果自然形成的下一場景。",
     ]
     assert ending_prompt["canonical_ending"] == {
         "result": "PARTIAL_SUCCESS",
@@ -732,7 +732,8 @@ def test_round_and_ending_force_output_only_tools_and_leave_canonical_room_state
     }
     assert ending_prompt["recent_story"] == round_prompt["recent_story"]
     assert ending_prompt["narrative_requirements"] == [
-        "承接 recent_story 的最後事件，收束不可變主要目標。",
+        "只從 recent_story 的最後事件接續，不得重述開場或更早回合。",
+        "ending_narrative 只寫終局場景，不得重複其他結局欄位的文字。",
         "把 canonical ending result 與 cost 寫成具體成果、犧牲及未解後果。",
         "不得改判結局、進度、危機或其他規則狀態。",
     ]
@@ -969,6 +970,31 @@ def test_round_prompt_limits_recent_story_to_latest_five_entries() -> None:
     prompt = json.loads(guarded["text"])
     assert [entry["round_number"] for entry in prompt["recent_story"]] == [2, 3, 4, 5, 6]
     assert "第 1 幕" not in guarded["text"]
+
+
+def test_round_output_removes_repeated_opening_and_exact_duplicate_sections() -> None:
+    room = resolution_room()
+    payload = round_tool_input()
+    payload["narrative"] = " ".join(
+        [
+            room.world.opening_scene,
+            payload["narrative"],
+            payload["player_consequences"][0]["action_consequence"],
+            f"進度後果：{payload['progress_consequence']}",
+            f"危機後果：{payload['crisis_consequence']}",
+            f"下一幕：{payload['next_scene_hook']}",
+        ]
+    )
+
+    result = adapter(
+        FakeBedrockClient(tool_response(ROUND_TOOL_NAME, payload))
+    ).resolve_round(room)
+
+    assert not result.startswith(room.world.opening_scene)
+    assert result.count(payload["player_consequences"][0]["action_consequence"]) == 1
+    assert result.count(payload["progress_consequence"]) == 1
+    assert result.count(payload["crisis_consequence"]) == 1
+    assert result.count(payload["next_scene_hook"]) == 1
 
 
 def test_valid_overlong_round_text_is_compacted_without_changing_player_mapping(
