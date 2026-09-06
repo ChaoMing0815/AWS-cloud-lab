@@ -110,6 +110,11 @@ export class SupportWidget {
         "aria-labelledby": "supportWidgetTitle",
       },
     });
+    const dialogTail = makeElement(this.document, "span", {
+      id: "supportWidgetDialogTail",
+      className: "support-widget__dialog-tail",
+      attributes: { "aria-hidden": "true" },
+    });
     const header = makeElement(this.document, "header", {
       className: "support-widget__header",
     });
@@ -169,7 +174,7 @@ export class SupportWidget {
     const ruleView = this.buildRuleView();
     const reportView = this.buildReportView();
     panel.append(header, boundary, intentNav, ruleView, reportView);
-    root.append(toggle, panel);
+    root.append(toggle, dialogTail, panel);
     this.document.body.append(root);
 
     this.toggle = toggle;

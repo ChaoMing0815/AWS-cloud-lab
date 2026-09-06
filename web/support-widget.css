@@ -10,6 +10,7 @@
 
 .support-widget__toggle {
   position: relative;
+  z-index: 3;
   display: block;
   width: 6rem;
   height: 7rem;
@@ -235,15 +236,46 @@
 .support-widget__dialog {
   position: absolute;
   right: 0;
-  bottom: 6.75rem;
+  bottom: 6rem;
+  z-index: 2;
   width: min(25rem, calc(100vw - 2rem));
   max-height: min(68dvh, 36rem);
   overflow: auto;
   border: 1px solid rgba(99, 203, 183, .32);
-  border-radius: 3px;
+  border-radius: 1.25rem 1.25rem .35rem 1.25rem;
   background: #2c3436;
   background: color-mix(in srgb, var(--night, #071113) 85%, white 15%);
-  box-shadow: 0 24px 70px rgba(0, 0, 0, .62);
+  box-shadow:
+    0 24px 70px rgba(0, 0, 0, .62),
+    0 0 0 1px rgba(143, 227, 210, .06),
+    inset 0 1px rgba(255, 255, 255, .06);
+  transform-origin: calc(100% - 3rem) 100%;
+}
+
+.support-widget__dialog-tail {
+  position: absolute;
+  right: 2.35rem;
+  bottom: 5.35rem;
+  z-index: 1;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-right: 1px solid rgba(99, 203, 183, .32);
+  border-bottom: 1px solid rgba(99, 203, 183, .32);
+  border-radius: 0 0 .25rem 0;
+  background: #2c3436;
+  background: color-mix(in srgb, var(--night, #071113) 85%, white 15%);
+  box-shadow: 8px 8px 24px rgba(0, 0, 0, .24);
+  content: "";
+  pointer-events: none;
+  transform: rotate(45deg);
+}
+
+.support-widget:not(.is-open) .support-widget__dialog-tail {
+  display: none;
+}
+
+.support-widget.is-open .support-widget__dialog {
+  animation: support-bubble-arrive 180ms ease-out both;
 }
 
 .support-widget__dialog[hidden] {
@@ -439,6 +471,18 @@
   58% { transform: translateY(0) scaleY(.96); }
 }
 
+@keyframes support-bubble-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(.5rem) scale(.97);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 @media (min-width: 721px) and (max-width: 1050px) {
   body:has(#gamePage:not([hidden])) .support-widget {
     bottom: max(18rem, env(safe-area-inset-bottom));
@@ -455,7 +499,7 @@
     position: fixed;
     top: auto;
     right: 0;
-    bottom: calc(max(1rem, env(safe-area-inset-bottom)) + 6.75rem);
+    bottom: calc(max(1rem, env(safe-area-inset-bottom)) + 6rem);
     width: 21rem;
   }
 }
@@ -474,7 +518,7 @@
 
   .support-widget__dialog {
     top: auto;
-    bottom: 6.75rem;
+    bottom: 6rem;
     width: calc(100vw - 1.5rem);
     max-height: min(62dvh, 32rem);
   }

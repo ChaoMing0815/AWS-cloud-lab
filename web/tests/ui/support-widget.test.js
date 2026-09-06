@@ -188,6 +188,9 @@ test("Widget launcher 以原創像素果凍史萊姆呈現，不帶恐龍或機�
   assert.ok(documentRef.getElementById("supportWidgetPetFace"));
   assert.ok(documentRef.getElementById("supportWidgetPetJellyBase"));
   assert.ok(documentRef.getElementById("supportWidgetPetShadow"));
+  const dialogTail = documentRef.getElementById("supportWidgetDialogTail");
+  assert.ok(dialogTail, "展開面板需有連接史萊姆的對話氣泡尾巴");
+  assert.equal(dialogTail.getAttribute("aria-hidden"), "true");
   assert.equal(documentRef.getElementById("supportWidgetPetFeet"), null);
   assert.equal(documentRef.getElementById("supportWidgetPetHint").textContent, "問規則");
 
@@ -357,14 +360,24 @@ test("Widget CSS 支援 viewport 底部寵物入口、開啟停跳與 reduced-mo
   assert.match(css, /image-rendering:\s*pixelated/);
   const desktopWidgetRule = css.match(/\.support-widget\s*\{([^}]*)\}/)?.[1] ?? "";
   const baseDialogRule = css.match(/\.support-widget__dialog\s*\{([^}]*)\}/)?.[1] ?? "";
+  const bubbleTailRule = css.match(/\.support-widget__dialog-tail\s*\{([^}]*)\}/)?.[1] ?? "";
   assert.match(desktopWidgetRule, /right:\s*clamp\(3rem,\s*6vw,\s*6rem\)/);
   assert.match(baseDialogRule, /position:\s*absolute;/);
-  assert.match(baseDialogRule, /bottom:\s*6\.75rem;/);
+  assert.match(baseDialogRule, /bottom:\s*6rem;/);
   assert.match(baseDialogRule, /max-height:\s*min\(68dvh,\s*36rem\);/);
+  assert.match(baseDialogRule, /border-radius:\s*1\.25rem\s+1\.25rem\s+\.35rem\s+1\.25rem;/);
   assert.match(
     baseDialogRule,
     /background:\s*color-mix\(in srgb,\s*var\(--night,\s*#071113\)\s*85%,\s*white\s*15%\);/,
     "dialog 背景需比主頁 night 色提高 15% 明度",
+  );
+  assert.match(bubbleTailRule, /position:\s*absolute;/);
+  assert.match(bubbleTailRule, /right:\s*2\.35rem;/);
+  assert.match(bubbleTailRule, /bottom:\s*5\.35rem;/);
+  assert.match(bubbleTailRule, /transform:\s*rotate\(45deg\);/);
+  assert.match(
+    css,
+    /\.support-widget:not\(\.is-open\)\s+\.support-widget__dialog-tail\s*\{[^}]*display:\s*none;/s,
   );
   assert.match(css, /bottom:\s*max\([^;]*env\(safe-area-inset-bottom\)/);
   assert.match(css, /\.support-widget\.is-open\s+\.support-widget__slime[^}]*animation-play-state:\s*paused/s);
@@ -384,7 +397,7 @@ test("Widget CSS 支援 viewport 底部寵物入口、開啟停跳與 reduced-mo
     landingWidgetRule,
     /bottom:\s*var\(--support-widget-bottom,\s*max\(10rem,\s*env\(safe-area-inset-bottom\)\)\);/,
   );
-  assert.match(dialogRule, /bottom:\s*6\.75rem;/);
+  assert.match(dialogRule, /bottom:\s*6rem;/);
   assert.match(dialogRule, /max-height:\s*min\(62dvh,\s*32rem\);/);
   assert.match(
     mobileCss,
@@ -473,7 +486,7 @@ test("Widget 中尺寸與桌機在可展開時仍保留 composer 核心控制區
   assert.match(desktopGameRule, /right:\s*0;/);
   assert.match(
     desktopGameRule,
-    /bottom:\s*calc\(max\(1rem,\s*env\(safe-area-inset-bottom\)\)\s*\+\s*6\.75rem\);/,
+    /bottom:\s*calc\(max\(1rem,\s*env\(safe-area-inset-bottom\)\)\s*\+\s*6rem\);/,
   );
   assert.match(desktopGameRule, /width:\s*21rem;/);
   assert.match(
