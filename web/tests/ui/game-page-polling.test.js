@@ -43,6 +43,38 @@ function installPollingStatusDocument() {
   };
 }
 
+function installStoryFeedDocument({ scrollTop, scrollHeight, clientHeight, childElementCount = 1 }) {
+  const previousDocument = globalThis.document;
+  const storyFeed = {
+    scrollTop,
+    scrollHeight,
+    clientHeight,
+    childElementCount,
+    replaceChildren(...children) {
+      this.children = children;
+      this.childElementCount = children.length;
+      this.scrollHeight += 200;
+    },
+  };
+  globalThis.document = {
+    createElement() {
+      return {
+        append() {},
+        setAttribute() {},
+      };
+    },
+    getElementById(id) {
+      return id === "storyFeed" ? storyFeed : null;
+    },
+  };
+  return {
+    storyFeed,
+    restore() {
+      globalThis.document = previousDocument;
+    },
+  };
+}
+
 test("GamePage 每次 polling 完成後才排定下一次同步", async () => {
   const scheduler = createScheduler();
   let loadCount = 0;
@@ -72,6 +104,44 @@ test("GamePage 每次 polling 完成後才排定下一次同步", async () => {
   assert.equal(renderCount, 1);
   assert.equal(page.room.version, 1);
   assert.equal(scheduler.tasks.length, 2, "同步完成後才排定下一次 polling");
+});
+
+test("GamePage polling 重新渲染時保留使用者主動上捲的故事位置", () => {
+  const storyDocument = installStoryFeedDocument({
+    scrollTop: 240,
+    scrollHeight: 1000,
+    clientHeight: 400,
+  });
+  const page = new GamePage({});
+
+  try {
+    page.renderEntries([
+      { type: "narrator", title: "故事主持人", round: 5, text: "本回合故事" },
+    ]);
+
+    assert.equal(storyDocument.storyFeed.scrollTop, 240);
+  } finally {
+    storyDocument.restore();
+  }
+});
+
+test("GamePage 原本位於故事底部時繼續跟隨最新內容", () => {
+  const storyDocument = installStoryFeedDocument({
+    scrollTop: 600,
+    scrollHeight: 1000,
+    clientHeight: 400,
+  });
+  const page = new GamePage({});
+
+  try {
+    page.renderEntries([
+      { type: "narrator", title: "故事主持人", round: 5, text: "本回合故事" },
+    ]);
+
+    assert.equal(storyDocument.storyFeed.scrollTop, 1200);
+  } finally {
+    storyDocument.restore();
+  }
 });
 
 test("GamePage 不允許重疊的 polling request", async () => {

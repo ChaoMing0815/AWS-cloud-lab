@@ -702,6 +702,10 @@ export class GamePage {
   }
 
   renderEntries(entries) {
+    const feed = byId("storyFeed");
+    const previousScrollTop = feed.scrollTop;
+    const distanceFromBottom = feed.scrollHeight - feed.scrollTop - feed.clientHeight;
+    const shouldFollowLatest = feed.childElementCount === 0 || distanceFromBottom <= 24;
     const articles = entries.map((entry) => {
       const article = element("article", {
         className: `story-entry${entry.type === "action" ? " player-action" : ""}`,
@@ -714,8 +718,7 @@ export class GamePage {
       article.append(meta, element("p", { text: entry.text }));
       return article;
     });
-    const feed = byId("storyFeed");
     feed.replaceChildren(...articles);
-    feed.scrollTop = feed.scrollHeight;
+    feed.scrollTop = shouldFollowLatest ? feed.scrollHeight : previousScrollTop;
   }
 }
