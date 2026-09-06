@@ -1,6 +1,6 @@
 # CURRENT：目前工作交接
 
-- 更新日期：2026-09-05
+- 更新日期：2026-09-06
 - 繳交期限：2026-09-07
 - 目前里程碑：ADR-0008 定義的 AWS production 主線已完成，包含可玩 MVP、可觀測／SSM、Web／Story Worker／Data 組件化與自動部署。Tier 4／5 只是 future roadmap，不是當前缺口或 final delivery blocker。
 - 狀態判定：以目前已實作、production 狀態與 sanitized evidence 為主。`docs/checkpoints.md` 與 `docs/task-list.md` 是驗收參考與證據整合清單，不得以歷史未勾項否定已有實作與證據的成果。
@@ -9,13 +9,13 @@
 
 ## Production 基準
 
-- Latest application-bearing `main` SHA：`c5f3d038f363a29c8ac1b402d501f0a1ed6bad19`；此 SHA 已包含尚未部署的 Web `Release v1.1.3`與已部署的corrective Worker hotfix。後續docs-only merge可能繼續推進repository tip；新task必須以`git rev-parse origin/main`查詢即時tip，不得把docs-only SHA、repo tip或application-bearing SHA誤認為目前Web production source。
-- Active Web source exact SHA：`09dc09af12b3903f34aefe910699a066a3b56798`；玩家目前看到 `Release v1.1.2`。待展示的 Web `Release v1.1.3` 尚未觸發 production release。
-- Active Worker source exact SHA：`c5f3d038f363a29c8ac1b402d501f0a1ed6bad19`；2026-09-05 corrective ToolUse hotfix 已只部署至兩台 private Worker。
+- Latest application-bearing `main` SHA：`415c5d32c46c82a39933031b81d5aca7939bd0c6`；Web與兩台private Worker均已部署此exact source。後續docs-only merge可能繼續推進repository tip；新task必須以`git rev-parse origin/main`查詢即時tip，不得把docs-only SHA、repo tip或application-bearing SHA誤認為目前production source。
+- Active Web source exact SHA：`415c5d32c46c82a39933031b81d5aca7939bd0c6`；玩家目前看到 `Release v1.1.4`。
+- Active Worker source exact SHA：`415c5d32c46c82a39933031b81d5aca7939bd0c6`；2026-09-06故事連續性修正已逐台部署至兩台private Worker。
 - Migration inventory：精確 `001`–`005`。
-- Web：`sha256:c3e6c215c26043678962528d65f73f39761b141170455e279cc89cc1f6b6b27c`，runtime `async`；run `33844595314` 由 exact source `09dc09a…` 完成 `Release v1.1.2` deployment。Web、首頁版號與 Publisher 均未被本次 Worker hotfix 修改。
+- Web：`sha256:e4039cbf5e1b42b6dd0b8c63642b1a0302078ae59030aa23ce194c5ff3f04d30`，runtime `async`；run `34005215520` 由 exact source `415c5d32…` 完成 `Release v1.1.4` deployment，previous／立即rollback digest為`sha256:bda7bbbb3a071d83d68dafd4fecba06132407d6f6e644a1e4f9aaac0acb93bbb`。
 - Publisher：`sha256:23357e315e94842cee8455023b1f87f203fca5b1d11b67b714f4af86efaa2a1b`，service active，container running。
-- 兩台 private Worker：`sha256:439059c4a3f94657c2a9403732237ec3e576041cd962c7e789b89b1ec7d9fd73`，`CO_STORY_BEDROCK_MAX_TOKENS=3000`，service enabled／active、container running、restart `0`、mode `async`、ECR registry與暫存credential absent。立即rollback為 digest `sha256:1655de7a07b93b08564693d2bfc678ba2d1f616dda01cf74a8efbd920cf084f4` 加 token budget `3000`。
+- 兩台 private Worker：`sha256:e4039cbf5e1b42b6dd0b8c63642b1a0302078ae59030aa23ce194c5ff3f04d30`，`CO_STORY_BEDROCK_MAX_TOKENS=3000`，service enabled／active、container running、restart `0`、mode `async`、專案ECR registry與暫存credential absent。立即rollback為 digest `sha256:439059c4a3f94657c2a9403732237ec3e576041cd962c7e789b89b1ec7d9fd73` 加 token budget `3000`。
 - Tier 2 玩家流程已完成 `202 → polling → applied result`；corrective production驗證於原Round 02失敗畫面手動重試，沿用鎖定行動／骰點／星火並成功產生AI故事、進入Round 03；規則結果只套用一次。
 - GitHub OIDC／ECR／Trivy／SSM pipeline 是唯一 image 交付路徑；production environment 保留人工核准與 fail-closed health／rollback gate。
 
@@ -44,16 +44,19 @@
 - PR CI與merge後main CI均全綠；release run `33583003508`通過production approval、OIDC、ARM64 immutable image、digest fence、Trivy、bounded SSM與delivery metrics，active Web更新為`sha256:ad0ee896…`，previous `sha256:14d8e0f…`保留為rollback。
 - 玩家可見production為`Release v1.1.1`。Browser驗證果凍本體、裙邊與直接表情存在，舊機器人面板／分離腿不存在，對話框可開啟且無水平溢位；strict TLS首頁／live／ready皆為`200`。每次玩家可見patch必須遞增SemVer patch並由regression test拒絕上一版號；docs-only commit不遞增。
 
-## 2026-09-04～05 v1.1.2 與 Worker ToolUse hotfix
+## 2026-09-04～06 v1.1.2～v1.1.4 與 Worker ToolUse／故事品質修正
 
-- PR #77 已將 `Release v1.1.2` 星火規則與展示 UI patch 合併至 `09dc09af12b3903f34aefe910699a066a3b56798`；main CI run `33844447220`、Web release run `33844595314` 均成功，active Web digest為 `sha256:c3e6c215…`。玩家目前仍看到 v1.1.2。
-- PR #78 的 `Release v1.1.3` support dialog layout 已合併，並隨後包含於目前 repo main；它是後續另行展示的 Web release，尚未部署。Worker hotfix 不得改寫此版號或觸發 Tier 3 Web workflow。
+- PR #77 已將 `Release v1.1.2` 星火規則與展示 UI patch 合併至 `09dc09af12b3903f34aefe910699a066a3b56798`；main CI run `33844447220`、Web release run `33844595314` 均成功，當時active Web digest為 `sha256:c3e6c215…`、玩家看到v1.1.2。
+- PR #78 的 `Release v1.1.3` support dialog layout 已於run `33933860778`從exact source `a35a424…`部署，active Web當時更新為`sha256:bda7bbbb…`；此digest現為v1.1.4的立即rollback。
 - Production CloudTrail 將失敗 round 的三次 Worker 嘗試歸因為 Nova Lite `Converse` 的 `ModelErrorException`／invalid ToolUse sequence。PR #81 只為 Nova forced-tool request加入 `topK=1`，並將 Worker token budget由 `800`提高到 bounded `3000`；不修改 Web、DB、schema、IAM、Queue、Publisher或AWS資源。
 - Worker artifact run `33897173518` 綁定 exact main `3246f2a…`，production approval、ARM64 immutable build／push、exact-digest Trivy `HIGH/CRITICAL` gate與manifest均成功；新 digest為 `sha256:1655de7a…`。
 - 使用者透過 Systems Manager 逐台更新 `ip-10-20-20-170` 與 `ip-10-20-20-91`。雙 Worker postflight皆為service enabled／active、container running、restart `0`、mode `async`、max tokens `3000`、exact digest一致且registry auth absent。
 - 第一版hotfix的bounded玩家測試：Round 01於第一次嘗試`applied`；Round 02則在三次嘗試後`failed`，dispatch與completion正常。Safe CloudWatch diagnostics對後兩次分別為`round_narrative_bounds`與`round_action_consequence_bounds`；第一個failure沒有diagnostic record。此為corrective部署前的歷史失敗與根因證據，不是當前production結論。
 - PR #83 以strict TDD修正上述邊界不對齊：Nova可見的description要求更短文字，結構正確但超長的文字才會依句界壓縮；主敘事／玩家後果等硬上限只小幅調整為`720`／`280`，結構、玩家集合與canonical state錯誤仍fail closed。Exact main為`c5f3d038…`，CI run `33904289566`四項全綠。
-- Worker artifact run `33904742833`建置並掃描exact digest `sha256:439059c4…`；雙Worker postflight皆通過。使用者對原Round 02只按一次手動重試，成功生成故事並進入Round 03。已修正本次觀察到的length-bounds失敗路徑；仍保留bounded retry／fallback，不宣稱Bedrock永不失敗。Web仍是v1.1.2，Publisher不變，v1.1.3仍待獨立展示部署。
+- Worker artifact run `33904742833`建置並掃描exact digest `sha256:439059c4…`；雙Worker postflight皆通過。使用者對原Round 02只按一次手動重試，成功生成故事並進入Round 03。已修正本次觀察到的length-bounds失敗路徑；仍保留bounded retry／fallback，不宣稱Bedrock永不失敗。
+- PR #85以strict TDD完成故事連續性、精確重複段落移除、手動閱讀位置保留與`Release v1.1.4`；PR CI run `34005023612`與merge後main CI run `34005127848`均全綠，merge／application source為`415c5d32…`。
+- Web release run `34005215520`以previous `sha256:bda7bbbb…`完成OIDC、ARM64 immutable push、exact-digest Trivy、bounded SSM與delivery artifact；active Web更新為`sha256:e4039cbf…`，strict TLS首頁／live／ready皆`200`且首頁顯示`Release v1.1.4`。
+- Worker artifact run `34005216367`因同一SHA tag已由Web release先行推送，在ECR immutable fence安全停止；沒有覆寫image、沒有Worker runtime mutation。兩台Worker後續以Web workflow已掃描的同一完整image逐台更新至`sha256:e4039cbf…`，postflight均為exact source、enabled／active、running、restart `0`、async、tokens `3000`，且專案registry與臨時credential absent。此workflow跨軌同SHA tag碰撞是待修正的CI/CD residual。
 
 ## 已完成範圍
 
@@ -103,10 +106,11 @@
 - 寵物規則助手 production release：[`docs/evidence/2026-09-02-pet-rules-production-release/validation.md`](../evidence/2026-09-02-pet-rules-production-release/validation.md)
 - 寵物視覺 v1.1.1 production release：[`docs/evidence/2026-09-02-pet-visual-v1-1-1-production-release/validation.md`](../evidence/2026-09-02-pet-visual-v1-1-1-production-release/validation.md)
 - Nova Lite ToolUse Worker-only hotfix：[`docs/evidence/2026-09-05-bedrock-tooluse-hotfix/validation.md`](../evidence/2026-09-05-bedrock-tooluse-hotfix/validation.md)
+- 故事連續性與閱讀位置 v1.1.4：[`docs/evidence/2026-09-05-story-quality/validation.md`](../evidence/2026-09-05-story-quality/validation.md)
 
 ## Next
 
-1. 以現有 Tier 0–3、UI／寵物規則助手與bounded Support Agent production證據建立5–8分鐘final Demo；不重跑Bedrock、玩家E2E、synthetic incident或rules draft。
+1. 正式報告已完成；錄製完整報告與Demo前，以v1.1.4現況準備瀏覽器頁籤與備援展示素材。若要驗證本次敘事品質，只使用一個既有房間的bounded回合，不重跑synthetic incident或另建測試job。
 2. 整合 final production architecture 與課程能力對映；Tier 4／5 若保留於圖中，必須標示 `Future roadmap / Out of scope for final delivery`。
 3. 建立 final evidence index，使 Demo 每一步只連到一個 canonical sanitized evidence。
 4. 完成 repository secrets 掃描與 tracked screenshots OCR／人工遮罩 audit。
@@ -132,5 +136,6 @@
 - `CoStoryHealthCheck` 已通過正面 gate，尚未執行 Document 自身的代表性 failure gate。
 - 尚未驗證多人長時間連續回合、iPhone Safari 長時間 polling／visibility，以及 `COMPLETED` 房間刪除後的 AWS 多分頁 lifecycle。
 - ECR 保留歷史 fail-closed 與 successful release images，lifecycle limit 為 `10`；舊 runs 不得 re-run，storage／scan 仍可能產生少量費用。
+- `tier3-release`與`tier2-worker-image`目前共用相同SHA tag；同一exact source先由Web workflow推送後，Worker workflow會因ECR tag immutable安全失敗。此次以已掃描的同一完整image完成Worker rollout；後續應以TDD讓Worker workflow辨識並驗證既有exact digest，而非嘗試覆寫。
 - Support Agent static retrieval 無法涵蓋所有自然語言問法，identity digest 未加鹽；Bedrock／RAG／external submit 不在已部署的 bounded scope。
 - 原始截圖若位於 TemporaryItems／Downloads 不算正式 evidence；入庫前必須去識別化。
