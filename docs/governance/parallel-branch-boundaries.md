@@ -1,7 +1,7 @@
 # 平行分支工作邊界
 
 - 狀態：Active
-- 生效分支以 `.agents/work-boundaries.json` 為準；2026-09-02 報告收斂輪新增 `codex/demo-patch-v1-1-2`、`codex/spark-rules-clarity`、`codex/final-report-deck` 與 `codex/final-report-web`。
+- 生效分支以 `.agents/work-boundaries.json` 為準；2026-09-07 交付整理輪新增 `codex/final-written-report` 與 `codex/portfolio-case-study`。
 - 機器可讀規則：`.agents/work-boundaries.json`
 - 自動檢查：`scripts/check_branch_boundaries.py`
 
@@ -10,6 +10,33 @@
 多個 Codex task 使用獨立 Git worktree 平行工作，但共享同一個 Git repository 與最終 AWS environment。本規範以路徑白名單、protected paths 與單一整合責任人避免檔案覆寫、語意衝突和相互部署。
 
 白名單之外一律拒絕。分支不得自行修改本文件、policy、checker 或 protected paths；需要擴張範圍時，停止工作並回到整合 task 修改治理基準，再讓兩個分支同步新 commit。
+
+## 2026-09-07 書面報告與公開作品集
+
+兩個分支必須從同一個已 push 的治理 SHA 建立獨立 worktree，且路徑完全互斥。兩者都只能使用已驗證的 production 狀態與 sanitized evidence；不得把 Tier 4／5 當成本次未完成工作，也不得呼叫 deterministic Support Widget 作為 RAG。
+
+### `codex/final-written-report`
+
+- 唯一寫入範圍為 `docs/reports/2026-09-*-co-story-written-report/**`。
+- 第一輪只做檔案盤點、六冊章節矩陣、證據路由與缺件清單，不撰寫或發布最終報告。
+- 六冊以 AWS 課程服務如何整合進共演計劃為主軸，不以 Tier 0–5 作為章節、進度或完成標準。
+- 已部署內容只能依 canonical evidence 描述；未採用的 Route 53、CloudFront、ELB／ASG、SNS、App Runner、API Gateway、Lambda、SageMaker、DynamoDB、Step Functions、Bedrock Knowledge Bases／RAG 必須集中放在獨立的「概念延伸／未部署」學習報告。
+- 要涵蓋 CloudFormation template、Change Set、版本控制、測試，以及 Agent 在需求治理、strict TDD、分支邊界、診斷、證據與 human-in-the-loop 的角色與限制。
+- 不遞迴讀取整個 `docs/`；不得修改 README、CURRENT、checkpoints、task list、deployment log、程式、AWS、workflow、infra 或 ops；不得執行 AWS CLI、SSM、S3、Bedrock、deploy、push 或 merge。
+
+### `codex/portfolio-case-study`
+
+- 唯一寫入範圍為 `docs/portfolio/co-story/**`。
+- 第一輪只做 public-safe 內容架構、資產盤點、頁面 wireframe、文章題目與 GitHub README／Notion／Cake／104／LinkedIn 平台文案草稿；不得直接發布。
+- 既有 14 頁報告網站只能當來源素材，不得原樣公開；對外內容必須先稽核 account ID、Email、public IP、instance ID、ARN、token、session／room code與 Console 個資。
+- GitHub Pages 是未來主要案例頁，另規劃兩篇技術文章與各平台共用 canonical facts；不得把未部署服務描述為現況。
+- 不得修改根 `README.md`、產品 Web、Backend、CURRENT、checkpoints、task list、deployment log、AWS、workflow、infra或ops；不得執行 AWS CLI、SSM、S3、Bedrock、deploy、hosting、外部上傳、push或merge。
+
+### 本輪整合順序
+
+1. 兩個分支可平行完成第一輪，因為寫入路徑互斥。
+2. 整合 task 先核對兩邊的 canonical facts 與 public-safety 稽核，不把草稿直接視為可發布內容。
+3. 最終 DOCX／PDF、根 README、GitHub Pages deploy、Notion或求職平台發布，都必須另行形成整合工作與取得必要授權。
 
 ## 2026-09-02 報告收斂與 CICD 展示 patch
 

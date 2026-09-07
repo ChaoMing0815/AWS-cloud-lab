@@ -48,6 +48,8 @@ def test_policy_defines_exact_parallel_branches_and_protects_integration_state()
         "codex/final-report-deck",
         "codex/final-report-web",
         "codex/bedrock-tooluse-hotfix",
+        "codex/final-written-report",
+        "codex/portfolio-case-study",
     }
     assert "docs/handoffs/CURRENT.md" in policy["protected_paths"]
     assert "docs/checkpoints.md" in policy["protected_paths"]
@@ -135,6 +137,51 @@ def test_final_report_web_is_local_only_and_cannot_modify_product_or_delivery() 
         "ops/release/deploy_container.sh",
     ):
         assert path in rejected.stderr
+
+
+def test_written_report_and_portfolio_have_disjoint_publication_boundaries() -> None:
+    report_accepted = _check(
+        "codex/final-written-report",
+        "docs/reports/2026-09-07-co-story-written-report/inventory.md",
+        "docs/reports/2026-09-07-co-story-written-report/chapter-matrix.md",
+        "docs/reports/2026-09-07-co-story-written-report/evidence-routing.md",
+    )
+    report_rejected = _check(
+        "codex/final-written-report",
+        "docs/portfolio/co-story/index.md",
+        "README.md",
+        "docs/handoffs/CURRENT.md",
+        "infra/cloudformation/tier3-delivery.yaml",
+    )
+    portfolio_accepted = _check(
+        "codex/portfolio-case-study",
+        "docs/portfolio/co-story/content-architecture.md",
+        "docs/portfolio/co-story/asset-inventory.md",
+        "docs/portfolio/co-story/platform-copy.md",
+    )
+    portfolio_rejected = _check(
+        "codex/portfolio-case-study",
+        "docs/reports/2026-09-07-co-story-written-report/inventory.md",
+        "README.md",
+        "docs/handoffs/CURRENT.md",
+        ".github/workflows/pages.yml",
+        "web/index.html",
+    )
+
+    assert report_accepted.returncode == 0, report_accepted.stderr
+    assert report_rejected.returncode == 2
+    assert portfolio_accepted.returncode == 0, portfolio_accepted.stderr
+    assert portfolio_rejected.returncode == 2
+    for path in ("docs/portfolio/co-story/index.md", "README.md", "docs/handoffs/CURRENT.md"):
+        assert path in report_rejected.stderr
+    for path in (
+        "docs/reports/2026-09-07-co-story-written-report/inventory.md",
+        "README.md",
+        "docs/handoffs/CURRENT.md",
+        ".github/workflows/pages.yml",
+        "web/index.html",
+    ):
+        assert path in portfolio_rejected.stderr
 
 
 def test_bedrock_tooluse_hotfix_is_worker_only_and_cannot_modify_web_or_delivery() -> None:
@@ -694,6 +741,8 @@ def test_governance_guide_and_pull_request_gate_are_present() -> None:
     assert "codex/tier2-web-ui-release" in guide
     assert "codex/ui-terminal-refresh" in guide
     assert "codex/support-pixel-widget" in guide
+    assert "codex/final-written-report" in guide
+    assert "codex/portfolio-case-study" in guide
     assert "單一部署 owner" in guide
     assert "branch-boundary:" in workflow
     assert "scripts/check_branch_boundaries.py" in workflow

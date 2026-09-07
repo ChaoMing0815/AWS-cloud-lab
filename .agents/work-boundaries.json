@@ -413,6 +413,18 @@
         "docs/features/bedrock-tooluse-hotfix.md",
         "docs/evidence/2026-*-bedrock-tooluse-hotfix/**"
       ]
+    },
+    "codex/final-written-report": {
+      "purpose": "盤點並規劃六冊共演計劃書面報告，依已部署證據說明 AWS 服務整合；不修改程式、治理狀態、README、AWS 或部署",
+      "allowed_paths": [
+        "docs/reports/2026-09-*-co-story-written-report/**"
+      ]
+    },
+    "codex/portfolio-case-study": {
+      "purpose": "規劃公開安全的 GitHub Pages 個案、技術文章與求職平台文案；只建立作品集草稿，不修改根 README、不發布或操作 AWS",
+      "allowed_paths": [
+        "docs/portfolio/co-story/**"
+      ]
     }
   }
 }
