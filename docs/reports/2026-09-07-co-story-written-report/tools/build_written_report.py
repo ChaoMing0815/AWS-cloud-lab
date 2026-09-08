@@ -3,11 +3,18 @@
 
 from __future__ import annotations
 
+import os
 import re
+import shutil
+import subprocess
 import sys
+import tempfile
+import uuid
+import zipfile
 from pathlib import Path
 
 from PIL import Image
+from lxml import etree
 from docx import Document
 from docx.enum.section import WD_SECTION
 from docx.enum.style import WD_STYLE_TYPE
@@ -20,6 +27,190 @@ from docx.shared import Cm, Inches, Pt, RGBColor
 BODY_FONT = "Arial Unicode MS"
 HEADING_FONT = "Arial Unicode MS"
 MONO_FONT = "Liberation Mono"
+EMBED_FONT_CANDIDATES = (
+    Path("/System/Library/Fonts/Supplemental/Arial Unicode.ttf"),
+    Path("/Library/Fonts/Arial Unicode.ttf"),
+)
+
+CONTENT_TYPES_NS = "http://schemas.openxmlformats.org/package/2006/content-types"
+RELATIONSHIPS_NS = "http://schemas.openxmlformats.org/package/2006/relationships"
+FONT_REL_TYPE = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/font"
+WORD_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+OFFICE_REL_NS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+
+
+def _obfuscate_openxml_font(font_data: bytes, font_key: uuid.UUID) -> bytes:
+    """Apply ECMA-376 embedded-font obfuscation to the first 32 bytes."""
+    data = bytearray(font_data)
+    key = font_key.bytes[::-1]
+    for index in range(min(32, len(data))):
+        data[index] ^= key[index % 16]
+    return bytes(data)
+
+
+def embed_cjk_font(docx_path: Path) -> None:
+    """Embed the editable-installable CJK font so headless LibreOffice is portable."""
+    font_path = next((path for path in EMBED_FONT_CANDIDATES if path.is_file()), None)
+    if font_path is None:
+        raise FileNotFoundError("Arial Unicode MS was not found; refusing a non-portable DOCX build")
+
+    # Match LibreOffice's OOXML exporter keys and byte order exactly. Writer
+    # requires both faces here even though the source file is the same font.
+    regular_key = uuid.UUID("01014a78-cabc-4ef0-12ac-5cd89aefde01")
+    bold_key = uuid.UUID("02014a78-cabc-4ef0-12ac-5cd89aefde02")
+    font_data = font_path.read_bytes()
+    embedded_regular = _obfuscate_openxml_font(font_data, regular_key)
+    embedded_bold = _obfuscate_openxml_font(font_data, bold_key)
+    temporary = docx_path.with_suffix(".embedded.tmp.docx")
+
+    with zipfile.ZipFile(docx_path, "r") as source, zipfile.ZipFile(
+        temporary, "w", compression=zipfile.ZIP_DEFLATED
+    ) as target:
+        entries = {name: source.read(name) for name in source.namelist()}
+
+        font_table = etree.fromstring(entries["word/fontTable.xml"])
+        font = etree.SubElement(font_table, f"{{{WORD_NS}}}font")
+        font.set(f"{{{WORD_NS}}}name", BODY_FONT)
+        charset = etree.SubElement(font, f"{{{WORD_NS}}}charset")
+        charset.set(f"{{{WORD_NS}}}val", "01")
+        family = etree.SubElement(font, f"{{{WORD_NS}}}family")
+        family.set(f"{{{WORD_NS}}}val", "roman")
+        pitch = etree.SubElement(font, f"{{{WORD_NS}}}pitch")
+        pitch.set(f"{{{WORD_NS}}}val", "variable")
+        for element_name, relationship_id, font_key in (
+            ("embedRegular", "rId1", regular_key),
+            ("embedBold", "rId2", bold_key),
+        ):
+            embed = etree.SubElement(font, f"{{{WORD_NS}}}{element_name}")
+            embed.set(f"{{{OFFICE_REL_NS}}}id", relationship_id)
+            embed.set(f"{{{WORD_NS}}}fontKey", "{" + str(font_key).upper() + "}")
+        entries["word/fontTable.xml"] = etree.tostring(
+            font_table, xml_declaration=True, encoding="UTF-8", standalone=True
+        )
+
+        rels_name = "word/_rels/fontTable.xml.rels"
+        if rels_name in entries:
+            relationships = etree.fromstring(entries[rels_name])
+        else:
+            relationships = etree.Element(f"{{{RELATIONSHIPS_NS}}}Relationships")
+        for relationship_id, target_name in (
+            ("rId1", "fonts/font1.odttf"),
+            ("rId2", "fonts/font2.odttf"),
+        ):
+            relationship = etree.SubElement(
+                relationships, f"{{{RELATIONSHIPS_NS}}}Relationship"
+            )
+            relationship.set("Id", relationship_id)
+            relationship.set("Type", FONT_REL_TYPE)
+            relationship.set("Target", target_name)
+        entries[rels_name] = etree.tostring(
+            relationships, xml_declaration=True, encoding="UTF-8", standalone=True
+        )
+
+        content_types = etree.fromstring(entries["[Content_Types].xml"])
+        if not content_types.xpath(
+            "ct:Default[@Extension='odttf']", namespaces={"ct": CONTENT_TYPES_NS}
+        ):
+            default = etree.SubElement(content_types, f"{{{CONTENT_TYPES_NS}}}Default")
+            default.set("Extension", "odttf")
+            default.set(
+                "ContentType",
+                "application/vnd.openxmlformats-officedocument.obfuscatedFont",
+            )
+        entries["[Content_Types].xml"] = etree.tostring(
+            content_types, xml_declaration=True, encoding="UTF-8", standalone=True
+        )
+
+        settings = etree.fromstring(entries["word/settings.xml"])
+        for local_name in ("embedTrueTypeFonts", "embedSystemFonts"):
+            node = settings.find(f"{{{WORD_NS}}}{local_name}")
+            if node is None:
+                node = etree.SubElement(settings, f"{{{WORD_NS}}}{local_name}")
+            node.set(f"{{{WORD_NS}}}val", "true")
+        entries["word/settings.xml"] = etree.tostring(
+            settings, xml_declaration=True, encoding="UTF-8", standalone=True
+        )
+        entries["word/fonts/font1.odttf"] = embedded_regular
+        entries["word/fonts/font2.odttf"] = embedded_bold
+
+        for name, data in entries.items():
+            target.writestr(name, data)
+
+    temporary.replace(docx_path)
+
+
+def _find_soffice() -> Path:
+    candidates = [
+        Path.home()
+        / ".cache/codex-runtimes/codex-primary-runtime/dependencies/bin/override/soffice",
+        Path("/Applications/LibreOffice.app/Contents/MacOS/soffice"),
+    ]
+    command = shutil.which("soffice")
+    if command:
+        candidates.insert(0, Path(command))
+    executable = next((path for path in candidates if path.is_file()), None)
+    if executable is None:
+        raise FileNotFoundError("LibreOffice soffice was not found; refusing an unverified DOCX build")
+    return executable
+
+
+def roundtrip_embedded_fonts_with_libreoffice(docx_path: Path) -> None:
+    """Let LibreOffice normalize the embedded faces it later consumes in QA."""
+    soffice = _find_soffice()
+    runtime_fonts = (
+        Path.home()
+        / ".cache/codex-runtimes/codex-primary-runtime/dependencies/native/"
+        "libreoffice-headless/libreoffice/LibreOfficeDev.app/Contents/Resources/"
+        "fonts/truetype"
+    )
+    font_dirs = [EMBED_FONT_CANDIDATES[0].parent]
+    if runtime_fonts.is_dir():
+        font_dirs.append(runtime_fonts)
+
+    with tempfile.TemporaryDirectory(prefix="co-story-docx-fonts-") as temp_name:
+        temp_dir = Path(temp_name)
+        output_dir = temp_dir / "output"
+        profile_dir = temp_dir / "profile"
+        cache_dir = temp_dir / "font-cache"
+        output_dir.mkdir()
+        profile_dir.mkdir()
+        cache_dir.mkdir()
+        font_config = temp_dir / "fonts.conf"
+        dirs_xml = "\n".join(f"  <dir>{path}</dir>" for path in font_dirs)
+        font_config.write_text(
+            '<?xml version="1.0"?>\n'
+            '<!DOCTYPE fontconfig SYSTEM "fonts.dtd">\n'
+            '<fontconfig>\n'
+            f"{dirs_xml}\n"
+            f"  <cachedir>{cache_dir}</cachedir>\n"
+            '</fontconfig>\n',
+            encoding="utf-8",
+        )
+        environment = os.environ.copy()
+        environment["FONTCONFIG_FILE"] = str(font_config)
+        completed = subprocess.run(
+            [
+                str(soffice),
+                f"-env:UserInstallation={profile_dir.as_uri()}",
+                "--invisible",
+                "--headless",
+                "--norestore",
+                "--convert-to",
+                "docx",
+                "--outdir",
+                str(output_dir),
+                str(docx_path),
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+            env=environment,
+        )
+        converted = output_dir / docx_path.name
+        if completed.returncode != 0 or not converted.is_file():
+            detail = (completed.stderr or completed.stdout).strip()
+            raise RuntimeError(f"LibreOffice DOCX normalization failed: {detail}")
+        converted.replace(docx_path)
 
 
 def set_run_font(run, name: str, size: float, bold: bool | None = None) -> None:
@@ -264,21 +455,31 @@ def add_cover_and_toc(doc: Document, title_text: str, subtitle: str) -> None:
     toc_title = doc.add_paragraph("目錄", style="Heading 1")
     toc_title.paragraph_format.first_line_indent = Pt(0)
     toc_entries = (
-        "摘要",
-        "第一章　緒論",
-        "第二章　需求分析與系統設計",
-        "第三章　AWS 架構設計",
-        "第四章　系統實作",
-        "第五章　測試、部署與維運",
-        "第六章　成果、限制與未來方向",
-        "參考資料",
-        "附錄",
+        ("摘要", "3"),
+        ("第一章　緒論", "4"),
+        ("第二章　需求分析與系統設計", "7"),
+        ("第三章　AWS 架構與服務整合", "12"),
+        ("第四章　系統實作", "19"),
+        ("第五章　測試、部署與維運", "25"),
+        ("第六章　成果評估與結論", "32"),
+        ("參考資料", "36"),
+        ("附錄", "37"),
     )
-    for entry in toc_entries:
-        toc = doc.add_paragraph()
-        toc.paragraph_format.first_line_indent = Pt(0)
-        toc.paragraph_format.space_after = Pt(7)
-        add_inline_runs(toc, entry, size=12)
+    toc_table = doc.add_table(rows=0, cols=2)
+    toc_table.autofit = False
+    toc_table.columns[0].width = Cm(13.2)
+    toc_table.columns[1].width = Cm(1.2)
+    for entry, page_number in toc_entries:
+        cells = toc_table.add_row().cells
+        for cell in cells:
+            set_cell_margins(cell, top=70, start=0, bottom=70, end=0)
+        title_paragraph = cells[0].paragraphs[0]
+        title_paragraph.paragraph_format.first_line_indent = Pt(0)
+        add_inline_runs(title_paragraph, entry, size=12)
+        page_paragraph = cells[1].paragraphs[0]
+        page_paragraph.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+        page_paragraph.paragraph_format.first_line_indent = Pt(0)
+        add_inline_runs(page_paragraph, page_number, size=12)
     doc.add_page_break()
 
 
@@ -366,6 +567,8 @@ def build(manuscript: Path, output: Path) -> None:
     doc.core_properties.last_modified_by = ""
     output.parent.mkdir(parents=True, exist_ok=True)
     doc.save(output)
+    embed_cjk_font(output)
+    roundtrip_embedded_fonts_with_libreoffice(output)
 
 
 if __name__ == "__main__":

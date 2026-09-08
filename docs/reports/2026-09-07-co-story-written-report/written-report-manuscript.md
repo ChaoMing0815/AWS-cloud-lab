@@ -126,7 +126,7 @@ Security Group 依元件關係開放流量。資料庫的 TCP 5432 ingress 只�
 
 圖 3-1　Network CloudFormation Change Set。第一次網路部署以十九筆新增資源建立 VPC、subnet、route table、Internet Gateway 與 Security Group，未同時建立 EC2 或 RDS。
 
-![Private DB route table](../../screenshots/phase0-tier0-private-db-route.png)
+![Private DB route table](assets/evidence/private-db-route-sanitized.png)
 
 圖 3-2　資料庫 private route table。路由表只保留 VPC local route，兩個 DB subnet 不經 Internet Gateway 或 NAT Gateway 對外連線。
 
@@ -136,7 +136,7 @@ Story Worker 位於 private subnet，沒有 public IPv4，也沒有任何 inboun
 
 Web、API 與 Nginx public edge 執行於一台 Amazon Linux 2023 ARM64 EC2。Instance 採用 `t4g.micro`、八 GiB 加密 gp3 root volume、IMDSv2 required 與 standard CPU credits。主機沒有 Key Pair，也未開放 public SSH。EC2 instance profile 讓 workload 取得 SSM、CloudWatch、S3、SQS、ECR、Secrets Manager 與 Bedrock 所需的受限權限，應用程式不保存長期 Access Key。
 
-![SSM managed node](../../screenshots/phase0-tier0-ssm-managed-node-online.png)
+![SSM managed node](assets/evidence/ssm-managed-node-sanitized.png)
 
 圖 3-3　EC2 已註冊為 SSM managed node。管理連線由 SSM Agent 主動向外建立，因此不需要 SSH、bastion host 或 TCP 22 ingress。
 
