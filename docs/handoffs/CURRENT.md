@@ -1,7 +1,7 @@
 # CURRENT：目前工作交接
 
-- 更新日期：2026-09-06
-- 繳交期限：2026-09-07
+- 更新日期：2026-09-08
+- 繳交期限：2026-09-07（已完成最終交付素材）
 - 目前里程碑：ADR-0008 定義的 AWS production 主線已完成，包含可玩 MVP、可觀測／SSM、Web／Story Worker／Data 組件化與自動部署。Tier 4／5 只是 future roadmap，不是當前缺口或 final delivery blocker。
 - 狀態判定：以目前已實作、production 狀態與 sanitized evidence 為主。`docs/checkpoints.md` 與 `docs/task-list.md` 是驗收參考與證據整合清單，不得以歷史未勾項否定已有實作與證據的成果。
 - 課程對齊：講師已確認 FastAPI＋private PostgreSQL 可作為 Tier 0 Web／DB 分離的等效實作，並已確認 Tier 0–5 的課程能力對映；這不表示最終完成目標仍是 Tier 0–5 全部實作。
@@ -9,11 +9,11 @@
 
 ## Production 基準
 
-- Latest application-bearing `main` SHA：`415c5d32c46c82a39933031b81d5aca7939bd0c6`；Web與兩台private Worker均已部署此exact source。後續docs-only merge可能繼續推進repository tip；新task必須以`git rev-parse origin/main`查詢即時tip，不得把docs-only SHA、repo tip或application-bearing SHA誤認為目前production source。
-- Active Web source exact SHA：`415c5d32c46c82a39933031b81d5aca7939bd0c6`；玩家目前看到 `Release v1.1.4`。
+- Latest application-bearing `main` SHA：`b932641453c60085a95ce4bfbaf13b386c3ef41c`；這是目前Active Web的exact source。後續docs-only merge可能繼續推進repository tip；新task必須以`git rev-parse origin/main`查詢即時tip，不得把docs-only SHA、repo tip或application-bearing SHA誤認為目前production source。
+- Active Web source exact SHA：`b932641453c60085a95ce4bfbaf13b386c3ef41c`；玩家目前看到 `Release v1.1.6`。Tier 3 release run `34043585741` 已成功，delivery metrics artifact記錄`verified=true`、`status=success`；本文件不猜測未寫入artifact的active digest。
 - Active Worker source exact SHA：`415c5d32c46c82a39933031b81d5aca7939bd0c6`；2026-09-06故事連續性修正已逐台部署至兩台private Worker。
 - Migration inventory：精確 `001`–`005`。
-- Web：`sha256:e4039cbf5e1b42b6dd0b8c63642b1a0302078ae59030aa23ce194c5ff3f04d30`，runtime `async`；run `34005215520` 由 exact source `415c5d32…` 完成 `Release v1.1.4` deployment，previous／立即rollback digest為`sha256:bda7bbbb3a071d83d68dafd4fecba06132407d6f6e644a1e4f9aaac0acb93bbb`。
+- Web：runtime維持`async`；run `34043585741` 由 exact source `b932641…` 完成 `Release v1.1.6` deployment。v1.1.4的`sha256:e4039cbf…`與其previous digest只屬歷史release基準，不得當成目前active／rollback digest。
 - Publisher：`sha256:23357e315e94842cee8455023b1f87f203fca5b1d11b67b714f4af86efaa2a1b`，service active，container running。
 - 兩台 private Worker：`sha256:e4039cbf5e1b42b6dd0b8c63642b1a0302078ae59030aa23ce194c5ff3f04d30`，`CO_STORY_BEDROCK_MAX_TOKENS=3000`，service enabled／active、container running、restart `0`、mode `async`、專案ECR registry與暫存credential absent。立即rollback為 digest `sha256:439059c4a3f94657c2a9403732237ec3e576041cd962c7e789b89b1ec7d9fd73` 加 token budget `3000`。
 - Tier 2 玩家流程已完成 `202 → polling → applied result`；corrective production驗證於原Round 02失敗畫面手動重試，沿用鎖定行動／骰點／星火並成功產生AI故事、進入Round 03；規則結果只套用一次。
@@ -110,14 +110,11 @@
 
 ## Next
 
-1. 正式報告已完成；錄製完整報告與Demo前，以v1.1.4現況準備瀏覽器頁籤與備援展示素材。若要驗證本次敘事品質，只使用一個既有房間的bounded回合，不重跑synthetic incident或另建測試job。
-2. 整合 final production architecture 與課程能力對映；Tier 4／5 若保留於圖中，必須標示 `Future roadmap / Out of scope for final delivery`。
-3. 建立 final evidence index，使 Demo 每一步只連到一個 canonical sanitized evidence。
-4. 完成 repository secrets 掃描與 tracked screenshots OCR／人工遮罩 audit。
-5. 以strict TDD把ACME父目錄最小穿越權限、公開challenge probe與憑證到期／renewal failure觀測固化至repo；不得放寬`/var/lib/co-story`的list／read／write權限。下一次timer成功前保留此項為residual，不重複手動renew。
-6. 完成 2026-09-08 清理 runbook，列出現役資源、dependency order、ECR `Retain`、snapshot 決策、owner 與帳單複查方式；未取得人工指示前不執行清理。
-7. 最後同步 README、architecture index、project plan、gantt與checkpoints；不得用歷史Tier 4／5未勾項覆蓋ADR-0008。
-8. Tier 4／5、Support Agent Bedrock／RAG／external submit 都是 future scope；本UI patch不構成 AWS change envelope 擴張。
+1. 六章正式書面報告與38頁DOCX已完成獨立render／逐頁視覺QA、OOXML隱私掃描與branch-boundary驗證，並已整合至本機`main`；待使用者另行核准push後才同步GitHub。
+2. 目前GitHub沒有open PR；新task不得重啟已完成的產品、Support Agent、Tier 2或Tier 3開發分支。
+3. 2026-09-08的主要未完成決策是AWS資源保留／清理。先以既有清理runbook與成本上限形成唯讀inventory及dependency order；未取得人工核准前不得stop、delete、terminate或建立snapshot。
+4. 若仍需補交素材，只做final evidence index、README／architecture索引一致性與public-safety audit；不得把Tier 4／5或Support Agent Bedrock／RAG／external submit轉為當前backlog。
+5. ACME自動續期尚未形成新的成功觀測；若資源保留，應將此項與Direct IP變更風險列入維運交接。若資源清理，則不再為短效憑證新增production patch。
 
 ## 操作護欄
 
